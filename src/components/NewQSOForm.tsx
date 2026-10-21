@@ -17,7 +17,9 @@ import {
   Globe, 
   Sparkles, 
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  MessageCircle,
+  Phone
 } from 'lucide-react';
 
 interface NewQSOFormProps {
@@ -80,13 +82,15 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [rstSent, setRstSent] = useState('');
   const [rstRcvd, setRstRcvd] = useState('');
   const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [whatsappRaw, setWhatsappRaw] = useState('');
   const [name, setName] = useState('');
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
 
   const [isSearchingQRZ, setIsSearchingQRZ] = useState(false);
-  const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'prefix-db' | null>(null);
+  const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'prefix-db' | null>(null);
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +136,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       const details = await lookupQRZCallsign(cleanCall);
       if (details.name) setName(details.name);
       if (details.email) setEmail(details.email);
+      if (details.whatsapp) setWhatsapp(details.whatsapp);
+      if (details.whatsappRaw) setWhatsappRaw(details.whatsappRaw);
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
       setQrzFoundSource(details.source as any);
@@ -176,6 +182,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       rstSent: rstSent.trim() || (mode === 'CW' ? '599' : '59'),
       rstRcvd: rstRcvd.trim() || (mode === 'CW' ? '599' : '59'),
       email: email.trim(),
+      whatsapp: whatsapp.trim(),
+      whatsappRaw: whatsappRaw.trim(),
       name: name.trim(),
       country: country.trim(),
       grid: grid.trim().toUpperCase(),
@@ -197,11 +205,13 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     };
     localStorage.setItem('last_qso', JSON.stringify(lastQSOToPersist));
 
-    // Solo limpiar al guardar: corresponsal (callsign), RST enviada, RST recibida, email y detalles
+    // Solo limpiar al guardar: corresponsal (callsign), RST enviada, RST recibida, email, whatsapp y detalles
     setCallsign('');
     setRstSent('');
     setRstRcvd('');
     setEmail('');
+    setWhatsapp('');
+    setWhatsappRaw('');
     setName('');
     setCountry('');
     setGrid('');
@@ -281,10 +291,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
           ))}
         </div>
 
-        {/* Fila 1: Indicativo corresponsal, RSTs, Email */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+        {/* Fila 1: Indicativo corresponsal, RSTs, Email, WhatsApp */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Indicativo Corresponsal (Principal) */}
-          <div className="sm:col-span-4">
+          <div className="sm:col-span-3">
             <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">
               Corresponsal (Callsign) *
             </label>
@@ -307,36 +317,40 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
             {qrzFoundSource && (
               <span className="text-[11px] text-emerald-400 mt-1 inline-flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
-                {qrzFoundSource === 'qrz' ? 'Datos obtenidos de QRZ.com' : 'País autodetectado'}
+                {qrzFoundSource === 'qrz-bio' 
+                  ? 'Datos y WhatsApp de QRZ' 
+                  : qrzFoundSource === 'qrz' 
+                  ? 'Datos obtenidos de QRZ.com' 
+                  : 'País autodetectado'}
               </span>
             )}
           </div>
 
           {/* RST Enviada */}
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-1">
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              RST Enviada
+              RST E.
             </label>
             <input
               type="text"
               value={rstSent}
               onChange={(e) => setRstSent(e.target.value)}
               placeholder={mode === 'CW' ? '599' : '59'}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
+              className="w-full px-2 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
 
           {/* RST Recibida */}
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-1">
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              RST Recibida
+              RST R.
             </label>
             <input
               type="text"
               value={rstRcvd}
               onChange={(e) => setRstRcvd(e.target.value)}
               placeholder={mode === 'CW' ? '599' : '59'}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
+              className="w-full px-2 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
 
@@ -345,13 +359,15 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Mail className="w-3 h-3 text-sky-400" />
-                Email del Corresponsal
+                Email
               </span>
-              {!email && !hasQRZConfig && (
+              {email ? (
+                <span className="text-[10px] text-emerald-400 font-semibold">✓ Detectado</span>
+              ) : !hasQRZConfig ? (
                 <span className="text-[10px] text-amber-400/90 underline cursor-pointer" onClick={onOpenQRZModal}>
-                  QRZ?
+                  Conectar QRZ
                 </span>
-              )}
+              ) : null}
             </label>
             <input
               type="email"
@@ -359,6 +375,29 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               onChange={(e) => setEmail(e.target.value)}
               placeholder="correo@ejemplo.com"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder-slate-600 focus:border-sky-400 focus:outline-hidden"
+            />
+          </div>
+
+          {/* WhatsApp / Teléfono del Corresponsal */}
+          <div className="sm:col-span-3">
+            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <MessageCircle className="w-3 h-3 text-emerald-400" />
+                WhatsApp / Tel
+              </span>
+              {whatsapp && (
+                <span className="text-[10px] text-emerald-400 font-semibold">✓ QRZ</span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={whatsapp}
+              onChange={(e) => {
+                setWhatsapp(e.target.value);
+                setWhatsappRaw(e.target.value);
+              }}
+              placeholder="ej. 5493886067078"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-emerald-300 placeholder-slate-600 focus:border-emerald-400 focus:outline-hidden"
             />
           </div>
         </div>

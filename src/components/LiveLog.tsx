@@ -46,6 +46,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const [filterMode, setFilterMode] = useState('ALL');
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   const [tempEmailValue, setTempEmailValue] = useState('');
+  const [editingWhatsappId, setEditingWhatsappId] = useState<string | null>(null);
+  const [tempWhatsappValue, setTempWhatsappValue] = useState('');
 
   // Manejo de edición directa en columna Email (PRIORIDAD 3)
   const handleStartEditEmail = (qso: QSO) => {
@@ -69,7 +71,31 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     }
   };
 
-  // PRIORIDAD 1: Compartir QSO con firma dinámica
+  // Manejo de edición directa en WhatsApp
+  const handleStartEditWhatsapp = (qso: QSO) => {
+    setEditingWhatsappId(qso.id);
+    setTempWhatsappValue(qso.whatsapp || '');
+  };
+
+  const handleSaveWhatsapp = (qso: QSO) => {
+    const cleanDigits = tempWhatsappValue.replace(/[^0-9]/g, '');
+    onUpdateQSO({
+      ...qso,
+      whatsapp: cleanDigits,
+      whatsappRaw: tempWhatsappValue.trim(),
+    });
+    setEditingWhatsappId(null);
+  };
+
+  const handleKeyDownWhatsapp = (e: React.KeyboardEvent, qso: QSO) => {
+    if (e.key === 'Enter') {
+      handleSaveWhatsapp(qso);
+    } else if (e.key === 'Escape') {
+      setEditingWhatsappId(null);
+    }
+  };
+
+  // PRIORIDAD 1: Compartir QSO con firma dinámica y targeting a número de WhatsApp si existe
   const handleShareQSOWhatsApp = (qso: QSO) => {
     const callsign = localStorage.getItem('user_callsign') || 'LU1TSB';
     const firma = `73 cordiales de ${callsign}`;
@@ -81,7 +107,10 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
       `\n${firma}\nLogBook eQSL Express`;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const cleanPhone = qso.whatsapp ? qso.whatsapp.replace(/[^0-9]/g, '') : '';
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -328,11 +357,11 @@ export const LiveLog: React.FC<LiveLogProps> = ({
               <th className="py-3 px-2">Banda / MHz</th>
               <th className="py-3 px-2">Modo</th>
               <th className="py-3 px-2">RST E/R</th>
-              {/* PRIORIDAD 3: Columna Email editable */}
-              <th className="py-3 px-3 min-w-[200px] text-sky-400">
-                <div className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5" />
-                  Email (Editable)
+              {/* PRIORIDAD 3: Columna Email y WhatsApp editables */}
+              <th className="py-3 px-3 min-w-[220px] text-sky-400">
+                <div className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Email & WhatsApp (Editables)</span>
                 </div>
               </th>
               <th className="py-3 px-3">País / Grid</th>
@@ -394,8 +423,9 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                       <span className="text-sky-400 font-bold">{q.rstRcvd}</span>
                     </td>
 
-                    {/* PRIORIDAD 3: Columna Email Editable en el Live Log */}
-                    <td className="py-2.5 px-3">
+                    {/* PRIORIDAD 3: Columna Email y WhatsApp Editables en el Live Log */}
+                    <td className="py-2.5 px-3 min-w-[220px]">
+                      {/* Email Editable */}
                       {isEditingEmail ? (
                         <div className="flex items-center gap-1">
                           <input
@@ -405,7 +435,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                             onKeyDown={(e) => handleKeyDownEmail(e, q)}
                             placeholder="correo@ejemplo.com"
                             autoFocus
-                            className="w-full px-2 py-1 bg-slate-950 border border-sky-400 rounded-md text-xs text-sky-300 focus:outline-hidden"
+                            className="w-full px-2 py-0.5 bg-slate-950 border border-sky-400 rounded-md text-xs text-sky-300 focus:outline-hidden"
                           />
                           <button
                             type="button"
@@ -413,19 +443,54 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                             className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md cursor-pointer"
                             title="Guardar email"
                           >
-                            <Check className="w-3.5 h-3.5" />
+                            <Check className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
                         <div
                           onClick={() => handleStartEditEmail(q)}
-                          className="flex items-center justify-between gap-1 px-2 py-1 rounded-md hover:bg-slate-800/80 cursor-pointer group/email transition-colors border border-transparent hover:border-slate-700"
+                          className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-md hover:bg-slate-800/80 cursor-pointer group/email transition-colors"
                           title="Hacé clic para editar el email del corresponsal"
                         >
-                          <span className={`truncate max-w-[170px] ${q.email ? 'text-sky-300 font-medium' : 'text-slate-600 italic'}`}>
-                            {q.email || 'Sin email (clic para editar)'}
+                          <span className={`truncate text-xs ${q.email ? 'text-sky-300 font-medium' : 'text-slate-600 italic'}`}>
+                            {q.email || 'Sin email (clic)'}
                           </span>
-                          <Edit2 className="w-3 h-3 text-slate-500 group-hover/email:text-sky-400 shrink-0 opacity-0 group-hover/email:opacity-100 transition-opacity" />
+                          <Edit2 className="w-2.5 h-2.5 text-slate-500 group-hover/email:text-sky-400 shrink-0 opacity-0 group-hover/email:opacity-100 transition-opacity" />
+                        </div>
+                      )}
+
+                      {/* WhatsApp Editable */}
+                      {editingWhatsappId === q.id ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <input
+                            type="text"
+                            value={tempWhatsappValue}
+                            onChange={(e) => setTempWhatsappValue(e.target.value)}
+                            onKeyDown={(e) => handleKeyDownWhatsapp(e, q)}
+                            placeholder="5493886067078"
+                            autoFocus
+                            className="w-full px-2 py-0.5 bg-slate-950 border border-emerald-400 rounded-md text-xs font-mono text-emerald-300 focus:outline-hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveWhatsapp(q)}
+                            className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md cursor-pointer"
+                            title="Guardar WhatsApp"
+                          >
+                            <Check className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => handleStartEditWhatsapp(q)}
+                          className="flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-md hover:bg-slate-800/80 cursor-pointer group/wa transition-colors mt-0.5"
+                          title="Hacé clic para editar el número de WhatsApp"
+                        >
+                          <span className={`flex items-center gap-1 text-[11px] font-mono ${q.whatsapp ? 'text-emerald-400 font-semibold' : 'text-slate-600 italic'}`}>
+                            <MessageSquare className="w-3 h-3 text-emerald-500 shrink-0" />
+                            {q.whatsapp ? (q.whatsapp.startsWith('+') ? q.whatsapp : `+${q.whatsapp}`) : 'Agregar WSP'}
+                          </span>
+                          <Edit2 className="w-2.5 h-2.5 text-slate-500 group-hover/wa:text-emerald-400 shrink-0 opacity-0 group-hover/wa:opacity-100 transition-opacity" />
                         </div>
                       )}
                     </td>

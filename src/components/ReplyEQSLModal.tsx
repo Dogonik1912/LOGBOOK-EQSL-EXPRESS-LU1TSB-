@@ -30,6 +30,7 @@ interface ReplyEQSLModalProps {
     mode?: string;
     rst?: string;
     email?: string;
+    whatsapp?: string;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -271,7 +272,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `${firma}\n` +
       `LogBook eQSL Express`;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const cleanPhone = initialData?.whatsapp ? initialData.whatsapp.replace(/[^0-9]/g, '') : '';
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

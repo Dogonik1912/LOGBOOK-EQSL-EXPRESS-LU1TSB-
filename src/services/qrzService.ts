@@ -9,12 +9,14 @@ export interface CallsignDetails {
   callsign: string;
   name?: string;
   email?: string;
+  whatsapp?: string;     // Dígitos limpios para wa.me (ej. 5493886067078)
+  whatsappRaw?: string;  // Formato original (ej. 0054 9 388...)
   country?: string;
   grid?: string;
   city?: string;
   state?: string;
   bio?: string;
-  source: 'qrz' | 'prefix-db' | 'cache';
+  source: 'qrz' | 'qrz-bio' | 'prefix-db' | 'cache';
 }
 
 /**
@@ -142,69 +144,50 @@ async function getQRZSessionKey(user: string, pass: string): Promise<string | nu
 /**
  * Consulta un indicativo en QRZ.com para autocompletar Email, Nombre, Grid, etc.
  */
+/**
+ * Consulta un indicativo en QRZ.com cruzando datos (Biografía decodificada, Web Scraping y XML)
+ * para obtener automáticamente Email o WhatsApp / Celular del corresponsal.
+ */
 export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> {
   const cleanCall = call.trim().toUpperCase();
   const prefixInfo = getCountryFromPrefix(cleanCall);
 
-  const fallbackResult: CallsignDetails = {
+  const qrzUser = localStorage.getItem('qrz_user') || '';
+  const qrzPass = localStorage.getItem('qrz_pass') || '';
+
+  // 1. Intentar a través del motor de cruce de datos del servidor (/api/lookup)
+  try {
+    const params = new URLSearchParams({
+      call: cleanCall,
+      user: qrzUser,
+      pass: qrzPass,
+    });
+
+    const res = await fetch(`/api/lookup?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && !data.error) {
+        return {
+          callsign: cleanCall,
+          name: data.name || '',
+          email: data.email || '',
+          whatsapp: data.whatsapp || '',
+          whatsappRaw: data.whatsappRaw || '',
+          country: data.country || prefixInfo.country,
+          grid: data.grid || prefixInfo.defaultGrid || '',
+          source: data.whatsapp ? 'qrz-bio' : 'qrz',
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Cross-referencing lookup failed, attempting direct XML fallback:', err);
+  }
+
+  // Fallback con prefijo
+  return {
     callsign: cleanCall,
     country: prefixInfo.country,
     grid: prefixInfo.defaultGrid || '',
     source: 'prefix-db',
   };
-
-  const qrzUser = localStorage.getItem('qrz_user');
-  const qrzPass = localStorage.getItem('qrz_pass');
-
-  if (!qrzUser || !qrzPass) {
-    return fallbackResult;
-  }
-
-  try {
-    const sessionKey = await getQRZSessionKey(qrzUser, qrzPass);
-    if (!sessionKey) return fallbackResult;
-
-    const query = new URLSearchParams({
-      s: sessionKey,
-      callsign: cleanCall,
-    }).toString();
-
-    const res = await fetch(`/api/qrz?${query}`);
-    if (!res.ok) return fallbackResult;
-    const xmlText = await res.text();
-
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-
-    const callNode = xmlDoc.querySelector('Callsign');
-    if (!callNode) return fallbackResult;
-
-    const getText = (selector: string): string => {
-      const el = callNode.querySelector(selector);
-      return el?.textContent?.trim() || '';
-    };
-
-    const fname = getText('fname');
-    const name = getText('name');
-    const fullName = [fname, name].filter(Boolean).join(' ') || getText('nickname');
-    const email = getText('email');
-    const country = getText('country') || prefixInfo.country;
-    const grid = getText('grid') || prefixInfo.defaultGrid;
-    const city = getText('addr2');
-    const state = getText('state');
-
-    return {
-      callsign: cleanCall,
-      name: fullName,
-      email: email || '',
-      country: country || prefixInfo.country,
-      grid: grid || '',
-      city,
-      state,
-      source: 'qrz',
-    };
-  } catch (e) {
-    console.warn('QRZ lookup failed:', e);
-    return fallbackResult;
-  }
 }

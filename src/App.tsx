@@ -27,6 +27,7 @@ const INITIAL_SAMPLE_QSOS: QSO[] = [
     rstSent: '59',
     rstRcvd: '59',
     email: 'ea1exp@ure.es',
+    whatsapp: '34600123456',
     name: 'José',
     country: 'España',
     grid: 'IN80',
@@ -45,6 +46,7 @@ const INITIAL_SAMPLE_QSOS: QSO[] = [
     rstSent: '59',
     rstRcvd: '59',
     email: 'lu7ys@qrz.com',
+    whatsapp: '5491145678901',
     name: 'Carlos',
     country: 'Argentina',
     grid: 'GF05te',
@@ -63,6 +65,7 @@ const INITIAL_SAMPLE_QSOS: QSO[] = [
     rstSent: '59',
     rstRcvd: '58',
     email: 'py2tel@labre.org.br',
+    whatsapp: '5511987654321',
     name: 'Thiago',
     country: 'Brasil',
     grid: 'GG87',
@@ -99,6 +102,7 @@ export default function App() {
     mode?: string;
     rst?: string;
     email?: string;
+    whatsapp?: string;
   } | null>(null);
   const [, setRefreshKey] = useState(0);
 
@@ -120,6 +124,7 @@ export default function App() {
         mode: urlParams.get('mode') || 'SSB',
         rst: urlParams.get('rst') || '59',
         email: urlParams.get('email') || '',
+        whatsapp: urlParams.get('wa') || '',
       });
       setIsReplyModalOpen(true);
     } else {
@@ -192,6 +197,7 @@ export default function App() {
       mode: qso.mode,
       rst: qso.rstRcvd || '59',
       email: qso.email,
+      whatsapp: qso.whatsapp,
     });
     setIsReplyModalOpen(true);
   };

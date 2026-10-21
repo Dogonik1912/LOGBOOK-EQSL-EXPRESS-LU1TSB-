@@ -2,5 +2,7 @@
   "name": "LogBook eQSL Express",
   "description": "Aplicación web para radioaficionados: registro de QSOs en tiempo real, consulta QRZ.com y generación/envío de tarjetas eQSL.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

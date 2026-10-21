@@ -272,6 +272,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       freq: qso.frequency,
       mode: qso.mode,
       rst: qso.rstSent,
+      email: qso.email || '',
+      wa: qso.whatsapp || '',
     });
     return `${origin}/?${params.toString()}`;
   };
@@ -300,7 +302,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `💌 *¿Querés responder con tu eQSL?*\n` +
       `Ingresá aquí para emitir tu confirmación recíproca gratuita:\n${replyLink}`;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const cleanPhone = qso.whatsapp ? qso.whatsapp.replace(/[^0-9]/g, '') : '';
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
     onMarkSent(qso.id);
   };
@@ -459,13 +464,21 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
         {/* Destinatario, correo y opción de respuesta */}
         <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="text-xs text-slate-300">
-            <span className="text-slate-400">Destinatario:</span>{' '}
-            <strong className="text-amber-300 font-mono text-sm">{qso.callsign}</strong>
-            {qso.email ? (
-              <span className="ml-2 text-sky-400">({qso.email})</span>
-            ) : (
-              <span className="ml-2 text-amber-400/80 italic">(Sin email cargado)</span>
+          <div className="text-xs text-slate-300 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">Destinatario:</span>
+              <strong className="text-amber-300 font-mono text-sm">{qso.callsign}</strong>
+              {qso.email ? (
+                <span className="text-sky-400">({qso.email})</span>
+              ) : (
+                <span className="text-slate-500 italic">(Sin email)</span>
+              )}
+            </div>
+            {qso.whatsapp && (
+              <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>WhatsApp: +{qso.whatsapp}</span>
+              </div>
             )}
           </div>
 
