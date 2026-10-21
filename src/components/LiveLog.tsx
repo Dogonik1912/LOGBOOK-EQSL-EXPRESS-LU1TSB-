@@ -1,0 +1,526 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { QSO } from '../types';
+import { getFirma, getUserCallsign } from '../services/qrzService';
+import {
+  Mail,
+  Share2,
+  Trash2,
+  Send,
+  Edit2,
+  Check,
+  Search,
+  Download,
+  Upload,
+  Radio,
+  ExternalLink,
+  MessageSquare,
+  Sparkles,
+  FileText,
+  ArrowRightLeft
+} from 'lucide-react';
+
+interface LiveLogProps {
+  qsos: QSO[];
+  onUpdateQSO: (qso: QSO) => void;
+  onDeleteQSO: (id: string) => void;
+  onOpenEQSL: (qso: QSO) => void;
+  onImportADIF: (newQsos: QSO[]) => void;
+  onOpenReply?: (qso: QSO) => void;
+}
+
+export const LiveLog: React.FC<LiveLogProps> = ({
+  qsos,
+  onUpdateQSO,
+  onDeleteQSO,
+  onOpenEQSL,
+  onImportADIF,
+  onOpenReply,
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterBand, setFilterBand] = useState('ALL');
+  const [filterMode, setFilterMode] = useState('ALL');
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [tempEmailValue, setTempEmailValue] = useState('');
+
+  // Manejo de edición directa en columna Email (PRIORIDAD 3)
+  const handleStartEditEmail = (qso: QSO) => {
+    setEditingEmailId(qso.id);
+    setTempEmailValue(qso.email || '');
+  };
+
+  const handleSaveEmail = (qso: QSO) => {
+    onUpdateQSO({
+      ...qso,
+      email: tempEmailValue.trim(),
+    });
+    setEditingEmailId(null);
+  };
+
+  const handleKeyDownEmail = (e: React.KeyboardEvent, qso: QSO) => {
+    if (e.key === 'Enter') {
+      handleSaveEmail(qso);
+    } else if (e.key === 'Escape') {
+      setEditingEmailId(null);
+    }
+  };
+
+  // PRIORIDAD 1: Compartir QSO con firma dinámica
+  const handleShareQSOWhatsApp = (qso: QSO) => {
+    const callsign = localStorage.getItem('user_callsign') || 'LU1TSB';
+    const firma = `73 cordiales de ${callsign}`;
+
+    const text = `📻 *QSO Confirmado con ${qso.callsign}*\n` +
+      `📅 Fecha: ${qso.date} ${qso.time} UTC\n` +
+      `📡 Banda: ${qso.band} (${qso.frequency} MHz) - Modo: ${qso.mode}\n` +
+      `📶 RST: ${qso.rstSent} / ${qso.rstRcvd}\n` +
+      (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
+      `\n${firma}\nLogBook eQSL Express`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // Enviar email directo con mailto conteniendo firma dinámica
+  const handleSendEmailDirect = (qso: QSO) => {
+    const myCallsign = getUserCallsign();
+    const firma = getFirma();
+
+    if (!qso.email) {
+      handleStartEditEmail(qso);
+      return;
+    }
+
+    const subject = encodeURIComponent(`eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
+    const body = encodeURIComponent(
+      `Estimado operador de ${qso.callsign},\n\n` +
+      `Ha sido un gusto contactarte. Te adjunto los detalles de nuestro QSO registrado en LogBook eQSL Express:\n\n` +
+      `• Indicativo: ${qso.callsign}\n` +
+      `• Fecha: ${qso.date} a las ${qso.time} UTC\n` +
+      `• Banda: ${qso.band} (${qso.frequency} MHz)\n` +
+      `• Modo: ${qso.mode}\n` +
+      `• RST Enviada: ${qso.rstSent} | RST Recibida: ${qso.rstRcvd}\n` +
+      (qso.grid ? `• Grid Locator: ${qso.grid}\n` : '') +
+      `\n¡Gracias por el QSO y nos encontramos en las bandas!\n\n` +
+      `${firma}`
+    );
+
+    window.open(`mailto:${qso.email}?subject=${subject}&body=${body}`);
+
+    // Marcar eQSL como enviada
+    onUpdateQSO({
+      ...qso,
+      qslSent: true,
+    });
+  };
+
+  // Exportar a ADIF estándar para LoTW / eQSL.cc
+  const handleExportADIF = () => {
+    const myCallsign = getUserCallsign();
+    let adif = `ADIF Export from LogBook eQSL Express\n`;
+    adif += `Generated: ${new Date().toISOString()}\n`;
+    adif += `<PROGRAMID:20>LogBook eQSL Express\n`;
+    adif += `<EOH>\n\n`;
+
+    qsos.forEach((q) => {
+      const qDate = q.date.replace(/-/g, '');
+      const qTime = q.time.replace(/:/g, '') + '00';
+      adif += `<CALL:${q.callsign.length}>${q.callsign}`;
+      adif += `<QSO_DATE:${qDate.length}>${qDate}`;
+      adif += `<TIME_ON:${qTime.length}>${qTime}`;
+      adif += `<BAND:${q.band.length}>${q.band}`;
+      adif += `<FREQ:${q.frequency.length}>${q.frequency}`;
+      adif += `<MODE:${q.mode.length}>${q.mode}`;
+      adif += `<RST_SENT:${q.rstSent.length}>${q.rstSent}`;
+      adif += `<RST_RCVD:${q.rstRcvd.length}>${q.rstRcvd}`;
+      if (q.email) adif += `<EMAIL:${q.email.length}>${q.email}`;
+      if (q.name) adif += `<NAME:${q.name.length}>${q.name}`;
+      if (q.country) adif += `<COUNTRY:${q.country.length}>${q.country}`;
+      if (q.grid) adif += `<GRIDSQUARE:${q.grid.length}>${q.grid}`;
+      if (q.notes) adif += `<COMMENT:${q.notes.length}>${q.notes}`;
+      adif += `<OPERATOR:${myCallsign.length}>${myCallsign}`;
+      adif += `<EOR>\n`;
+    });
+
+    const blob = new Blob([adif], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `LogBook_${myCallsign}_${new Date().toISOString().slice(0, 10)}.adi`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Importar archivo ADIF
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+
+      const records = content.split(/<EOR>/i);
+      const parsed: QSO[] = [];
+
+      records.forEach((rec) => {
+        if (!rec.trim()) return;
+
+        const getField = (name: string): string => {
+          const match = rec.match(new RegExp(`<${name}:(\\d+)(?::[^>]*)?>([^<]*)`, 'i'));
+          return match ? match[2].trim() : '';
+        };
+
+        const call = getField('CALL');
+        if (!call) return;
+
+        const rawDate = getField('QSO_DATE');
+        const formattedDate = rawDate.length === 8 
+          ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`
+          : new Date().toISOString().slice(0, 10);
+
+        const rawTime = getField('TIME_ON');
+        const formattedTime = rawTime.length >= 4
+          ? `${rawTime.slice(0, 2)}:${rawTime.slice(2, 4)}`
+          : '12:00';
+
+        parsed.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          callsign: call.toUpperCase(),
+          date: formattedDate,
+          time: formattedTime,
+          band: getField('BAND') || '40m',
+          frequency: getField('FREQ') || '7.120',
+          mode: getField('MODE') || 'SSB',
+          rstSent: getField('RST_SENT') || '59',
+          rstRcvd: getField('RST_RCVD') || '59',
+          email: getField('EMAIL') || '',
+          name: getField('NAME') || '',
+          country: getField('COUNTRY') || '',
+          grid: getField('GRIDSQUARE') || '',
+          notes: getField('COMMENT') || '',
+          qslSent: false,
+          qslRcvd: false,
+        });
+      });
+
+      if (parsed.length > 0) {
+        onImportADIF(parsed);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Filtrado de QSOs
+  const filteredQSOs = qsos.filter((q) => {
+    const matchesSearch =
+      q.callsign.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      q.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (q.name && q.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (q.country && q.country.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (q.grid && q.grid.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesBand = filterBand === 'ALL' || q.band === filterBand;
+    const matchesMode = filterMode === 'ALL' || q.mode === filterMode;
+
+    return matchesSearch && matchesBand && matchesMode;
+  });
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl">
+      {/* Barra superior de Live Log */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-4 mb-4 border-b border-slate-800 gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+              <Radio className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white tracking-wide">
+                Live Logbook ({qsos.length} QSOs)
+              </h2>
+              <p className="text-xs text-slate-400">
+                Registro en vivo con edición directa de email y generación rápida de eQSL
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Búsqueda, Filtros y Acciones ADIF */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Campo de búsqueda */}
+          <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <Search className="w-3.5 h-3.5" />
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar indicativo, email..."
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-400"
+            />
+          </div>
+
+          {/* Filtro Banda */}
+          <select
+            value={filterBand}
+            onChange={(e) => setFilterBand(e.target.value)}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-300 focus:border-amber-400 focus:outline-hidden"
+          >
+            <option value="ALL">Todas las bandas</option>
+            {['160m', '80m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '70cm'].map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+
+          {/* Filtro Modo */}
+          <select
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value)}
+            className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-300 focus:border-amber-400 focus:outline-hidden"
+          >
+            <option value="ALL">Todos los modos</option>
+            {['SSB', 'CW', 'FT8', 'FT4', 'AM', 'FM', 'RTTY'].map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+
+          {/* Importar ADIF */}
+          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer">
+            <Upload className="w-3.5 h-3.5" />
+            Importar ADIF
+            <input
+              type="file"
+              accept=".adi,.adif,.txt"
+              onChange={handleFileImport}
+              className="hidden"
+            />
+          </label>
+
+          {/* Exportar ADIF */}
+          <button
+            type="button"
+            onClick={handleExportADIF}
+            disabled={qsos.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+            title="Exportar a formato ADIF estándar (.adi)"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar ADIF
+          </button>
+        </div>
+      </div>
+
+      {/* Tabla Live Log */}
+      <div className="overflow-x-auto rounded-xl border border-slate-800">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+              <th className="py-3 px-3">Fecha / Hora</th>
+              <th className="py-3 px-3">Corresponsal</th>
+              <th className="py-3 px-2">Banda / MHz</th>
+              <th className="py-3 px-2">Modo</th>
+              <th className="py-3 px-2">RST E/R</th>
+              {/* PRIORIDAD 3: Columna Email editable */}
+              <th className="py-3 px-3 min-w-[200px] text-sky-400">
+                <div className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5" />
+                  Email (Editable)
+                </div>
+              </th>
+              <th className="py-3 px-3">País / Grid</th>
+              <th className="py-3 px-2 text-center">eQSL</th>
+              <th className="py-3 px-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/60 font-sans">
+            {filteredQSOs.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="py-8 text-center text-slate-500">
+                  {searchTerm ? 'No se encontraron contactos con los filtros actuales.' : 'No hay contactos en el log. ¡Ingresá el primero arriba!'}
+                </td>
+              </tr>
+            ) : (
+              filteredQSOs.map((q) => {
+                const isEditingEmail = editingEmailId === q.id;
+
+                return (
+                  <tr
+                    key={q.id}
+                    className="hover:bg-slate-800/40 transition-colors group"
+                  >
+                    {/* Fecha / Hora UTC */}
+                    <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
+                      <div>{q.date}</div>
+                      <div className="text-[11px] text-amber-400/90">{q.time} UTC</div>
+                    </td>
+
+                    {/* Indicativo */}
+                    <td className="py-2.5 px-3">
+                      <div className="font-mono font-bold text-amber-300 text-sm tracking-wide">
+                        {q.callsign}
+                      </div>
+                      {q.name && (
+                        <div className="text-[11px] text-slate-400 truncate max-w-[120px]">
+                          {q.name}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Banda y Frecuencia */}
+                    <td className="py-2.5 px-2 font-mono whitespace-nowrap">
+                      <span className="font-semibold text-slate-200">{q.band}</span>
+                      <div className="text-[11px] text-slate-400">{q.frequency} MHz</div>
+                    </td>
+
+                    {/* Modo */}
+                    <td className="py-2.5 px-2 font-mono">
+                      <span className="px-1.5 py-0.5 rounded-sm bg-slate-800 text-slate-200 text-[11px] font-semibold border border-slate-700">
+                        {q.mode}
+                      </span>
+                    </td>
+
+                    {/* RST Enviada / Recibida */}
+                    <td className="py-2.5 px-2 font-mono text-slate-300 whitespace-nowrap">
+                      <span className="text-emerald-400 font-bold">{q.rstSent}</span>
+                      <span className="text-slate-600 mx-1">/</span>
+                      <span className="text-sky-400 font-bold">{q.rstRcvd}</span>
+                    </td>
+
+                    {/* PRIORIDAD 3: Columna Email Editable en el Live Log */}
+                    <td className="py-2.5 px-3">
+                      {isEditingEmail ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="email"
+                            value={tempEmailValue}
+                            onChange={(e) => setTempEmailValue(e.target.value)}
+                            onKeyDown={(e) => handleKeyDownEmail(e, q)}
+                            placeholder="correo@ejemplo.com"
+                            autoFocus
+                            className="w-full px-2 py-1 bg-slate-950 border border-sky-400 rounded-md text-xs text-sky-300 focus:outline-hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEmail(q)}
+                            className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md cursor-pointer"
+                            title="Guardar email"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => handleStartEditEmail(q)}
+                          className="flex items-center justify-between gap-1 px-2 py-1 rounded-md hover:bg-slate-800/80 cursor-pointer group/email transition-colors border border-transparent hover:border-slate-700"
+                          title="Hacé clic para editar el email del corresponsal"
+                        >
+                          <span className={`truncate max-w-[170px] ${q.email ? 'text-sky-300 font-medium' : 'text-slate-600 italic'}`}>
+                            {q.email || 'Sin email (clic para editar)'}
+                          </span>
+                          <Edit2 className="w-3 h-3 text-slate-500 group-hover/email:text-sky-400 shrink-0 opacity-0 group-hover/email:opacity-100 transition-opacity" />
+                        </div>
+                      )}
+                    </td>
+
+                    {/* País y Grid */}
+                    <td className="py-2.5 px-3 text-slate-300">
+                      <div>{q.country || '—'}</div>
+                      {q.grid && (
+                        <span className="text-[10px] font-mono text-slate-400 uppercase bg-slate-800/70 px-1 py-0.5 rounded-sm">
+                          {q.grid}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Estado eQSL */}
+                    <td className="py-2.5 px-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => onOpenEQSL(q)}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors cursor-pointer ${
+                          q.qslSent
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
+                        }`}
+                        title="Ver o emitir tarjeta eQSL"
+                      >
+                        {q.qslSent ? '✓ Enviada' : 'Emitir eQSL'}
+                      </button>
+                    </td>
+
+                    {/* Acciones */}
+                    <td className="py-2.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* Enviar email directo con mailto y firma */}
+                        {q.email && (
+                          <button
+                            type="button"
+                            onClick={() => handleSendEmailDirect(q)}
+                            className="p-1.5 text-sky-400 hover:text-sky-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                            title={`Enviar eQSL por correo a ${q.email}`}
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Compartir por WhatsApp con firma dinámica */}
+                        <button
+                          type="button"
+                          onClick={() => handleShareQSOWhatsApp(q)}
+                          className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                          title="Compartir QSO por WhatsApp"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Responder con eQSL */}
+                        {onOpenReply && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenReply(q)}
+                            className="p-1.5 text-sky-400 hover:text-sky-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                            title={`Responder con mi eQSL a ${q.callsign}`}
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Generar tarjeta eQSL */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenEQSL(q)}
+                          className="p-1.5 text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                          title="Generar y descargar tarjeta eQSL"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Eliminar QSO */}
+                        <button
+                          type="button"
+                          onClick={() => onDeleteQSO(q.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                          title="Eliminar este contacto del log"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};

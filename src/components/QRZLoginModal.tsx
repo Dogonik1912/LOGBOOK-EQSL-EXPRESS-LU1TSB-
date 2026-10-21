@@ -1,0 +1,152 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { QRZ_LOGIN_URL } from '../types';
+import { Radio, ExternalLink, ShieldCheck, Check, X, Key, User } from 'lucide-react';
+
+interface QRZLoginModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSaved: (user: string) => void;
+}
+
+export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, onSaved }) => {
+  const [user, setUser] = useState(localStorage.getItem('qrz_user') || '');
+  const [pass, setPass] = useState(localStorage.getItem('qrz_pass') || '');
+  const [error, setError] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleOpenQRZ = () => {
+    window.open(QRZ_LOGIN_URL, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSaveAndConnect = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!user.trim() || !pass.trim()) {
+      setError('Por favor completá tu usuario y contraseña de QRZ.com');
+      return;
+    }
+
+    localStorage.setItem('qrz_user', user.trim());
+    localStorage.setItem('qrz_pass', pass);
+    // Remover skip si ya conectó
+    localStorage.removeItem('qrz_skipped');
+    setError('');
+    onSaved(user.trim());
+    onClose();
+  };
+
+  const handleSkip = () => {
+    localStorage.setItem('qrz_skipped', '1');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+      <div className="bg-slate-900 border border-amber-500/30 rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl text-slate-100 relative animate-in fade-in zoom-in-95 duration-200">
+        {/* Encabezado con Icono */}
+        <div className="flex items-start gap-4 mb-4">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 shrink-0">
+            <Radio className="w-7 h-7" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-white tracking-wide">
+              Conectá tu cuenta QRZ
+            </h2>
+            <p className="text-sm text-slate-300 mt-1 leading-relaxed">
+              Para autocompletar el correo electrónico de tus corresponsales, iniciá sesión en QRZ.com. La app guarda tus credenciales en este dispositivo y no las vuelve a pedir.
+            </p>
+          </div>
+        </div>
+
+        {/* Botón para abrir QRZ.com */}
+        <div className="my-4 p-3.5 bg-slate-800/80 rounded-xl border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs text-slate-300">
+            ¿No tenés sesión abierta en el navegador o necesitás verificar tu cuenta?
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenQRZ}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-amber-300 text-xs font-semibold rounded-lg border border-amber-400/20 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Abrir QRZ.com para iniciar sesión
+          </button>
+        </div>
+
+        {/* Formulario de credenciales */}
+        <form onSubmit={handleSaveAndConnect} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              Usuario QRZ (Callsign o Nombre de Usuario)
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <User className="w-4 h-4" />
+              </span>
+              <input
+                type="text"
+                value={user}
+                onChange={(e) => setUser(e.target.value)}
+                placeholder="ej. LU1TSB"
+                className="w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              Contraseña QRZ
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <Key className="w-4 h-4" />
+              </span>
+              <input
+                type="password"
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+                placeholder="••••••••••••"
+                className="w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-xs text-rose-400 bg-rose-950/40 p-2 rounded-lg border border-rose-900/60">
+              {error}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 text-xs text-emerald-400/90 pt-1">
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            <span>Tus credenciales se almacenan únicamente de forma local en tu navegador.</span>
+          </div>
+
+          {/* Botones de acción principales */}
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer"
+            >
+              Ahora no
+            </button>
+            <button
+              type="submit"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold rounded-lg shadow-md transition-all cursor-pointer"
+            >
+              <Check className="w-4 h-4" />
+              Guardar y conectar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
