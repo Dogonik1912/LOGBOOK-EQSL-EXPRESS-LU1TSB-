@@ -55,7 +55,12 @@ export default function App() {
     const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
 
-    // El enlace de conexión tiene prioridad incluso si también incluye reply_to.
+    // Mostrar el formulario solo si se pidió expresamente o faltan credenciales.
+    // Las credenciales no persistentes viven en sessionStorage.
+    const hasQRZCredentials = Boolean(
+      (sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user')) &&
+      (sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass'))
+    );
     if (forceQRZConnect) {
       setIsQRZModalOpen(true);
     } else if (replyToParam) {
@@ -72,9 +77,9 @@ export default function App() {
         whatsapp: urlParams.get('wa') || '',
       });
       setIsReplyModalOpen(true);
-    } else {
-      // Pedir confirmación de conexión QRZ en cada apertura de la aplicación.
-      // El usuario decide si introduce credenciales o utiliza las que guardó.
+    } else if (!hasQRZCredentials && localStorage.getItem('qrz_skipped') !== '1') {
+      // No volver a mostrar la conexión en cada apertura si ya hay credenciales
+      // de sesión o si el usuario eligió "Ahora no".
       setIsQRZModalOpen(true);
     }
 
