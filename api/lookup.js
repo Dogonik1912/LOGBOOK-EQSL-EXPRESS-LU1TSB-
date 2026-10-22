@@ -109,6 +109,9 @@ export default async function handler(req, res) {
         } catch {}
       }
       const contacts = findContacts(html, bioParts);
+      email = contacts.email;
+      whatsapp = contacts.whatsapp;
+      whatsappRaw = contacts.whatsappRaw;
 
       const nameMatch = html.match(/<span[^>]*class=["'][^"']*\bm0\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
         || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
