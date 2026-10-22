@@ -86,7 +86,26 @@ export default async function handler(req, res) {
       .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
     const visibleMatches = [...visibleEmailRegion.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0]));
-    const email = mailtoMatches.find(Boolean) || visibleMatches.find(Boolean) || '';
+
+    // La biografía descargada con la clave XML autenticada es una fuente autorizada
+    // distinta del campo Email del perfil. La opción existía, pero no se utilizaba:
+    // por eso se perdían direcciones que el operador había escrito en su biografía.
+    let authorizedBioEmail = '';
+    if (allowEmailFromAuthorizedBio) {
+      for (const bio of bioTexts) {
+        const normalizedBio = String(bio || '')
+          .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
+          .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
+        const bioMailto = [...normalizedBio.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
+          .map(m => normalizeEmail(m[1])).find(Boolean);
+        const bioVisible = stripMarkup(normalizedBio);
+        const bioTextEmail = [...bioVisible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
+          .map(m => normalizeEmail(m[0])).find(Boolean);
+        authorizedBioEmail = bioMailto || bioTextEmail || '';
+        if (authorizedBioEmail) break;
+      }
+    }
+    const email = mailtoMatches.find(Boolean) || visibleMatches.find(Boolean) || authorizedBioEmail || '';
 
     // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
     // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
