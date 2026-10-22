@@ -152,15 +152,12 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
   const cleanCall = call.trim().toUpperCase();
   const prefixInfo = getCountryFromPrefix(cleanCall);
 
-  const qrzUser = localStorage.getItem('qrz_user') || '';
-  const qrzPass = localStorage.getItem('qrz_pass') || '';
-
   // Consulta mediante el endpoint del servidor. Las credenciales no se incluyen en la URL.
   try {
     const res = await fetch('/api/lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ call: cleanCall, user: qrzUser, pass: qrzPass }),
+      body: JSON.stringify({ call: cleanCall }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -173,7 +170,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
           grid: data.grid || prefixInfo.defaultGrid || '',
-          source: data.whatsapp ? 'qrz-bio' : 'qrz',
+          source: data.foundSource ? 'qrz-bio' : 'qrz',
         };
       }
     }
