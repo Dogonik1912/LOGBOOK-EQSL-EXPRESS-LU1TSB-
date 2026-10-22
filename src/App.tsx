@@ -206,11 +206,6 @@ export default function App() {
     handleSaveQsos(updated);
   };
 
-  const handleMarkEQSLSent = (id: string) => {
-    const updated = qsos.map((q) => (q.id === id ? { ...q, qslSent: true } : q));
-    handleSaveQsos(updated);
-  };
-
   const handleSettingsUpdated = () => {
     setRefreshKey((k) => k + 1);
   };
@@ -350,7 +345,6 @@ export default function App() {
         isOpen={Boolean(activeEQSLQSO)}
         qso={activeEQSLQSO}
         onClose={() => setActiveEQSLQSO(null)}
-        onMarkSent={handleMarkEQSLSent}
         onOpenReply={handleOpenReplyForQSO}
       />
 
