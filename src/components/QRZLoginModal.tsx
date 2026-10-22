@@ -77,9 +77,6 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
           </div>
         </div>
 
-        <div className="my-4 p-3.5 bg-slate-800/80 rounded-xl border border-slate-700 text-xs text-slate-300">
-          Introducí aquí tus credenciales de QRZ. No hace falta abrir otra página ni iniciar sesión dos veces.
-        </div>
         {/* Selección explícita de credenciales guardadas */}
         {hasSavedCredentials && (
           <button
