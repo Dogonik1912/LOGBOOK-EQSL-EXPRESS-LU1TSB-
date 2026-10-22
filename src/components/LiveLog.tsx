@@ -15,6 +15,7 @@ import {
   Check,
   Search,
   Download,
+  Upload,
   Radio,
   ExternalLink,
   MessageSquare,
