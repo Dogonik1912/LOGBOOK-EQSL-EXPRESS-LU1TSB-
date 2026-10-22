@@ -51,36 +51,52 @@ export default async function handler(req, res) {
   };
 
   const findContacts = (html, bioTexts = []) => {
-    // Prioridad: correo en biografía, enlace mailto del perfil, texto visible.
+    // Solo extrae datos que estén presentes en el HTML público recibido.
+    // Prioridad del correo: biografía, enlaces explícitos, texto visible.
+    const sourceHtml = String(html || '')
+      .replace(/\\u002f/gi, '/').replace(/\\u003a/gi, ':')
+      .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@');
     const bioText = bioTexts.map(stripMarkup).join(' ');
-    const mailtoMatches = [...String(html).matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
+    const mailtoMatches = [...sourceHtml.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
       .map(m => normalizeEmail(m[1]));
     const bioMatches = [...bioText.matchAll(/[A-Z0-9._%+-]+(?:\s*\[at\]\s*|\s*\(at\)\s*|@)[A-Z0-9.-]+(?:\s*\[dot\]\s*|\s*\(dot\)\s*|\.)[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0].replace(/\s*\[at\]\s*|\s*\(at\)\s*/i, '@').replace(/\s*\[dot\]\s*|\s*\(dot\)\s*/i, '.')));
-    const visibleHtml = stripMarkup(String(html)
+    const visibleHtml = stripMarkup(sourceHtml
       .replace(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi, ' $1 ')
       .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
     const visibleMatches = [...visibleHtml.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0]));
     const email = [...bioMatches, ...mailtoMatches, ...visibleMatches].find(Boolean) || '';
 
-    const phoneSource = bioText + ' ' + visibleHtml + ' ' +
-      String(html).replace(/<(script|style|noscript|svg|head|iframe)[^>]*>[\s\S]*?<\/\1>/gi, ' ');
-    const patterns = [
-      /(?:https?:)?\/\/(?:www\.)?wa\.me\/([+0-9]{8,20})/i,
-      /(?:https?:)?\/\/(?:www\.)?whatsapp\.com\/send\?[^"' \s]*?phone=([+0-9]{8,20})/i,
-      /href=["'][^"']*wa\.me\/([+0-9]{8,20})/i,
-      /(?:whatsapp|whats\s*app|wsp|wa\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|phone|mobile|cell)\s*(?:[:：=]|-)?\s*((?:\+|00)?[0-9][0-9() .-]{7,22})/i
-    ];
-    let raw = '';
-    for (const re of patterns) {
-      const m = phoneSource.match(re);
-      if (m && m[1]) { raw = m[1].trim(); break; }
+    // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
+    // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
+    const linkSource = decodeEntities(sourceHtml)
+      .replace(/&sol;|&#47;|&#x2f;/gi, '/')
+      .replace(/&#43;|&plus;/gi, '+')
+      .replace(/%2f/gi, '/').replace(/%3a/gi, ':').replace(/%2b/gi, '+');
+    const linkCandidates = [];
+    const addCandidate = (raw, kind) => {
+      const value = String(raw || '').trim();
+      const digits = cleanPhone(value);
+      if (digits) linkCandidates.push({ raw: value, digits, kind });
+    };
+    for (const m of linkSource.matchAll(/(?:https?:)?\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com|whatsapp\.com)\/[^"'<> \t\r\n]*/gi)) {
+      const url = m[0];
+      const pathNumber = url.match(/wa\.me\/\+?([0-9]{8,15})/i);
+      const queryNumber = url.match(/[?&]phone=\+?([0-9]{8,15})/i);
+      if (pathNumber) addCandidate(pathNumber[1], 'whatsapp-link');
+      else if (queryNumber) addCandidate(queryNumber[1], 'whatsapp-link');
     }
-    let digits = raw.replace(/\D/g, '');
-    if (digits.startsWith('00')) digits = digits.slice(2);
-    const whatsapp = digits.length >= 8 && digits.length <= 15 ? digits : '';
-    return { email, whatsappRaw: raw, whatsapp };
+    for (const m of linkSource.matchAll(/(?:href|data-href|data-url)\s*=\s*["']tel:\s*([^"']+)["']/gi)) {
+      addCandidate(m[1].split(/[?;]/)[0], 'tel-link');
+    }
+    // Los perfiles pueden guardar enlaces dentro de JSON/JavaScript o con entidades.
+    const bioAndVisible = bioText + ' ' + visibleHtml;
+    const labeledMatch = bioAndVisible.match(/(?:whatsapp|whats\s*app|wsp|wa\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|phone|mobile|cell)\s*(?:[:：=]|-)?\s*((?:\+|00)?[0-9][0-9() .-]{7,22})/i);
+    if (labeledMatch) addCandidate(labeledMatch[1], 'labeled-number');
+    const whatsapp = linkCandidates[0]?.digits || (linkCandidates.length ? '' : (labeledMatch ? cleanPhone(labeledMatch[1]) : ''));
+    const whatsappRaw = linkCandidates[0]?.raw || (labeledMatch ? labeledMatch[1].trim() : '');
+    return { email, whatsappRaw, whatsapp };
   };
 
   let email = '', whatsapp = '', whatsappRaw = '', name = '', country = '', grid = '';
