@@ -135,9 +135,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     try {
       const details = await lookupQRZCallsign(cleanCall);
       if (details.name) setName(details.name);
-      if (details.email) setEmail(details.email);
-      if (details.whatsapp) setWhatsapp(details.whatsapp);
-      if (details.whatsappRaw) setWhatsappRaw(details.whatsappRaw);
+      setEmail(details.email || 'NOT FOUND');
+      setWhatsapp(details.whatsapp || 'NOT FOUND');
+      setWhatsappRaw(details.whatsappRaw || 'NOT FOUND');
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
       setQrzFoundSource(details.source as any);
