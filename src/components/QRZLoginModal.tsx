@@ -52,7 +52,16 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
       const apiError = doc.querySelector('Error')?.textContent?.trim();
       const apiMessage = doc.querySelector('Message')?.textContent?.trim();
       if (!response.ok || !key) {
-        setError(apiError || apiMessage || 'QRZ no confirmó la conexión. Revisá usuario y contraseña e intentá nuevamente.');
+        const detail = [apiError, apiMessage].filter(Boolean).join(' ').trim();
+        if (/user\s*name.{0,30}(invalid|incorrect|unknown|not found)|invalid.{0,20}user\s*name/i.test(detail)) {
+          setError('El nombre de usuario de QRZ parece incorrecto. Revisá el indicativo o usuario escrito.');
+        } else if (/pass(word)?.{0,30}(invalid|incorrect|wrong)|invalid.{0,20}pass(word)?/i.test(detail)) {
+          setError('La contraseña de QRZ parece incorrecta. Volvé a escribirla con cuidado.');
+        } else if (/user(name)?\s*[/&-]\s*pass(word)?|user(name)?.{0,20}pass(word)?|invalid credentials|authentication failed|login failed/i.test(detail)) {
+          setError('QRZ rechazó el usuario o la contraseña. Su respuesta no permite saber cuál de los dos está mal; revisá ambos campos.');
+        } else {
+          setError(detail || 'QRZ no confirmó la conexión. Revisá el usuario y la contraseña e intentá nuevamente.');
+        }
         return;
       }
 
