@@ -173,7 +173,7 @@ export default function App() {
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'eQSL.cc no confirmó la carga.');
-      updatePersistedQSO(qso.id, { eqslUploaded: true });
+      updatePersistedQSO(qso.id, { eqslUploaded: true, qslSent: true });
       alert(`QSO con ${qso.callsign} enviado individualmente a eQSL.cc.\\n${data.details || data.message || ''}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error desconocido al enviar a eQSL.cc.';
