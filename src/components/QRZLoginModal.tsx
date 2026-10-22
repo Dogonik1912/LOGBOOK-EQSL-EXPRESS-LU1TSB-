@@ -18,15 +18,6 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
   const [saveOnDevice, setSaveOnDevice] = useState(false);
   const [error, setError] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
-  const hasSavedCredentials = Boolean(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass'));
-
-  const useSavedCredentials = () => {
-    setUser(localStorage.getItem('qrz_user') || '');
-    setPass(localStorage.getItem('qrz_pass') || '');
-    setSaveOnDevice(true);
-    setError('');
-  };
-
   if (!isOpen) return null;
 
   const handleSaveAndConnect = async (e?: React.FormEvent) => {
@@ -107,17 +98,6 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
             </p>
           </div>
         </div>
-
-        {/* Selección explícita de credenciales guardadas */}
-        {hasSavedCredentials && (
-          <button
-            type="button"
-            onClick={useSavedCredentials}
-            className="w-full mb-3 px-4 py-2.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
-          >
-            Usar credenciales guardadas en este dispositivo
-          </button>
-        )}
 
         {/* Formulario de credenciales */}
         <form onSubmit={handleSaveAndConnect} className="space-y-4">
