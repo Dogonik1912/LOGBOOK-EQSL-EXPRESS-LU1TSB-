@@ -279,33 +279,32 @@ export default async function handler(req, res) {
   // público del indicativo consultado. Nunca inferir números a partir del indicativo.
   let whatsapp = '', whatsappRaw = '', phone = '';
   const contactHtml = String(html || '')
-    .replace(/<!--[\\s\\S]*?-->/g, ' ')
-    .replace(/<(script|style|noscript|head|iframe)[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ');
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|head|iframe)[^>]*>[\s\S]*?<\/\1>/gi, ' ');
   const contactCandidates = [];
-  for (const m of contactHtml.matchAll(/href\\s*=\\s*["'](?:https?:)?\\/\\/(?:api\\.)?whatsapp\\.com\\/send\\?[^"']*phone=([^&"'\\s]+)/gi)) {
+  for (const m of contactHtml.matchAll(/href\s*=\s*["'](?:https?:)?\/\/(?:api\.)?whatsapp\.com\/send\?[^"']*phone=([^&"'\s]+)/gi)) {
     try { contactCandidates.push(decodeURIComponent(m[1].replace(/&amp;/gi, '&'))); } catch {}
   }
-  for (const m of contactHtml.matchAll(/href\\s*=\\s*["'](?:https?:)?\\/\\/(?:www\\.)?wa\\.me\\/([^?"'\\s]+)/gi)) {
+  for (const m of contactHtml.matchAll(/href\s*=\s*["'](?:https?:)?\/\/(?:www\.)?wa\.me\/([^?"'\s]+)/gi)) {
     try { contactCandidates.push(decodeURIComponent(m[1])); } catch {}
   }
-  const cleanPhone = value => String(value || '').replace(/(?:ext\\.?|x)\\s*\\d+$/i, '').replace(/[^+\\d]/g, '');
+  const cleanPhone = value => String(value || '').replace(/(?:ext\.?|x)\s*\d+$/i, '').replace(/[^\+\d]/g, '');
   for (const candidate of contactCandidates) {
     const digits = cleanPhone(candidate);
-    if (digits.replace(/\\D/g, '').length >= 8 && digits.replace(/\\D/g, '').length <= 15) {
-      whatsapp = digits.replace(/^\\+/, '');
+    if (digits.replace(/\D/g, '').length >= 8 && digits.replace(/\D/g, '').length <= 15) {
+      whatsapp = digits.replace(/^\+/, '');
       whatsappRaw = candidate;
       break;
     }
   }
-  // Buscar un teléfono explícitamente etiquetado en el texto visible del perfil.
   if (!whatsapp && html) {
     const visibleProfile = stripMarkup(contactHtml);
-    const phoneMatch = visibleProfile.match(/(?:phone|telephone|mobile|cell(?:ular)?|tel[eé]fono|m[oó]vil|celular|whatsapp|wsp)\\s*[:：-]\\s*([+\\d(][+\\d().\\s/-]{6,22}\\d)/i);
+    const phoneMatch = visibleProfile.match(/(?:phone|telephone|mobile|cell(?:ular)?|tel[eé]fono|m[oó]vil|celular|whatsapp|wsp)\s*[:：-]\s*([+\d(][+\d().\s/-]{6,22}\d)/i);
     if (phoneMatch) {
       const digits = cleanPhone(phoneMatch[1]);
-      if (digits.replace(/\\D/g, '').length >= 8 && digits.replace(/\\D/g, '').length <= 15) {
+      if (digits.replace(/\D/g, '').length >= 8 && digits.replace(/\D/g, '').length <= 15) {
         phone = phoneMatch[1].trim();
-        whatsapp = digits.replace(/^\\+/, '');
+        whatsapp = digits.replace(/^\+/, '');
         whatsappRaw = phone;
       }
     }
