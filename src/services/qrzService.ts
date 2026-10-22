@@ -16,6 +16,7 @@ export interface CallsignDetails {
   city?: string;
   state?: string;
   bio?: string;
+  lookupMessage?: string;
   source: 'qrz' | 'qrz-bio' | 'prefix-db' | 'cache';
 }
 
@@ -124,8 +125,18 @@ async function getQRZSessionKey(user: string, pass: string): Promise<string | nu
     const errNode = xmlDoc.querySelector('Error');
 
     if (errNode && !keyNode) {
-      console.warn('QRZ Auth Error:', errNode.textContent);
+      const message = errNode.textContent || 'No se pudo validar la sesión QRZ.';
+      console.warn('QRZ Auth Error:', message);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('qrz-auth-required', { detail: message }));
+      }
       return null;
+    }
+
+    if (!keyNode && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('qrz-auth-required', {
+        detail: 'QRZ no devolvió una clave de sesión; revisá las credenciales.'
+      }));
     }
 
     if (keyNode && keyNode.textContent) {
@@ -179,6 +190,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
           grid: data.grid || prefixInfo.defaultGrid || '',
+          lookupMessage: String(data.accessError || ''),
           source: data.foundSource ? 'qrz-bio' : 'qrz',
         };
       }
