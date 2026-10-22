@@ -48,8 +48,8 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
       sessionStorage.removeItem('qrz_user');
       sessionStorage.removeItem('qrz_pass');
     } else {
-      localStorage.removeItem('qrz_user');
-      localStorage.removeItem('qrz_pass');
+      // Mantener cualquier credencial guardada previamente, pero usar la sesión
+      // recién introducida durante esta pestaña. No se guarda de forma persistente.
       sessionStorage.setItem('qrz_user', user.trim());
       sessionStorage.setItem('qrz_pass', pass);
     }
