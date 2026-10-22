@@ -173,8 +173,9 @@ export default async function handler(req, res) {
           if (decoded && /[A-Za-z0-9]/.test(decoded)) bioParts.push(decoded);
         } catch {}
       }
-      const contacts = findContacts(html, bioParts);
-      email = contacts.email;
+      // No tomar correos del HTML público: puede contener correos de terceros,
+      // pie de página o componentes compartidos y asociarlos al indicativo equivocado.
+      // El correo solo se acepta más abajo desde la respuesta XML autenticada del callsign exacto.
 
       const nameMatch = html.match(/<span[^>]*class=["'][^"']*\bm0\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
         || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
@@ -227,7 +228,9 @@ export default async function handler(req, res) {
     String(body.pass || ''),
     call
   );
-  if (xmlProfile.email) email = xmlProfile.email;
+  // Fuente exclusiva del correo: ficha XML autenticada del indicativo consultado.
+  // Nunca conservar ni sustituirlo por una coincidencia del HTML público.
+  email = xmlProfile.email || '';
   if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
@@ -236,8 +239,8 @@ export default async function handler(req, res) {
   // proceder de la consulta XML autenticada a QRZ, solicitada por el servicio cliente.
   return res.status(200).json({
     callsign: call, name, country, grid, email,
-    source: email ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
-    foundSource: email ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
+    source: email ? 'qrz-xml' : (hamdbFound ? 'hamdb' : 'qrz'),
+    foundSource: email ? 'qrz-xml' : (hamdbFound ? 'hamdb' : 'qrz'),
     sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(xmlProfile.email ? ['qrz-xml'] : [])],
     accessError: !email ? (accessError || 'No se encontró un correo publicado o accesible en las fuentes consultadas. Los datos básicos pueden proceder de HamDB; esta fuente no garantiza correos.') : ''
   });
