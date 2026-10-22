@@ -405,17 +405,7 @@ export default async function handler(req, res) {
     // La fuente adicional es opcional: si falla, no debe impedir el resto del lookup.
   }
 
-  // PRUEBA 1: sesión web QRZ sin XML. Es la vía prioritaria para el campo
-  // "Email: Use mouse to view". Solo si no funciona, probar la vía XML opcional.
-  const webProfile = await lookupWithQRZWebLogin(
-    String(body.user || '').trim(),
-    String(body.pass || ''),
-    call
-  );
-  if (webProfile.email) email = webProfile.email;
-  if (!name && webProfile.name) name = webProfile.name;
-
-  // Alternativa: HamQTH puede proporcionar el correo del perfil si QRZ no lo devuelve.
+  // Fuente prioritaria de correo: callbook oficial de HamQTH con cuenta autenticada.
   // Solo se acepta un registro cuyo indicativo coincide exactamente con el consultado.
   const hamqthProfile = email ? {} : await lookupWithHamQTH(
     String(body.hamqthUser || '').trim(),
@@ -426,6 +416,16 @@ export default async function handler(req, res) {
   if (!name && hamqthProfile.name) name = hamqthProfile.name;
   if (!country && hamqthProfile.country) country = hamqthProfile.country;
   if (!grid && hamqthProfile.grid) grid = hamqthProfile.grid;
+
+  // Si HamQTH no entrega un correo, intentar QRZ web autenticado. QRZ puede
+  // ocultar el campo Email y no siempre permite leerlo automáticamente.
+  const webProfile = await lookupWithQRZWebLogin(
+    String(body.user || '').trim(),
+    String(body.pass || ''),
+    call
+  );
+  if (webProfile.email) email = webProfile.email;
+  if (!name && webProfile.name) name = webProfile.name;
 
   // Si QRZ no devolvió correo y HamQTH tampoco, intentar la API XML autorizada de QRZ.
   // Nunca sustituir el correo por uno encontrado en scripts o en el pie de página.
