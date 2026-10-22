@@ -173,8 +173,8 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
         result = {
           callsign: cleanCall,
           name: data.name || '',
-          // Email is intentionally excluded from public HTML lookup.
-          email: '',
+          // /api/lookup devuelve email solo desde QRZ XML autenticado o su biografía autorizada.
+          email: data.email || '',
           whatsapp: data.whatsapp || '',
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
@@ -213,11 +213,12 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           result = {
             ...result,
             // Authenticated QRZ XML is the only allowed email source.
-            email: xmlEmail || '',
+            // No borrar un correo legítimo obtenido por la biografía XML si el campo <email> viene vacío.
+            email: xmlEmail || result.email || '',
             name: result.name || xmlName,
             grid: result.grid || xmlGrid,
             country: result.country === 'Desconocido' ? (xmlCountry || result.country) : (result.country || xmlCountry),
-            source: (xmlEmail || xmlName || xmlGrid) ? 'qrz' : result.source,
+            source: (xmlEmail || result.email || xmlName || xmlGrid || result.whatsapp) ? 'qrz' : result.source,
           };
         }
       }
