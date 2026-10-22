@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     return value;
   };
 
-  const findContacts = (html, bioTexts = []) => {
+  const findContacts = (html, bioTexts = [], allowEmailFromAuthorizedBio = false) => {
     // Solo extrae datos que estén presentes en el HTML público recibido.
     // Prioridad del correo: biografía, enlaces explícitos, texto visible.
     const sourceHtml = String(html || '')
@@ -70,7 +70,9 @@ export default async function handler(req, res) {
     // Política de la app: nunca extraer el correo del HTML público, biografía,
     // mailto ni contenido general de la página. El correo solo puede venir de
     // la consulta QRZ autenticada en el cliente/API XML.
-    const email = '';
+    const email = allowEmailFromAuthorizedBio
+      ? (mailtoMatches.find(Boolean) || bioMatches.find(Boolean) || visibleMatches.find(Boolean) || '')
+      : '';
 
     // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
     // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
@@ -131,8 +133,35 @@ export default async function handler(req, res) {
       if (!profileResponse.ok) return {};
       const profileXml = await profileResponse.text();
       if (/<Error>/i.test(profileXml)) return {};
+      let email = normalizeEmail(xmlTextValue(profileXml, 'email'));
+      let whatsapp = '';
+      let whatsappRaw = '';
+
+      // QRZ documenta html=<callsign> como vía XML autenticada para obtener
+      // la biografía del perfil. Esto permite leer contactos publicados en la bio
+      // sin depender del HTML público ni de controles de terceros.
+      try {
+        const bioUrl = 'https://xmldata.qrz.com/xml/current/?s=' +
+          encodeURIComponent(key) + ';html=' + encodeURIComponent(callsign);
+        const bioResponse = await fetch(bioUrl, {
+          headers: { 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8' },
+          signal: AbortSignal.timeout(10000)
+        });
+        if (bioResponse.ok) {
+          const bioHtml = await bioResponse.text();
+          const bioContacts = findContacts(bioHtml, [bioHtml], true);
+          if (!email && bioContacts.email) email = bioContacts.email;
+          whatsapp = bioContacts.whatsapp || '';
+          whatsappRaw = bioContacts.whatsappRaw || '';
+        }
+      } catch {
+        // La ficha XML principal sigue siendo útil aunque QRZ no entregue la bio.
+      }
+
       return {
-        email: normalizeEmail(xmlTextValue(profileXml, 'email')),
+        email,
+        whatsapp,
+        whatsappRaw,
         name: xmlTextValue(profileXml, 'fname') && xmlTextValue(profileXml, 'name')
           ? xmlTextValue(profileXml, 'fname') + ' ' + xmlTextValue(profileXml, 'name')
           : xmlTextValue(profileXml, 'name'),
@@ -195,6 +224,8 @@ export default async function handler(req, res) {
     call
   );
   if (xmlProfile.email) email = xmlProfile.email;
+  if (xmlProfile.whatsapp) whatsapp = xmlProfile.whatsapp;
+  if (xmlProfile.whatsappRaw) whatsappRaw = xmlProfile.whatsappRaw;
   if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
