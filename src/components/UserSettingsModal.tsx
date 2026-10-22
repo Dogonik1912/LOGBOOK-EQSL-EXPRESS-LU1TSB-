@@ -239,7 +239,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <div className="flex items-center gap-2">
                 <Radio className="w-4 h-4 text-amber-400" />
                 <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                  Cuenta QRZ.com (consulta de perfil y libro de guardia)
+                  Cuenta QRZ.com (consulta de perfil)
                 </span>
               </div>
               <a
