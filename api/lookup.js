@@ -165,8 +165,7 @@ export default async function handler(req, res) {
       const nameMatch = html.match(/<span[^>]*class=["'][^"']*\bm0\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
         || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
       if (nameMatch) name = decode(nameMatch[1]);
-      const gridMatch = html.match(/Grid Square:<\/td>\s*<td[^>]*>([A-Za-z0-9]+)/i)
-        || html.match(/\b([A-R]{2}[0-9]{2}[a-x]{2})\b/i);
+      const gridMatch = html.match(/Grid Square:<\/td>\s*<td[^>]*>\s*([A-R]{2}[0-9]{2}(?:[A-X]{2})?)/i);
       if (gridMatch) grid = gridMatch[1];
       const countryMatch = html.match(/Country:<\/td>\s*<td[^>]*>([^<]+)/i);
       if (countryMatch) country = decode(countryMatch[1]);
