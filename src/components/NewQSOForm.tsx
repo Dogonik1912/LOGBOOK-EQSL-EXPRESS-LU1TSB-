@@ -96,7 +96,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const lookupRequestId = useRef(0);
 
   // Comprobar si QRZ está configurado
-  const hasQRZConfig = Boolean(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass'));
+  const activeQRZUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
+  const activeQRZPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
+  const hasQRZConfig = Boolean(activeQRZUser && activeQRZPass);
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
@@ -258,7 +260,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
           {hasQRZConfig ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              QRZ Conectado ({localStorage.getItem('qrz_user')})
+              QRZ configurado ({activeQRZUser})
             </div>
           ) : (
             <button
