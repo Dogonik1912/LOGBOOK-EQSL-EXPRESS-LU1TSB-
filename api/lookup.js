@@ -477,8 +477,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // El correo solo se acepta si QRZ lo entrega mediante la consulta XML autenticada.
-  // Los datos telefónicos solo se devuelven si aparecen como contacto en el perfil público.
+  // El correo solo se acepta de una respuesta del indicativo exacto en HamQTH
+  // o de una consulta autenticada de QRZ. Los teléfonos solo se aceptan si
+  // aparecen explícitamente como contacto en el perfil público.
   return res.status(200).json({
     callsign: call, name, country, grid, email,
     phone, whatsapp, whatsappRaw,
