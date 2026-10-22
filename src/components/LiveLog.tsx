@@ -144,11 +144,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
 
     window.open(`mailto:${qso.email}?subject=${subject}&body=${body}`);
 
-    // Marcar eQSL como enviada
-    onUpdateQSO({
-      ...qso,
-      qslSent: true,
-    });
+    // Abrir el correo no confirma que el usuario haya enviado el mensaje.
   };
 
   // Exportar a ADIF estándar para LoTW / eQSL.cc
