@@ -150,8 +150,8 @@ async function getQRZSessionKey(user: string, pass: string): Promise<string | nu
 export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> {
   const cleanCall = call.trim().toUpperCase();
   const prefixInfo = getCountryFromPrefix(cleanCall);
-  const qrzUser = localStorage.getItem('qrz_user') || '';
-  const qrzPass = localStorage.getItem('qrz_pass') || '';
+  const qrzUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
+  const qrzPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
 
   let result: CallsignDetails = {
     callsign: cleanCall,
@@ -165,7 +165,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
     const res = await fetch('/api/lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ call: cleanCall }),
+      body: JSON.stringify({ call: cleanCall, user: qrzUser, pass: qrzPass }),
     });
     if (res.ok) {
       const data = await res.json();
