@@ -18,7 +18,6 @@ import {
   Sparkles, 
   RefreshCw,
   AlertCircle,
-  MessageCircle,
   Phone
 } from 'lucide-react';
 
@@ -82,8 +81,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [rstSent, setRstSent] = useState('');
   const [rstRcvd, setRstRcvd] = useState('');
   const [email, setEmail] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [whatsappRaw, setWhatsappRaw] = useState('');
   const [lookupMessage, setLookupMessage] = useState('');
   const [name, setName] = useState('');
   const [country, setCountry] = useState('');
@@ -142,12 +139,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       if (requestId !== lookupRequestId.current) return;
       if (details.name) setName(details.name);
       setEmail(details.email || '');
-      setWhatsapp(details.whatsapp || '');
-      setWhatsappRaw(details.whatsappRaw || '');
       setLookupMessage(details.lookupMessage || '');
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
-      setQrzFoundSource((details.email || details.whatsapp) ? (details.source as any) : null);
+      setQrzFoundSource(details.email ? (details.source as any) : null);
     } catch (e) {
       if (requestId === lookupRequestId.current) console.warn(e);
     } finally {
@@ -164,8 +159,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     const requestId = ++lookupRequestId.current;
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
-    setWhatsapp('');
-    setWhatsappRaw('');
     setLookupMessage('');
     setName('');
     setCountry('');
@@ -199,8 +192,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       rstSent: rstSent.trim() || (mode === 'CW' ? '599' : '59'),
       rstRcvd: rstRcvd.trim() || (mode === 'CW' ? '599' : '59'),
       email: email.trim(),
-      whatsapp: whatsapp.trim(),
-      whatsappRaw: whatsappRaw.trim(),
+      whatsapp: '',
+      whatsappRaw: '',
       name: name.trim(),
       country: country.trim(),
       grid: grid.trim().toUpperCase(),
@@ -222,7 +215,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     };
     localStorage.setItem('last_qso', JSON.stringify(lastQSOToPersist));
 
-    // Solo limpiar al guardar: corresponsal (callsign), RST enviada, RST recibida, email, whatsapp y detalles
+    // Limpiar indicativo, RST, correo y detalles al guardar
     setCallsign('');
     setRstSent('');
     setRstRcvd('');
@@ -336,7 +329,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               <span className="text-[11px] text-emerald-400 mt-1 inline-flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 {qrzFoundSource === 'qrz-bio' 
-                  ? 'Datos y WhatsApp de QRZ' 
+                  ? 'Correo de QRZ' 
                   : qrzFoundSource === 'qrz' 
                   ? 'Datos obtenidos de QRZ.com' 
                   : 'País autodetectado'}
@@ -397,28 +390,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
             />
           </div>
 
-          {/* WhatsApp / Teléfono del Corresponsal */}
-          <div className="sm:col-span-3">
-            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <MessageCircle className="w-3 h-3 text-emerald-400" />
-                WhatsApp / Tel
-              </span>
-              {whatsapp && (
-                <span className="text-[10px] text-emerald-400 font-semibold">✓ QRZ</span>
-              )}
-            </label>
-            <input
-              type="text"
-              value={whatsapp}
-              onChange={(e) => {
-                setWhatsapp(e.target.value);
-                setWhatsappRaw(e.target.value);
-              }}
-              placeholder="ej. 5493886067078"
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-emerald-300 placeholder-slate-600 focus:border-emerald-400 focus:outline-hidden"
-            />
-          </div>
+
         </div>
 
         {lookupMessage && (
