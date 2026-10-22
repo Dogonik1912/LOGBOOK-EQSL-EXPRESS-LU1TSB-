@@ -12,8 +12,8 @@ export default async function handler(req, res) {
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").trim();
   const field = (xml, name) => {
-    const m = xml.match(new RegExp('<' + name + '(?:\s[^>]*)?>([\s\\S]*?)</' + name + '>', 'i'));
-    return m ? decode(m[1].replace(/<!\\[CDATA\\[([\s\\S]*?)\\]\\]>/g, '$1').replace(/<[^>]+>/g, ' ')) : '';
+    const m = xml.match(new RegExp('<' + name + '(?:\\s[^>]*)?>([\\s\\S]*?)</' + name + '>', 'i'));
+    return m ? decode(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, ' ')) : '';
   };
 
   let email = '', whatsapp = '', whatsappRaw = '', name = '', country = '', grid = '';
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       if (countryMatch) country = decode(countryMatch[1]);
 
       const scan = (bioText + ' ' + html).replace(/\u003c/gi, '<');
-      const waMatch = scan.match(/(?:whatsapp|wsp|wa\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|cel)\s*(?:[:：=]|https?:\\/\\/)?\s*([+0-9][+0-9() .-]{7,24})/i);
+      const waMatch = scan.match(/(?:whatsapp|wsp|wa\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|cel)\s*(?:[:：=]|https?:\/\/)?\s*([+0-9][+0-9() .-]{7,24})/i);
       if (waMatch?.[1]) {
         whatsappRaw = waMatch[1].trim();
         let digits = whatsappRaw.replace(/\D/g, '');
