@@ -81,9 +81,25 @@ export default function App() {
       });
       setIsReplyModalOpen(true);
     } else if (!hasQRZCredentials) {
-      // Si no hay credenciales activas, volver a solicitar la conexión al abrir.
-      // "Ahora no" solo cierra el modal actual; no equivale a tener una sesión.
+      // Si no hay credenciales activas, solicitar conexión al abrir.
       setIsQRZModalOpen(true);
+    } else if (!replyToParam) {
+      // Las credenciales antiguas pueden estar guardadas sin haber sido validadas.
+      // Verificar con QRZ en segundo plano y pedir intervención solo si la sesión falla.
+      const savedUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
+      const savedPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
+      fetch('/api/qrz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: savedUser, password: savedPass }),
+      })
+        .then(async (response) => {
+          const xml = await response.text();
+          const doc = new DOMParser().parseFromString(xml, 'text/xml');
+          const key = doc.querySelector('Key')?.textContent?.trim();
+          if (!response.ok || !key) setIsQRZModalOpen(true);
+        })
+        .catch(() => setIsQRZModalOpen(true));
     }
 
     // Inicializar callsign por defecto si no existe
