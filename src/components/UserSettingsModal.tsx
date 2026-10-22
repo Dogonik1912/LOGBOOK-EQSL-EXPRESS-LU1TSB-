@@ -249,7 +249,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <div className="flex items-center gap-2">
                 <Radio className="w-4 h-4 text-amber-400" />
                 <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                  Cuenta QRZ.com (Autocompletado de Email)
+                  Cuenta QRZ.com (consulta de perfil y libro de guardia)
                 </span>
               </div>
               <a
@@ -301,7 +301,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <span><strong>Subir automáticamente cada QSO nuevo a QRZ</strong><span className="block text-[10px] text-slate-500 mt-0.5">Solo si hay una clave API configurada. También podrás subir cada contacto individualmente desde el log.</span></span>
             </label>
             <p className="text-[11px] text-slate-400">
-              Al guardar credenciales válidas de QRZ, la app obtendrá el correo del corresponsal automáticamente al ingresar su indicativo.
+              La app consultará los campos que QRZ permita devolver. No inventará correos ni tomará direcciones de scripts, anuncios o pies de página; el correo puede no estar disponible para todos los perfiles.
             </p>
           </div>
 
