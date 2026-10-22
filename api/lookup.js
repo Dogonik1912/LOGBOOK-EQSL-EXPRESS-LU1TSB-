@@ -116,24 +116,9 @@ export default async function handler(req, res) {
       if (/<Error>/i.test(profileXml)) return {};
       let email = normalizeEmail(xmlTextValue(profileXml, 'email'));
 
-      // QRZ documenta html=<callsign> como vía XML autenticada para obtener
-      // la biografía del perfil. Esto permite leer contactos publicados en la bio
-      // sin depender del HTML público ni de controles de terceros.
-      try {
-        const bioUrl = 'https://xmldata.qrz.com/xml/current/?s=' +
-          encodeURIComponent(key) + ';html=' + encodeURIComponent(callsign);
-        const bioResponse = await fetch(bioUrl, {
-          headers: { 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8' },
-          signal: AbortSignal.timeout(10000)
-        });
-        if (bioResponse.ok) {
-          const bioHtml = await bioResponse.text();
-          const bioContacts = findContacts(bioHtml, [bioHtml], true);
-          if (!email && bioContacts.email) email = bioContacts.email;
-        }
-      } catch {
-        // La ficha XML principal sigue siendo útil aunque QRZ no entregue la bio.
-      }
+      // No extraer correos de la biografía HTML: puede contener direcciones
+      // ajenas al campo Email del indicativo. Solo aceptar el campo <email>
+      // de la respuesta XML autenticada para este callsign exacto.
 
       return {
         email,
