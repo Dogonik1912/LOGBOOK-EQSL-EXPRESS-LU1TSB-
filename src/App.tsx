@@ -116,9 +116,77 @@ export default function App() {
     localStorage.setItem('logbook_qsos', JSON.stringify(newQsos));
   };
 
+  const updatePersistedQSO = (id: string, patch: Partial<QSO>) => {
+    let saved: QSO[] = [];
+    try { saved = JSON.parse(localStorage.getItem('logbook_qsos') || '[]') as QSO[]; } catch {}
+    const updated = saved.map((item) => item.id === id ? { ...item, ...patch } : item);
+    localStorage.setItem('logbook_qsos', JSON.stringify(updated));
+    setQsos(updated);
+  };
+
+  const handleUploadToQRZ = async (qso: QSO, quiet = false) => {
+    if (qso.qrzUploaded) return;
+    const key = localStorage.getItem('qrz_logbook_key') || '';
+    if (!key) {
+      if (!quiet) alert('Configurá la clave API del libro de guardia QRZ en Ajustes.');
+      return;
+    }
+    const stationCallsign = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
+    try {
+      const response = await fetch('/api/qrz-logbook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key, callsign: qso.callsign, stationCallsign, date: qso.date, time: qso.time,
+          band: qso.band, frequency: qso.frequency, mode: qso.mode, rstSent: qso.rstSent, rstRcvd: qso.rstRcvd,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'QRZ no confirmó la carga.');
+      updatePersistedQSO(qso.id, { qrzUploaded: true, qrzUploadError: '' });
+      if (!quiet) alert(`QSO con ${qso.callsign} cargado en QRZ Logbook correctamente.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido al subir el QSO a QRZ.';
+      updatePersistedQSO(qso.id, { qrzUploadError: message });
+      if (!quiet) alert(`No se pudo cargar ${qso.callsign} en QRZ: ${message}`);
+    }
+  };
+
+  const handleUploadToEQSL = async (qso: QSO) => {
+    if (qso.eqslUploaded) return;
+    const username = localStorage.getItem('eqsl_user') || '';
+    const password = localStorage.getItem('eqsl_pass') || '';
+    if (!username || !password) {
+      alert('Configurá tu usuario y contraseña de eQSL.cc en Ajustes antes de enviar.');
+      return;
+    }
+    if (!window.confirm(`¿Enviar únicamente el QSO con ${qso.callsign} a eQSL.cc?\\n\\n${qso.date} ${qso.time} UTC · ${qso.band} · ${qso.mode}`)) return;
+    const stationCallsign = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
+    try {
+      const response = await fetch('/api/eqsl-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username, password, callsign: qso.callsign, stationCallsign, date: qso.date, time: qso.time,
+          band: qso.band, frequency: qso.frequency, mode: qso.mode, rstSent: qso.rstSent, rstRcvd: qso.rstRcvd, grid: qso.grid,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'eQSL.cc no confirmó la carga.');
+      updatePersistedQSO(qso.id, { eqslUploaded: true });
+      alert(`QSO con ${qso.callsign} enviado individualmente a eQSL.cc.\\n${data.details || data.message || ''}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido al enviar a eQSL.cc.';
+      alert(`No se pudo enviar el QSO con ${qso.callsign}: ${message}`);
+    }
+  };
+
   const handleAddQSO = (qso: QSO) => {
     const updated = [qso, ...qsos];
     handleSaveQsos(updated);
+    if (localStorage.getItem('qrz_auto_upload') === 'true' && localStorage.getItem('qrz_logbook_key')) {
+      void handleUploadToQRZ(qso, true);
+    }
   };
 
   const handleUpdateQSO = (updatedQSO: QSO) => {
@@ -252,6 +320,8 @@ export default function App() {
           onOpenEQSL={(qso) => setActiveEQSLQSO(qso)}
           onImportADIF={handleImportADIF}
           onOpenReply={handleOpenReplyForQSO}
+          onUploadToQRZ={handleUploadToQRZ}
+          onUploadToEQSL={handleUploadToEQSL}
         />
       </main>
 
