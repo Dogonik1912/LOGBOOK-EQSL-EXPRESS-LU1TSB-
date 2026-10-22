@@ -20,7 +20,8 @@ import {
   MessageSquare,
   Sparkles,
   FileText,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Upload
 } from 'lucide-react';
 
 interface LiveLogProps {
