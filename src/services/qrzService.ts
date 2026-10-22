@@ -211,7 +211,8 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           const xmlCountry = value('country');
           result = {
             ...result,
-            email: xmlEmail || result.email || '',
+            // Authenticated QRZ XML is the only allowed email source.
+            email: xmlEmail || '',
             name: result.name || xmlName,
             grid: result.grid || xmlGrid,
             country: result.country === 'Desconocido' ? (xmlCountry || result.country) : (result.country || xmlCountry),
