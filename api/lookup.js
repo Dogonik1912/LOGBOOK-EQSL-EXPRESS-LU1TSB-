@@ -57,6 +57,9 @@ export default async function handler(req, res) {
       .replace(/\\u002f/gi, '/').replace(/\\u003a/gi, ':')
       .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@');
     const bioText = bioTexts.map(stripMarkup).join(' ');
+    // Texto visible del perfil para detectar teléfonos etiquetados; esta variable faltaba,
+    // provocando ReferenceError y abortando toda la búsqueda del corresponsal.
+    const visibleHtml = stripMarkup(sourceHtml);
     // El correo solo se busca dentro del bloque de la ficha que sigue a la etiqueta
     // "Email". Buscar mailto en todo el HTML de QRZ puede devolver el correo del
     // soporte, del pie de página o de un anuncio en lugar del corresponsal.
