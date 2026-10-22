@@ -78,8 +78,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
   // Campos que se limpian al guardar (corresponsal, RST enviada, RST recibida, y detalles)
   const [callsign, setCallsign] = useState('');
-  const [rstSent, setRstSent] = useState('');
-  const [rstRcvd, setRstRcvd] = useState('');
+  const [rstSent, setRstSent] = useState('59');
+  const [rstRcvd, setRstRcvd] = useState('59');
+  const [exchangeSent, setExchangeSent] = useState('');
+  const [exchangeReceived, setExchangeReceived] = useState('');
   const [email, setEmail] = useState('');
   const [lookupMessage, setLookupMessage] = useState('');
   const [name, setName] = useState('');
@@ -107,20 +109,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     }
   };
 
-  // Asignar RST por defecto según el modo
-  const setDefaultRstForMode = (m: string) => {
-    if (m === 'CW' || m === 'FT8' || m === 'FT4' || m === 'RTTY' || m === 'PSK31') {
-      if (!rstSent) setRstSent('599');
-      if (!rstRcvd) setRstRcvd('599');
-    } else {
-      if (!rstSent) setRstSent('59');
-      if (!rstRcvd) setRstRcvd('59');
-    }
-  };
-
+  // Las señales RST se precargan siempre como 59, independientemente del modo.
   const handleModeChange = (newMode: string) => {
     setMode(newMode);
-    setDefaultRstForMode(newMode);
+    if (!rstSent.trim()) setRstSent('59');
+    if (!rstRcvd.trim()) setRstRcvd('59');
   };
 
   const handleUpdateToCurrentUTC = () => {
@@ -189,8 +182,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       band,
       frequency,
       mode,
-      rstSent: rstSent.trim() || (mode === 'CW' ? '599' : '59'),
-      rstRcvd: rstRcvd.trim() || (mode === 'CW' ? '599' : '59'),
+      rstSent: rstSent.trim() || '59',
+      rstRcvd: rstRcvd.trim() || '59',
+      exchangeSent: exchangeSent.trim(),
+      exchangeReceived: exchangeReceived.trim(),
       email: email.trim(),
       whatsapp: '',
       whatsappRaw: '',
@@ -217,8 +212,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
     // Limpiar indicativo, RST, correo y detalles al guardar
     setCallsign('');
-    setRstSent('');
-    setRstRcvd('');
+    setRstSent('59');
+    setRstRcvd('59');
+    setExchangeSent('');
+    setExchangeReceived('');
     setEmail('');
     setWhatsapp('');
     setWhatsappRaw('');
@@ -346,7 +343,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               type="text"
               value={rstSent}
               onChange={(e) => setRstSent(e.target.value)}
-              placeholder={mode === 'CW' ? '599' : '59'}
+              placeholder="59"
               className="w-full px-2 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
@@ -485,6 +482,30 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Dipolo 40m / 100W"
               className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:border-amber-400 focus:outline-hidden"
+            />
+          </div>
+        </div>
+
+        {/* Intercambios opcionales para concursos; no forman parte de la tarjeta eQSL. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">Progresivo / intercambio enviado (opcional)</label>
+            <input
+              type="text"
+              value={exchangeSent}
+              onChange={(e) => setExchangeSent(e.target.value)}
+              placeholder="Ej. 001, GF05, JUJUY"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-600 focus:border-amber-400 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">Progresivo / intercambio recibido (opcional)</label>
+            <input
+              type="text"
+              value={exchangeReceived}
+              onChange={(e) => setExchangeReceived(e.target.value)}
+              placeholder="Ej. 014, GF05, CORDOBA"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-600 focus:border-amber-400 focus:outline-hidden"
             />
           </div>
         </div>
