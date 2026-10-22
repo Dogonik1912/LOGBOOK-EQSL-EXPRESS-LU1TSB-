@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { defineConfig } from 'vite';
 import lookupHandler from './api/lookup';
+import qrzHandler from './api/qrz';
 
 export default defineConfig(() => ({
   plugins: [
@@ -15,14 +16,9 @@ export default defineConfig(() => ({
         server.middlewares.use('/api/lookup', (req, res) => {
           void lookupHandler(req as any, res as any);
         });
-        server.middlewares.use('/api/qrz', async (req, res) => {
-          try {
-            const url = new URL(req.url || '', 'http://' + (req.headers.host || 'localhost'));
-            const target = 'https://xmldata.qrz.com/xml/current/' + url.search;
-            const upstream = await fetch(target, {
-              headers: { 'User-Agent': 'LogBook-eQSL-Express/1.0 (LU1TSB)' },
-              signal: AbortSignal.timeout(10000),
-            });
+        server.middlewares.use('/api/qrz', (req, res) => {
+          void qrzHandler(req as any, res as any);
+        });
             res.statusCode = upstream.status;
             res.setHeader('Content-Type', 'application/xml; charset=utf-8');
             res.end(await upstream.text());
