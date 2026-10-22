@@ -21,14 +21,51 @@ export default async function handler(req, res) {
     return digits.length >= 8 && digits.length <= 15 ? digits : '';
   };
 
-  const findContacts = (input) => {
-    let source = String(input || '')
-      .replace(/\\u003c/gi, '<').replace(/\\u0040/gi, '@')
-      .replace(/&#64;|&commat;/gi, '@')
-      .replace(/\\x40/gi, '@');
-    const emails = source.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
-    const email = emails.find(e => !/(?:example\.com|cloudflare|sentry|w3\.org|noreply|no-reply)/i.test(e)) || '';
+  const decodeEntities = (s = '') => String(s)
+    .replace(/&commat;|&#64;/gi, '@')
+    .replace(/&period;|&#46;/gi, '.')
+    .replace(/&colon;/gi, ':')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 
+  const stripMarkup = (input = '') => decodeEntities(String(input)
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|svg|head|iframe)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\\u003c/gi, '<')
+    .replace(/\\u0040/gi, '@'))
+    .replace(/\\x40/gi, '@')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const normalizeEmail = (candidate = '') => {
+    const value = decodeEntities(String(candidate))
+      .replace(/^mailto:/i, '')
+      .replace(/[),;>"'\]]+$/g, '')
+      .replace(/^[<("'[]+/g, '')
+      .trim();
+    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) return '';
+    if (/(?:example\.com|cloudflare|sentry|w3\.org|noreply|no-reply|wordpress|wixstatic|google-analytics|gravatar|schema\.org|jquery|bootstrap)/i.test(value)) return '';
+    return value;
+  };
+
+  const findContacts = (html, bioTexts = []) => {
+    // Prioridad: correo en biografía, enlace mailto del perfil, texto visible.
+    const bioText = bioTexts.map(stripMarkup).join(' ');
+    const mailtoMatches = [...String(html).matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
+      .map(m => normalizeEmail(m[1]));
+    const bioMatches = [...bioText.matchAll(/[A-Z0-9._%+-]+(?:\s*\[at\]\s*|\s*\(at\)\s*|@)[A-Z0-9.-]+(?:\s*\[dot\]\s*|\s*\(dot\)\s*|\.)[A-Z]{2,}/gi)]
+      .map(m => normalizeEmail(m[0].replace(/\s*\[at\]\s*|\s*\(at\)\s*/i, '@').replace(/\s*\[dot\]\s*|\s*\(dot\)\s*/i, '.')));
+    const visibleHtml = stripMarkup(String(html)
+      .replace(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi, ' $1 ')
+      .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
+    const visibleMatches = [...visibleHtml.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
+      .map(m => normalizeEmail(m[0]));
+    const email = [...bioMatches, ...mailtoMatches, ...visibleMatches].find(Boolean) || '';
+
+    const phoneSource = bioText + ' ' + visibleHtml + ' ' +
+      String(html).replace(/<(script|style|noscript|svg|head|iframe)[^>]*>[\s\S]*?<\/\1>/gi, ' ');
     const patterns = [
       /(?:https?:)?\/\/(?:www\.)?wa\.me\/([+0-9]{8,20})/i,
       /(?:https?:)?\/\/(?:www\.)?whatsapp\.com\/send\?[^"' \s]*?phone=([+0-9]{8,20})/i,
@@ -37,10 +74,13 @@ export default async function handler(req, res) {
     ];
     let raw = '';
     for (const re of patterns) {
-      const m = source.match(re);
+      const m = phoneSource.match(re);
       if (m && m[1]) { raw = m[1].trim(); break; }
     }
-    return { email, whatsappRaw: raw, whatsapp: cleanPhone(raw) };
+    let digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    const whatsapp = digits.length >= 8 && digits.length <= 15 ? digits : '';
+    return { email, whatsappRaw: raw, whatsapp };
   };
 
   let email = '', whatsapp = '', whatsappRaw = '', name = '', country = '', grid = '';
@@ -59,25 +99,16 @@ export default async function handler(req, res) {
       accessError = 'QRZ respondió HTTP ' + response.status + ' al consultar el perfil público.';
     } else {
       html = await response.text();
-      // Algunos perfiles guardan la biografía codificada en Base64 dentro de la página.
+      // QRZ puede incluir una o varias biografías codificadas en Base64.
       const bioParts = [];
-      const b64Matches = html.matchAll(/Base64\.decode\(["']([A-Za-z0-9+/=]{16,})["']\)/g);
+      const b64Matches = html.matchAll(/Base64\.decode\(["']([A-Za-z0-9+/=]{16,})["']\)/gi);
       for (const m of b64Matches) {
-        try { bioParts.push(Buffer.from(m[1], 'base64').toString('utf8')); } catch {}
+        try {
+          const decoded = Buffer.from(m[1], 'base64').toString('utf8');
+          if (decoded && /[A-Za-z0-9]/.test(decoded)) bioParts.push(decoded);
+        } catch {}
       }
-      // Evitar falsos positivos: el HTML completo contiene correos de scripts,
-      // anuncios, soporte y herramientas ajenas al operador. Buscar en la biografía
-      // decodificada y en el texto visible del perfil; aceptar también un mailto explícito.
-      const visibleHtml = html
-        .replace(/<!--[\\s\\S]*?-->/g, ' ')
-        .replace(/<(script|style|noscript|svg|head)[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ')
-        .replace(/href=[\"']mailto:([^\"'?\\s]+)[\"']/gi, ' $1 ')
-        .replace(/<[^>]*>/g, ' ');
-      const decodedPage = visibleHtml + '\\n' + bioParts.join('\\n');
-      const contacts = findContacts(decodedPage);
-      email = contacts.email;
-      whatsapp = contacts.whatsapp;
-      whatsappRaw = contacts.whatsappRaw;
+      const contacts = findContacts(html, bioParts);
 
       const nameMatch = html.match(/<span[^>]*class=["'][^"']*\bm0\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
         || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
