@@ -31,6 +31,8 @@ interface LiveLogProps {
   onOpenEQSL: (qso: QSO) => void;
   onImportADIF: (newQsos: QSO[]) => void;
   onOpenReply?: (qso: QSO) => void;
+  onUploadToQRZ?: (qso: QSO) => void;
+  onUploadToEQSL?: (qso: QSO) => void;
 }
 
 export const LiveLog: React.FC<LiveLogProps> = ({
@@ -40,6 +42,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onOpenEQSL,
   onImportADIF,
   onOpenReply,
+  onUploadToQRZ,
+  onUploadToEQSL,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBand, setFilterBand] = useState('ALL');
@@ -180,6 +184,42 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const link = document.createElement('a');
     link.href = url;
     link.download = `LogBook_${myCallsign}_${new Date().toISOString().slice(0, 10)}.adi`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Exportar Cabrillo para concursos. El formato es genérico; algunos concursos exigen categorías/cabeceras específicas.
+  const handleExportCabrillo = () => {
+    if (!qsos.length) return;
+    const myCall = getUserCallsign();
+    const lines = [
+      'START-OF-LOG: 3.0',
+      'CONTEST: GENERIC',
+      `CALLSIGN: ${myCall}`,
+      'CATEGORY-OPERATOR: SINGLE-OP',
+      'CATEGORY-BAND: ALL',
+      'CATEGORY-MODE: MIXED',
+      'CATEGORY-POWER: LOW',
+      'CATEGORY-ASSISTED: NON-ASSISTED',
+      'CATEGORY-STATION: FIXED',
+      'CATEGORY-TRANSMITTER: ONE',
+      `OPERATORS: ${myCall}`,
+      'CREATED-BY: LogBook eQSL Express',
+    ];
+    qsos.forEach((q) => {
+      const date = (q.date || '').replace(/-/g, '');
+      const dateShort = date.length === 8 ? date.slice(2) : date;
+      const time = (q.time || '').replace(/:/g, '').slice(0, 4).padEnd(4, '0');
+      const freq = (q.frequency || '').trim();
+      const mode = /^(CW|RTTY|FT8|FT4|PSK31)$/i.test(q.mode) ? 'DG' : (/^(FM|AM)$/i.test(q.mode) ? 'FM' : 'PH');
+      lines.push(`QSO: ${freq} ${mode} ${dateShort} ${time} ${myCall} ${q.rstSent || '59'} ${q.callsign} ${q.rstRcvd || '59'}`);
+    });
+    lines.push('END-OF-LOG:');
+    const blob = new Blob([lines.join('\\r\\n') + '\\r\\n'], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `LogBook_${myCall}_${new Date().toISOString().slice(0, 10)}.log`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -332,6 +372,17 @@ export const LiveLog: React.FC<LiveLogProps> = ({
               className="hidden"
             />
           </label>
+
+          <button
+            type="button"
+            onClick={handleExportCabrillo}
+            disabled={qsos.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
+            title="Exportar log en formato Cabrillo para concursos"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar Cabrillo
+          </button>
 
           {/* Exportar ADIF */}
           <button
@@ -533,6 +584,29 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                             title={`Enviar eQSL por correo a ${q.email}`}
                           >
                             <Mail className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {onUploadToEQSL && (
+                          <button
+                            type="button"
+                            onClick={() => onUploadToEQSL(q)}
+                            disabled={Boolean(q.eqslUploaded)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${q.eqslUploaded ? 'text-emerald-500' : 'text-fuchsia-400 hover:text-fuchsia-300 hover:bg-slate-800'}`}
+                            title={q.eqslUploaded ? 'QSO cargado en eQSL.cc' : 'Enviar este QSO individualmente a eQSL.cc'}
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onUploadToQRZ && (
+                          <button
+                            type="button"
+                            onClick={() => onUploadToQRZ(q)}
+                            disabled={Boolean(q.qrzUploaded)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${q.qrzUploaded ? 'text-emerald-500' : 'text-amber-400 hover:text-amber-300 hover:bg-slate-800'}`}
+                            title={q.qrzUploaded ? 'QSO cargado en QRZ Logbook' : (q.qrzUploadError || 'Subir este QSO individualmente al libro de QRZ')}
+                          >
+                            <Upload className="w-3.5 h-3.5" />
                           </button>
                         )}
 
