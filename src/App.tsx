@@ -50,6 +50,9 @@ export default function App() {
   // y 'qrz_skipped' no existe, mostrar el modal de aviso
   // Y verificar si se abrió mediante un enlace de responder eQSL (?reply_to=...)
   useEffect(() => {
+    const handleQRZAuthRequired = () => setIsQRZModalOpen(true);
+    window.addEventListener('qrz-auth-required', handleQRZAuthRequired);
+
     // Revisar si vino desde un enlace de respuesta compartida
     const urlParams = new URLSearchParams(window.location.search);
     const forceQRZConnect = urlParams.get('connect_qrz') === '1';
@@ -87,6 +90,8 @@ export default function App() {
     if (!localStorage.getItem('user_callsign')) {
       localStorage.setItem('user_callsign', DEFAULT_CALLSIGN);
     }
+
+    return () => window.removeEventListener('qrz-auth-required', handleQRZAuthRequired);
   }, []);
 
   // Guardar QSOs en localStorage cada vez que cambien
