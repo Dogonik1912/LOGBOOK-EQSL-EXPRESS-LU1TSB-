@@ -15,77 +15,17 @@ import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { Radio, Award, Globe, Zap, Send, Info, ArrowRightLeft } from 'lucide-react';
 
-const INITIAL_SAMPLE_QSOS: QSO[] = [
-  {
-    id: 'qso-1',
-    callsign: 'EA1EXP',
-    date: '2026-10-20',
-    time: '21:30',
-    band: '40m',
-    frequency: '7.120',
-    mode: 'SSB',
-    rstSent: '59',
-    rstRcvd: '59',
-    email: 'ea1exp@ure.es',
-    whatsapp: '34600123456',
-    name: 'José',
-    country: 'España',
-    grid: 'IN80',
-    notes: 'Excelente señal 59 desde Galicia',
-    qslSent: true,
-    qslRcvd: true,
-  },
-  {
-    id: 'qso-2',
-    callsign: 'LU7YS',
-    date: '2026-10-21',
-    time: '00:15',
-    band: '40m',
-    frequency: '7.125',
-    mode: 'SSB',
-    rstSent: '59',
-    rstRcvd: '59',
-    email: 'lu7ys@qrz.com',
-    whatsapp: '5491145678901',
-    name: 'Carlos',
-    country: 'Argentina',
-    grid: 'GF05te',
-    notes: 'QSO local en 40 metros',
-    qslSent: false,
-    qslRcvd: false,
-  },
-  {
-    id: 'qso-3',
-    callsign: 'PY2TEL',
-    date: '2026-10-21',
-    time: '01:05',
-    band: '20m',
-    frequency: '14.205',
-    mode: 'SSB',
-    rstSent: '59',
-    rstRcvd: '58',
-    email: 'py2tel@labre.org.br',
-    whatsapp: '5511987654321',
-    name: 'Thiago',
-    country: 'Brasil',
-    grid: 'GG87',
-    notes: 'Fuerte señal en 20m',
-    qslSent: false,
-    qslRcvd: false,
-  },
-];
-
 export default function App() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
     const saved = localStorage.getItem('logbook_qsos');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return (JSON.parse(saved) as QSO[]).filter((q) => !['qso-1', 'qso-2', 'qso-3'].includes(q.id));
       } catch (e) {
         console.error('Error reading logbook_qsos', e);
       }
     }
-    return INITIAL_SAMPLE_QSOS;
+    return [];
   });
 
   const [isQRZModalOpen, setIsQRZModalOpen] = useState(false);
