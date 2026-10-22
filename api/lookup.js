@@ -15,12 +15,6 @@ export default async function handler(req, res) {
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
     .replace(/\s+/g, ' ').trim();
 
-  const cleanPhone = (raw) => {
-    let digits = String(raw || '').replace(/\D/g, '');
-    if (digits.startsWith('00')) digits = digits.slice(2);
-    return digits.length >= 8 && digits.length <= 15 ? digits : '';
-  };
-
   const decodeEntities = (s = '') => String(s)
     .replace(/&commat;|&#64;/gi, '@')
     .replace(/&period;|&#46;/gi, '.')
@@ -51,91 +45,45 @@ export default async function handler(req, res) {
   };
 
   const findContacts = (html, bioTexts = [], allowEmailFromAuthorizedBio = false) => {
-    // Solo extrae datos que estén presentes en el HTML público recibido.
-    // Prioridad del correo: biografía, enlaces explícitos, texto visible.
+    // Buscar correo exclusivamente en el campo Email del perfil QRZ o en una
+    // biografía obtenida por la sesión XML autorizada. No extraer teléfonos.
     const sourceHtml = String(html || '')
       .replace(/\\u002f/gi, '/').replace(/\\u003a/gi, ':')
       .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@');
-    const bioText = bioTexts.map(stripMarkup).join(' ');
-    // Texto visible del perfil para detectar teléfonos etiquetados; esta variable faltaba,
-    // provocando ReferenceError y abortando toda la búsqueda del corresponsal.
-    const visibleHtml = stripMarkup(sourceHtml);
-    // El correo solo se busca dentro del bloque de la ficha que sigue a la etiqueta
-    // "Email". Buscar mailto en todo el HTML de QRZ puede devolver el correo del
-    // soporte, del pie de página o de un anuncio en lugar del corresponsal.
-    // La biografía no sustituye el campo Email / "Use mouse to view".
-    const emailRegions = [...sourceHtml.matchAll(/\b(?:e-?mail)\s*:/gi)]
+    const emailRegions = [...sourceHtml.matchAll(/\\b(?:e-?mail)\\s*:/gi)]
       .map(m => sourceHtml.slice(m.index || 0, (m.index || 0) + 800)
-        .split(/(?:Ham Member|Lookups\s*:|Biography|Detail|Logbook|Awards|<footer|<\/footer>)/i)[0]);
-    const protectedEmailRegion = emailRegions.find(region =>
-      /use\s+mouse\s+to\s+view|login\s+required\s+to\s+view/i.test(stripMarkup(region))
+        .split(/(?:Ham Member|Lookups\\s*:|Biography|Detail|Logbook|Awards|<footer|<\\/footer>)/i)[0]);
+    const protectedRegion = emailRegions.find(region =>
+      /use\\s+mouse\\s+to\\s+view|login\\s+required\\s+to\\s+view/i.test(stripMarkup(region))
     ) || '';
-    const emailRegionWithAddress = emailRegions.find(region =>
-      /mailto:|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(region)
-    ) || '';
-    // Preferir el primer campo Email real de la ficha y no saltar a otra zona
-    // del documento si QRZ no publica una dirección en ese campo.
-    const profileEmailHtml = protectedEmailRegion || emailRegions[0] || emailRegionWithAddress;
-    const profileEmailSource = profileEmailHtml
+    const profileRegion = protectedRegion || emailRegions[0] || '';
+    const normalizedRegion = profileRegion
       .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
       .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
-    const mailtoMatches = [...profileEmailSource.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
-      .map(m => normalizeEmail(m[1]));
-    const visibleEmailRegion = stripMarkup(profileEmailSource
-      .replace(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi, ' $1 ')
-      .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
-    const visibleMatches = [...visibleEmailRegion.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
-      .map(m => normalizeEmail(m[0]));
+    const mailto = [...normalizedRegion.matchAll(/href\\s*=\\s*["']mailto:([^"'?\\s]+)(?:\\?[^"']*)?["']/gi)]
+      .map(m => normalizeEmail(m[1])).find(Boolean) || '';
+    const visible = stripMarkup(normalizedRegion
+      .replace(/href\\s*=\\s*["']mailto:([^"'?\\s]+)(?:\\?[^"']*)?["']/gi, ' $1 ')
+      .replace(/https?:\\/\\/[^\\s"'<>]+/gi, ' '));
+    const visibleEmail = [...visible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi)]
+      .map(m => normalizeEmail(m[0])).find(Boolean) || '';
 
-    // La biografía descargada con la clave XML autenticada es una fuente autorizada
-    // distinta del campo Email del perfil. La opción existía, pero no se utilizaba:
-    // por eso se perdían direcciones que el operador había escrito en su biografía.
     let authorizedBioEmail = '';
     if (allowEmailFromAuthorizedBio) {
       for (const bio of bioTexts) {
         const normalizedBio = String(bio || '')
           .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
           .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
-        const bioMailto = [...normalizedBio.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
-          .map(m => normalizeEmail(m[1])).find(Boolean);
+        const bioMailto = [...normalizedBio.matchAll(/href\\s*=\\s*["']mailto:([^"'?\\s]+)(?:\\?[^"']*)?["']/gi)]
+          .map(m => normalizeEmail(m[1])).find(Boolean) || '';
         const bioVisible = stripMarkup(normalizedBio);
-        const bioTextEmail = [...bioVisible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
-          .map(m => normalizeEmail(m[0])).find(Boolean);
-        authorizedBioEmail = bioMailto || bioTextEmail || '';
+        const bioTextEmail = [...bioVisible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi)]
+          .map(m => normalizeEmail(m[0])).find(Boolean) || '';
+        authorizedBioEmail = bioMailto || bioTextEmail;
         if (authorizedBioEmail) break;
       }
     }
-    const email = mailtoMatches.find(Boolean) || visibleMatches.find(Boolean) || authorizedBioEmail || '';
-
-    // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
-    // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
-    const linkSource = decodeEntities(sourceHtml)
-      .replace(/&sol;|&#47;|&#x2f;/gi, '/')
-      .replace(/&#43;|&plus;/gi, '+')
-      .replace(/%2f/gi, '/').replace(/%3a/gi, ':').replace(/%2b/gi, '+');
-    const linkCandidates = [];
-    const addCandidate = (raw, kind) => {
-      const value = String(raw || '').trim();
-      const digits = cleanPhone(value);
-      if (digits) linkCandidates.push({ raw: value, digits, kind });
-    };
-    for (const m of linkSource.matchAll(/(?:https?:)?\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com|whatsapp\.com)\/[^"'<> \t\r\n]*/gi)) {
-      const url = m[0];
-      const pathNumber = url.match(/wa\.me\/\+?([0-9]{8,15})/i);
-      const queryNumber = url.match(/[?&]phone=\+?([0-9]{8,15})/i);
-      if (pathNumber) addCandidate(pathNumber[1], 'whatsapp-link');
-      else if (queryNumber) addCandidate(queryNumber[1], 'whatsapp-link');
-    }
-    for (const m of linkSource.matchAll(/(?:href|data-href|data-url)\s*=\s*["']tel:\s*([^"']+)["']/gi)) {
-      addCandidate(m[1].split(/[?;]/)[0], 'tel-link');
-    }
-    // Los perfiles pueden guardar enlaces dentro de JSON/JavaScript o con entidades.
-    const bioAndVisible = bioText + ' ' + visibleHtml;
-    const labeledMatch = bioAndVisible.match(/(?:whatsapp|whats\s*app|wsp|wa\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|phone|mobile|cell)\s*(?:[:：=]|-)?\s*((?:\+|00)?[0-9][0-9() .-]{7,22})/i);
-    if (labeledMatch) addCandidate(labeledMatch[1], 'labeled-number');
-    const whatsapp = linkCandidates[0]?.digits || (linkCandidates.length ? '' : (labeledMatch ? cleanPhone(labeledMatch[1]) : ''));
-    const whatsappRaw = linkCandidates[0]?.raw || (labeledMatch ? labeledMatch[1].trim() : '');
-    return { email, whatsappRaw, whatsapp };
+    return { email: mailto || visibleEmail || authorizedBioEmail || '' };
   };
 
   const xmlTextValue = (xml, tag) => {
@@ -167,8 +115,6 @@ export default async function handler(req, res) {
       const profileXml = await profileResponse.text();
       if (/<Error>/i.test(profileXml)) return {};
       let email = normalizeEmail(xmlTextValue(profileXml, 'email'));
-      let whatsapp = '';
-      let whatsappRaw = '';
 
       // QRZ documenta html=<callsign> como vía XML autenticada para obtener
       // la biografía del perfil. Esto permite leer contactos publicados en la bio
@@ -184,8 +130,6 @@ export default async function handler(req, res) {
           const bioHtml = await bioResponse.text();
           const bioContacts = findContacts(bioHtml, [bioHtml], true);
           if (!email && bioContacts.email) email = bioContacts.email;
-          whatsapp = bioContacts.whatsapp || '';
-          whatsappRaw = bioContacts.whatsappRaw || '';
         }
       } catch {
         // La ficha XML principal sigue siendo útil aunque QRZ no entregue la bio.
@@ -193,8 +137,6 @@ export default async function handler(req, res) {
 
       return {
         email,
-        whatsapp,
-        whatsappRaw,
         name: xmlTextValue(profileXml, 'fname') && xmlTextValue(profileXml, 'name')
           ? xmlTextValue(profileXml, 'fname') + ' ' + xmlTextValue(profileXml, 'name')
           : xmlTextValue(profileXml, 'name'),
@@ -206,7 +148,7 @@ export default async function handler(req, res) {
     }
   }
 
-  let email = '', whatsapp = '', whatsappRaw = '', name = '', country = '', grid = '';
+  let email = '', name = '', country = '', grid = '';
   let accessError = '';
   let html = '';
   try {
@@ -233,8 +175,6 @@ export default async function handler(req, res) {
       }
       const contacts = findContacts(html, bioParts);
       email = contacts.email;
-      whatsapp = contacts.whatsapp;
-      whatsappRaw = contacts.whatsappRaw;
 
       const nameMatch = html.match(/<span[^>]*class=["'][^"']*\bm0\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
         || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
@@ -288,8 +228,6 @@ export default async function handler(req, res) {
     call
   );
   if (xmlProfile.email) email = xmlProfile.email;
-  if (xmlProfile.whatsapp) whatsapp = xmlProfile.whatsapp;
-  if (xmlProfile.whatsappRaw) whatsappRaw = xmlProfile.whatsappRaw;
   if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
@@ -297,10 +235,10 @@ export default async function handler(req, res) {
   // El correo público no se devuelve nunca desde este endpoint. Solo puede
   // proceder de la consulta XML autenticada a QRZ, solicitada por el servicio cliente.
   return res.status(200).json({
-    callsign: call, name, country, grid, email, whatsapp, whatsappRaw,
-    source: email || whatsapp ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
-    foundSource: email || whatsapp ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
-    sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(xmlProfile.email || xmlProfile.whatsapp ? ['qrz-xml'] : [])],
-    accessError: (!email && !whatsapp) ? (accessError || 'No se encontró correo ni WhatsApp publicado en las fuentes consultadas. Los datos básicos pueden proceder de HamDB; esta fuente no garantiza contactos.') : ''
+    callsign: call, name, country, grid, email,
+    source: email ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
+    foundSource: email ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
+    sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(xmlProfile.email ? ['qrz-xml'] : [])],
+    accessError: !email ? (accessError || 'No se encontró un correo publicado o accesible en las fuentes consultadas. Los datos básicos pueden proceder de HamDB; esta fuente no garantiza correos.') : ''
   });
 }
