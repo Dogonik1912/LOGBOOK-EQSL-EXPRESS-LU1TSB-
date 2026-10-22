@@ -216,6 +216,37 @@ export default async function handler(req, res) {
     accessError = 'No se pudo acceder al perfil público de QRZ desde el servidor.';
   }
 
+  // Fuente pública adicional: HamDB no requiere iniciar sesión. Se usa para
+  // completar datos básicos, pero nunca se inventan correo ni teléfono a partir de
+  // un indicativo o de datos que HamDB no publica.
+  let hamdbFound = false;
+  try {
+    const hamdbResponse = await fetch(
+      'https://api.hamdb.org/' + encodeURIComponent(call) + '/json/LOGBOOK-EQSL-EXPRESS-LU1TSB',
+      {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(7000)
+      }
+    );
+    if (hamdbResponse.ok) {
+      const payload = await hamdbResponse.json();
+      const record = payload?.hamdb?.callsign || payload?.callsign || {};
+      const status = String(payload?.hamdb?.messages?.status || payload?.messages?.status || '').toUpperCase();
+      if ((!status || status === 'OK') && (record.call || record.callsign || record.name || record.grid)) {
+        hamdbFound = true;
+        if (!name) {
+          const first = String(record.fname || '').trim();
+          const last = String(record.name || '').trim();
+          name = [first, last].filter(Boolean).join(' ') || String(record.name || '').trim();
+        }
+        if (!country) country = String(record.country || record.country_name || '').trim();
+        if (!grid) grid = String(record.grid || record.gridsquare || '').trim();
+      }
+    }
+  } catch {
+    // La fuente adicional es opcional: si falla, no debe impedir el resto del lookup.
+  }
+
   // Si se conectó una cuenta QRZ, intentar también la API XML autorizada.
   // Nunca sustituir el correo por uno encontrado en scripts o en el pie de página.
   const xmlProfile = await lookupWithAuthorizedQRZXml(
@@ -234,8 +265,9 @@ export default async function handler(req, res) {
   // proceder de la consulta XML autenticada a QRZ, solicitada por el servicio cliente.
   return res.status(200).json({
     callsign: call, name, country, grid, email, whatsapp, whatsappRaw,
-    source: email || whatsapp ? 'qrz-public-profile' : 'qrz',
-    foundSource: email || whatsapp ? 'qrz-public-profile' : 'qrz',
-    accessError: (!email && !whatsapp) ? accessError : ''
+    source: email || whatsapp ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
+    foundSource: email || whatsapp ? 'qrz-public-profile' : (hamdbFound ? 'hamdb' : 'qrz'),
+    sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(xmlProfile.email || xmlProfile.whatsapp ? ['qrz-xml'] : [])],
+    accessError: (!email && !whatsapp) ? (accessError || 'No se encontró correo ni WhatsApp publicado en las fuentes consultadas. Los datos básicos pueden proceder de HamDB; esta fuente no garantiza contactos.') : ''
   });
 }
