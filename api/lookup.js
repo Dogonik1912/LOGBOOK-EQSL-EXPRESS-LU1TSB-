@@ -290,6 +290,49 @@ export default async function handler(req, res) {
     }
   }
 
+  // HamQTH API v2: alternativa independiente cuando QRZ no devuelve el correo.
+  // La contraseña se envía únicamente en el POST de login, nunca en una URL.
+  async function lookupWithHamQTH(user, pass, callsign) {
+    if (!user || !pass) return {};
+    try {
+      const login = await fetch('https://www.hamqth.com/api/v2/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ callsign: user, password: pass }),
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!login.ok) {
+        return { hamqthError: login.status === 401
+          ? 'HamQTH rechazó el usuario o la contraseña.'
+          : 'HamQTH no pudo autenticar la cuenta (HTTP ' + login.status + ').' };
+      }
+      const auth = await login.json();
+      if (!auth.token) return { hamqthError: 'HamQTH no devolvió un token de sesión.' };
+      const response = await fetch('https://www.hamqth.com/api/v2/callbook/' + encodeURIComponent(callsign) + '?app=LogBook%20eQSL%20Express', {
+        headers: { 'Authorization': 'Bearer ' + auth.token, 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) {
+        return { hamqthError: response.status === 404
+          ? 'Ese indicativo no figura en el callbook de HamQTH.'
+          : 'HamQTH no pudo consultar el indicativo (HTTP ' + response.status + ').' };
+      }
+      const profile = await response.json();
+      const returnedCall = String(profile.callsign || '').toUpperCase().replace(/[^A-Z0-9/]/g, '');
+      const requestedCall = String(callsign || '').toUpperCase().replace(/[^A-Z0-9/]/g, '');
+      if (!returnedCall || returnedCall !== requestedCall) {
+        return { hamqthError: 'HamQTH devolvió un registro que no coincide con el indicativo solicitado.' };
+      }
+      const email = normalizeEmail(profile.email || '');
+      const name = String(profile.name || profile.nick || '').trim();
+      const country = String(profile.country || '').trim();
+      const grid = String(profile.location?.grid || profile.grid || '').trim();
+      return { email, name, country, grid, hamqthFound: true, emailSource: email ? 'hamqth' : '' };
+    } catch (error) {
+      return { hamqthError: 'No se pudo consultar HamQTH: ' + (error instanceof Error ? error.message : 'error desconocido') };
+    }
+  }
+
   let email = '', name = '', country = '', grid = '';
   let accessError = '';
   let html = '';
@@ -372,7 +415,19 @@ export default async function handler(req, res) {
   if (webProfile.email) email = webProfile.email;
   if (!name && webProfile.name) name = webProfile.name;
 
-  // Si se conectó una cuenta QRZ, intentar también la API XML autorizada.
+  // Alternativa: HamQTH puede proporcionar el correo del perfil si QRZ no lo devuelve.
+  // Solo se acepta un registro cuyo indicativo coincide exactamente con el consultado.
+  const hamqthProfile = email ? {} : await lookupWithHamQTH(
+    String(body.hamqthUser || '').trim(),
+    String(body.hamqthPass || ''),
+    call
+  );
+  if (!email && hamqthProfile.email) email = hamqthProfile.email;
+  if (!name && hamqthProfile.name) name = hamqthProfile.name;
+  if (!country && hamqthProfile.country) country = hamqthProfile.country;
+  if (!grid && hamqthProfile.grid) grid = hamqthProfile.grid;
+
+  // Si QRZ no devolvió correo y HamQTH tampoco, intentar la API XML autorizada de QRZ.
   // Nunca sustituir el correo por uno encontrado en scripts o en el pie de página.
   const xmlProfile = email ? {} : await lookupWithAuthorizedQRZXml(
     String(body.user || '').trim(),
@@ -382,7 +437,7 @@ export default async function handler(req, res) {
   // Fuente exclusiva del correo: ficha XML autenticada del indicativo consultado.
   // Nunca conservar ni sustituirlo por una coincidencia del HTML público.
   email = email || xmlProfile.email || '';
-  const emailSource = webProfile.email ? webProfile.emailSource : (xmlProfile.emailSource || (email ? 'qrz-xml' : ''));
+  const emailSource = webProfile.email ? webProfile.emailSource : (hamqthProfile.email ? 'hamqth' : (xmlProfile.emailSource || (email ? 'qrz-xml' : '')));
   if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
@@ -430,6 +485,6 @@ export default async function handler(req, res) {
     source: email ? emailSource : (hamdbFound ? 'hamdb' : 'qrz'),
     foundSource: email ? emailSource : (hamdbFound ? 'hamdb' : 'qrz'),
     sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(email ? [emailSource] : [])],
-    accessError: !email ? (webProfile.webLoginError || accessError || 'QRZ no devolvió un correo mediante la consulta autorizada. El teléfono/WhatsApp se informa únicamente si figura como contacto público.') : ''
+    accessError: !email ? (hamqthProfile.hamqthError || webProfile.webLoginError || accessError || 'Ni QRZ ni HamQTH devolvieron un correo para este indicativo. El teléfono/WhatsApp se informa únicamente si figura como contacto público.') : ''
   });
 }
