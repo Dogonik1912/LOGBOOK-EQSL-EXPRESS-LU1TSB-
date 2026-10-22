@@ -161,7 +161,7 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
               className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold rounded-lg shadow-md transition-all cursor-pointer"
             >
               <Check className="w-4 h-4" />
-              Guardar y conectar
+              Conectar
             </button>
           </div>
         </form>
