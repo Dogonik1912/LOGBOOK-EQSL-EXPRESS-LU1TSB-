@@ -57,22 +57,30 @@ export default async function handler(req, res) {
       .replace(/\\u002f/gi, '/').replace(/\\u003a/gi, ':')
       .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@');
     const bioText = bioTexts.map(stripMarkup).join(' ');
-    const mailtoMatches = [...sourceHtml.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
+    // El correo solo se busca dentro del bloque de la ficha que sigue a la etiqueta
+    // "Email". Buscar mailto en todo el HTML de QRZ puede devolver el correo del
+    // soporte, del pie de página o de un anuncio en lugar del corresponsal.
+    // La biografía no sustituye el campo Email / "Use mouse to view".
+    const emailRegions = [...sourceHtml.matchAll(/\b(?:e-?mail)\s*:?/gi)]
+      .map(m => sourceHtml.slice(m.index || 0, (m.index || 0) + 2200));
+    const protectedEmailRegion = emailRegions.find(region =>
+      /use\s+mouse\s+to\s+view|login\s+required\s+to\s+view/i.test(stripMarkup(region))
+    ) || '';
+    const emailRegionWithAddress = emailRegions.find(region =>
+      /mailto:|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(region)
+    ) || '';
+    const profileEmailHtml = protectedEmailRegion || emailRegionWithAddress;
+    const profileEmailSource = profileEmailHtml
+      .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
+      .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
+    const mailtoMatches = [...profileEmailSource.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
       .map(m => normalizeEmail(m[1]));
-    const bioMatches = [...bioText.matchAll(/[A-Z0-9._%+-]+(?:\s*\[at\]\s*|\s*\(at\)\s*|@)[A-Z0-9.-]+(?:\s*\[dot\]\s*|\s*\(dot\)\s*|\.)[A-Z]{2,}/gi)]
-      .map(m => normalizeEmail(m[0].replace(/\s*\[at\]\s*|\s*\(at\)\s*/i, '@').replace(/\s*\[dot\]\s*|\s*\(dot\)\s*/i, '.')));
-    const visibleHtml = stripMarkup(sourceHtml
+    const visibleEmailRegion = stripMarkup(profileEmailSource
       .replace(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi, ' $1 ')
       .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
-    const visibleMatches = [...visibleHtml.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
+    const visibleMatches = [...visibleEmailRegion.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0]));
-    // Aceptar correo explícitamente publicado en la biografía o en un enlace
-    // mailto del perfil público. No usar correos sueltos de scripts/pies de página,
-    // que suelen ser direcciones técnicas ajenas al corresponsal.
-    // La lectura de texto visible queda reservada para la biografía autenticada.
-    const email = bioMatches.find(Boolean)
-      || mailtoMatches.find(Boolean)
-      || (allowEmailFromAuthorizedBio ? (visibleMatches.find(Boolean) || '') : '');
+    const email = mailtoMatches.find(Boolean) || visibleMatches.find(Boolean) || '';
 
     // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
     // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
