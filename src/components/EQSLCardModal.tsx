@@ -24,7 +24,6 @@ interface EQSLCardModalProps {
   qso: QSO | null;
   isOpen: boolean;
   onClose: () => void;
-  onMarkSent: (qsoId: string) => void;
   onOpenReply?: (qso: QSO) => void;
 }
 
@@ -32,7 +31,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   qso,
   isOpen,
   onClose,
-  onMarkSent,
   onOpenReply,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -285,7 +283,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     link.download = `eQSL_${myCallsign}_${qso.callsign}_${qso.date}.png`;
     link.href = canvasRef.current.toDataURL('image/png');
     link.click();
-    onMarkSent(qso.id);
   };
 
   // PRIORIDAD 1: Compartir por WhatsApp con firma dinámica y link de respuesta eQSL
@@ -307,7 +304,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
-    onMarkSent(qso.id);
   };
 
   // Enviar por Email (con link de respuesta eQSL y firma dinámica)
@@ -336,7 +332,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
     const targetEmail = qso.email || '';
     window.open(`mailto:${targetEmail}?subject=${subject}&body=${body}`);
-    onMarkSent(qso.id);
   };
 
   // Copiar resumen del QSO con link de respuesta
