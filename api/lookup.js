@@ -118,7 +118,7 @@ export default async function handler(req, res) {
   // QRZ documenta XML como vía autenticada para aplicaciones. Si el usuario
   // conectó su propia cuenta, usar únicamente los campos que su cuenta puede consultar.
   async function lookupWithAuthorizedQRZXml(user, pass, callsign) {
-    if (!user || !pass) return {};
+    if (!user || !pass) return { accessError: 'Conectá tu cuenta QRZ en Ajustes para consultar el correo mediante la interfaz oficial.' };
     try {
       const authUrl = 'https://xmldata.qrz.com/xml/current/?username=' +
         encodeURIComponent(user) + ';password=' + encodeURIComponent(pass) +
@@ -126,18 +126,24 @@ export default async function handler(req, res) {
       const authResponse = await fetch(authUrl, {
         headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' }
       });
-      if (!authResponse.ok) return {};
+      if (!authResponse.ok) return { accessError: 'La interfaz XML de QRZ respondió HTTP ' + authResponse.status + ' al autenticar.' };
       const authXml = await authResponse.text();
       const key = xmlTextValue(authXml, 'Key');
-      if (!key) return {};
+      if (!key) {
+        const reason = xmlTextValue(authXml, 'Error') || xmlTextValue(authXml, 'Message');
+        return { accessError: reason ? 'QRZ no autenticó la cuenta: ' + reason : 'QRZ no devolvió una clave de sesión XML. Revisá las credenciales configuradas.' };
+      }
       const profileUrl = 'https://xmldata.qrz.com/xml/current/?s=' +
         encodeURIComponent(key) + ';callsign=' + encodeURIComponent(callsign);
       const profileResponse = await fetch(profileUrl, {
         headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' }
       });
-      if (!profileResponse.ok) return {};
+      if (!profileResponse.ok) return { accessError: 'La interfaz XML de QRZ respondió HTTP ' + profileResponse.status + ' al consultar el indicativo.' };
       const profileXml = await profileResponse.text();
-      if (/<Error>/i.test(profileXml)) return {};
+      const xmlError = xmlTextValue(profileXml, 'Error');
+      const xmlMessage = xmlTextValue(profileXml, 'Message');
+      if (xmlError) return { accessError: 'QRZ XML: ' + xmlError };
+
 
       // Verificar la identidad del registro antes de aceptar cualquier dato de contacto.
       // QRZ normalmente devuelve <call>; si lo incluye y no coincide, no asociar
@@ -177,118 +183,21 @@ export default async function handler(req, res) {
       return {
         email,
         emailSource,
+        accessError: email ? '' : (xmlMessage ? 'QRZ informa: ' + xmlMessage : 'QRZ autenticó la cuenta, pero no entregó el campo Email para este indicativo. Puede estar oculto o limitado por los permisos/suscripción de QRZ.'),
         name: xmlTextValue(profileXml, 'fname') && xmlTextValue(profileXml, 'name')
           ? xmlTextValue(profileXml, 'fname') + ' ' + xmlTextValue(profileXml, 'name')
           : xmlTextValue(profileXml, 'name'),
         country: xmlTextValue(profileXml, 'country'),
         grid: xmlTextValue(profileXml, 'grid')
       };
-    } catch {
-      return {};
-    }
-  }
-
-
-  // Intenta iniciar sesión en la web de QRZ (sin XML) y leer solo el campo Email
-  // de la ficha del indicativo. No se reutilizan cookies entre usuarios ni se guardan
-  // credenciales en el servidor. Si QRZ cambia su formulario, se informa sin inventar datos.
-  async function lookupWithQRZWebLogin(user, pass, callsign) {
-    if (!user || !pass) return {};
-    const baseHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cache-Control': 'no-cache'
-    };
-    const cookies = new Map();
-    const rememberCookies = response => {
-      const values = typeof response.headers.getSetCookie === 'function'
-        ? response.headers.getSetCookie()
-        : [response.headers.get('set-cookie') || ''];
-      for (const line of values) {
-        const first = String(line).split(';')[0];
-        const at = first.indexOf('=');
-        if (at > 0) cookies.set(first.slice(0, at).trim(), first.slice(at + 1).trim());
-      }
-    };
-    const cookieHeader = () => [...cookies.entries()].map(([k,v]) => k + '=' + v).join('; ');
-    const request = async (url, options = {}) => {
-      const headers = { ...baseHeaders, ...(options.headers || {}) };
-      if (cookies.size) headers.Cookie = cookieHeader();
-      const response = await fetch(url, {
-        ...options, headers, redirect: 'manual', signal: AbortSignal.timeout(12000)
-      });
-      rememberCookies(response);
-      return response;
-    };
-    try {
-      let loginResponse = await request('https://www.qrz.com/login');
-      if ([301,302,303,307,308].includes(loginResponse.status) && loginResponse.headers.get('location')) {
-        const next = new URL(loginResponse.headers.get('location'), 'https://www.qrz.com').href;
-        loginResponse = await request(next);
-      }
-      if (!loginResponse.ok) return { webLoginError: 'QRZ no permitió abrir el formulario de inicio de sesión (HTTP ' + loginResponse.status + ').' };
-      const loginHtml = await loginResponse.text();
-      const forms = [...loginHtml.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)];
-      const candidates = forms.map(m => ({ attrs: m[1], html: m[2] }));
-      let form = candidates.find(x => /password/i.test(x.html) && /user|call|login|email/i.test(x.html)) ||
-        candidates.find(x => /password/i.test(x.html));
-      if (!form) return { webLoginError: 'No se reconoció el formulario web de QRZ; no se intentó extraer el correo.' };
-      const actionMatch = form.attrs.match(/action\s*=\s*["']([^"']*)["']/i);
-      const methodMatch = form.attrs.match(/method\s*=\s*["']([^"']*)["']/i);
-      const action = new URL(actionMatch ? actionMatch[1] : '/login', loginResponse.url || 'https://www.qrz.com/login').href;
-      const params = new URLSearchParams();
-      for (const m of form.html.matchAll(/<input\b([^>]*)>/gi)) {
-        const attrs = m[1];
-        const name = attrs.match(/\bname\s*=\s*["']([^"']+)["']/i)?.[1];
-        const value = attrs.match(/\bvalue\s*=\s*["']([^"']*)["']/i)?.[1] || '';
-        const type = attrs.match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1] || 'text';
-        if (name && /hidden|submit|text|email|checkbox/i.test(type)) params.set(name, value);
-      }
-      const inputDefs = [...form.html.matchAll(/<input\b([^>]*)>/gi)].map(m => {
-        const a=m[1], n=a.match(/\bname\s*=\s*["']([^"']+)["']/i)?.[1] || '';
-        const t=a.match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1] || 'text';
-        return {name:n,type:t};
-      });
-      const userField = inputDefs.find(x => /user|call|login|email/i.test(x.name) && !/csrf|token|remember/i.test(x.name) && x.type !== 'password');
-      const passField = inputDefs.find(x => x.type === 'password' || /pass(word)?/i.test(x.name));
-      if (!userField || !passField) return { webLoginError: 'El formulario de QRZ no expuso los campos de usuario y contraseña esperados.' };
-      params.set(userField.name, user);
-      params.set(passField.name, pass);
-      const submit = inputDefs.find(x => /submit/i.test(x.type) && x.name);
-      if (submit && !params.has(submit.name)) params.set(submit.name, 'Login');
-      let auth = await request(action, {
-        method: (methodMatch?.[1] || 'post').toUpperCase(),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': loginResponse.url || 'https://www.qrz.com/login' },
-        body: params.toString()
-      });
-      // Seguir redirecciones manteniendo únicamente las cookies de esta petición.
-      for (let i=0; i<4 && [301,302,303,307,308].includes(auth.status) && auth.headers.get('location'); i++) {
-        const next = new URL(auth.headers.get('location'), action).href;
-        auth = await request(next, { method: 'GET', headers: { 'Referer': action } });
-      }
-      const authHtml = await auth.text();
-      if (!cookies.size || /name=["']password["'][^>]*type=["']password["']/i.test(authHtml) && /login failed|invalid password|incorrect password/i.test(stripMarkup(authHtml))) {
-        return { webLoginError: 'QRZ no confirmó una sesión web autenticada; revisá el usuario y la contraseña.' };
-      }
-      const profileResponse = await request('https://www.qrz.com/db/' + encodeURIComponent(callsign), {
-        headers: { 'Referer': 'https://www.qrz.com/' }
-      });
-      if (!profileResponse.ok) return { webLoginError: 'QRZ no permitió abrir el perfil tras iniciar sesión (HTTP ' + profileResponse.status + ').' };
-      const profileHtml = await profileResponse.text();
-      if (/login is required for additional detail|login required to view/i.test(stripMarkup(profileHtml))) {
-        return { webLoginError: 'QRZ siguió mostrando el perfil como no autenticado; la sesión web no quedó validada.' };
-      }
-      const contact = findContacts(profileHtml, [], false);
-      return {
-        email: contact.email || '',
-        emailSource: contact.email ? 'qrz-web-session' : '',
-        webLoginError: contact.email ? '' : 'Sesión web iniciada, pero el campo Email no se pudo descifrar desde el HTML recibido.'
-      };
     } catch (error) {
-      return { webLoginError: 'Falló la consulta web autenticada de QRZ: ' + (error instanceof Error ? error.message : 'error desconocido') };
+      return { accessError: 'Falló la consulta XML oficial de QRZ: ' + (error instanceof Error ? error.message : 'error desconocido') };
     }
   }
+
+
+  // Se evita automatizar el formulario HTML de QRZ. Para correo se utiliza
+  // exclusivamente la interfaz XML oficial autenticada y los permisos de esa cuenta.
 
   let email = '', name = '', country = '', grid = '';
   let accessError = '';
@@ -331,26 +240,15 @@ export default async function handler(req, res) {
     accessError = 'No se pudo acceder al perfil público de QRZ desde el servidor.';
   }
 
-  // Buscar correo exclusivamente mediante sesión web autenticada de QRZ.
-  const webProfile = await lookupWithQRZWebLogin(
+  // Única vía automática para correo: interfaz XML oficial autenticada de QRZ.
+  // No se automatiza el formulario web ni se intenta descifrar el campo protegido.
+  const xmlProfile = await lookupWithAuthorizedQRZXml(
     String(body.user || '').trim(),
     String(body.pass || ''),
     call
   );
-  if (webProfile.email) email = webProfile.email;
-  if (!name && webProfile.name) name = webProfile.name;
-
-  // Si QRZ web no devolvió correo, intentar la interfaz XML autenticada de QRZ.
-  // Nunca sustituir el correo por uno encontrado en scripts o en el pie de página.
-  const xmlProfile = email ? {} : await lookupWithAuthorizedQRZXml(
-    String(body.user || '').trim(),
-    String(body.pass || ''),
-    call
-  );
-  // Fuente exclusiva del correo: ficha XML autenticada del indicativo consultado.
-  // Nunca conservar ni sustituirlo por una coincidencia del HTML público.
-  email = email || xmlProfile.email || '';
-  const emailSource = webProfile.email ? webProfile.emailSource : (xmlProfile.emailSource || (email ? 'qrz-xml' : ''));
+  email = xmlProfile.email || '';
+  const emailSource = xmlProfile.emailSource || '';
   if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
@@ -399,6 +297,6 @@ export default async function handler(req, res) {
     source: email ? emailSource : 'qrz',
     foundSource: email ? emailSource : 'qrz',
     sources: ['qrz'],
-    accessError: !email ? (webProfile.webLoginError || accessError || 'QRZ no devolvió un correo visible para este indicativo. El teléfono/WhatsApp se informa únicamente si figura como contacto público.') : ''
+    accessError: !email ? (xmlProfile.accessError || accessError || 'QRZ no entregó un correo mediante la interfaz oficial. El teléfono/WhatsApp se informa únicamente si figura como contacto público.') : ''
   });
 }
