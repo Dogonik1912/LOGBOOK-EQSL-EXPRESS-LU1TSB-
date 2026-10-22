@@ -155,15 +155,13 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
   const qrzUser = localStorage.getItem('qrz_user') || '';
   const qrzPass = localStorage.getItem('qrz_pass') || '';
 
-  // 1. Intentar a través del motor de cruce de datos del servidor (/api/lookup)
+  // Consulta mediante el endpoint del servidor. Las credenciales no se incluyen en la URL.
   try {
-    const params = new URLSearchParams({
-      call: cleanCall,
-      user: qrzUser,
-      pass: qrzPass,
+    const res = await fetch('/api/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call: cleanCall, user: qrzUser, pass: qrzPass }),
     });
-
-    const res = await fetch(`/api/lookup?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
       if (data && !data.error) {
@@ -180,7 +178,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
       }
     }
   } catch (err) {
-    console.warn('Cross-referencing lookup failed, attempting direct XML fallback:', err);
+    console.warn('QRZ lookup failed:', err);
   }
 
   // Fallback con prefijo
