@@ -143,7 +143,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       setWhatsappRaw(details.whatsappRaw || '');
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
-      setQrzFoundSource(details.source as any);
+      setQrzFoundSource((details.email || details.whatsapp) ? (details.source as any) : null);
     } catch (e) {
       if (requestId === lookupRequestId.current) console.warn(e);
     } finally {
@@ -374,7 +374,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
                 Email
               </span>
               {email && email !== 'NOT FOUND' ? (
-                <span className="text-[10px] text-emerald-400 font-semibold">✓ Verificado en fuente</span>
+                <span className="text-[10px] text-emerald-400 font-semibold">✓ Dirección cargada</span>
               ) : !hasQRZConfig ? (
                 <span className="text-[10px] text-amber-400/90 underline cursor-pointer" onClick={onOpenQRZModal}>
                   Conectar QRZ
