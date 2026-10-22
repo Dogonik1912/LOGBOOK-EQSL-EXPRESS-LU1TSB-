@@ -207,15 +207,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       'CREATED-BY: LogBook eQSL Express',
     ];
     qsos.forEach((q) => {
-      const date = (q.date || '').replace(/-/g, '');
-      const dateShort = date.length === 8 ? date.slice(2) : date;
+      const date = q.date || '';
       const time = (q.time || '').replace(/:/g, '').slice(0, 4).padEnd(4, '0');
-      const freq = (q.frequency || '').trim();
-      const mode = /^(CW|RTTY|FT8|FT4|PSK31)$/i.test(q.mode) ? 'DG' : (/^(FM|AM)$/i.test(q.mode) ? 'FM' : 'PH');
-      lines.push(`QSO: ${freq} ${mode} ${dateShort} ${time} ${myCall} ${q.rstSent || '59'} ${q.callsign} ${q.rstRcvd || '59'}`);
+      const frequencyMHz = Number.parseFloat((q.frequency || '').trim());
+      const freqKHz = Number.isFinite(frequencyMHz) ? String(Math.round(frequencyMHz * 1000)) : '14000';
+      const mode = /^CW$/i.test(q.mode) ? 'CW' : (/^(RTTY|FT8|FT4|PSK31|JS8|D-STAR|DMR)$/i.test(q.mode) ? 'RY' : 'PH');
+      lines.push(`QSO: ${freqKHz} ${mode} ${date} ${time} ${myCall} ${q.rstSent || '59'} ${q.callsign} ${q.rstRcvd || '59'}`);
     });
     lines.push('END-OF-LOG:');
-    const blob = new Blob([lines.join('\\r\\n') + '\\r\\n'], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
