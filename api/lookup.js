@@ -12,8 +12,8 @@ export default async function handler(req, res) {
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").trim();
   const field = (xml, name) => {
-    const m = xml.match(new RegExp('<' + name + '(?:\\s[^>]*)?>([\\s\\S]*?)</' + name + '>', 'i'));
-    return m ? decode(m[1].replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, '$1').replace(/<[^>]+>/g, ' ')) : '';
+    const m = xml.match(new RegExp('<' + name + '(?:\s[^>]*)?>([\s\\S]*?)</' + name + '>', 'i'));
+    return m ? decode(m[1].replace(/<!\\[CDATA\\[([\s\\S]*?)\\]\\]>/g, '$1').replace(/<[^>]+>/g, ' ')) : '';
   };
 
   let email = '', whatsapp = '', whatsappRaw = '', name = '', country = '', grid = '';
@@ -30,30 +30,30 @@ export default async function handler(req, res) {
     });
     if (pageRes.ok) {
       const html = await pageRes.text();
-      const b64 = html.match(/Base64\\.decode\\(["']([A-Za-z0-9+/=]+)["']\\)/);
+      const b64 = html.match(/Base64\.decode\(["']([A-Za-z0-9+/=]+)["']\)/);
       if (b64?.[1]) {
         try { bioText = Buffer.from(b64[1], 'base64').toString('utf8'); } catch {}
       }
-      const nameMatch = html.match(/<span class="m0"[^>]*>([^<]+)<\\/span>/i)
-        || html.match(/<h1[^>]*>([^<]+)<\\/h1>/i);
+      const nameMatch = html.match(/<span class="m0"[^>]*>([^<]+)<\/span>/i)
+        || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
       if (nameMatch) name = decode(nameMatch[1].replace(/<[^>]+>/g, ' '));
-      const gridMatch = html.match(/Grid Square:<\\/td>\\s*<td[^>]*>([A-Za-z0-9]+)/i)
+      const gridMatch = html.match(/Grid Square:<\/td>\s*<td[^>]*>([A-Za-z0-9]+)/i)
         || html.match(/([A-R]{2}[0-9]{2}[a-x]{2})/i);
       if (gridMatch) grid = gridMatch[1].trim();
-      const countryMatch = html.match(/Country:<\\/td>\\s*<td[^>]*>([^<]+)<\\/td>/i);
+      const countryMatch = html.match(/Country:<\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
       if (countryMatch) country = decode(countryMatch[1]);
 
-      const scan = (bioText + ' ' + html).replace(/\\u003c/gi, '<');
-      const waMatch = scan.match(/(?:whatsapp|wsp|wa\\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|cel)\\s*(?:[:：=]|https?:\\/\\/)?\\s*([+0-9][+0-9() .-]{7,24})/i);
+      const scan = (bioText + ' ' + html).replace(/\u003c/gi, '<');
+      const waMatch = scan.match(/(?:whatsapp|wsp|wa\.me|celular|m[oó]vil|movil|tel[eé]fono|telefono|cel)\s*(?:[:：=]|https?:\\/\\/)?\s*([+0-9][+0-9() .-]{7,24})/i);
       if (waMatch?.[1]) {
         whatsappRaw = waMatch[1].trim();
-        let digits = whatsappRaw.replace(/\\D/g, '');
+        let digits = whatsappRaw.replace(/\D/g, '');
         if (digits.startsWith('00')) digits = digits.slice(2);
         if (digits.length >= 8) whatsapp = digits;
       }
-      const foundEmails = scan.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi) || [];
+      const foundEmails = scan.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
       const validEmails = foundEmails.filter(e =>
-        !/(?:google|qrz\\.com|sentry|example\\.com|cloudflare|w3\\.org)/i.test(e)
+        !/(?:google|qrz\.com|sentry|example\.com|cloudflare|w3\.org)/i.test(e)
       );
       if (validEmails.length) email = validEmails[0];
       if (email || whatsapp) foundSource = 'qrz-bio';
