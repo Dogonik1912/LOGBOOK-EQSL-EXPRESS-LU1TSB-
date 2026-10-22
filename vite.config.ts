@@ -158,20 +158,7 @@ export default defineConfig(() => {
                 }
               }
 
-              // 5. Fallback inteligente de correo para radioaficionados según país si aún no tiene
-              // En radioafición, cada asociación tiene forwards estándar
-              if (!email && !whatsapp) {
-                const callClean = call.toUpperCase();
-                if (callClean.startsWith('EA') || callClean.startsWith('EB') || callClean.startsWith('EC')) {
-                  email = `${callClean.toLowerCase()}@ure.es`;
-                } else if (callClean.startsWith('LU') || callClean.startsWith('LW')) {
-                  email = `${callClean.toLowerCase()}@qrz.com`;
-                } else if (callClean.startsWith('PY')) {
-                  email = `${callClean.toLowerCase()}@labre.org.br`;
-                } else if (/^[WKN][A-Z]?[0-9]/.test(callClean)) {
-                  email = `${callClean.toLowerCase()}@arrl.net`;
-                }
-              }
+              // No inventar correos por prefijo: solo devolver datos que QRZ proporcione.
 
               res.setHeader('Content-Type', 'application/json; charset=utf-8');
               res.setHeader('Access-Control-Allow-Origin', '*');
