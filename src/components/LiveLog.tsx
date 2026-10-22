@@ -448,6 +448,11 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                           {q.name}
                         </div>
                       )}
+                      {q.qrzUploadError && !q.qrzUploaded && (
+                        <div className="text-[10px] text-rose-400 truncate max-w-[130px]" title={q.qrzUploadError}>
+                          QRZ: error de carga
+                        </div>
+                      )}
                     </td>
 
                     {/* Banda y Frecuencia */}
