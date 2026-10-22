@@ -52,8 +52,13 @@ export default function App() {
   useEffect(() => {
     // Revisar si vino desde un enlace de respuesta compartida
     const urlParams = new URLSearchParams(window.location.search);
+    const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
-    if (replyToParam) {
+
+    // El enlace de conexión tiene prioridad incluso si también incluye reply_to.
+    if (forceQRZConnect) {
+      setIsQRZModalOpen(true);
+    } else if (replyToParam) {
       setReplyData({
         replyToCall: replyToParam,
         myCall: urlParams.get('to_call') || '',
