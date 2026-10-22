@@ -17,7 +17,7 @@ export interface CallsignDetails {
   state?: string;
   bio?: string;
   lookupMessage?: string;
-  source: 'qrz' | 'qrz-bio' | 'prefix-db' | 'cache';
+  source: 'qrz' | 'qrz-bio' | 'hamqth' | 'hamdb' | 'prefix-db' | 'cache';
 }
 
 /**
@@ -187,7 +187,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           country: data.country || prefixInfo.country,
           grid: data.grid || '',
           lookupMessage: String(data.accessError || ''),
-          source: data.foundSource ? 'qrz-bio' : 'qrz',
+          source: data.foundSource === 'hamqth' ? 'hamqth' : data.foundSource === 'hamdb' ? 'hamdb' : data.foundSource ? 'qrz-bio' : 'qrz',
         };
       }
     }
