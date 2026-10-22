@@ -68,11 +68,14 @@ export default function App() {
       });
       setIsReplyModalOpen(true);
     } else {
+      const forceQRZConnect = urlParams.get('connect_qrz') === '1';
       const qrzUser = localStorage.getItem('qrz_user');
       const qrzPass = localStorage.getItem('qrz_pass');
       const qrzSkipped = localStorage.getItem('qrz_skipped');
 
-      if ((!qrzUser || !qrzPass) && !qrzSkipped) {
+      // Un enlace de prueba con ?connect_qrz=1 debe abrir siempre el modal,
+      // aunque este navegador haya omitido QRZ o guardado credenciales antes.
+      if (forceQRZConnect || ((!qrzUser || !qrzPass) && !qrzSkipped)) {
         setIsQRZModalOpen(true);
       }
     }
