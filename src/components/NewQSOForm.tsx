@@ -393,15 +393,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
         </div>
 
-        {lookupMessage && (
-          <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
-            <span>{lookupMessage}</span>
-            <button type="button" onClick={onOpenQRZModal} className="shrink-0 underline underline-offset-2 hover:text-amber-100">
-              Revisar conexión QRZ
-            </button>
-          </div>
-        )}
-
         {/* Fila 2: Fecha UTC, Hora UTC, Frecuencia, Modo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           <div>
