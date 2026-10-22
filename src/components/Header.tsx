@@ -22,7 +22,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [utcDate, setUtcDate] = useState('');
 
   const callsign = getUserCallsign();
-  const hasQRZ = Boolean(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass'));
+  const qrzUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
+  const qrzPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
+  const hasQRZ = Boolean(qrzUser && qrzPass);
 
   useEffect(() => {
     const updateClock = () => {
@@ -113,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
             {hasQRZ ? (
               <>
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">QRZ:</span> {localStorage.getItem('qrz_user')}
+                <span className="hidden sm:inline">QRZ:</span> {qrzUser}
               </>
             ) : (
               <>
