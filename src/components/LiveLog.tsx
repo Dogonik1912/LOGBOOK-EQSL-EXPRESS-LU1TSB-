@@ -159,8 +159,12 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       adif += `<BAND:${q.band.length}>${q.band}`;
       adif += `<FREQ:${q.frequency.length}>${q.frequency}`;
       adif += `<MODE:${q.mode.length}>${q.mode}`;
-      adif += `<RST_SENT:${q.rstSent.length}>${q.rstSent}`;
-      adif += `<RST_RCVD:${q.rstRcvd.length}>${q.rstRcvd}`;
+      const rstSent = q.rstSent || '59';
+      const rstRcvd = q.rstRcvd || '59';
+      adif += `<RST_SENT:${rstSent.length}>${rstSent}`;
+      adif += `<RST_RCVD:${rstRcvd.length}>${rstRcvd}`;
+      if (q.exchangeSent) adif += `<STX_STRING:${q.exchangeSent.length}>${q.exchangeSent}`;
+      if (q.exchangeReceived) adif += `<SRX_STRING:${q.exchangeReceived.length}>${q.exchangeReceived}`;
       if (q.email) adif += `<EMAIL:${q.email.length}>${q.email}`;
       if (q.name) adif += `<NAME:${q.name.length}>${q.name}`;
       if (q.country) adif += `<COUNTRY:${q.country.length}>${q.country}`;
@@ -270,6 +274,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           mode: getField('MODE') || 'SSB',
           rstSent: getField('RST_SENT') || '59',
           rstRcvd: getField('RST_RCVD') || '59',
+          exchangeSent: getField('STX_STRING') || '',
+          exchangeReceived: getField('SRX_STRING') || '',
           email: getField('EMAIL') || '',
           name: getField('NAME') || '',
           country: getField('COUNTRY') || '',
@@ -471,9 +477,9 @@ export const LiveLog: React.FC<LiveLogProps> = ({
 
                     {/* RST Enviada / Recibida */}
                     <td className="py-2.5 px-2 font-mono text-slate-300 whitespace-nowrap">
-                      <span className="text-emerald-400 font-bold">{q.rstSent}</span>
+                      <span className="text-emerald-400 font-bold">{q.rstSent || '59'}</span>
                       <span className="text-slate-600 mx-1">/</span>
-                      <span className="text-sky-400 font-bold">{q.rstRcvd}</span>
+                      <span className="text-sky-400 font-bold">{q.rstRcvd || '59'}</span>
                     </td>
 
                     {/* PRIORIDAD 3: Columna Email y WhatsApp Editables en el Live Log */}
