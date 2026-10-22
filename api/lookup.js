@@ -65,7 +65,15 @@ export default async function handler(req, res) {
       for (const m of b64Matches) {
         try { bioParts.push(Buffer.from(m[1], 'base64').toString('utf8')); } catch {}
       }
-      const decodedPage = html + '\n' + bioParts.join('\n');
+      // Evitar falsos positivos: el HTML completo contiene correos de scripts,
+      // anuncios, soporte y herramientas ajenas al operador. Buscar en la biografía
+      // decodificada y en el texto visible del perfil; aceptar también un mailto explícito.
+      const visibleHtml = html
+        .replace(/<!--[\\s\\S]*?-->/g, ' ')
+        .replace(/<(script|style|noscript|svg|head)[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ')
+        .replace(/href=[\"']mailto:([^\"'?\\s]+)[\"']/gi, ' $1 ')
+        .replace(/<[^>]*>/g, ' ');
+      const decodedPage = visibleHtml + '\\n' + bioParts.join('\\n');
       const contacts = findContacts(decodedPage);
       email = contacts.email;
       whatsapp = contacts.whatsapp;
