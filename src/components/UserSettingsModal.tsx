@@ -27,6 +27,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [qrzUser, setQrzUser] = useState('');
   const [qrzPass, setQrzPass] = useState('');
+  const [qrzLogbookKey, setQrzLogbookKey] = useState('');
+  const [qrzAutoUpload, setQrzAutoUpload] = useState(false);
   const [eqslUser, setEqslUser] = useState('');
   const [eqslPass, setEqslPass] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -41,6 +43,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setQrzUser(localStorage.getItem('qrz_user') || '');
       setQrzPass(localStorage.getItem('qrz_pass') || '');
+      setQrzLogbookKey(localStorage.getItem('qrz_logbook_key') || '');
+      setQrzAutoUpload(localStorage.getItem('qrz_auto_upload') === 'true');
       setEqslUser(localStorage.getItem('eqsl_user') || '');
       setEqslPass(localStorage.getItem('eqsl_pass') || '');
       setSavedSuccess(false);
@@ -70,6 +74,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     } else {
       localStorage.removeItem('qrz_pass');
     }
+    if (qrzLogbookKey.trim()) localStorage.setItem('qrz_logbook_key', qrzLogbookKey.trim());
+    else localStorage.removeItem('qrz_logbook_key');
+    localStorage.setItem('qrz_auto_upload', String(qrzAutoUpload));
 
     if (eqslUser.trim()) localStorage.setItem('eqsl_user', eqslUser.trim());
     if (eqslPass) localStorage.setItem('eqsl_pass', eqslPass);
@@ -277,6 +284,22 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 />
               </div>
             </div>
+            <div>
+              <label className="block text-[11px] text-slate-400 mb-1">Clave API del libro de guardia QRZ (no es la contraseña)</label>
+              <input
+                type="password"
+                value={qrzLogbookKey}
+                onChange={(e) => setQrzLogbookKey(e.target.value)}
+                placeholder="Clave API de QRZ Logbook"
+                autoComplete="off"
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-amber-400 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">La API de inserción de QSO de QRZ requiere que tu cuenta tenga los permisos correspondientes. La clave da acceso al libro: tratala como una contraseña.</p>
+            </div>
+            <label className="flex items-start gap-2 text-xs text-slate-300">
+              <input type="checkbox" checked={qrzAutoUpload} onChange={(e) => setQrzAutoUpload(e.target.checked)} className="mt-0.5 accent-amber-500" />
+              <span><strong>Subir automáticamente cada QSO nuevo a QRZ</strong><span className="block text-[10px] text-slate-500 mt-0.5">Solo si hay una clave API configurada. También podrás subir cada contacto individualmente desde el log.</span></span>
+            </label>
             <p className="text-[11px] text-slate-400">
               Al guardar credenciales válidas de QRZ, la app obtendrá el correo del corresponsal automáticamente al ingresar su indicativo.
             </p>
