@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, User, Mail, MapPin, Radio, Key, Check, X, ExternalLink, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { QRZ_LOGIN_URL, EQSL_URL, DEFAULT_CALLSIGN } from '../types';
+import { QRZ_LOGIN_URL, DEFAULT_CALLSIGN } from '../types';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -27,10 +27,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [qrzUser, setQrzUser] = useState('');
   const [qrzPass, setQrzPass] = useState('');
-  const [qrzLogbookKey, setQrzLogbookKey] = useState('');
-  const [qrzAutoUpload, setQrzAutoUpload] = useState(false);
-  const [eqslUser, setEqslUser] = useState('');
-  const [eqslPass, setEqslPass] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -43,10 +39,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setQrzUser(localStorage.getItem('qrz_user') || '');
       setQrzPass(localStorage.getItem('qrz_pass') || '');
-      setQrzLogbookKey(localStorage.getItem('qrz_logbook_key') || '');
-      setQrzAutoUpload(localStorage.getItem('qrz_auto_upload') === 'true');
-      setEqslUser(localStorage.getItem('eqsl_user') || '');
-      setEqslPass(localStorage.getItem('eqsl_pass') || '');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -74,12 +66,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     } else {
       localStorage.removeItem('qrz_pass');
     }
-    if (qrzLogbookKey.trim()) localStorage.setItem('qrz_logbook_key', qrzLogbookKey.trim());
-    else localStorage.removeItem('qrz_logbook_key');
-    localStorage.setItem('qrz_auto_upload', String(qrzAutoUpload));
-
-    if (eqslUser.trim()) localStorage.setItem('eqsl_user', eqslUser.trim());
-    if (eqslPass) localStorage.setItem('eqsl_pass', eqslPass);
+    localStorage.removeItem('qrz_logbook_key');
+    localStorage.removeItem('qrz_auto_upload');
+    localStorage.removeItem('eqsl_user');
+    localStorage.removeItem('eqsl_pass');
 
     setSavedSuccess(true);
     onUpdate();
@@ -284,67 +274,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Clave API del libro de guardia QRZ (no es la contraseña)</label>
-              <input
-                type="password"
-                value={qrzLogbookKey}
-                onChange={(e) => setQrzLogbookKey(e.target.value)}
-                placeholder="Clave API de QRZ Logbook"
-                autoComplete="off"
-                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-amber-400 focus:outline-hidden"
-              />
-              <p className="text-[10px] text-slate-500 mt-1">La API de inserción de QSO de QRZ requiere que tu cuenta tenga los permisos correspondientes. La clave da acceso al libro: tratala como una contraseña.</p>
-            </div>
-            <label className="flex items-start gap-2 text-xs text-slate-300">
-              <input type="checkbox" checked={qrzAutoUpload} onChange={(e) => setQrzAutoUpload(e.target.checked)} className="mt-0.5 accent-amber-500" />
-              <span><strong>Subir automáticamente cada QSO nuevo a QRZ</strong><span className="block text-[10px] text-slate-500 mt-0.5">Solo si hay una clave API configurada. También podrás subir cada contacto individualmente desde el log.</span></span>
-            </label>
             <p className="text-[11px] text-slate-400">
               La app consultará los campos que QRZ permita devolver. No inventará correos ni tomará direcciones de scripts, anuncios o pies de página; el correo puede no estar disponible para todos los perfiles.
             </p>
-          </div>
-
-          {/* Sección eQSL.cc */}
-          <div className="p-4 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
-                  Cuenta eQSL.cc (Opcional)
-                </span>
-              </div>
-              <a
-                href={EQSL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-sky-300 hover:text-sky-200 inline-flex items-center gap-1"
-              >
-                Abrir eQSL <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Usuario eQSL</label>
-                <input
-                  type="text"
-                  value={eqslUser}
-                  onChange={(e) => setEqslUser(e.target.value)}
-                  placeholder="ej. LU1TSB"
-                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-sky-400 focus:outline-hidden"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Contraseña eQSL</label>
-                <input
-                  type="password"
-                  value={eqslPass}
-                  onChange={(e) => setEqslPass(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-sky-400 focus:outline-hidden"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Footer del Modal */}
