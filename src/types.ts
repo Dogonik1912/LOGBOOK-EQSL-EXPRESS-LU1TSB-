@@ -22,9 +22,8 @@ export interface QSO {
   notes?: string;        // Comentarios adicionales
   qslSent?: boolean;     // eQSL enviada
   qslRcvd?: boolean;     // eQSL recibida
-  eqslUploaded?: boolean; // QSO enviado correctamente a eQSL.cc
-  qrzUploaded?: boolean; // QSO insertado correctamente en QRZ Logbook
-  qrzUploadError?: string; // Último error de carga a QRZ
+  exchangeSent?: string;   // Progresivo/intercambio enviado en concursos
+  exchangeReceived?: string; // Progresivo/intercambio recibido en concursos
 }
 
 export interface UserSettings {
