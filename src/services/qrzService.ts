@@ -17,7 +17,7 @@ export interface CallsignDetails {
   state?: string;
   bio?: string;
   lookupMessage?: string;
-  source: 'qrz' | 'qrz-bio' | 'hamqth' | 'hamdb' | 'prefix-db' | 'cache';
+  source: 'qrz' | 'qrz-bio' | 'qrz-xml' | 'qrz-web-session' | 'qrz-authenticated-profile-html' | 'prefix-db' | 'cache';
 }
 
 /**
@@ -170,8 +170,6 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         call: cleanCall, user: qrzUser, pass: qrzPass,
-        hamqthUser: localStorage.getItem('hamqth_user') || sessionStorage.getItem('hamqth_user') || '',
-        hamqthPass: localStorage.getItem('hamqth_pass') || sessionStorage.getItem('hamqth_pass') || '',
       }),
     });
     if (res.ok) {
@@ -180,14 +178,14 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
         result = {
           callsign: cleanCall,
           name: data.name || '',
-          // /api/lookup devuelve email solo desde QRZ XML autenticado o su biografía autorizada.
+          // El correo se obtiene exclusivamente desde una consulta autenticada de QRZ.
           email: data.email || '',
           whatsapp: data.whatsapp || '',
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
           grid: data.grid || '',
           lookupMessage: String(data.accessError || ''),
-          source: data.foundSource === 'hamqth' ? 'hamqth' : data.foundSource === 'hamdb' ? 'hamdb' : data.foundSource ? 'qrz-bio' : 'qrz',
+          source: data.foundSource === 'qrz-web-session' || data.foundSource === 'qrz-xml' || data.foundSource === 'qrz-authenticated-profile-html' ? data.foundSource : data.foundSource ? 'qrz-bio' : 'qrz',
         };
       }
     }
