@@ -127,17 +127,9 @@ async function getQRZSessionKey(user: string, pass: string): Promise<string | nu
     if (errNode && !keyNode) {
       const message = errNode.textContent || 'No se pudo validar la sesión QRZ.';
       console.warn('QRZ Auth Error:', message);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('qrz-auth-required', { detail: message }));
-      }
       return null;
     }
 
-    if (!keyNode && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('qrz-auth-required', {
-        detail: 'QRZ no devolvió una clave de sesión; revisá las credenciales.'
-      }));
-    }
 
     if (keyNode && keyNode.textContent) {
       cachedSessionKey = keyNode.textContent.trim();
