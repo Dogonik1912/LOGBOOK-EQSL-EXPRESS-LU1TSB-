@@ -114,6 +114,14 @@ export default async function handler(req, res) {
       if (!profileResponse.ok) return {};
       const profileXml = await profileResponse.text();
       if (/<Error>/i.test(profileXml)) return {};
+
+      // Verificar la identidad del registro antes de aceptar cualquier dato de contacto.
+      // QRZ normalmente devuelve <call>; si lo incluye y no coincide, no asociar
+      // ningún correo ni dato personal a este QSO.
+      const returnedCall = xmlTextValue(profileXml, 'call').toUpperCase().replace(/[^A-Z0-9/]/g, '');
+      const requestedCall = String(callsign || '').toUpperCase().replace(/[^A-Z0-9/]/g, '');
+      if (returnedCall && returnedCall !== requestedCall) return {};
+
       let email = normalizeEmail(xmlTextValue(profileXml, 'email'));
       let emailSource = email ? 'qrz-xml' : '';
 
