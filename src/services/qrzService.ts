@@ -173,7 +173,8 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
         result = {
           callsign: cleanCall,
           name: data.name || '',
-          email: data.email || '',
+          // Email is intentionally excluded from public HTML lookup.
+          email: '',
           whatsapp: data.whatsapp || '',
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
