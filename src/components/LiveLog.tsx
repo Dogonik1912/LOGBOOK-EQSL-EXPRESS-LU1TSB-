@@ -187,10 +187,13 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   // Exportar Cabrillo para concursos. El formato es genérico; algunos concursos exigen categorías/cabeceras específicas.
   const handleExportCabrillo = () => {
     if (!qsos.length) return;
+    const contestInput = window.prompt('Código oficial del concurso para la cabecera Cabrillo:', 'GENERIC');
+    if (contestInput === null) return;
+    const contestCode = contestInput.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'GENERIC';
     const myCall = getUserCallsign();
     const lines = [
       'START-OF-LOG: 3.0',
-      'CONTEST: GENERIC',
+      `CONTEST: ${contestCode}`,
       `CALLSIGN: ${myCall}`,
       'CATEGORY-OPERATOR: SINGLE-OP',
       'CATEGORY-BAND: ALL',
@@ -202,7 +205,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       `OPERATORS: ${myCall}`,
       'CREATED-BY: LogBook eQSL Express',
     ];
-    qsos.forEach((q) => {
+    [...qsos].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).forEach((q) => {
       const date = q.date || '';
       const time = (q.time || '').replace(/:/g, '').slice(0, 4).padEnd(4, '0');
       const frequencyMHz = Number.parseFloat((q.frequency || '').trim());
@@ -374,7 +377,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             onClick={handleExportCabrillo}
             disabled={qsos.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
-            title="Exportar log en formato Cabrillo para concursos"
+            title="Exportar Cabrillo base; los intercambios y categorías específicos dependen del concurso"
           >
             <Download className="w-3.5 h-3.5" />
             Exportar Cabrillo
