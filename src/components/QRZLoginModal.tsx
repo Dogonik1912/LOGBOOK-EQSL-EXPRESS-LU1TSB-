@@ -14,9 +14,18 @@ interface QRZLoginModalProps {
 }
 
 export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, onSaved }) => {
-  const [user, setUser] = useState(localStorage.getItem('qrz_user') || '');
-  const [pass, setPass] = useState(localStorage.getItem('qrz_pass') || '');
+  const [user, setUser] = useState('');
+  const [pass, setPass] = useState('');
+  const [saveOnDevice, setSaveOnDevice] = useState(false);
   const [error, setError] = useState('');
+  const hasSavedCredentials = Boolean(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass'));
+
+  const useSavedCredentials = () => {
+    setUser(localStorage.getItem('qrz_user') || '');
+    setPass(localStorage.getItem('qrz_pass') || '');
+    setSaveOnDevice(true);
+    setError('');
+  };
 
   if (!isOpen) return null;
 
@@ -31,9 +40,19 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
       return;
     }
 
-    localStorage.setItem('qrz_user', user.trim());
-    localStorage.setItem('qrz_pass', pass);
-    // Remover skip si ya conectó
+    // Por defecto las credenciales solo duran en esta pestaña/sesión.
+    // El almacenamiento persistente solo se activa con consentimiento explícito.
+    if (saveOnDevice) {
+      localStorage.setItem('qrz_user', user.trim());
+      localStorage.setItem('qrz_pass', pass);
+      sessionStorage.removeItem('qrz_user');
+      sessionStorage.removeItem('qrz_pass');
+    } else {
+      localStorage.removeItem('qrz_user');
+      localStorage.removeItem('qrz_pass');
+      sessionStorage.setItem('qrz_user', user.trim());
+      sessionStorage.setItem('qrz_pass', pass);
+    }
     localStorage.removeItem('qrz_skipped');
     setError('');
     onSaved(user.trim());
@@ -58,7 +77,7 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
               Conectá tu cuenta QRZ
             </h2>
             <p className="text-sm text-slate-300 mt-1 leading-relaxed">
-              Para autocompletar el correo electrónico de tus corresponsales, iniciá sesión en QRZ.com. La app guarda tus credenciales en este dispositivo y no las vuelve a pedir.
+              Iniciá sesión en QRZ.com para consultar los datos disponibles de tus corresponsales. Cada vez que abras la app te preguntaremos si querés conectar. Guardar tus credenciales es opcional.
             </p>
           </div>
         </div>
@@ -77,6 +96,17 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
             Abrir QRZ.com para iniciar sesión
           </button>
         </div>
+
+        {/* Selección explícita de credenciales guardadas */}
+        {hasSavedCredentials && (
+          <button
+            type="button"
+            onClick={useSavedCredentials}
+            className="w-full mb-3 px-4 py-2.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+          >
+            Usar credenciales guardadas en este dispositivo
+          </button>
+        )}
 
         {/* Formulario de credenciales */}
         <form onSubmit={handleSaveAndConnect} className="space-y-4">
@@ -123,9 +153,18 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
             </p>
           )}
 
-          <div className="flex items-center gap-2 text-xs text-emerald-400/90 pt-1">
+          <label className="flex items-start gap-2 text-xs text-slate-300 pt-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveOnDevice}
+              onChange={(e) => setSaveOnDevice(e.target.checked)}
+              className="mt-0.5 accent-amber-400"
+            />
+            <span>Guardar usuario y contraseña en este dispositivo para poder elegirlos la próxima vez. Si no marcás esta opción, solo se conservarán durante esta sesión.</span>
+          </label>
+          <div className="flex items-center gap-2 text-xs text-amber-300/90">
             <ShieldCheck className="w-4 h-4 shrink-0" />
-            <span>Tus credenciales se almacenan únicamente de forma local en tu navegador.</span>
+            <span>Las credenciales guardadas en el navegador no están cifradas por la app. Guardalas solo en un dispositivo de confianza.</span>
           </div>
 
           {/* Botones de acción principales */}
