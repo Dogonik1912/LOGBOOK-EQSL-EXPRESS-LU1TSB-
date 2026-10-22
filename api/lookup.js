@@ -374,7 +374,7 @@ export default async function handler(req, res) {
 
   // Si se conectó una cuenta QRZ, intentar también la API XML autorizada.
   // Nunca sustituir el correo por uno encontrado en scripts o en el pie de página.
-  const xmlProfile = await lookupWithAuthorizedQRZXml(
+  const xmlProfile = email ? {} : await lookupWithAuthorizedQRZXml(
     String(body.user || '').trim(),
     String(body.pass || ''),
     call
