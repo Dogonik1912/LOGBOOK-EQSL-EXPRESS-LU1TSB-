@@ -361,8 +361,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
                 <Mail className="w-3 h-3 text-sky-400" />
                 Email
               </span>
-              {email ? (
-                <span className="text-[10px] text-emerald-400 font-semibold">✓ Detectado</span>
+              {email && email !== 'NOT FOUND' ? (
+                <span className="text-[10px] text-emerald-400 font-semibold">✓ Verificado en fuente</span>
               ) : !hasQRZConfig ? (
                 <span className="text-[10px] text-amber-400/90 underline cursor-pointer" onClick={onOpenQRZModal}>
                   Conectar QRZ
@@ -370,10 +370,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               ) : null}
             </label>
             <input
-              type="email"
+              type="text"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="correo@ejemplo.com"
+              placeholder="NOT FOUND si no figura públicamente"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder-slate-600 focus:border-sky-400 focus:outline-hidden"
             />
           </div>
