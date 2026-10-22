@@ -562,13 +562,13 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                         type="button"
                         onClick={() => onOpenEQSL(q)}
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors cursor-pointer ${
-                          q.qslSent
+                          (q.eqslUploaded || q.qslSent)
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                             : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
                         }`}
-                        title="Ver o emitir tarjeta eQSL"
+                        title={q.eqslUploaded ? 'QSO confirmado por eQSL.cc' : (q.qslSent ? 'Tarjeta compartida por correo o WhatsApp' : 'Ver o emitir tarjeta eQSL')}
                       >
-                        {q.qslSent ? '✓ Enviada' : 'Emitir eQSL'}
+                        {(q.eqslUploaded || q.qslSent) ? '✓ Enviada' : 'Emitir eQSL'}
                       </button>
                     </td>
 
