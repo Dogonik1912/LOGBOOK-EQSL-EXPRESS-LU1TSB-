@@ -17,6 +17,7 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
   const [pass, setPass] = useState('');
   const [saveOnDevice, setSaveOnDevice] = useState(false);
   const [error, setError] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const hasSavedCredentials = Boolean(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass'));
 
   const useSavedCredentials = () => {
@@ -28,30 +29,51 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
 
   if (!isOpen) return null;
 
-  const handleSaveAndConnect = (e?: React.FormEvent) => {
+  const handleSaveAndConnect = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isConnecting) return;
     if (!user.trim() || !pass.trim()) {
       setError('Por favor completá tu usuario y contraseña de QRZ.com');
       return;
     }
 
-    // Por defecto las credenciales solo duran en esta pestaña/sesión.
-    // El almacenamiento persistente solo se activa con consentimiento explícito.
-    if (saveOnDevice) {
-      localStorage.setItem('qrz_user', user.trim());
-      localStorage.setItem('qrz_pass', pass);
-      sessionStorage.removeItem('qrz_user');
-      sessionStorage.removeItem('qrz_pass');
-    } else {
-      // Mantener cualquier credencial guardada previamente, pero usar la sesión
-      // recién introducida durante esta pestaña. No se guarda de forma persistente.
-      sessionStorage.setItem('qrz_user', user.trim());
-      sessionStorage.setItem('qrz_pass', pass);
-    }
-    localStorage.removeItem('qrz_skipped');
+    setIsConnecting(true);
     setError('');
-    onSaved(user.trim());
-    onClose();
+    try {
+      // No mostrar "conectado/configurado" hasta que QRZ devuelva una clave válida.
+      const response = await fetch('/api/qrz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.trim(), password: pass }),
+      });
+      const xml = await response.text();
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const key = doc.querySelector('Key')?.textContent?.trim();
+      const apiError = doc.querySelector('Error')?.textContent?.trim();
+      const apiMessage = doc.querySelector('Message')?.textContent?.trim();
+      if (!response.ok || !key) {
+        setError(apiError || apiMessage || 'QRZ no confirmó la conexión. Revisá usuario y contraseña e intentá nuevamente.');
+        return;
+      }
+
+      // Guardar las credenciales solo después de confirmar el acceso a QRZ.
+      if (saveOnDevice) {
+        localStorage.setItem('qrz_user', user.trim());
+        localStorage.setItem('qrz_pass', pass);
+        sessionStorage.removeItem('qrz_user');
+        sessionStorage.removeItem('qrz_pass');
+      } else {
+        sessionStorage.setItem('qrz_user', user.trim());
+        sessionStorage.setItem('qrz_pass', pass);
+      }
+      localStorage.removeItem('qrz_skipped');
+      onSaved(user.trim());
+      onClose();
+    } catch {
+      setError('No se pudo verificar la conexión con QRZ. Comprobá tu conexión a Internet e intentá nuevamente.');
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const handleSkip = () => {
@@ -158,10 +180,11 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
             </button>
             <button
               type="submit"
+              disabled={isConnecting}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold rounded-lg shadow-md transition-all cursor-pointer"
             >
               <Check className="w-4 h-4" />
-              Conectar
+              {isConnecting ? 'Verificando QRZ…' : 'Conectar'}
             </button>
           </div>
         </form>
