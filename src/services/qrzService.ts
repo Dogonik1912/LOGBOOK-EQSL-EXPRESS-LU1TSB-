@@ -97,6 +97,7 @@ function getCountryFromPrefix(callsign: string): { country: string; defaultGrid?
 }
 
 let cachedSessionKey: string | null = null;
+let cachedSessionUser = '';
 let sessionTimestamp = 0;
 
 /**
@@ -104,19 +105,16 @@ let sessionTimestamp = 0;
  */
 async function getQRZSessionKey(user: string, pass: string): Promise<string | null> {
   // Reutilizar token si tiene menos de 45 minutos
-  if (cachedSessionKey && Date.now() - sessionTimestamp < 45 * 60 * 1000) {
+  if (cachedSessionKey && cachedSessionUser === user && Date.now() - sessionTimestamp < 45 * 60 * 1000) {
     return cachedSessionKey;
   }
 
   try {
-    const query = new URLSearchParams({
-      username: user,
-      password: pass,
-      agent: 'LU1TSB-LogBook-eQSL-1.0',
-    }).toString();
-
-    // Intentamos a través del proxy de Vite (/api/qrz)
-    const res = await fetch(`/api/qrz?${query}`);
+    const res = await fetch('/api/qrz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass }),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const xmlText = await res.text();
 
@@ -132,6 +130,7 @@ async function getQRZSessionKey(user: string, pass: string): Promise<string | nu
 
     if (keyNode && keyNode.textContent) {
       cachedSessionKey = keyNode.textContent.trim();
+      cachedSessionUser = user;
       sessionTimestamp = Date.now();
       return cachedSessionKey;
     }
@@ -151,8 +150,17 @@ async function getQRZSessionKey(user: string, pass: string): Promise<string | nu
 export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> {
   const cleanCall = call.trim().toUpperCase();
   const prefixInfo = getCountryFromPrefix(cleanCall);
+  const qrzUser = localStorage.getItem('qrz_user') || '';
+  const qrzPass = localStorage.getItem('qrz_pass') || '';
 
-  // Consulta mediante el endpoint del servidor. Las credenciales no se incluyen en la URL.
+  let result: CallsignDetails = {
+    callsign: cleanCall,
+    country: prefixInfo.country,
+    grid: prefixInfo.defaultGrid || '',
+    source: 'prefix-db',
+  };
+
+  // Public profile lookup: only fields explicitly linked to this operator's profile.
   try {
     const res = await fetch('/api/lookup', {
       method: 'POST',
@@ -162,7 +170,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
     if (res.ok) {
       const data = await res.json();
       if (data && !data.error) {
-        return {
+        result = {
           callsign: cleanCall,
           name: data.name || '',
           email: data.email || '',
@@ -175,14 +183,46 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
       }
     }
   } catch (err) {
-    console.warn('QRZ lookup failed:', err);
+    console.warn('Public QRZ lookup failed:', err);
   }
 
-  // Fallback con prefijo
-  return {
-    callsign: cleanCall,
-    country: prefixInfo.country,
-    grid: prefixInfo.defaultGrid || '',
-    source: 'prefix-db',
-  };
+  // QRZ XML is the official authenticated source for the user's own account.
+  // QRZ decides which fields are available under that account's subscription.
+  if (qrzUser && qrzPass) {
+    try {
+      const sessionKey = await getQRZSessionKey(qrzUser, qrzPass);
+      if (sessionKey) {
+        const xmlRes = await fetch('/api/qrz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionKey, callsign: cleanCall }),
+        });
+        if (xmlRes.ok) {
+          const xmlText = await xmlRes.text();
+          const xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
+          const value = (tag: string) => {
+            const node = xmlDoc.getElementsByTagName(tag)[0];
+            const text = node?.textContent?.trim() || '';
+            return /^(?:use mouse to view|not found|n\/a|none)$/i.test(text) ? '' : text;
+          };
+          const xmlEmail = value('email');
+          const xmlName = [value('fname'), value('name')].filter(Boolean).join(' ');
+          const xmlGrid = value('grid');
+          const xmlCountry = value('country');
+          result = {
+            ...result,
+            email: xmlEmail || result.email || '',
+            name: result.name || xmlName,
+            grid: result.grid || xmlGrid,
+            country: result.country === 'Desconocido' ? (xmlCountry || result.country) : (result.country || xmlCountry),
+            source: (xmlEmail || xmlName || xmlGrid) ? 'qrz' : result.source,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('QRZ XML callsign lookup failed:', err);
+    }
+  }
+
+  return result;
 }
