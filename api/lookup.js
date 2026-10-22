@@ -66,7 +66,9 @@ export default async function handler(req, res) {
       .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
     const visibleMatches = [...visibleHtml.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0]));
-    const email = [...bioMatches, ...mailtoMatches, ...visibleMatches].find(Boolean) || '';
+    // No usar cualquier correo del pie de página/scripts: eso produjo falsos positivos.
+    // Solo aceptar correo de la biografía o un mailto explícito del perfil.
+    const email = [...bioMatches, ...mailtoMatches].find(Boolean) || '';
 
     // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
     // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
@@ -98,6 +100,47 @@ export default async function handler(req, res) {
     const whatsappRaw = linkCandidates[0]?.raw || (labeledMatch ? labeledMatch[1].trim() : '');
     return { email, whatsappRaw, whatsapp };
   };
+
+  const xmlTextValue = (xml, tag) => {
+    const match = String(xml || '').match(new RegExp('<(?:[A-Za-z0-9_]+:)?' + tag + '\\b[^>]*>([\\s\\S]*?)<\\/(?:[A-Za-z0-9_]+:)?' + tag + '>', 'i'));
+    return match ? decodeEntities(match[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]*>/g, '').trim()) : '';
+  };
+
+  // QRZ documenta XML como vía autenticada para aplicaciones. Si el usuario
+  // conectó su propia cuenta, usar únicamente los campos que su cuenta puede consultar.
+  async function lookupWithAuthorizedQRZXml(user, pass, callsign) {
+    if (!user || !pass) return {};
+    try {
+      const authUrl = 'https://xmldata.qrz.com/xml/current/?username=' +
+        encodeURIComponent(user) + ';password=' + encodeURIComponent(pass) +
+        ';agent=' + encodeURIComponent('LOGBOOK-EQSL-EXPRESS-LU1TSB');
+      const authResponse = await fetch(authUrl, {
+        headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' }
+      });
+      if (!authResponse.ok) return {};
+      const authXml = await authResponse.text();
+      const key = xmlTextValue(authXml, 'Key');
+      if (!key) return {};
+      const profileUrl = 'https://xmldata.qrz.com/xml/current/?s=' +
+        encodeURIComponent(key) + ';callsign=' + encodeURIComponent(callsign);
+      const profileResponse = await fetch(profileUrl, {
+        headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' }
+      });
+      if (!profileResponse.ok) return {};
+      const profileXml = await profileResponse.text();
+      if (/<Error>/i.test(profileXml)) return {};
+      return {
+        email: normalizeEmail(xmlTextValue(profileXml, 'email')),
+        name: xmlTextValue(profileXml, 'fname') && xmlTextValue(profileXml, 'name')
+          ? xmlTextValue(profileXml, 'fname') + ' ' + xmlTextValue(profileXml, 'name')
+          : xmlTextValue(profileXml, 'name'),
+        country: xmlTextValue(profileXml, 'country'),
+        grid: xmlTextValue(profileXml, 'grid')
+      };
+    } catch {
+      return {};
+    }
+  }
 
   let email = '', whatsapp = '', whatsappRaw = '', name = '', country = '', grid = '';
   let accessError = '';
@@ -142,7 +185,20 @@ export default async function handler(req, res) {
     accessError = 'No se pudo acceder al perfil público de QRZ desde el servidor.';
   }
 
-  // Only public profile data is used here; no QRZ credentials or subscriber-only XML fields.
+  // Si se conectó una cuenta QRZ, intentar también la API XML autorizada.
+  // Nunca sustituir el correo por uno encontrado en scripts o en el pie de página.
+  const xmlProfile = await lookupWithAuthorizedQRZXml(
+    String(body.user || '').trim(),
+    String(body.pass || ''),
+    call
+  );
+  if (xmlProfile.email) email = xmlProfile.email;
+  if (!name && xmlProfile.name) name = xmlProfile.name;
+  if (!country && xmlProfile.country) country = xmlProfile.country;
+  if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
+
+  // Solo devolvemos el correo si procede de la biografía/enlace explícito o
+  // de la API QRZ autorizada por las credenciales del usuario.
   return res.status(200).json({
     callsign: call, name, country, grid, email, whatsapp, whatsappRaw,
     source: email || whatsapp ? 'qrz-public-profile' : 'qrz',
