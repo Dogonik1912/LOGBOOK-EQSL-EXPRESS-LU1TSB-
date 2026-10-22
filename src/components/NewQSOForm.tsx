@@ -463,7 +463,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
         </div>
 
         {/* Fila 3: Opcionales (Nombre, País, Grid, Notas) */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">Nombre Corresponsal</label>
             <input
@@ -483,17 +483,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               onChange={(e) => setCountry(e.target.value)}
               placeholder="Argentina"
               className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:border-amber-400 focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Grid Locator</label>
-            <input
-              type="text"
-              value={grid}
-              onChange={(e) => setGrid(e.target.value)}
-              placeholder="GF05"
-              className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono uppercase text-slate-200 focus:border-amber-400 focus:outline-hidden"
             />
           </div>
 
