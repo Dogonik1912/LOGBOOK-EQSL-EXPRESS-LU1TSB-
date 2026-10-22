@@ -120,11 +120,22 @@ export default async function handler(req, res) {
   async function lookupWithAuthorizedQRZXml(user, pass, callsign) {
     if (!user || !pass) return { accessError: 'Conectá tu cuenta QRZ en Ajustes para consultar el correo mediante la interfaz oficial.' };
     try {
-      const authUrl = 'https://xmldata.qrz.com/xml/current/?username=' +
-        encodeURIComponent(user) + ';password=' + encodeURIComponent(pass) +
-        ';agent=' + encodeURIComponent('LOGBOOK-EQSL-EXPRESS-LU1TSB');
+      // QRZ admite POST para establecer la sesión XML. Enviar las credenciales
+      // en el cuerpo evita dejarlas en la URL, historiales de proxy o logs de query strings.
+      const authUrl = 'https://xmldata.qrz.com/xml/current/';
+      const authBody = new URLSearchParams({
+        username: user,
+        password: pass,
+        agent: 'LOGBOOK-EQSL-EXPRESS-LU1TSB'
+      });
       const authResponse = await fetch(authUrl, {
-        headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' }
+        method: 'POST',
+        headers: {
+          'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+        },
+        body: authBody.toString(),
+        signal: AbortSignal.timeout(10000)
       });
       if (!authResponse.ok) return { accessError: 'La interfaz XML de QRZ respondió HTTP ' + authResponse.status + ' al autenticar.' };
       const authXml = await authResponse.text();
@@ -136,7 +147,8 @@ export default async function handler(req, res) {
       const profileUrl = 'https://xmldata.qrz.com/xml/current/?s=' +
         encodeURIComponent(key) + ';callsign=' + encodeURIComponent(callsign);
       const profileResponse = await fetch(profileUrl, {
-        headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' }
+        headers: { 'Accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8' },
+        signal: AbortSignal.timeout(10000)
       });
       if (!profileResponse.ok) return { accessError: 'La interfaz XML de QRZ respondió HTTP ' + profileResponse.status + ' al consultar el indicativo.' };
       const profileXml = await profileResponse.text();
@@ -209,7 +221,8 @@ export default async function handler(req, res) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      redirect: 'follow'
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000)
     });
     if (!response.ok) {
       accessError = 'QRZ respondió HTTP ' + response.status + ' al consultar el perfil público.';
