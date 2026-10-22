@@ -357,7 +357,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               type="text"
               value={rstRcvd}
               onChange={(e) => setRstRcvd(e.target.value)}
-              placeholder={mode === 'CW' ? '599' : '59'}
+              placeholder="59"
               className="w-full px-2 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
