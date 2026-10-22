@@ -141,7 +141,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         { label: 'HORA (UTC)', val: `${qso.time} UTC` },
         { label: 'BANDA / FREQ', val: `${qso.band} (${qso.frequency} MHz)` },
         { label: 'MODO', val: qso.mode },
-        { label: 'RST 2-WAY', val: `${qso.rstSent} / ${qso.rstRcvd}` },
+        { label: 'RST 2-WAY', val: `${qso.rstSent || '59'} / ${qso.rstRcvd || '59'}` },
       ];
 
       const colWidth = boxW / cols.length;
@@ -269,7 +269,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       band: qso.band,
       freq: qso.frequency,
       mode: qso.mode,
-      rst: qso.rstSent,
+      rst: qso.rstSent || '59',
       email: qso.email || '',
       wa: qso.whatsapp || '',
     });
@@ -293,7 +293,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `De: *${myCallsign}* para: *${qso.callsign}*\n` +
       `📅 Contacto: ${qso.date} ${qso.time} UTC\n` +
       `📡 ${qso.band} (${qso.frequency} MHz) · Modo: ${qso.mode}\n` +
-      `📶 RST: ${qso.rstSent}/${qso.rstRcvd}\n` +
+      `📶 RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'}\n` +
       (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
       `\n${firma}\n\n` +
       `💌 *¿Querés responder con tu eQSL?*\n` +
@@ -320,7 +320,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `• Hora: ${qso.time} UTC\n` +
       `• Banda: ${qso.band} (${qso.frequency} MHz)\n` +
       `• Modo: ${qso.mode}\n` +
-      `• Reporte RST: ${qso.rstSent} / ${qso.rstRcvd}\n` +
+      `• Reporte RST: ${qso.rstSent || '59'} / ${qso.rstRcvd || '59'}\n` +
       (qso.grid ? `• Mi Grid: ${myGrid}\n` : '') +
       `\n¡Gracias por el QSO y espero reencontrarte en el éter!\n\n` +
       `💌 RESPONDER CON TU eQSL:\n` +
@@ -338,7 +338,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleCopyText = () => {
     const firma = getFirma();
     const replyLink = getReplyUrl();
-    const text = `QSO Confirmado: ${myCallsign} <-> ${qso.callsign} | ${qso.date} ${qso.time} UTC | ${qso.band} ${qso.frequency}MHz ${qso.mode} | RST: ${qso.rstSent}/${qso.rstRcvd} | ${firma} | Responder con eQSL: ${replyLink}`;
+    const text = `QSO Confirmado: ${myCallsign} <-> ${qso.callsign} | ${qso.date} ${qso.time} UTC | ${qso.band} ${qso.frequency}MHz ${qso.mode} | RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'} | ${firma} | Responder con eQSL: ${replyLink}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
