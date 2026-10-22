@@ -77,9 +77,9 @@ export default function App() {
         whatsapp: urlParams.get('wa') || '',
       });
       setIsReplyModalOpen(true);
-    } else if (!hasQRZCredentials && localStorage.getItem('qrz_skipped') !== '1') {
-      // No volver a mostrar la conexión en cada apertura si ya hay credenciales
-      // de sesión o si el usuario eligió "Ahora no".
+    } else if (!hasQRZCredentials) {
+      // Si no hay credenciales activas, volver a solicitar la conexión al abrir.
+      // "Ahora no" solo cierra el modal actual; no equivale a tener una sesión.
       setIsQRZModalOpen(true);
     }
 
