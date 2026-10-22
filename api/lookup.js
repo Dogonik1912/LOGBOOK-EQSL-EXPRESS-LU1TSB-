@@ -66,13 +66,13 @@ export default async function handler(req, res) {
       .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
     const visibleMatches = [...visibleHtml.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0]));
-    // No usar cualquier correo del pie de página/scripts: eso produjo falsos positivos.
-    // Política de la app: nunca extraer el correo del HTML público, biografía,
-    // mailto ni contenido general de la página. El correo solo puede venir de
-    // la consulta QRZ autenticada en el cliente/API XML.
-    const email = allowEmailFromAuthorizedBio
-      ? (mailtoMatches.find(Boolean) || bioMatches.find(Boolean) || visibleMatches.find(Boolean) || '')
-      : '';
+    // Aceptar correo explícitamente publicado en la biografía o en un enlace
+    // mailto del perfil público. No usar correos sueltos de scripts/pies de página,
+    // que suelen ser direcciones técnicas ajenas al corresponsal.
+    // La lectura de texto visible queda reservada para la biografía autenticada.
+    const email = bioMatches.find(Boolean)
+      || mailtoMatches.find(Boolean)
+      || (allowEmailFromAuthorizedBio ? (visibleMatches.find(Boolean) || '') : '');
 
     // Examina enlaces completos (incluidos atributos data-* y HTML escapado) antes
     // de buscar números etiquetados; esto evita perder un WhatsApp publicado como botón.
