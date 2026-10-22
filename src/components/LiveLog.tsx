@@ -15,7 +15,6 @@ import {
   Check,
   Search,
   Download,
-  Upload,
   Radio,
   ExternalLink,
   MessageSquare,
@@ -31,8 +30,6 @@ interface LiveLogProps {
   onOpenEQSL: (qso: QSO) => void;
   onImportADIF: (newQsos: QSO[]) => void;
   onOpenReply?: (qso: QSO) => void;
-  onUploadToQRZ?: (qso: QSO) => void;
-  onUploadToEQSL?: (qso: QSO) => void;
 }
 
 export const LiveLog: React.FC<LiveLogProps> = ({
@@ -42,8 +39,6 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onOpenEQSL,
   onImportADIF,
   onOpenReply,
-  onUploadToQRZ,
-  onUploadToEQSL,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBand, setFilterBand] = useState('ALL');
@@ -211,7 +206,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       const frequencyMHz = Number.parseFloat((q.frequency || '').trim());
       const freqKHz = Number.isFinite(frequencyMHz) ? String(Math.round(frequencyMHz * 1000)) : '14000';
       const mode = /^CW$/i.test(q.mode) ? 'CW' : (/^(RTTY|FT8|FT4|PSK31|JS8|D-STAR|DMR)$/i.test(q.mode) ? 'RY' : 'PH');
-      lines.push(`QSO: ${freqKHz} ${mode} ${date} ${time} ${myCall} ${q.rstSent || '59'} ${q.callsign} ${q.rstRcvd || '59'}`);
+      const sentExchange = (q.exchangeSent || '').trim();
+      const receivedExchange = (q.exchangeReceived || '').trim();
+      const exchangeFields = sentExchange || receivedExchange
+        ? ` ${sentExchange || '-'}`
+        : '';
+      const receivedField = sentExchange || receivedExchange
+        ? ` ${receivedExchange || '-'}`
+        : '';
+      lines.push(`QSO: ${freqKHz} ${mode} ${date} ${time} ${myCall} ${q.rstSent || '59'}${exchangeFields} ${q.callsign} ${q.rstRcvd || '59'}${receivedField} 0`);
     });
     lines.push('END-OF-LOG:');
     const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8' });
@@ -451,11 +454,6 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                           {q.name}
                         </div>
                       )}
-                      {q.qrzUploadError && !q.qrzUploaded && (
-                        <div className="text-[10px] text-rose-400 truncate max-w-[130px]" title={q.qrzUploadError}>
-                          QRZ: error de carga
-                        </div>
-                      )}
                     </td>
 
                     {/* Banda y Frecuencia */}
@@ -588,29 +586,6 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                             title={`Enviar eQSL por correo a ${q.email}`}
                           >
                             <Mail className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        {onUploadToEQSL && (
-                          <button
-                            type="button"
-                            onClick={() => onUploadToEQSL(q)}
-                            disabled={Boolean(q.eqslUploaded)}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${q.eqslUploaded ? 'text-emerald-500' : 'text-fuchsia-400 hover:text-fuchsia-300 hover:bg-slate-800'}`}
-                            title={q.eqslUploaded ? 'QSO cargado en eQSL.cc' : 'Enviar este QSO individualmente a eQSL.cc'}
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {onUploadToQRZ && (
-                          <button
-                            type="button"
-                            onClick={() => onUploadToQRZ(q)}
-                            disabled={Boolean(q.qrzUploaded)}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${q.qrzUploaded ? 'text-emerald-500' : 'text-amber-400 hover:text-amber-300 hover:bg-slate-800'}`}
-                            title={q.qrzUploaded ? 'QSO cargado en QRZ Logbook' : (q.qrzUploadError || 'Subir este QSO individualmente al libro de QRZ')}
-                          >
-                            <Upload className="w-3.5 h-3.5" />
                           </button>
                         )}
 
