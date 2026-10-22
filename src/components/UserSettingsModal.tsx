@@ -27,6 +27,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [qrzUser, setQrzUser] = useState('');
   const [qrzPass, setQrzPass] = useState('');
+  const [hamqthUser, setHamqthUser] = useState('');
+  const [hamqthPass, setHamqthPass] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setQrzUser(localStorage.getItem('qrz_user') || '');
       setQrzPass(localStorage.getItem('qrz_pass') || '');
+      setHamqthUser(localStorage.getItem('hamqth_user') || '');
+      setHamqthPass(localStorage.getItem('hamqth_pass') || '');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -66,6 +70,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     } else {
       localStorage.removeItem('qrz_pass');
     }
+    if (hamqthUser.trim()) localStorage.setItem('hamqth_user', hamqthUser.trim());
+    else localStorage.removeItem('hamqth_user');
+    if (hamqthPass) localStorage.setItem('hamqth_pass', hamqthPass);
+    else localStorage.removeItem('hamqth_pass');
     localStorage.removeItem('qrz_logbook_key');
     localStorage.removeItem('qrz_auto_upload');
     localStorage.removeItem('eqsl_user');
@@ -276,6 +284,34 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <p className="text-[11px] text-slate-400">
               La app consultará los campos que QRZ permita devolver. No inventará correos ni tomará direcciones de scripts, anuncios o pies de página; el correo puede no estar disponible para todos los perfiles.
+            </p>
+          </div>
+
+          {/* Sección HamQTH: alternativa de callbook gratuita */}
+          <div className="p-4 bg-slate-950/70 rounded-xl border border-sky-500/25 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-sky-300" />
+                <span className="text-xs font-bold text-sky-300 uppercase tracking-wider">
+                  Cuenta HamQTH (alternativa de consulta)
+                </span>
+              </div>
+              <a href="https://www.hamqth.com/login.php" target="_blank" rel="noopener noreferrer" className="text-xs text-sky-300 hover:text-sky-200 inline-flex items-center gap-1">
+                Abrir HamQTH <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Indicativo / usuario HamQTH</label>
+                <input type="text" value={hamqthUser} onChange={(e) => setHamqthUser(e.target.value)} placeholder="Tu indicativo HamQTH" className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-sky-400 focus:outline-hidden" />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Contraseña HamQTH</label>
+                <input type="password" value={hamqthPass} onChange={(e) => setHamqthPass(e.target.value)} placeholder="••••••••••••" className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-sky-400 focus:outline-hidden" />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Si QRZ no entrega el correo, la app intentará consultarlo en HamQTH. El perfil debe tener el correo visible para tu cuenta. Las credenciales se guardan localmente en este navegador y no están cifradas por la app. Datos de callbook proporcionados por HamQTH.com.
             </p>
           </div>
 
