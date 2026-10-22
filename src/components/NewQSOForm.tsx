@@ -93,6 +93,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'prefix-db' | null>(null);
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
+  const lookupRequestId = useRef(0);
 
   // Comprobar si QRZ está configurado
   const hasQRZConfig = Boolean(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass'));
@@ -129,22 +130,24 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   };
 
   // Autocompletado con QRZ / Prefijos cuando se escribe el indicativo
-  const searchCallsignDetails = async (cleanCall: string) => {
+  const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
     if (!cleanCall || cleanCall.length < 3) return;
     setIsSearchingQRZ(true);
     try {
       const details = await lookupQRZCallsign(cleanCall);
+      // Ignore an older response if the operator has already typed another callsign.
+      if (requestId !== lookupRequestId.current) return;
       if (details.name) setName(details.name);
-      setEmail(details.email || 'NOT FOUND');
-      setWhatsapp(details.whatsapp || 'NOT FOUND');
-      setWhatsappRaw(details.whatsappRaw || 'NOT FOUND');
+      setEmail(details.email || '');
+      setWhatsapp(details.whatsapp || '');
+      setWhatsappRaw(details.whatsappRaw || '');
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
       setQrzFoundSource(details.source as any);
     } catch (e) {
-      console.warn(e);
+      if (requestId === lookupRequestId.current) console.warn(e);
     } finally {
-      setIsSearchingQRZ(false);
+      if (requestId === lookupRequestId.current) setIsSearchingQRZ(false);
     }
   };
 
@@ -154,12 +157,21 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     const upper = val.toUpperCase().trim();
     setCallsign(upper);
     setQrzFoundSource(null);
+    const requestId = ++lookupRequestId.current;
+    // Do not keep contact data from the previous operator while a new lookup is running.
+    setEmail('');
+    setWhatsapp('');
+    setWhatsappRaw('');
+    setName('');
+    setCountry('');
+    setGrid('');
+    setIsSearchingQRZ(upper.length >= 3);
 
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 
     if (upper.length >= 3) {
       debounceTimeout.current = setTimeout(() => {
-        searchCallsignDetails(upper);
+        searchCallsignDetails(upper, requestId);
       }, 500);
     }
   };
@@ -374,7 +386,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
               inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="NOT FOUND si no figura públicamente"
+              placeholder="Solo si está publicado en el perfil"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder-slate-600 focus:border-sky-400 focus:outline-hidden"
             />
           </div>
