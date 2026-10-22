@@ -48,36 +48,36 @@ export default async function handler(req, res) {
     // Buscar correo exclusivamente en el campo Email del perfil QRZ o en una
     // biografía obtenida por la sesión XML autorizada. No extraer teléfonos.
     const sourceHtml = String(html || '')
-      .replace(/\\u002f/gi, '/').replace(/\\u003a/gi, ':')
-      .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@');
-    const emailRegions = [...sourceHtml.matchAll(/\\b(?:e-?mail)\\s*:/gi)]
+      .replace(/\u002f/gi, '/').replace(/\u003a/gi, ':')
+      .replace(/\u0040/gi, '@').replace(/\x40/gi, '@');
+    const emailRegions = [...sourceHtml.matchAll(/\b(?:e-?mail)\s*:/gi)]
       .map(m => sourceHtml.slice(m.index || 0, (m.index || 0) + 800)
-        .split(/(?:Ham Member|Lookups\\s*:|Biography|Detail|Logbook|Awards|<footer|<\\/footer>)/i)[0]);
+        .split(/(?:Ham Member|Lookups\s*:|Biography|Detail|Logbook|Awards|<footer|<\/footer>)/i)[0]);
     const protectedRegion = emailRegions.find(region =>
-      /use\\s+mouse\\s+to\\s+view|login\\s+required\\s+to\\s+view/i.test(stripMarkup(region))
+      /use\s+mouse\s+to\s+view|login\s+required\s+to\s+view/i.test(stripMarkup(region))
     ) || '';
     const profileRegion = protectedRegion || emailRegions[0] || '';
     const normalizedRegion = profileRegion
-      .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
-      .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
-    const mailto = [...normalizedRegion.matchAll(/href\\s*=\\s*["']mailto:([^"'?\\s]+)(?:\\?[^"']*)?["']/gi)]
+      .replace(/\u0040/gi, '@').replace(/\x40/gi, '@')
+      .replace(/\u003c/gi, '<').replace(/\u003e/gi, '>');
+    const mailto = [...normalizedRegion.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
       .map(m => normalizeEmail(m[1])).find(Boolean) || '';
     const visible = stripMarkup(normalizedRegion
-      .replace(/href\\s*=\\s*["']mailto:([^"'?\\s]+)(?:\\?[^"']*)?["']/gi, ' $1 ')
-      .replace(/https?:\\/\\/[^\\s"'<>]+/gi, ' '));
-    const visibleEmail = [...visible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi)]
+      .replace(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi, ' $1 ')
+      .replace(/https?:\/\/[^\s"'<>]+/gi, ' '));
+    const visibleEmail = [...visible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
       .map(m => normalizeEmail(m[0])).find(Boolean) || '';
 
     let authorizedBioEmail = '';
     if (allowEmailFromAuthorizedBio) {
       for (const bio of bioTexts) {
         const normalizedBio = String(bio || '')
-          .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
-          .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
-        const bioMailto = [...normalizedBio.matchAll(/href\\s*=\\s*["']mailto:([^"'?\\s]+)(?:\\?[^"']*)?["']/gi)]
+          .replace(/\u0040/gi, '@').replace(/\x40/gi, '@')
+          .replace(/\u003c/gi, '<').replace(/\u003e/gi, '>');
+        const bioMailto = [...normalizedBio.matchAll(/href\s*=\s*["']mailto:([^"'?\s]+)(?:\?[^"']*)?["']/gi)]
           .map(m => normalizeEmail(m[1])).find(Boolean) || '';
         const bioVisible = stripMarkup(normalizedBio);
-        const bioTextEmail = [...bioVisible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi)]
+        const bioTextEmail = [...bioVisible.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)]
           .map(m => normalizeEmail(m[0])).find(Boolean) || '';
         authorizedBioEmail = bioMailto || bioTextEmail;
         if (authorizedBioEmail) break;
