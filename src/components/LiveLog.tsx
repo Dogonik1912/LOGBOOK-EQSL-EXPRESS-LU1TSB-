@@ -570,7 +570,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                         }`}
                         title={q.qslSent ? 'Tarjeta compartida por correo o WhatsApp' : 'Ver o emitir tarjeta eQSL'}
                       >
-                        {(q.eqslUploaded || q.qslSent) ? '✓ Enviada' : 'Emitir eQSL'}
+                        {q.qslSent ? '✓ Enviada' : 'Emitir eQSL'}
                       </button>
                     </td>
 
