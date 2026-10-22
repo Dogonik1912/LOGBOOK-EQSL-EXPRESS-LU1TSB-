@@ -168,7 +168,11 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
     const res = await fetch('/api/lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({\n        call: cleanCall, user: qrzUser, pass: qrzPass,\n        hamqthUser: localStorage.getItem('hamqth_user') || sessionStorage.getItem('hamqth_user') || '',\n        hamqthPass: localStorage.getItem('hamqth_pass') || sessionStorage.getItem('hamqth_pass') || '',\n      }),
+      body: JSON.stringify({
+        call: cleanCall, user: qrzUser, pass: qrzPass,
+        hamqthUser: localStorage.getItem('hamqth_user') || sessionStorage.getItem('hamqth_user') || '',
+        hamqthPass: localStorage.getItem('hamqth_pass') || sessionStorage.getItem('hamqth_pass') || '',
+      }),
     });
     if (res.ok) {
       const data = await res.json();
