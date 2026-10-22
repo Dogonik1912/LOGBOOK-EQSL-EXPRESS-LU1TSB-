@@ -84,6 +84,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [whatsappRaw, setWhatsappRaw] = useState('');
+  const [lookupMessage, setLookupMessage] = useState('');
   const [name, setName] = useState('');
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
@@ -143,6 +144,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       setEmail(details.email || '');
       setWhatsapp(details.whatsapp || '');
       setWhatsappRaw(details.whatsappRaw || '');
+      setLookupMessage(details.lookupMessage || '');
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
       setQrzFoundSource((details.email || details.whatsapp) ? (details.source as any) : null);
@@ -164,6 +166,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     setEmail('');
     setWhatsapp('');
     setWhatsappRaw('');
+    setLookupMessage('');
     setName('');
     setCountry('');
     setGrid('');
@@ -226,6 +229,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     setEmail('');
     setWhatsapp('');
     setWhatsappRaw('');
+    setLookupMessage('');
     setName('');
     setCountry('');
     setGrid('');
@@ -416,6 +420,15 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
             />
           </div>
         </div>
+
+        {lookupMessage && (
+          <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+            <span>{lookupMessage}</span>
+            <button type="button" onClick={onOpenQRZModal} className="shrink-0 underline underline-offset-2 hover:text-amber-100">
+              Revisar conexión QRZ
+            </button>
+          </div>
+        )}
 
         {/* Fila 2: Fecha UTC, Hora UTC, Frecuencia, Modo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
