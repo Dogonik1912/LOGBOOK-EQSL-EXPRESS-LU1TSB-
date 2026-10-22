@@ -275,13 +275,50 @@ export default async function handler(req, res) {
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
 
-  // El correo público no se devuelve nunca desde este endpoint. Solo puede
-  // proceder de la consulta XML autenticada a QRZ, solicitada por el servicio cliente.
+  // Extraer teléfono/WhatsApp solo de enlaces y etiquetas de contacto del perfil
+  // público del indicativo consultado. Nunca inferir números a partir del indicativo.
+  let whatsapp = '', whatsappRaw = '', phone = '';
+  const contactHtml = String(html || '')
+    .replace(/<!--[\\s\\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|head|iframe)[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ');
+  const contactCandidates = [];
+  for (const m of contactHtml.matchAll(/href\\s*=\\s*["'](?:https?:)?\\/\\/(?:api\\.)?whatsapp\\.com\\/send\\?[^"']*phone=([^&"'\\s]+)/gi)) {
+    try { contactCandidates.push(decodeURIComponent(m[1].replace(/&amp;/gi, '&'))); } catch {}
+  }
+  for (const m of contactHtml.matchAll(/href\\s*=\\s*["'](?:https?:)?\\/\\/(?:www\\.)?wa\\.me\\/([^?"'\\s]+)/gi)) {
+    try { contactCandidates.push(decodeURIComponent(m[1])); } catch {}
+  }
+  const cleanPhone = value => String(value || '').replace(/(?:ext\\.?|x)\\s*\\d+$/i, '').replace(/[^+\\d]/g, '');
+  for (const candidate of contactCandidates) {
+    const digits = cleanPhone(candidate);
+    if (digits.replace(/\\D/g, '').length >= 8 && digits.replace(/\\D/g, '').length <= 15) {
+      whatsapp = digits.replace(/^\\+/, '');
+      whatsappRaw = candidate;
+      break;
+    }
+  }
+  // Buscar un teléfono explícitamente etiquetado en el texto visible del perfil.
+  if (!whatsapp && html) {
+    const visibleProfile = stripMarkup(contactHtml);
+    const phoneMatch = visibleProfile.match(/(?:phone|telephone|mobile|cell(?:ular)?|tel[eé]fono|m[oó]vil|celular|whatsapp|wsp)\\s*[:：-]\\s*([+\\d(][+\\d().\\s/-]{6,22}\\d)/i);
+    if (phoneMatch) {
+      const digits = cleanPhone(phoneMatch[1]);
+      if (digits.replace(/\\D/g, '').length >= 8 && digits.replace(/\\D/g, '').length <= 15) {
+        phone = phoneMatch[1].trim();
+        whatsapp = digits.replace(/^\\+/, '');
+        whatsappRaw = phone;
+      }
+    }
+  }
+
+  // El correo solo se acepta si QRZ lo entrega mediante la consulta XML autenticada.
+  // Los datos telefónicos solo se devuelven si aparecen como contacto en el perfil público.
   return res.status(200).json({
     callsign: call, name, country, grid, email,
+    phone, whatsapp, whatsappRaw,
     source: email ? emailSource : (hamdbFound ? 'hamdb' : 'qrz'),
     foundSource: email ? emailSource : (hamdbFound ? 'hamdb' : 'qrz'),
     sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(email ? [emailSource] : [])],
-    accessError: !email ? (accessError || 'No se encontró un correo publicado o accesible en las fuentes consultadas. Los datos básicos pueden proceder de HamDB; esta fuente no garantiza correos.') : ''
+    accessError: !email ? (accessError || 'QRZ no devolvió un correo mediante la consulta autorizada. El teléfono/WhatsApp se informa únicamente si figura como contacto público.') : ''
   });
 }
