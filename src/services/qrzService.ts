@@ -159,7 +159,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
   let result: CallsignDetails = {
     callsign: cleanCall,
     country: prefixInfo.country,
-    grid: prefixInfo.defaultGrid || '',
+    grid: '',
     source: 'prefix-db',
   };
 
@@ -181,7 +181,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           whatsapp: data.whatsapp || '',
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
-          grid: data.grid || prefixInfo.defaultGrid || '',
+          grid: data.grid || '',
           lookupMessage: String(data.accessError || ''),
           source: data.foundSource ? 'qrz-bio' : 'qrz',
         };
