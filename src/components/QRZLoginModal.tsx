@@ -4,8 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { QRZ_LOGIN_URL } from '../types';
-import { Radio, ExternalLink, ShieldCheck, Check, X, Key, User } from 'lucide-react';
+import { Radio, ShieldCheck, Check, Key, User } from 'lucide-react';
 
 interface QRZLoginModalProps {
   isOpen: boolean;
@@ -28,10 +27,6 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
   };
 
   if (!isOpen) return null;
-
-  const handleOpenQRZ = () => {
-    window.open(QRZ_LOGIN_URL, '_blank', 'noopener,noreferrer');
-  };
 
   const handleSaveAndConnect = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -82,21 +77,9 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
           </div>
         </div>
 
-        {/* Botón para abrir QRZ.com */}
-        <div className="my-4 p-3.5 bg-slate-800/80 rounded-xl border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="text-xs text-slate-300">
-            ¿No tenés sesión abierta en el navegador o necesitás verificar tu cuenta?
-          </div>
-          <button
-            type="button"
-            onClick={handleOpenQRZ}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-amber-300 text-xs font-semibold rounded-lg border border-amber-400/20 transition-colors whitespace-nowrap cursor-pointer"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Abrir QRZ.com para iniciar sesión
-          </button>
+        <div className="my-4 p-3.5 bg-slate-800/80 rounded-xl border border-slate-700 text-xs text-slate-300">
+          Introducí aquí tus credenciales de QRZ. No hace falta abrir otra página ni iniciar sesión dos veces.
         </div>
-
         {/* Selección explícita de credenciales guardadas */}
         {hasSavedCredentials && (
           <button
