@@ -115,13 +115,36 @@ export default async function handler(req, res) {
       const profileXml = await profileResponse.text();
       if (/<Error>/i.test(profileXml)) return {};
       let email = normalizeEmail(xmlTextValue(profileXml, 'email'));
+      let emailSource = email ? 'qrz-xml' : '';
 
-      // No extraer correos de la biografía HTML: puede contener direcciones
-      // ajenas al campo Email del indicativo. Solo aceptar el campo <email>
-      // de la respuesta XML autenticada para este callsign exacto.
+      // PRUEBA 1: QRZ documenta html=<callsign> como consulta autenticada de la
+      // ficha exacta. Si el campo XML <email> viene vacío, revisar únicamente
+      // la región etiquetada "Email" de esa misma ficha; nunca buscar en toda
+      // la página ni en el pie de página, para no asociar el correo de terceros.
+      if (!email) {
+        try {
+          const bioUrl = 'https://xmldata.qrz.com/xml/current/?s=' +
+            encodeURIComponent(key) + ';html=' + encodeURIComponent(callsign);
+          const bioResponse = await fetch(bioUrl, {
+            headers: { 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8' },
+            signal: AbortSignal.timeout(10000)
+          });
+          if (bioResponse.ok) {
+            const bioHtml = await bioResponse.text();
+            const profileContacts = findContacts(bioHtml, [], false);
+            if (profileContacts.email) {
+              email = profileContacts.email;
+              emailSource = 'qrz-authenticated-profile-html';
+            }
+          }
+        } catch {
+          // Si la consulta de la ficha HTML falla, conservar el resultado XML.
+        }
+      }
 
       return {
         email,
+        emailSource,
         name: xmlTextValue(profileXml, 'fname') && xmlTextValue(profileXml, 'name')
           ? xmlTextValue(profileXml, 'fname') + ' ' + xmlTextValue(profileXml, 'name')
           : xmlTextValue(profileXml, 'name'),
@@ -215,6 +238,7 @@ export default async function handler(req, res) {
   // Fuente exclusiva del correo: ficha XML autenticada del indicativo consultado.
   // Nunca conservar ni sustituirlo por una coincidencia del HTML público.
   email = xmlProfile.email || '';
+  const emailSource = xmlProfile.emailSource || (email ? 'qrz-xml' : '');
   if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
@@ -223,9 +247,9 @@ export default async function handler(req, res) {
   // proceder de la consulta XML autenticada a QRZ, solicitada por el servicio cliente.
   return res.status(200).json({
     callsign: call, name, country, grid, email,
-    source: email ? 'qrz-xml' : (hamdbFound ? 'hamdb' : 'qrz'),
-    foundSource: email ? 'qrz-xml' : (hamdbFound ? 'hamdb' : 'qrz'),
-    sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(xmlProfile.email ? ['qrz-xml'] : [])],
+    source: email ? emailSource : (hamdbFound ? 'hamdb' : 'qrz'),
+    foundSource: email ? emailSource : (hamdbFound ? 'hamdb' : 'qrz'),
+    sources: ['qrz', ...(hamdbFound ? ['hamdb'] : []), ...(email ? [emailSource] : [])],
     accessError: !email ? (accessError || 'No se encontró un correo publicado o accesible en las fuentes consultadas. Los datos básicos pueden proceder de HamDB; esta fuente no garantiza correos.') : ''
   });
 }
