@@ -61,15 +61,18 @@ export default async function handler(req, res) {
     // "Email". Buscar mailto en todo el HTML de QRZ puede devolver el correo del
     // soporte, del pie de página o de un anuncio en lugar del corresponsal.
     // La biografía no sustituye el campo Email / "Use mouse to view".
-    const emailRegions = [...sourceHtml.matchAll(/\b(?:e-?mail)\s*:?/gi)]
-      .map(m => sourceHtml.slice(m.index || 0, (m.index || 0) + 2200));
+    const emailRegions = [...sourceHtml.matchAll(/\b(?:e-?mail)\s*:/gi)]
+      .map(m => sourceHtml.slice(m.index || 0, (m.index || 0) + 800)
+        .split(/(?:Ham Member|Lookups\s*:|Biography|Detail|Logbook|Awards|<footer|<\/footer>)/i)[0]);
     const protectedEmailRegion = emailRegions.find(region =>
       /use\s+mouse\s+to\s+view|login\s+required\s+to\s+view/i.test(stripMarkup(region))
     ) || '';
     const emailRegionWithAddress = emailRegions.find(region =>
       /mailto:|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(region)
     ) || '';
-    const profileEmailHtml = protectedEmailRegion || emailRegionWithAddress;
+    // Preferir el primer campo Email real de la ficha y no saltar a otra zona
+    // del documento si QRZ no publica una dirección en ese campo.
+    const profileEmailHtml = protectedEmailRegion || emailRegions[0] || emailRegionWithAddress;
     const profileEmailSource = profileEmailHtml
       .replace(/\\u0040/gi, '@').replace(/\\x40/gi, '@')
       .replace(/\\u003c/gi, '<').replace(/\\u003e/gi, '>');
