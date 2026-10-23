@@ -108,22 +108,26 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="rounded-lg bg-white px-3 py-1.5">
               <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
               <h1 className="flex items-center justify-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
-                <span className="text-black font-black" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXPRESS</span>
+                <span className="text-black font-black text-3xl sm:text-4xl leading-none" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXP<span className="text-3xl sm:text-4xl leading-none">R</span>ESS</span>
               </h1>
               {callsign && (
-                <span
-                  className={`mt-1 inline-flex justify-center rounded-md border border-white/40 px-3 py-1 font-mono text-sm font-extrabold text-slate-950 shadow-sm ${
-                    /^(argentina|ar|arg)$/.test(country) ? 'bg-gradient-to-b from-sky-300 via-white to-sky-300' :
-                    /^(españa|espana|spain|es)$/.test(country) ? 'bg-gradient-to-b from-red-600 via-yellow-400 to-red-600' :
-                    /^(brasil|brazil|br)$/.test(country) ? 'bg-gradient-to-br from-green-600 via-yellow-300 to-green-600' :
-                    /^(uruguay|uy)$/.test(country) ? 'bg-gradient-to-b from-sky-300 via-white to-sky-300' :
-                    /^(chile|cl)$/.test(country) ? 'bg-gradient-to-b from-white via-white to-red-600' :
-                    'bg-slate-200'
-                  }`}
-                  title={`Señal distintiva: ${callsign}`}
-                >
-                  {callsign}
-                </span>
+                <div className="mt-2 flex w-full justify-center">
+                  <span
+                    className={`inline-flex min-w-[7rem] justify-center rounded-md border border-slate-300 px-4 py-1.5 font-mono text-base font-extrabold shadow-sm ${
+                      /^(argentina|ar|arg)$/.test(country) ? 'bg-white' :
+                      /^(españa|espana|spain|es)$/.test(country) ? 'bg-gradient-to-b from-red-600 via-yellow-400 to-red-600' :
+                      /^(brasil|brazil|br)$/.test(country) ? 'bg-gradient-to-br from-green-600 via-yellow-300 to-green-600' :
+                      /^(uruguay|uy)$/.test(country) ? 'bg-gradient-to-b from-sky-300 via-white to-sky-300' :
+                      /^(chile|cl)$/.test(country) ? 'bg-gradient-to-b from-white via-white to-red-600' :
+                      'bg-slate-200'
+                    }`}
+                    title={`Señal distintiva: ${callsign}`}
+                  >
+                    {callsign.split('').map((character, index) => (
+                      <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
+                    ))}
+                  </span>
+                </div>
               )}
             </div>
             <p className="text-xs text-slate-400">
