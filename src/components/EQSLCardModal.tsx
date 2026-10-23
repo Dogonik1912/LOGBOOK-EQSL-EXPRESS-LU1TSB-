@@ -341,6 +341,26 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return `${origin}/?${params.toString()}`;
   };
 
+  // Enlace público para ver y descargar la eQSL recibida sin iniciar sesión.
+  // Solo incluye los datos del QSO necesarios para reconstruir la tarjeta; no comparte email ni teléfono.
+  const getReceivedCardUrl = () => {
+    const cardData = {
+      from: myCallsign,
+      to: qso.callsign,
+      date: qso.date,
+      time: qso.time,
+      band: qso.band,
+      frequency: qso.frequency,
+      mode: qso.mode,
+      rstSent: qso.rstSent || '59',
+      rstRcvd: qso.rstRcvd || '59',
+      qth: myQth,
+      grid: myGrid,
+    };
+    const params = new URLSearchParams({ view_eqsl: JSON.stringify(cardData) });
+    return `${window.location.origin}/?${params.toString()}`;
+  };
+
   // Descargar archivo PNG
   const handleDownloadPNG = () => {
     if (!isQsoValidForEQSL() || !canvasRef.current) return;
@@ -395,6 +415,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!isQsoValidForEQSL()) return;
     const firma = getFirma();
     const replyLink = getReplyUrl();
+    const receivedCardLink = getReceivedCardUrl();
     const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
     const body = encodeURIComponent(
       `Hola colega ${qso.callsign},\n\n` +
