@@ -196,9 +196,6 @@ export default async function handler(req, res) {
         email,
         emailSource,
         accessError: email ? '' : (xmlMessage ? 'QRZ informa: ' + xmlMessage : 'QRZ autenticó la cuenta, pero no entregó el campo Email para este indicativo. Puede estar oculto o limitado por los permisos/suscripción de QRZ.'),
-        name: xmlTextValue(profileXml, 'fname') && xmlTextValue(profileXml, 'name')
-          ? xmlTextValue(profileXml, 'fname') + ' ' + xmlTextValue(profileXml, 'name')
-          : xmlTextValue(profileXml, 'name'),
         country: xmlTextValue(profileXml, 'country'),
         grid: xmlTextValue(profileXml, 'grid')
       };
@@ -211,7 +208,7 @@ export default async function handler(req, res) {
   // Se evita automatizar el formulario HTML de QRZ. Para correo se utiliza
   // exclusivamente la interfaz XML oficial autenticada y los permisos de esa cuenta.
 
-  let email = '', name = '', country = '', grid = '';
+  let email = '', country = '', grid = '';
   let accessError = '';
   let html = '';
   try {
@@ -241,62 +238,7 @@ export default async function handler(req, res) {
       // pie de página o componentes compartidos y asociarlos al indicativo equivocado.
       // El correo solo se acepta más abajo desde la respuesta XML autenticada del callsign exacto.
 
-      // QRZ cambia el marcado de sus perfiles. Probar varios campos del perfil
-      // y descartar títulos genéricos o el propio indicativo.
-      // Recuperar el nombre desde el perfil público independientemente de que
-      // QRZ autorice o no el correo por XML. QRZ cambia con frecuencia el HTML,
-      // por eso se prueban metadatos, JSON-LD, etiquetas de perfil y filas "Name".
-      const metaName = html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["']/i)
-        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i);
-      const jsonFirst = html.match(/["'](?:fname|firstName|givenName)["']\s*:\s*["']([^"']{2,80})["']/i);
-      const jsonLast = html.match(/["'](?:surname|lastName|familyName)["']\s*:\s*["']([^"']{2,80})["']/i);
-      const profileName = html.match(/<[^>]+class=["'][^"']*(?:m0|fullname|full-name|callsign-name|profile-name|name-line)[^"']*["'][^>]*>([\s\S]{1,200}?)<\//i);
-      const headingName = html.match(/<h1[^>]*>([\s\S]{1,200}?)<\/h1>/i);
-      // Buscar primero el campo etiquetado "Name" dentro de cualquier fila,
-      // admitiendo etiquetas anidadas (QRZ cambia el HTML según la vista/sesión).
-      const tableNameCandidates = [...html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)]
-        .map(row => {
-          const cells = [...row[1].matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)]
-            .map(cell => decode(cell[1]).replace(/\\s+/g, ' ').trim());
-          const labelIndex = cells.findIndex(cell => /^name\\s*:??$/i.test(cell.replace(/<[^>]*>/g, '').trim()));
-          return labelIndex >= 0 ? (cells[labelIndex + 1] || '') : '';
-        }).filter(Boolean);
-      const labeledName = html.match(/(?:<t[dh][^>]*>\\s*)Name\\s*:?\\s*<\\/t[dh]>\\s*<t[dh][^>]*>([\\s\\S]{1,240}?)<\\/t[dh]>/i)
-        || html.match(/(?:<label[^>]*>\\s*|<[^>]+>\\s*)Name\\s*:?\\s*(?:<\\/label>\\s*)?(?:<[^>]+>\\s*)?([A-Z][^<]{2,100})/i)
-        || html.match(/["'](?:name|fname|first_name|firstName|operatorName|fullName)["']\\s*:\\s*["']([^"'\\\\]{2,100})["']/i);
-      const profileNameText = html.match(/(?:Full Name|Operator Name|Contact Name)\\s*:?\\s*<[^>]*>\\s*([^<]{2,100})/i);
-      // Algunas respuestas incluyen JSON-LD o JSON dentro de scripts con entidades escapadas.
-      const escapedJsonName = html.match(/(?:&quot;|\\\\")?(?:name|fname|firstName|fullName)(?:&quot;|\\\\")?\\s*:\\s*(?:&quot;|\\\\")([^&"\\\\]{2,100})(?:&quot;|\\\\")/i);
-      const titleTag = html.match(/<title[^>]*>([\s\S]{1,200}?)<\/title>/i);
-      const jsonLdNames = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
-        .map(m => {
-          try {
-            const data = JSON.parse(m[1]);
-            const objects = Array.isArray(data) ? data : [data, ...(Array.isArray(data['@graph']) ? data['@graph'] : [])];
-            const person = objects.find(x => x && (x.name || x.givenName || x.familyName));
-            return person ? (person.name || [person.givenName, person.familyName].filter(Boolean).join(' ')) : '';
-          } catch { return ''; }
-        });
-      const cleanName = (value) => decode(value || '')
-        .replace(/\s*[|–—-]\s*(?:QRZ(?:\.COM)?|Ham Radio Callsign Lookup).*$/i, '')
-        .replace(/\s*[|–—-]\s*Callsign Lookup.*$/i, '')
-        .replace(/\s+/g, ' ').trim();
-      const candidates = [
-        jsonFirst && jsonLast ? cleanName(jsonFirst[1] + ' ' + jsonLast[1]) : '',
-        ...jsonLdNames.map(cleanName),
-        profileName ? cleanName(profileName[1]) : '',
-        ...tableNameCandidates.map(cleanName),
-        labeledName ? cleanName(labeledName[1]) : '',
-        profileNameText ? cleanName(profileNameText[1]) : '',
-        escapedJsonName ? cleanName(escapedJsonName[1]) : '',
-        metaName ? cleanName(metaName[1]) : '',
-        headingName ? cleanName(headingName[1]) : '',
-        titleTag ? cleanName(titleTag[1]) : ''
-      ];
-      name = candidates.find(value => value && value.toUpperCase() !== call &&
-        !/^(?:QRZ(?:\.COM)?|HAM RADIO CALLSIGN LOOKUP|CALLSIGN LOOKUP|NOT FOUND|PAGE NOT FOUND)$/i.test(value) &&
-        !value.toUpperCase().startsWith(call + ' |') &&
-        !value.toUpperCase().startsWith(call + ' -')) || '';
+      // No se extrae ni consulta el nombre del perfil QRZ.
       const gridMatch = html.match(/Grid Square:<\/td>\s*<td[^>]*>\s*([A-R]{2}[0-9]{2}(?:[A-X]{2})?)/i);
       if (gridMatch) grid = gridMatch[1];
       const countryMatch = html.match(/Country:<\/td>\s*<td[^>]*>([^<]+)/i);
@@ -315,7 +257,6 @@ export default async function handler(req, res) {
   );
   email = xmlProfile.email || '';
   const emailSource = xmlProfile.emailSource || '';
-  if (!name && xmlProfile.name) name = xmlProfile.name;
   if (!country && xmlProfile.country) country = xmlProfile.country;
   if (!grid && xmlProfile.grid) grid = xmlProfile.grid;
 
@@ -358,7 +299,7 @@ export default async function handler(req, res) {
   // Los teléfonos solo se aceptan si
   // aparecen explícitamente como contacto en el perfil público.
   return res.status(200).json({
-    callsign: call, name, country, grid, email,
+    callsign: call, country, grid, email,
     phone, whatsapp, whatsappRaw,
     source: email ? emailSource : 'qrz',
     foundSource: email ? emailSource : 'qrz',
