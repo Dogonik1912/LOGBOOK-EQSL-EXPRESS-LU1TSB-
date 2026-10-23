@@ -120,12 +120,11 @@ function MainApp() {
     localStorage.setItem('logbook_qsos', JSON.stringify(newQsos));
   };
 
-  const handleAddQSO = (qso: QSO) => {
+  const handleAddQSO = (qso: QSO, openEQSL = true) => {
     const updated = [qso, ...qsos];
     handleSaveQsos(updated);
-    // Tras guardar, abrir siempre el generador eQSL para que el usuario pueda elegir diseño
-    // y completar el envío por email o WhatsApp, incluso si el correo no está disponible.
-    setActiveEQSLQSO(qso);
+    // La carga simple guarda el contacto sin forzar el generador; la acción eQSL lo abre explícitamente.
+    if (openEQSL) setActiveEQSLQSO(qso);
   };
 
   const handleUpdateQSO = (updatedQSO: QSO) => {
