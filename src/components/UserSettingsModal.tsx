@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, User, Mail, MapPin, Radio, Key, Check, X, ExternalLink, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { QRZ_LOGIN_URL, DEFAULT_CALLSIGN } from '../types';
+import { Settings, Check, X, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { DEFAULT_CALLSIGN } from '../types';
 import { lookupQRZCallsign } from '../services/qrzService';
 
 interface UserSettingsModalProps {
@@ -23,12 +23,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [callsign, setCallsign] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [qth, setQth] = useState('');
-  const [grid, setGrid] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
-  const [qrzUser, setQrzUser] = useState('');
-  const [qrzPass, setQrzPass] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -36,12 +32,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCallsign(localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN);
       setName(localStorage.getItem('user_name') || '');
       setEmail(localStorage.getItem('user_email') || '');
-      setQth(localStorage.getItem('user_qth') || '');
-      setGrid(localStorage.getItem('user_grid') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
-      setQrzUser(localStorage.getItem('qrz_user') || '');
-      setQrzPass(localStorage.getItem('qrz_pass') || '');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -54,22 +46,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.setItem('user_callsign', finalCall);
     localStorage.setItem('user_name', name.trim());
     localStorage.setItem('user_email', email.trim());
-    localStorage.setItem('user_qth', qth.trim());
-    localStorage.setItem('user_grid', grid.trim().toUpperCase());
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
 
-    if (qrzUser.trim()) {
-      localStorage.setItem('qrz_user', qrzUser.trim());
-      localStorage.removeItem('qrz_skipped');
-    } else {
-      localStorage.removeItem('qrz_user');
-    }
-
-    if (qrzPass) {
-      localStorage.setItem('qrz_pass', qrzPass);
-    } else {
-      localStorage.removeItem('qrz_pass');
-    }
     localStorage.removeItem('hamqth_user');
     localStorage.removeItem('hamqth_pass');
     localStorage.removeItem('qrz_logbook_key');
@@ -103,7 +81,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Configuración del Operador</h2>
-              <p className="text-xs text-slate-400">Datos de estación y credenciales locales</p>
+              <p className="text-xs text-slate-400">Tu indicativo, nombre, correo y diseño de tarjeta</p>
             </div>
           </div>
           <button
@@ -163,31 +141,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Grid Locator
-              </label>
-              <input
-                type="text"
-                value={grid}
-                onChange={(e) => setGrid(e.target.value)}
-                placeholder="GF05te"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm font-mono uppercase text-white focus:border-amber-400 focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              QTH / Ciudad y Provincia
-            </label>
-            <input
-              type="text"
-              value={qth}
-              onChange={(e) => setQth(e.target.value)}
-              placeholder="Buenos Aires, Argentina"
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden"
-            />
           </div>
 
           <div className="pt-2 border-t border-slate-800">
@@ -298,55 +251,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           </div>
 
           <div className="pt-2 border-t border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">3. Conexiones</h3>
-            <p className="text-[11px] text-slate-500 mt-1">Configurá QRZ por separado. Mostrar tu indicativo no requiere iniciar sesión.</p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">3. Datos de contacto</h3>
+            <p className="text-[11px] text-slate-500 mt-1">El nombre y correo se pueden completar desde QRZ cuando estén disponibles o escribir manualmente.</p>
           </div>
-          {/* Sección QRZ.com */}
-          <div className="p-4 bg-slate-950/70 rounded-xl border border-amber-500/20 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                  Cuenta QRZ.com (consulta de perfil)
-                </span>
-              </div>
-              <a
-                href={QRZ_LOGIN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-amber-300 hover:text-amber-200 inline-flex items-center gap-1"
-              >
-                Abrir QRZ <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Usuario QRZ</label>
-                <input
-                  type="text"
-                  value={qrzUser}
-                  onChange={(e) => setQrzUser(e.target.value)}
-                  placeholder="ej. LU1TSB"
-                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-amber-400 focus:outline-hidden"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Contraseña QRZ</label>
-                <input
-                  type="password"
-                  value={qrzPass}
-                  onChange={(e) => setQrzPass(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:border-amber-400 focus:outline-hidden"
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              La app consultará los campos que QRZ permita devolver. No inventará correos ni tomará direcciones de scripts, anuncios o pies de página; el correo puede no estar disponible para todos los perfiles.
-            </p>
-          </div>
-
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <div className="text-xs text-emerald-400 font-medium">
