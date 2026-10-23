@@ -6,7 +6,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { DEFAULT_CALLSIGN } from '../types';
-import { lookupQRZCallsign } from '../services/qrzService';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -21,7 +20,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
@@ -31,7 +29,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setCallsign(localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN);
-      setName(localStorage.getItem('user_name') || '');
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
@@ -46,7 +43,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     e.preventDefault();
     const finalCall = callsign.trim().toUpperCase() || DEFAULT_CALLSIGN;
     localStorage.setItem('user_callsign', finalCall);
-    localStorage.setItem('user_name', name.trim());
     localStorage.setItem('user_email', email.trim());
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
@@ -60,15 +56,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     setSavedSuccess(true);
     onUpdate();
-    // Intentar completar el nombre propio desde el perfil QRZ del indicativo de estación.
-    // Si QRZ no devuelve un nombre, se conserva el dato existente y no se inventa uno.
-    void lookupQRZCallsign(finalCall).then((profile) => {
-      if (profile.name && profile.name.trim()) {
-        localStorage.setItem('user_name', profile.name.trim());
-        setName(profile.name.trim());
-        onUpdate();
-      }
-    }).catch((error) => console.warn('No se pudo obtener el nombre del operador desde QRZ:', error));
     setTimeout(() => {
       onClose();
     }, 600);
@@ -84,7 +71,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Configuración del Operador</h2>
-              <p className="text-xs text-slate-400">Tu indicativo, nombre, correo y diseño de tarjeta</p>
+              <p className="text-xs text-slate-400">Tu indicativo, correo y diseño de tarjeta</p>
             </div>
           </div>
           <button
@@ -153,18 +140,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <span className="text-[10px] text-slate-400">Por defecto: LU1TSB</span>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Nombre del Operador
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="ej. Martín"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden"
-              />
-            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
