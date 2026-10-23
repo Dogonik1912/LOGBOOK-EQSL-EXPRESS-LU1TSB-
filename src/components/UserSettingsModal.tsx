@@ -160,47 +160,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
-            <p className="text-[11px] text-slate-500 mt-1">Elegí la plantilla predeterminada y, si querés, una foto de fondo.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Los motivos visuales estarán disponibles más adelante como imágenes para elegir con un clic.</p>
           </div>
-          {/* Modelo eQSL predeterminado */}
-          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
-            <div className="flex items-center gap-2">
+          {/* Diseños temáticos: galería visual pendiente */}
+          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20">
+            <div className="flex items-center gap-2 mb-2">
               <ImageIcon className="w-4 h-4 text-sky-400" />
               <span className="text-xs font-bold text-sky-300">Diseño eQSL predeterminado</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Elegí el modelo que se usará automáticamente al abrir el generador. Podés cambiarlo para una tarjeta concreta cuando quieras.
-            </p>
-            <select
-              value={defaultEQSLTheme}
-              onChange={(e) => setDefaultEQSLTheme(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:border-sky-400 focus:outline-hidden"
-            >
-              <option value="navy">Clásico azul</option>
-              <option value="gold">Dorado</option>
-              <option value="cyber">Radio digital</option>
-              <option value="sunset">Puesta de sol</option>
-              <option value="mountain">Montaña y antenas</option>
-              <option value="aurora">Aurora boreal</option>
-              <option value="ocean">Mar y DX</option>
-              <option value="forest">Radio en el bosque</option>
-              <option value="space">Espacio y satélites</option>
-              <option value="world">Mundo DX</option>
-              <option value="cw">Código Morse</option>
-              <option value="field">Radio portátil</option>
-              <option value="vintage">Vintage radio</option>
-              <option value="signal">Ondas de radio</option>
-              <option value="contest">Concurso y diplomas</option>
-              <option value="moon">Luna y noche</option>
-              <option value="tropical">Tropical</option>
-              <option value="arctic">Polar</option>
-              <option value="red">Alta potencia</option>
-              <option value="yl-radio">YL · Ondas y estrellas</option>
-              <option value="yl-dx">YL · Mundo DX</option>
-              <option value="yl-portable">YL · Aurora y naturaleza</option>
-              <option value="yl-contest">YL · Brillo y concurso</option>
-              <option value="yl-antenna">YL · Antenas al atardecer</option>
-            </select>
+            <p className="text-[11px] text-slate-400">La selección de motivos se incorporará más adelante. Se mostrarán imágenes de cada diseño, sin una lista de nombres, y podrás seleccionar la que quieras con un solo clic.</p>
           </div>
 
           {/* Foto de fondo para tarjetas eQSL */}
