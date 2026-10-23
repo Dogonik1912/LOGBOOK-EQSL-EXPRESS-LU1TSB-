@@ -184,7 +184,7 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
           whatsappRaw: data.whatsappRaw || '',
           country: data.country || prefixInfo.country,
           grid: data.grid || '',
-          lookupMessage: String(data.accessError || ''),
+          lookupMessage: '',
           source: data.foundSource === 'qrz-web-session' || data.foundSource === 'qrz-xml' || data.foundSource === 'qrz-authenticated-profile-html' ? data.foundSource : data.foundSource ? 'qrz-bio' : 'qrz',
         };
       }
