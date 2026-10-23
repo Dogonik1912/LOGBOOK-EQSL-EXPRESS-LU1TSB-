@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Radio, Settings, Clock, MessageCircle, Download, Smartphone } from 'lucide-react';
+import { Radio, Settings, MessageCircle, Download, Smartphone } from 'lucide-react';
 import { getUserCallsign } from '../services/qrzService';
 
 interface HeaderProps {
@@ -16,8 +16,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   onOpenReplyModal,
 }) => {
-  const [utcTime, setUtcTime] = useState('');
-  const [utcDate, setUtcDate] = useState('');
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -54,25 +52,6 @@ export const Header: React.FC<HeaderProps> = ({
         : 'Para instalar: abrí el menú del navegador (⋮ o …) y elegí “Instalar aplicación” o “Agregar a pantalla de inicio”. En PC, buscá el icono de instalación en la barra de direcciones.');
   };
 
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const hh = String(now.getUTCHours()).padStart(2, '0');
-      const mm = String(now.getUTCMinutes()).padStart(2, '0');
-      const ss = String(now.getUTCSeconds()).padStart(2, '0');
-      setUtcTime(`${hh}:${mm}:${ss}`);
-
-      const y = now.getUTCFullYear();
-      const m = String(now.getUTCMonth() + 1).padStart(2, '0');
-      const d = String(now.getUTCDate()).padStart(2, '0');
-      setUtcDate(`${y}-${m}-${d}`);
-    };
-
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -96,15 +75,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Zona derecha: Reloj UTC, QRZ Status, Compartir App WhatsApp y Ajustes */}
+        {/* Zona derecha: instalación, compartir app, responder eQSL y ajustes */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Reloj UTC en Vivo */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl font-mono text-xs shadow-inner">
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-slate-400 hidden sm:inline">{utcDate}</span>
-            <span className="text-amber-300 font-bold">{utcTime} UTC</span>
-          </div>
-
           <button
             type="button"
             onClick={() => { void handleInstall(); }}
