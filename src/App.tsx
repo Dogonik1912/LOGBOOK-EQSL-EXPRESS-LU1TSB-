@@ -133,11 +133,6 @@ function MainApp() {
     };
     window.addEventListener('message', bridgeHandler);
 
-    // Inicializar callsign por defecto si no existe
-    if (!localStorage.getItem('user_callsign')) {
-      localStorage.setItem('user_callsign', DEFAULT_CALLSIGN);
-    }
-
     return () => {
       window.removeEventListener('message', bridgeHandler);
     };
