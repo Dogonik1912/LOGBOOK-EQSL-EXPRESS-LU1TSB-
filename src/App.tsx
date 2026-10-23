@@ -141,8 +141,27 @@ function MainApp() {
   };
 
   const handleImportADIF = (importedQsos: QSO[]) => {
-    const updated = [...importedQsos, ...qsos];
-    handleSaveQsos(updated);
+    // Evitar duplicados tanto frente al log actual como dentro del propio archivo ADIF.
+    const makeQsoKey = (q: QSO) => [
+      q.callsign.trim().toUpperCase(),
+      q.date,
+      q.time,
+      String(q.frequency || '').trim().replace(',', '.'),
+      q.mode.trim().toUpperCase(),
+    ].join('|');
+    const existingKeys = new Set(qsos.map(makeQsoKey));
+    const uniqueImported = importedQsos.filter((q) => {
+      const key = makeQsoKey(q);
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key);
+      return true;
+    });
+    if (uniqueImported.length === 0) {
+      window.alert('La importación terminó: no se agregaron contactos porque todos ya estaban en el libro de guardia.');
+      return;
+    }
+    handleSaveQsos([...uniqueImported, ...qsos]);
+    window.alert(`Importación completada: ${uniqueImported.length} QSO(s) nuevos; se omitieron ${importedQsos.length - uniqueImported.length} duplicado(s).`);
   };
 
   const handleSettingsUpdated = () => {
