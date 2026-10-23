@@ -13,6 +13,7 @@ import { LiveLog } from './components/LiveLog';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
+import { QRZLoginModal } from './components/QRZLoginModal';
 import { Radio, Award, Globe, Zap, Send, Info, ArrowRightLeft } from 'lucide-react';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
   });
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isQRZLoginModalOpen, setIsQRZLoginModalOpen] = useState(true);
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyData, setReplyData] = useState<{
@@ -68,7 +70,7 @@ export default function App() {
       window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + (nextHash ? `#${nextHash}` : ''));
     }
 
-    // QRZ no abre ventanas de conexión ni solicita credenciales desde la app.
+    // La ventana de inicio de sesión QRZ se muestra siempre al abrir la aplicación.
     if (replyToParam) {
       setReplyData({
         replyToCall: replyToParam,
@@ -271,6 +273,13 @@ export default function App() {
 
       {/* PRIORIDAD 1: Footer con crédito discreto */}
       <Footer />
+
+      {/* Inicio de sesión QRZ: se solicita en cada apertura de la aplicación */}
+      <QRZLoginModal
+        isOpen={isQRZLoginModalOpen}
+        onClose={() => setIsQRZLoginModalOpen(false)}
+        onSaved={() => setRefreshKey((key) => key + 1)}
+      />
 
       {/* Modales */}
       {/* Modal de Configuración General */}
