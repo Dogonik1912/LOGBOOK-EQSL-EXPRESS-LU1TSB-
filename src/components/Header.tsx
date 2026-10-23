@@ -105,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="min-w-0">
             {headerImage ? (
-              <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block max-h-20 max-w-full rounded-lg bg-white object-contain object-left" />
+              <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block h-14 sm:h-16 md:h-[4.5rem] w-auto max-w-[min(58vw,28rem)] rounded-lg bg-white p-1 object-contain object-left" />
             ) : (
               <div className="rounded-lg bg-white px-3 py-1.5">
                 <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
