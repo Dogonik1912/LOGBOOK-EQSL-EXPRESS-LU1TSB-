@@ -10,7 +10,6 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { NewQSOForm } from './components/NewQSOForm';
 import { LiveLog } from './components/LiveLog';
-import { QRZLoginModal } from './components/QRZLoginModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
@@ -29,7 +28,6 @@ export default function App() {
     return [];
   });
 
-  const [isQRZModalOpen, setIsQRZModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
@@ -51,13 +49,9 @@ export default function App() {
   // y 'qrz_skipped' no existe, mostrar el modal de aviso
   // Y verificar si se abrió mediante un enlace de responder eQSL (?reply_to=...)
   useEffect(() => {
-    const handleQRZAuthRequired = () => setIsQRZModalOpen(true);
-    window.addEventListener('qrz-auth-required', handleQRZAuthRequired);
-
     // Revisar si vino desde un enlace de respuesta compartida
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
     const profileImportCall = urlParams.get('qrz_call') || hashParams.get('qrz_call');
     // El puente desde QRZ usa el fragmento (#), que no se envía al servidor en la petición HTTP.
@@ -74,11 +68,8 @@ export default function App() {
       window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + (nextHash ? `#${nextHash}` : ''));
     }
 
-    // QRZ XML no es obligatorio para usar el libro ni para importar datos visibles
-    // desde un perfil QRZ abierto. Solo mostrar el modal si el usuario lo solicita.
-    if (forceQRZConnect) {
-      setIsQRZModalOpen(true);
-    } else if (replyToParam) {
+    // QRZ no abre ventanas de conexión ni solicita credenciales desde la app.
+    if (replyToParam) {
       setReplyData({
         replyToCall: replyToParam,
         myCall: urlParams.get('to_call') || '',
@@ -133,7 +124,6 @@ export default function App() {
     }
 
     return () => {
-      window.removeEventListener('qrz-auth-required', handleQRZAuthRequired);
       window.removeEventListener('message', bridgeHandler);
     };
   }, []);
@@ -215,7 +205,6 @@ export default function App() {
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
         onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onOpenQRZModal={() => setIsQRZModalOpen(true)}
         onOpenReplyModal={handleOpenManualReply}
       />
 
@@ -267,7 +256,6 @@ export default function App() {
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
           onAddQSO={handleAddQSO}
-          onOpenQRZModal={() => setIsQRZModalOpen(true)}
         />
 
         {/* Tabla Live Log (con columna Email editable, filtros y acciones) */}
@@ -285,15 +273,6 @@ export default function App() {
       <Footer />
 
       {/* Modales */}
-      {/* PRIORIDAD 4: Modal de Conexión QRZ */}
-      <QRZLoginModal
-        isOpen={isQRZModalOpen}
-        onClose={() => setIsQRZModalOpen(false)}
-        onSaved={() => {
-          setRefreshKey((k) => k + 1);
-        }}
-      />
-
       {/* Modal de Configuración General */}
       <UserSettingsModal
         isOpen={isSettingsModalOpen}
