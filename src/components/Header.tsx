@@ -23,10 +23,14 @@ export const Header: React.FC<HeaderProps> = ({
   const [registrationWhatsapp, setRegistrationWhatsapp] = useState(() => localStorage.getItem('user_whatsapp') || '');
   const [registrationPassword, setRegistrationPassword] = useState('');
 
-  const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || 'SIN REGISTRO');
+  const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
+  const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
 
   useEffect(() => {
-    const syncCallsign = () => setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || 'SIN REGISTRO');
+    const syncCallsign = () => {
+      setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
+      setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
+    };
     window.addEventListener('user-profile-updated', syncCallsign);
     window.addEventListener('storage', syncCallsign);
     return () => {
@@ -102,13 +106,25 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <div className="rounded-lg bg-white px-3 py-1.5">
-              <div className="text-center text-xs sm:text-sm font-extrabold tracking-[0.22em] text-sky-500">LOG BOOK</div>
+              <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
               <h1 className="flex items-center justify-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
                 <span className="text-black font-black" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXPRESS</span>
               </h1>
-              <span className="px-2 py-0.5 bg-amber-400/10 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold rounded-md">
-                {callsign}
-              </span>
+              {callsign && (
+                <span
+                  className={`mt-1 inline-flex justify-center rounded-md border border-white/40 px-3 py-1 font-mono text-sm font-extrabold text-slate-950 shadow-sm ${
+                    /^(argentina|ar|arg)$/.test(country) ? 'bg-gradient-to-b from-sky-300 via-white to-sky-300' :
+                    /^(españa|espana|spain|es)$/.test(country) ? 'bg-gradient-to-b from-red-600 via-yellow-400 to-red-600' :
+                    /^(brasil|brazil|br)$/.test(country) ? 'bg-gradient-to-br from-green-600 via-yellow-300 to-green-600' :
+                    /^(uruguay|uy)$/.test(country) ? 'bg-gradient-to-b from-sky-300 via-white to-sky-300' :
+                    /^(chile|cl)$/.test(country) ? 'bg-gradient-to-b from-white via-white to-red-600' :
+                    'bg-slate-200'
+                  }`}
+                  title={`Señal distintiva: ${callsign}`}
+                >
+                  {callsign}
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400">
               Libro de guardia y tarjetas eQSL
