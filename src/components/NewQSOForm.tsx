@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
-import { lookupQRZCallsign } from '../services/qrzService';
 import { 
   PlusCircle, 
   Search, 
@@ -84,7 +83,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [exchangeReceived, setExchangeReceived] = useState('');
   const [email, setEmail] = useState('');
   const [lookupMessage, setLookupMessage] = useState('');
-  const [name, setName] = useState('');
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
@@ -101,7 +99,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   // Importar datos visibles desde un perfil QRZ abierto mediante postMessage o un enlace de prueba.
   // Solo acepta campos explícitos enviados por el usuario; nunca deduce un correo.
   useEffect(() => {
-    const applyProfile = (profile: { call?: string; email?: string; name?: string; country?: string; grid?: string }) => {
+    const applyProfile = (profile: { call?: string; email?: string; country?: string; grid?: string }) => {
       const importedCall = String(profile.call || '').toUpperCase().trim();
       if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
       const importedEmail = String(profile.email || '').trim();
@@ -112,7 +110,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       }
       setCallsign(importedCall);
       setEmail(importedEmail);
-      setName(String(profile.name || '').trim());
       setCountry(String(profile.country || '').trim());
       setGrid(String(profile.grid || '').trim().toUpperCase());
       setLookupMessage(importedEmail
@@ -135,7 +132,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       applyProfile({
         call: importedCall,
         email: getImportValue('qrz_email'),
-        name: getImportValue('qrz_name'),
         country: getImportValue('qrz_country'),
         grid: getImportValue('qrz_grid'),
       });
@@ -186,38 +182,23 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
-  // Primero usa la libreta local; solo consulta QRZ si faltan datos guardados.
+  // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
   const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
-    if (!cleanCall || cleanCall.length < 3) return;
-    const saved = getContactBook()[cleanCall] || {};
-    // Mostrar enseguida los datos locales, pero no omitir la consulta pública de QRZ:
-    // un contacto puede tener correo guardado y seguir sin nombre.
-    if (requestId !== lookupRequestId.current) return;
-    if (saved.name) setName(saved.name);
-    if (saved.email) setEmail(saved.email);
-    if (saved.country) setCountry(saved.country);
-    if (saved.grid) setGrid(saved.grid);
-    setIsSearchingQRZ(true);
-    try {
-      const details = await lookupQRZCallsign(cleanCall);
-      if (requestId !== lookupRequestId.current) return;
-      setName(details.name || saved.name || '');
-      setEmail(details.email || saved.email || '');
-      setLookupMessage('');
-      if (details.country) setCountry(details.country);
-      else if (saved.country) setCountry(saved.country);
-      if (details.grid) setGrid(details.grid);
-      else if (saved.grid) setGrid(saved.grid);
-      setQrzFoundSource(details.email ? (details.source as any) : null);
-      if (details.email || details.name || details.whatsapp) saveContact(cleanCall, {
-        email: details.email || '', name: details.name || '', country: details.country || '',
-        grid: details.grid || '', whatsapp: details.whatsapp || '', whatsappRaw: details.whatsappRaw || '',
-      });
-    } catch (e) {
-      if (requestId === lookupRequestId.current) console.warn(e);
-    } finally {
-      if (requestId === lookupRequestId.current) setIsSearchingQRZ(false);
-    }
+    if (!cleanCall || cleanCall.length < 3 || requestId !== lookupRequestId.current) return;
+    const prefixes: Record<string, string> = {
+      LU: 'Argentina', LW: 'Argentina', AY: 'Argentina', AZ: 'Argentina',
+      EA: 'España', EB: 'España', EC: 'España', ED: 'España',
+      PY: 'Brasil', PP: 'Brasil', PR: 'Brasil', PU: 'Brasil', PT: 'Brasil',
+      CX: 'Uruguay', CE: 'Chile', CA: 'Chile', CB: 'Chile', OA: 'Perú', CP: 'Bolivia',
+      ZP: 'Paraguay', HK: 'Colombia', YV: 'Venezuela', HC: 'Ecuador', TG: 'Guatemala',
+      TI: 'Costa Rica', HP: 'Panamá', HR: 'Honduras', YS: 'El Salvador', YN: 'Nicaragua',
+      XE: 'México', W: 'Estados Unidos', K: 'Estados Unidos', N: 'Estados Unidos',
+      VE: 'Canadá', VA: 'Canadá', G: 'Reino Unido', M: 'Reino Unido', F: 'Francia',
+      DL: 'Alemania', I: 'Italia', JA: 'Japón', VK: 'Australia', ZL: 'Nueva Zelanda'
+    };
+    setCountry(prefixes[cleanCall.slice(0, 2)] || prefixes[cleanCall.slice(0, 1)] || '');
+    setGrid('');
+    setIsSearchingQRZ(false);
   };
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -230,7 +211,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
     setLookupMessage('');
-    setName('');
     setCountry('');
     setGrid('');
     setIsSearchingQRZ(upper.length >= 3);
@@ -303,7 +283,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       email: email.trim(),
       whatsapp: '',
       whatsappRaw: '',
-      name: name.trim(),
+      name: '',
       country: country.trim(),
       grid: grid.trim().toUpperCase(),
       notes: notes.trim(),
@@ -312,7 +292,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     };
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
-    saveContact(cleanCall, { email: email.trim(), name: name.trim(), country: country.trim(), grid: grid.trim().toUpperCase() });
+    saveContact(cleanCall, { email: email.trim(), country: country.trim(), grid: grid.trim().toUpperCase() });
     onAddQSO(newQSO);
 
     // PRIORIDAD 5: Guardar el último QSO en localStorage ('last_qso')
@@ -576,19 +556,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
         </div>
 
-        {/* Fila 3: Opcionales (Nombre, País, Grid, Notas) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
-          <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Nombre Corresponsal</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="ej. Eduardo"
-              className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:border-amber-400 focus:outline-hidden"
-            />
-          </div>
-
+        {/* Fila 3: Opcionales (País y notas) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">País / Entidad DXCC</label>
             <input
