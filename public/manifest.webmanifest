@@ -1,15 +1,15 @@
 {
   "id": "/",
-  "name": "LB EQSL EXPRESS",
-  "short_name": "LB EQSL",
-  "description": "Libro de guardia y tarjetas eQSL para radioaficionados",
+  "name": "LogBook eQSL Express",
+  "short_name": "LogBook eQSL",
+  "description": "LogBook eQSL Express",
   "lang": "es-AR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#101827",
+  "theme_color": "#101827",
   "icons": [
     {
       "src": "/icon.svg",
