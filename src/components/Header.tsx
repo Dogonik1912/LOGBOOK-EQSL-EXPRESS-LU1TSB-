@@ -97,13 +97,13 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Marca y Callsign */}
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 rounded-xl shadow-lg shadow-amber-500/20">
+          <div className="p-1 bg-white rounded-xl shadow-lg">
             <img src="/icon.svg" alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                <span className="text-amber-400">EQSL EXPRESS</span>
+            <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5">
+              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
+                <span className="text-black">ℒ 𝔅</span><span className="ml-2 text-sky-500">EQSL EXPRESS</span>
               </h1>
               <span className="px-2 py-0.5 bg-amber-400/10 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold rounded-md">
                 {callsign}
