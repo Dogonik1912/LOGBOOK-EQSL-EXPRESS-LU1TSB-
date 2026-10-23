@@ -547,8 +547,32 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         {/* Galería unificada: diseños incluidos en la app y fotos subidas por el usuario. */}
         <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-200">Diseño eQSL predeterminado · Elegí con un toque</p>
+            <p className="text-xs font-semibold text-slate-200">Diseños eQSL predeterminados</p>
             <span className="text-[10px] text-slate-500">{EQSL_THEMES.length + galleryImages.length} diseños</span>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/80 p-2">
+            <p className="text-[11px] text-slate-300">Todas las fotos que cargues aparecerán en esta galería. Cargar una foto no la ancla automáticamente.</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                  fileInputRef.current.click();
+                }
+              }}
+              className="inline-flex shrink-0 items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-medium rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              Añadir fotos de galería
+            </button>
           </div>
           <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {EQSL_THEMES.map((item) => {
@@ -573,10 +597,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
                 const selected = customBgImage === item.dataUrl;
                 return (
                   <div key={item.id} className={`overflow-hidden rounded-lg border ${selected ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
-                    <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl, item.name)} className="block w-full text-left" title="Ver opciones de esta imagen">
+                    <div className="block w-full text-left" title={item.name}>
                       <img src={item.dataUrl} alt={item.name} className="h-24 w-full object-cover" />
                       <span className="block truncate px-2 pt-1 text-[10px] text-slate-200">{item.name}</span>
-                    </button>
+                    </div>
                     <div className="flex items-center justify-between gap-1 border-t border-slate-800 p-1.5">
                       <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl, item.name)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`} title="Anclar esta imagen para enviar">
                         <Anchor className="h-3 w-3" /> {selected ? 'Anclada' : 'Anclar'}
@@ -594,51 +618,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           {themeNotice && <p className="mt-2 text-[11px] text-amber-300">{themeNotice}</p>}
         </div>
 
-        {/* Barra de personalización de imagen de fondo desde Galería */}
-        <div className="mb-3 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-amber-400" />
-            <span className="text-slate-300 font-medium">Foto de fondo para tu tarjeta:</span>
-            {customBgImage ? (
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                ✓ Imagen de galería activa
-              </span>
-            ) : (
-              <span className="text-slate-500">Diseño por defecto activo</span>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-medium rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              {customBgImage ? 'Añadir varias fotos' : 'Cargar varias fotos'}
-            </button>
-
-            {customBgImage && (
-              <button
-                type="button"
-                onClick={handleRemoveCustomImage}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 rounded-lg border border-slate-700 transition-colors cursor-pointer"
-                title="Quitar foto y volver al diseño clásico"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Quitar foto
-              </button>
-            )}
-          </div>
-        </div>
 
 
 
