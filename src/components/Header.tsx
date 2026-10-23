@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </h1>
               </div>
             )}
-            <p className="text-xs text-slate-400">Libro de guardia y tarjetas eQSL</p>
+            {!headerImage && <p className="text-xs text-slate-400">Libro de guardia y tarjetas eQSL</p>}
           </div>
         </div>
 
