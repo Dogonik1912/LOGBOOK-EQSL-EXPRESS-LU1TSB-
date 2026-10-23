@@ -493,17 +493,20 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         {/* Selector de plantillas disponibles también en la respuesta */}
         <div className="mb-3">
           <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-300"><Palette className="w-4 h-4 text-sky-400" /> Elegí un diseño para tu eQSL de respuesta</div>
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {REPLY_EQSL_THEMES.map((item) => (
               <button key={item.id} type="button" onClick={() => handleThemeChange(item.id)} aria-pressed={theme === item.id && !customBgImage}
-                className={`min-h-[54px] rounded-lg border px-2 py-1.5 text-left transition-colors ${theme === item.id && !customBgImage ? 'border-sky-400 ring-1 ring-sky-400/60' : 'border-slate-700 hover:border-slate-500'}`}
-                style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }} title={item.name}>
-                <span className="block relative overflow-hidden rounded-md border border-white/20 mb-1.5 h-10 px-1.5" style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}>
-                  <span className="absolute inset-x-0 top-0.5 text-[6px] font-bold tracking-wider text-white/80 text-center">eQSL · RADIO</span>
-                  <span className="absolute left-1 bottom-0 text-sm leading-4">{item.motif}</span>
-                  <span className="absolute right-1 bottom-0 text-[6px] font-mono text-white/90">59 · 73</span>
-                  <span className="absolute left-1/2 top-1/2 w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border opacity-40" style={{ borderColor: item.accent }} />
-                </span><span className="block text-[10px] leading-3 text-white/90">{item.name}</span>
+                className={`rounded-xl border p-2.5 text-left transition-all ${theme === item.id && !customBgImage ? 'border-sky-400 ring-2 ring-sky-400/60 scale-[1.01]' : 'border-slate-700 hover:border-slate-500'}`}
+                title={item.name}>
+                <span className="block relative overflow-hidden rounded-lg border border-white/25 mb-2 aspect-[8/5] w-full shadow-md" style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}>
+                  <span className="absolute inset-x-0 top-2 text-[10px] sm:text-xs font-bold tracking-wider text-white/85 text-center">eQSL · RADIO</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-3xl sm:text-4xl leading-none drop-shadow">{item.motif}</span>
+                  <span className="absolute right-2 bottom-2 text-[10px] sm:text-xs font-mono font-bold text-white/95">59 · 73</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-2 opacity-50" style={{ borderColor: item.accent }} />
+                  <span className="absolute inset-x-0 bottom-0 h-1" style={{ backgroundColor: item.accent }} />
+                </span>
+                <span className="block text-xs sm:text-sm leading-tight font-medium text-white/95">{item.name}</span>
+                {theme === item.id && !customBgImage && <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-sky-300"><Check className="w-3 h-3" /> Seleccionado</span>}
               </button>
             ))}
           </div>
