@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from './types';
+import { lookupQRZCallsign } from './services/qrzService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { NewQSOForm } from './components/NewQSOForm';
@@ -118,6 +119,19 @@ export default function App() {
       localStorage.setItem('user_callsign', DEFAULT_CALLSIGN);
     }
 
+    // Recuperar automáticamente el nombre del operador desde el perfil QRZ al abrir la app.
+    // No se pisa un nombre ya guardado manualmente y nunca se inventan datos.
+    const ownCall = (localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN).trim().toUpperCase();
+    if (!(localStorage.getItem('user_name') || '').trim()) {
+      void lookupQRZCallsign(ownCall).then((profile) => {
+        const profileName = (profile.name || '').trim();
+        if (profileName && !(localStorage.getItem('user_name') || '').trim()) {
+          localStorage.setItem('user_name', profileName);
+          setRefreshKey((key) => key + 1);
+        }
+      }).catch((error) => console.warn('No se pudo recuperar el nombre del operador desde QRZ:', error));
+    }
+
     return () => {
       window.removeEventListener('qrz-auth-required', handleQRZAuthRequired);
       window.removeEventListener('message', bridgeHandler);
@@ -133,11 +147,9 @@ export default function App() {
   const handleAddQSO = (qso: QSO) => {
     const updated = [qso, ...qsos];
     handleSaveQsos(updated);
-    // Si hay correo, abrir automáticamente la eQSL recién generada para completar el envío.
-    // Sin correo, el QSO se guarda normalmente y no se abre ningún flujo de envío.
-    if (qso.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(qso.email.trim())) {
-      setActiveEQSLQSO(qso);
-    }
+    // Tras guardar, abrir siempre el generador eQSL para que el usuario pueda elegir diseño
+    // y completar el envío por email o WhatsApp, incluso si el correo no está disponible.
+    setActiveEQSLQSO(qso);
   };
 
   const handleUpdateQSO = (updatedQSO: QSO) => {
