@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 interface NewQSOFormProps {
-  onAddQSO: (qso: QSO) => void;
+  onAddQSO: (qso: QSO, openEQSL?: boolean) => void;
 }
 
 export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
@@ -280,6 +280,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const shouldOpenEQSL = submitter?.value === 'send';
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
     const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
@@ -327,7 +329,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
     saveContact(cleanCall, { email: email.trim(), country: country.trim(), grid: grid.trim().toUpperCase() });
-    onAddQSO(newQSO);
+    onAddQSO(newQSO, shouldOpenEQSL);
 
     // PRIORIDAD 5: Guardar el último QSO en localStorage ('last_qso')
     // Manteniendo hora (UTC), fecha, banda, frecuencia, modo
@@ -638,17 +640,25 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
         </div>
 
-        {/* Botón de Guardado */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="text-xs text-slate-400 italic">
-            * Al guardar, se abre la tarjeta eQSL para elegir diseño y completar el envío por email o WhatsApp. Los datos del QSO quedan precargados.
-          </div>
+        {/* Guardar sin abrir la tarjeta o guardar y abrir el generador eQSL */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 pt-2">
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all transform active:scale-95 cursor-pointer"
+            name="qsoAction"
+            value="save"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl border border-slate-600 transition-all active:scale-95 cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
-            {email.trim() ? 'GUARDAR QSO Y ENVIAR EQSL' : 'CARGAR QSO'}
+            CARGAR QSO
+          </button>
+          <button
+            type="submit"
+            name="qsoAction"
+            value="send"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            GUARDAR QSO Y ENVIAR EQSL
           </button>
         </div>
       </form>
