@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111827"/><stop offset="1" stop-color="#020617"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fcd34d"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
+  <rect x="18" y="18" width="476" height="476" rx="90" fill="none" stroke="#f59e0b" stroke-opacity=".45" stroke-width="5"/>
+  <circle cx="256" cy="155" r="42" fill="none" stroke="url(#gold)" stroke-width="13"/>
+  <path d="M256 199v70m-45-27 45 27 45-27M188 258h136M211 285h90" fill="none" stroke="url(#gold)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M92 151q-30 36 0 72M420 151q30 36 0 72M122 167q-17 20 0 40M390 167q17 20 0 40" fill="none" stroke="#fbbf24" stroke-width="9" stroke-linecap="round"/>
+  <text x="256" y="357" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="91" font-weight="900" text-anchor="middle" letter-spacing="-5">LB</text>
+  <text x="256" y="405" fill="#fbbf24" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" text-anchor="middle" letter-spacing="2">EQSL EXPRESS</text>
+  <path d="M135 432h242" stroke="#fbbf24" stroke-width="4" stroke-linecap="round" opacity=".75"/>
+</svg>
