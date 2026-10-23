@@ -43,6 +43,12 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   useEffect(() => {
+    document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => {
+      link.href = appIcon || '/icon.svg';
+    });
+  }, [appIcon]);
+
+  useEffect(() => {
     const checkInstalled = () => setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true);
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
