@@ -20,17 +20,23 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
+  const [headerImage, setHeaderImage] = useState(() => localStorage.getItem('app_header_image') || '');
+  const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
 
   useEffect(() => {
     const syncCallsign = () => {
       setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
+      setHeaderImage(localStorage.getItem('app_header_image') || '');
+      setAppIcon(localStorage.getItem('app_icon_image') || '');
     };
     window.addEventListener('user-profile-updated', syncCallsign);
     window.addEventListener('storage', syncCallsign);
+    window.addEventListener('user-branding-updated', syncCallsign);
     return () => {
       window.removeEventListener('user-profile-updated', syncCallsign);
       window.removeEventListener('storage', syncCallsign);
+      window.removeEventListener('user-branding-updated', syncCallsign);
     };
   }, []);
 
@@ -74,43 +80,34 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Marca y Callsign */}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-3.5 md:pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {callsign && (
+        <div className="absolute right-4 top-2 md:top-3 z-10">
+          <span className="inline-flex min-w-[5.5rem] justify-center rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-sm sm:text-base font-extrabold shadow-sm" title={`Señal distintiva: ${callsign}`}>
+            {callsign.split('').map((character, index) => (
+              <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
+            ))}
+          </span>
+        </div>
+      )}
+        {/* Marca */}
         <div className="flex items-center gap-3">
           <div className="p-1 bg-white rounded-xl shadow-lg">
-            <img src="/icon.svg" alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg" />
+            <img src={appIcon || "/icon.svg"} alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg object-contain" />
           </div>
-          <div>
-            <div className="rounded-lg bg-white px-3 py-1.5">
-              <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
-              <h1 className="flex items-center justify-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
-                <span className="text-black font-black text-3xl sm:text-4xl leading-none" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXP<span className="text-3xl sm:text-4xl leading-none">R</span>ESS</span>
-              </h1>
-              {callsign && (
-                <div className="mt-2 flex w-full justify-center">
-                  <span
-                    className={`inline-flex min-w-[7rem] justify-center rounded-md border border-slate-300 px-4 py-1.5 font-mono text-base font-extrabold shadow-sm ${
-                      /^(argentina|ar|arg)$/.test(country) ? 'bg-white' :
-                      /^(españa|espana|spain|es)$/.test(country) ? 'bg-gradient-to-b from-red-600 via-yellow-400 to-red-600' :
-                      /^(brasil|brazil|br)$/.test(country) ? 'bg-gradient-to-br from-green-600 via-yellow-300 to-green-600' :
-                      /^(uruguay|uy)$/.test(country) ? 'bg-gradient-to-b from-sky-300 via-white to-sky-300' :
-                      /^(chile|cl)$/.test(country) ? 'bg-gradient-to-b from-white via-white to-red-600' :
-                      'bg-slate-200'
-                    }`}
-                    title={`Señal distintiva: ${callsign}`}
-                  >
-                    {callsign.split('').map((character, index) => (
-                      <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
-                    ))}
-                  </span>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-slate-400">
-              Libro de guardia y tarjetas eQSL
-            </p>
-          </div>
-        </div>
+          <div className="min-w-0">
+            {headerImage ? (
+              <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block max-h-20 max-w-full rounded-lg bg-white object-contain object-left" />
+            ) : (
+              <div className="rounded-lg bg-white px-3 py-1.5">
+                <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
+                <h1 className="flex items-center justify-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
+                  <span className="text-black font-black text-3xl sm:text-4xl leading-none" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXP<span className="text-3xl sm:text-4xl leading-none">R</span>ESS</span>
+                </h1>
+              </div>
+            )}
+            <p className="text-xs text-slate-400">Libro de guardia y tarjetas eQSL</p>
+          </div>        </div>
 
         {/* Zona derecha: instalación, compartir app, responder eQSL y ajustes */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
