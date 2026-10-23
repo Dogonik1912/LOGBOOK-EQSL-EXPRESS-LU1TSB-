@@ -25,6 +25,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [email, setEmail] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
+  const [appLanguage, setAppLanguage] = useState('es');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
+      setAppLanguage(localStorage.getItem('app_language') || 'es');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -47,6 +49,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.setItem('user_name', name.trim());
     localStorage.setItem('user_email', email.trim());
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
+    localStorage.setItem('app_language', appLanguage);
 
     localStorage.removeItem('hamqth_user');
     localStorage.removeItem('hamqth_pass');
@@ -96,6 +99,43 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           <div className="pt-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Datos de estación</h3>
             <p className="text-[11px] text-slate-500 mt-1">Completá una sola vez los datos que aparecerán en tus tarjetas.</p>
+          </div>
+          {/* Idioma predeterminado de la interfaz */}
+          <div className="rounded-xl border border-violet-500/25 bg-slate-950/60 p-3.5 space-y-2">
+            <label className="block text-xs font-bold text-violet-300" htmlFor="app-language">Idioma predeterminado de la aplicación</label>
+            <select
+              id="app-language"
+              value={appLanguage}
+              onChange={(e) => setAppLanguage(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:border-violet-400 focus:outline-hidden"
+            >
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="it">Italiano</option>
+              <option value="nl">Nederlands</option>
+              <option value="pl">Polski</option>
+              <option value="ru">Русский</option>
+              <option value="uk">Українська</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="ar">العربية</option>
+              <option value="hi">हिन्दी</option>
+              <option value="tr">Türkçe</option>
+              <option value="sv">Svenska</option>
+              <option value="no">Norsk</option>
+              <option value="da">Dansk</option>
+              <option value="fi">Suomi</option>
+              <option value="cs">Čeština</option>
+              <option value="el">Ελληνικά</option>
+              <option value="ro">Română</option>
+              <option value="hu">Magyar</option>
+              <option value="id">Bahasa Indonesia</option>
+            </select>
+            <p className="text-[11px] text-slate-400">Se guarda como preferencia en este navegador. La traducción de toda la interfaz y la selección automática del idioma del corresponsal son tareas pendientes de integrar.</p>
           </div>
           {/* Datos de mi Estación */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
