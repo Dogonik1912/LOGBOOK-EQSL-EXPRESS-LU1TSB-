@@ -57,6 +57,14 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
+    const profileImportCall = urlParams.get('qrz_call');
+    // El puente desde un perfil QRZ ya abierto no requiere volver a autenticar XML.
+    if (profileImportCall) {
+      const cleanParams = new URLSearchParams(urlParams);
+      ['qrz_call', 'qrz_email', 'qrz_name', 'qrz_country', 'qrz_grid'].forEach((key) => cleanParams.delete(key));
+      const nextQuery = cleanParams.toString();
+      window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + window.location.hash);
+    }
 
     // Mostrar el formulario solo si se pidió expresamente o faltan credenciales.
     // Las credenciales no persistentes viven en sessionStorage.
@@ -80,10 +88,10 @@ export default function App() {
         whatsapp: urlParams.get('wa') || '',
       });
       setIsReplyModalOpen(true);
-    } else if (!hasQRZCredentials) {
+    } else if (!hasQRZCredentials && !profileImportCall) {
       // Si no hay credenciales activas, solicitar conexión al abrir.
       setIsQRZModalOpen(true);
-    } else if (!replyToParam) {
+    } else if (!replyToParam && !profileImportCall) {
       // Las credenciales antiguas pueden estar guardadas sin haber sido validadas.
       // Verificar con QRZ en segundo plano y pedir intervención solo si la sesión falla.
       const savedUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
