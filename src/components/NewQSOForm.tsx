@@ -99,15 +99,17 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   // Solo acepta los campos enviados explícitamente por el usuario; nunca deduce un correo.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const importedCall = (params.get('qrz_call') || '').toUpperCase().trim();
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const getImportValue = (key: string) => params.get(key) || hashParams.get(key) || '';
+    const importedCall = getImportValue('qrz_call').toUpperCase().trim();
     if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
 
-    const importedEmail = (params.get('qrz_email') || '').trim();
+    const importedEmail = getImportValue('qrz_email').trim();
     setCallsign(importedCall);
     setEmail(importedEmail);
-    setName((params.get('qrz_name') || '').trim());
-    setCountry((params.get('qrz_country') || '').trim());
-    setGrid((params.get('qrz_grid') || '').trim().toUpperCase());
+    setName(getImportValue('qrz_name').trim());
+    setCountry(getImportValue('qrz_country').trim());
+    setGrid(getImportValue('qrz_grid').trim().toUpperCase());
     setLookupMessage(importedEmail
       ? 'Correo importado desde el perfil QRZ abierto. Verificá que corresponda a este indicativo antes de guardar.'
       : 'Se importó el indicativo desde QRZ, pero no se encontró un correo visible en el perfil. No se completó ninguno automáticamente.');
