@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#ffffff"/>
   <rect x="12" y="12" width="488" height="488" rx="84" fill="none" stroke="#38bdf8" stroke-width="8"/>
-  <g fill="#050505" font-family="serif" font-weight="900" text-anchor="middle">
+  <g fill="#050505" font-family="serif" font-weight="900" text-anchor="middle" stroke="#050505" stroke-width="2.5" paint-order="stroke fill">
     <text x="105" y="300" font-size="170">ℒ</text>
     <text x="407" y="300" font-size="170">𝔅</text>
   </g>
