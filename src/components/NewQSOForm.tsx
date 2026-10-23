@@ -172,13 +172,44 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     setTime(now.time);
   };
 
-  // Autocompletado con QRZ / Prefijos cuando se escribe el indicativo
+  // Libreta local por SD: reutiliza correos y datos ya confirmados antes de consultar QRZ.
+  const getContactBook = (): Record<string, any> => {
+    try { return JSON.parse(localStorage.getItem('logbook_contacts') || '{}'); }
+    catch { return {}; }
+  };
+  const saveContact = (call: string, data: Record<string, any>) => {
+    const key = call.trim().toUpperCase();
+    if (!key) return;
+    const book = getContactBook();
+    const previous = book[key] || {};
+    const merged = { ...previous };
+    Object.entries(data).forEach(([field, value]) => {
+      if (typeof value === 'string' && value.trim()) merged[field] = value.trim();
+    });
+    merged.callsign = key;
+    merged.updatedAt = new Date().toISOString();
+    book[key] = merged;
+    localStorage.setItem('logbook_contacts', JSON.stringify(book));
+  };
+
+  // Primero usa la libreta local; solo consulta QRZ si faltan datos guardados.
   const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
     if (!cleanCall || cleanCall.length < 3) return;
+    const saved = getContactBook()[cleanCall];
+    if (saved && (saved.email || saved.name || saved.whatsapp)) {
+      if (requestId !== lookupRequestId.current) return;
+      setName(saved.name || '');
+      setEmail(saved.email || '');
+      setCountry(saved.country || '');
+      setGrid(saved.grid || '');
+      setLookupMessage('Datos recuperados de tu libreta local para ' + cleanCall + '.');
+      setQrzFoundSource(saved.email ? 'cache' : null);
+      setIsSearchingQRZ(false);
+      return;
+    }
     setIsSearchingQRZ(true);
     try {
       const details = await lookupQRZCallsign(cleanCall);
-      // Ignore an older response if the operator has already typed another callsign.
       if (requestId !== lookupRequestId.current) return;
       if (details.name) setName(details.name);
       setEmail(details.email || '');
@@ -186,6 +217,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
       setQrzFoundSource(details.email ? (details.source as any) : null);
+      if (details.email || details.name || details.whatsapp) saveContact(cleanCall, {
+        email: details.email || '', name: details.name || '', country: details.country || '',
+        grid: details.grid || '', whatsapp: details.whatsapp || '', whatsappRaw: details.whatsappRaw || '',
+      });
     } catch (e) {
       if (requestId === lookupRequestId.current) console.warn(e);
     } finally {
@@ -284,6 +319,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       qslRcvd: false,
     };
 
+    // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
+    saveContact(cleanCall, { email: email.trim(), name: name.trim(), country: country.trim(), grid: grid.trim().toUpperCase() });
     onAddQSO(newQSO);
 
     // PRIORIDAD 5: Guardar el último QSO en localStorage ('last_qso')
