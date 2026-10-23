@@ -330,7 +330,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   // Descargar archivo PNG
   const handleDownloadPNG = () => {
-    if (!canvasRef.current) return;
+    if (!isQsoValidForEQSL() || !canvasRef.current) return;
     const link = document.createElement('a');
     link.download = `eQSL_${myCallsign}_${qso.callsign}_${qso.date}.png`;
     link.href = canvasRef.current.toDataURL('image/png');
@@ -339,6 +339,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   // PRIORIDAD 1: Compartir por WhatsApp con firma dinámica y link de respuesta eQSL
   const handleShareWhatsApp = () => {
+    if (!isQsoValidForEQSL()) return;
     const firma = getFirma();
     const replyLink = getReplyUrl();
     const text = `📻 *Tarjeta eQSL Oficial*\n` +
@@ -358,8 +359,27 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const isQsoValidForEQSL = () => {
+    const call = qso?.callsign?.trim().toUpperCase() || '';
+    const date = qso?.date || '';
+    const time = qso?.time || '';
+    const frequency = Number(String(qso?.frequency || '').trim().replace(',', '.'));
+    const mode = qso?.mode || '';
+    const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(call);
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
+    const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+    const validFrequency = Number.isFinite(frequency) && frequency > 0 && frequency <= 100000;
+    const validMode = ['SSB', 'CW', 'FT8', 'FT4', 'AM', 'FM', 'RTTY', 'PSK31', 'SSTV', 'JS8', 'D-STAR', 'DMR'].includes(mode);
+    if (!(validCall && validDate && validTime && validFrequency && validMode)) {
+      window.alert('No se puede emitir la eQSL: el QSO tiene un campo obligatorio vacío o incorrecto. Revisá indicativo, fecha, hora UTC, frecuencia y modo.');
+      return false;
+    }
+    return true;
+  };
+
   // Enviar por Email (con link de respuesta eQSL y firma dinámica)
   const handleSendEmail = () => {
+    if (!isQsoValidForEQSL()) return;
     const firma = getFirma();
     const replyLink = getReplyUrl();
     const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
