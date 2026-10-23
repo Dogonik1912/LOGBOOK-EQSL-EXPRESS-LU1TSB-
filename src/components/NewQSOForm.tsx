@@ -526,32 +526,33 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               placeholder="Solo si está publicado en el perfil"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder-slate-600 focus:border-sky-400 focus:outline-hidden"
             />
-            <div className="mt-2">
+
+          </div>
+
+          <div className="sm:col-span-4 min-w-0">
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <Phone className="w-3 h-3 text-emerald-400 inline mr-1" /> WhatsApp del corresponsal
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="tel"
+                inputMode="tel"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="Número confirmado"
+                className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
+              />
               <button
                 type="submit"
                 name="qsoAction"
                 value="send-whatsapp"
                 disabled={!whatsapp.trim()}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-bold rounded-lg border border-emerald-600/60 disabled:border-slate-700 transition-colors"
+                className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-emerald-600/60 disabled:border-slate-700 transition-colors"
                 title={whatsapp.trim() ? "Guardar el QSO y abrir el envío de eQSL por WhatsApp" : "Se habilita cuando haya un número de WhatsApp confirmado"}
               >
-                <Phone className="w-4 h-4" /> ENVIAR eQSL POR WHATSAPP
+                <Phone className="w-3.5 h-3.5" /> <span>Enviar eQSL</span>
               </button>
             </div>
-          </div>
-
-          <div className="sm:col-span-4">
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              <Phone className="w-3 h-3 text-emerald-400 inline mr-1" /> WhatsApp del corresponsal
-            </label>
-            <input
-              type="tel"
-              inputMode="tel"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="Solo si está publicado o confirmado"
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder-slate-600 focus:border-emerald-400 focus:outline-hidden"
-            />
           </div>
 
         </div>
