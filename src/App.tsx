@@ -14,6 +14,31 @@ import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { Radio, Award, Globe, Send, Download, ChevronDown } from 'lucide-react';
 
+
+const MAP_ACTIVITY_WINDOW_MS = 30 * 60 * 1000;
+
+// Convierte un Maidenhead locator (4/6 caracteres) a coordenadas geográficas.
+function locatorToLatLon(locator?: string): { lat: number; lon: number } | null {
+  const value = String(locator || '').trim().toUpperCase();
+  if (value.length < 4 || !/^[A-R]{2}[0-9]{2}([A-X]{2})?/.test(value)) return null;
+  let lon = -180 + (value.charCodeAt(0) - 65) * 20;
+  let lat = -90 + (value.charCodeAt(1) - 65) * 10;
+  lon += Number(value[2]) * 2;
+  lat += Number(value[3]);
+  if (value.length >= 6) {
+    lon += (value.charCodeAt(4) - 65) * (5 / 60);
+    lat += (value.charCodeAt(5) - 65) * (2.5 / 60);
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+}
+
+function mapPoint(locator?: string): { x: number; y: number } | null {
+  const position = locatorToLatLon(locator);
+  if (!position) return null;
+  return { x: ((position.lon + 180) / 360) * 900, y: ((90 - position.lat) / 180) * 360 + 20 };
+}
+
 function MainApp() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
     const saved = localStorage.getItem('logbook_qsos');
@@ -58,6 +83,14 @@ function MainApp() {
   };
   const [showCountryRanking, setShowCountryRanking] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
+  const [mapClock, setMapClock] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setMapClock(Date.now()), 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const myStationGrid = localStorage.getItem('user_grid') || '';
+  const stationMapPoint = mapPoint(myStationGrid);
+  const recentMapContacts = qsos.filter((q) => typeof q.mapActivityAt === 'number' && mapClock - q.mapActivityAt < MAP_ACTIVITY_WINDOW_MS && mapClock >= q.mapActivityAt && mapPoint(q.grid));
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyData, setReplyData] = useState<{
@@ -146,10 +179,11 @@ function MainApp() {
   };
 
   const handleAddQSO = (qso: QSO, openEQSL = true) => {
-    const updated = [qso, ...qsos];
+    const trackedQSO: QSO = { ...qso, mapActivityAt: Date.now() };
+    const updated = [trackedQSO, ...qsos];
     handleSaveQsos(updated);
     // La carga simple guarda el contacto sin forzar el generador; la acción eQSL lo abre explícitamente.
-    if (openEQSL) setActiveEQSLQSO(qso);
+    if (openEQSL) setActiveEQSLQSO(trackedQSO);
   };
 
   const handleUpdateQSO = (updatedQSO: QSO) => {
@@ -286,10 +320,27 @@ function MainApp() {
                     <path d="M479 84L521 58 574 49 624 64 664 70 704 91 744 91 776 117 804 147 786 169 752 165 728 187 693 180 671 202 643 191 624 165 598 156 577 135 548 141 525 124 498 126Z"/>
                     <path d="M677 248L706 235 738 245 758 267 748 291 721 306 695 294 678 274Z"/>
                   </g>
-                  <text x="450" y="415" textAnchor="middle" fill="#8aa8bb" fontSize="13">VISTA MUNDIAL · CONTACTOS COMPARTIDOS</text>
+                  {recentMapContacts.map((contact) => {
+                    const target = mapPoint(contact.grid);
+                    if (!target) return null;
+                    const start = stationMapPoint;
+                    return (
+                      <g key={contact.id}>
+                        {start && <line x1={start.x} y1={start.y} x2={target.x} y2={target.y} stroke="#22c55e" strokeWidth="6" strokeLinecap="round" strokeDasharray="3 10" opacity="0.98" />}
+                        <circle cx={target.x} cy={target.y} r="6" fill="#22c55e" stroke="#dcfce7" strokeWidth="2" />
+                        {start && <circle cx={start.x} cy={start.y} r="7" fill="#16a34a" stroke="#dcfce7" strokeWidth="2" />}
+                        <title>{contact.callsign} · {contact.grid} · contacto reciente</title>
+                      </g>
+                    );
+                  })}
+                  <text x="450" y="415" textAnchor="middle" fill="#8aa8bb" fontSize="13">CONTACTOS DE LOS ÚLTIMOS 30 MINUTOS</text>
                 </svg>
               </div>
               <aside className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                <h3 className="mb-2 font-bold text-white">Actividad reciente</h3>
+                <p className="mb-3 text-xs leading-relaxed text-slate-400">Las líneas verdes punteadas y gruesas indican contactos cargados durante los últimos 30 minutos. Se eliminan automáticamente al vencer ese plazo.</p>
+                {stationMapPoint ? <p className="mb-3 text-xs text-emerald-300">Tu estación: {myStationGrid}</p> : <p className="mb-3 text-xs text-amber-300">Para dibujar las líneas, completá tu grid locator en Ajustes.</p>}
+                {recentMapContacts.length ? <ul className="space-y-2">{recentMapContacts.map((contact) => <li key={contact.id} className="text-sm text-slate-200"><span className="font-mono text-emerald-300">{contact.callsign}</span><span className="ml-2 text-xs text-slate-400">{contact.grid}</span></li>)}</ul> : <p className="text-xs text-slate-500">No hay contactos recientes con grid locator válido.</p>}
               </aside>
             </div>
           </div>
