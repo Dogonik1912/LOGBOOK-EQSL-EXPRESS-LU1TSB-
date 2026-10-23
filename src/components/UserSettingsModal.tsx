@@ -135,7 +135,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <option value="hu">Magyar</option>
               <option value="id">Bahasa Indonesia</option>
             </select>
-            <p className="text-[11px] text-slate-400">Se guarda como preferencia en este navegador. La traducción de toda la interfaz y la selección automática del idioma del corresponsal son tareas pendientes de integrar.</p>
+            
           </div>
           {/* Datos de mi Estación */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
