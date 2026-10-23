@@ -252,10 +252,21 @@ export default async function handler(req, res) {
       const jsonLast = html.match(/["'](?:surname|lastName|familyName)["']\s*:\s*["']([^"']{2,80})["']/i);
       const profileName = html.match(/<[^>]+class=["'][^"']*(?:m0|fullname|full-name|callsign-name|profile-name|name-line)[^"']*["'][^>]*>([\s\S]{1,200}?)<\//i);
       const headingName = html.match(/<h1[^>]*>([\s\S]{1,200}?)<\/h1>/i);
-      const labeledName = html.match(/(?:<t[dh][^>]*>\s*)Name\s*:?\s*<\/t[dh]>\s*<t[dh][^>]*>([\s\S]{1,160}?)<\/t[dh]>/i)
-        || html.match(/(?:<label[^>]*>\s*|<[^>]+>\s*)Name\s*:?\s*(?:<\/label>\s*)?(?:<[^>]+>\s*)?([A-Z][^<]{2,100})/i)
-        || html.match(/"(?:name|fname|first_name|firstName)"\s*:\s*"([^"\\]{2,100})"/i);
-      const profileNameText = html.match(/(?:Full Name|Operator Name|Contact Name)\s*:?\s*<[^>]*>\s*([^<]{2,100})/i);
+      // Buscar primero el campo etiquetado "Name" dentro de cualquier fila,
+      // admitiendo etiquetas anidadas (QRZ cambia el HTML según la vista/sesión).
+      const tableNameCandidates = [...html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)]
+        .map(row => {
+          const cells = [...row[1].matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)]
+            .map(cell => decode(cell[1]).replace(/\\s+/g, ' ').trim());
+          const labelIndex = cells.findIndex(cell => /^name\\s*:??$/i.test(cell.replace(/<[^>]*>/g, '').trim()));
+          return labelIndex >= 0 ? (cells[labelIndex + 1] || '') : '';
+        }).filter(Boolean);
+      const labeledName = html.match(/(?:<t[dh][^>]*>\\s*)Name\\s*:?\\s*<\\/t[dh]>\\s*<t[dh][^>]*>([\\s\\S]{1,240}?)<\\/t[dh]>/i)
+        || html.match(/(?:<label[^>]*>\\s*|<[^>]+>\\s*)Name\\s*:?\\s*(?:<\\/label>\\s*)?(?:<[^>]+>\\s*)?([A-Z][^<]{2,100})/i)
+        || html.match(/["'](?:name|fname|first_name|firstName|operatorName|fullName)["']\\s*:\\s*["']([^"'\\\\]{2,100})["']/i);
+      const profileNameText = html.match(/(?:Full Name|Operator Name|Contact Name)\\s*:?\\s*<[^>]*>\\s*([^<]{2,100})/i);
+      // Algunas respuestas incluyen JSON-LD o JSON dentro de scripts con entidades escapadas.
+      const escapedJsonName = html.match(/(?:&quot;|\\\\")?(?:name|fname|firstName|fullName)(?:&quot;|\\\\")?\\s*:\\s*(?:&quot;|\\\\")([^&"\\\\]{2,100})(?:&quot;|\\\\")/i);
       const titleTag = html.match(/<title[^>]*>([\s\S]{1,200}?)<\/title>/i);
       const jsonLdNames = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
         .map(m => {
@@ -274,8 +285,10 @@ export default async function handler(req, res) {
         jsonFirst && jsonLast ? cleanName(jsonFirst[1] + ' ' + jsonLast[1]) : '',
         ...jsonLdNames.map(cleanName),
         profileName ? cleanName(profileName[1]) : '',
+        ...tableNameCandidates.map(cleanName),
         labeledName ? cleanName(labeledName[1]) : '',
         profileNameText ? cleanName(profileNameText[1]) : '',
+        escapedJsonName ? cleanName(escapedJsonName[1]) : '',
         metaName ? cleanName(metaName[1]) : '',
         headingName ? cleanName(headingName[1]) : '',
         titleTag ? cleanName(titleTag[1]) : ''
