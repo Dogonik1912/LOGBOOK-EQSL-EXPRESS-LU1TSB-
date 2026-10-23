@@ -140,6 +140,40 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     return () => window.removeEventListener('qrz-profile-import', handleProfileImport);
   }, []);
 
+  // Al volver desde QRZ a esta pestaña, revisar el portapapeles y completar el email
+  // si el usuario acaba de copiar una dirección. El navegador puede pedir permiso de lectura.
+  useEffect(() => {
+    let lastReadAt = 0;
+    const tryImportClipboardEmail = async () => {
+      const now = Date.now();
+      if (now - lastReadAt < 700) return;
+      lastReadAt = now;
+      if (email.trim() || !callsignCurrentRef.current.trim()) return;
+      if (!navigator.clipboard?.readText) return;
+      try {
+        const copiedText = (await navigator.clipboard.readText()).trim();
+        const match = copiedText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);
+        if (!match) return;
+        // No sobrescribir un correo escrito por el usuario mientras la lectura esperaba.
+        setEmail((current) => current.trim() ? current : match[0]);
+        setLookupMessage('Correo detectado del portapapeles al volver de QRZ. Verificá que corresponda a ' + callsignCurrentRef.current.toUpperCase().trim() + '.');
+        setQrzFoundSource('qrz-web-session');
+      } catch {
+        // El navegador puede bloquear la lectura automática; el botón manual sigue disponible.
+      }
+    };
+    const onFocus = () => { void tryImportClipboardEmail(); };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void tryImportClipboardEmail();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [email]);
+
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
     setBand(newBand);
