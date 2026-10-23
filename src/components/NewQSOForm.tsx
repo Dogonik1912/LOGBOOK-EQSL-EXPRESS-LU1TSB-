@@ -648,7 +648,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
-            GUARDAR qso Y ENVIAR eqsl
+            {email.trim() ? 'GUARDAR qso Y ENVIAR eqsl' : 'CARGAR qso'}
           </button>
         </div>
       </form>
