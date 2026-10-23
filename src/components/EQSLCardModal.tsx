@@ -477,7 +477,12 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
                 style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}
                 title={item.name}
               >
-                <span className="block text-2xl leading-8">{item.motif}</span>
+                <span className="block relative overflow-hidden rounded-md border border-white/20 mb-2 h-12 px-2" style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}>
+                  <span className="absolute inset-x-0 top-1 text-[7px] font-bold tracking-[0.18em] text-white/80 text-center">eQSL · RADIO</span>
+                  <span className="absolute left-2 bottom-1 text-lg leading-5">{item.motif}</span>
+                  <span className="absolute right-2 bottom-1 text-[7px] font-mono text-white/90">59 · 73</span>
+                  <span className="absolute left-1/2 top-1/2 w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full border opacity-40" style={{ borderColor: item.accent }} />
+                </span>
                 <span className="block text-xs leading-4 font-semibold text-white">{item.name}</span>
                 {theme === item.id && !customBgImage && <span className="block mt-1 text-[10px] font-bold text-amber-300">✓ Predeterminada</span>}
               </button>
