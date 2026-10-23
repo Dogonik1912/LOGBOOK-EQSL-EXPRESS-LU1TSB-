@@ -324,8 +324,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                 Live Logbook ({qsos.length} QSOs)
               </h2>
               <p className="text-xs text-slate-400">
-                Registro en vivo con edición directa de email y generación rápida de eQSL
-              </p>
+</p>
             </div>
           </div>
         </div>
