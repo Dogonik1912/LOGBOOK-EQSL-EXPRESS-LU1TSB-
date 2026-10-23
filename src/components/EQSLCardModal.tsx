@@ -67,6 +67,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return localStorage.getItem('eqsl_custom_bg') || null;
   });
   const [copied, setCopied] = useState(false);
+  const [themeNotice, setThemeNotice] = useState('');
 
   const myCallsign = getUserCallsign();
   const myName = localStorage.getItem('user_name') || 'Operador LU1TSB';
@@ -115,6 +116,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     localStorage.setItem('eqsl_theme', nextTheme);
     setCustomBgImage(null);
     localStorage.removeItem('eqsl_custom_bg');
+    const selected = EQSL_THEMES.find((item) => item.id === nextTheme);
+    setThemeNotice(`“${selected?.name || nextTheme}” quedó seleccionada como tu eQSL predeterminada.`);
+    window.setTimeout(() => setThemeNotice(''), 3500);
   };
 
   const handleRemoveCustomImage = () => {
@@ -462,22 +466,37 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
             <p className="text-xs font-semibold text-slate-300">Elegí un motivo de radioafición</p>
             <span className="text-[10px] text-slate-500">Se recuerda en este dispositivo</span>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
             {EQSL_THEMES.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleThemeChange(item.id)}
                 aria-pressed={theme === item.id && !customBgImage}
-                className={`min-h-[54px] rounded-lg border px-2 py-1.5 text-left transition-colors ${theme === item.id && !customBgImage ? 'border-amber-400 ring-1 ring-amber-400/60' : 'border-slate-700 hover:border-slate-500'}`}
+                className={`min-h-[88px] rounded-lg border px-2 py-2 text-left transition-colors ${theme === item.id && !customBgImage ? 'border-amber-400 ring-2 ring-amber-400/60' : 'border-slate-700 hover:border-slate-500'}`}
                 style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}
                 title={item.name}
               >
-                <span className="block text-base leading-5">{item.motif}</span>
-                <span className="block text-[10px] leading-3 text-white/90">{item.name}</span>
+                <span className="block text-2xl leading-8">{item.motif}</span>
+                <span className="block text-xs leading-4 font-semibold text-white">{item.name}</span>
+                {theme === item.id && !customBgImage && <span className="block mt-1 text-[10px] font-bold text-amber-300">✓ Predeterminada</span>}
               </button>
             ))}
           </div>
+          {customBgImage && (
+            <button
+              type="button"
+              onClick={handleRemoveCustomImage}
+              className="mt-2 w-full sm:w-auto min-h-[88px] rounded-lg border-2 border-amber-400 ring-2 ring-amber-400/50 p-2 text-left"
+              style={{ backgroundImage: `linear-gradient(180deg, transparent, rgba(2,6,23,.9)), url(${customBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              title="Foto de galería seleccionada; pulsá para quitarla"
+            >
+              <span className="block text-2xl">🖼️</span>
+              <span className="block text-xs font-bold text-white">Mi foto de galería</span>
+              <span className="block text-[10px] text-amber-200">✓ Seleccionada · tocar para quitar</span>
+            </button>
+          )}
+          {themeNotice && <p role="status" className="mt-2 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs font-semibold text-emerald-300">{themeNotice}</p>}
         </div>
 
         {/* Barra de personalización de imagen de fondo desde Galería */}
