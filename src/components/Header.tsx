@@ -101,8 +101,9 @@ export const Header: React.FC<HeaderProps> = ({
             <img src="/icon.svg" alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5">
-              <h1 className="flex items-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
+            <div className="rounded-lg bg-white px-3 py-1.5">
+              <div className="text-center text-xs sm:text-sm font-extrabold tracking-[0.22em] text-sky-500">LOG BOOK</div>
+              <h1 className="flex items-center justify-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
                 <span className="text-black font-black" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXPRESS</span>
               </h1>
               <span className="px-2 py-0.5 bg-amber-400/10 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold rounded-md">
