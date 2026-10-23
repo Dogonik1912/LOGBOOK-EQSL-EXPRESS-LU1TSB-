@@ -90,10 +90,29 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [notes, setNotes] = useState('');
 
   const [isSearchingQRZ, setIsSearchingQRZ] = useState(false);
-  const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'prefix-db' | null>(null);
+  const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'qrz-web-session' | 'prefix-db' | null>(null);
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
   const lookupRequestId = useRef(0);
+
+  // Importar datos visibles desde un perfil QRZ abierto mediante el puente del navegador.
+  // Solo acepta los campos enviados explícitamente por el usuario; nunca deduce un correo.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const importedCall = (params.get('qrz_call') || '').toUpperCase().trim();
+    if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
+
+    const importedEmail = (params.get('qrz_email') || '').trim();
+    setCallsign(importedCall);
+    setEmail(importedEmail);
+    setName((params.get('qrz_name') || '').trim());
+    setCountry((params.get('qrz_country') || '').trim());
+    setGrid((params.get('qrz_grid') || '').trim().toUpperCase());
+    setLookupMessage(importedEmail
+      ? 'Correo importado desde el perfil QRZ abierto. Verificá que corresponda a este indicativo antes de guardar.'
+      : 'Se importó el indicativo desde QRZ, pero no se encontró un correo visible en el perfil. No se completó ninguno automáticamente.');
+    setQrzFoundSource(importedEmail ? 'qrz-web-session' : null);
+  }, []);
 
   // Comprobar si QRZ está configurado
   const activeQRZUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
@@ -325,10 +344,12 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
             {qrzFoundSource && (
               <span className="text-[11px] text-emerald-400 mt-1 inline-flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
-                {qrzFoundSource === 'qrz-bio' 
-                  ? 'Correo de QRZ' 
-                  : qrzFoundSource === 'qrz' 
-                  ? 'Datos obtenidos de QRZ.com' 
+                {qrzFoundSource === 'qrz-web-session'
+                  ? 'Importado desde perfil QRZ abierto'
+                  : qrzFoundSource === 'qrz-bio'
+                  ? 'Correo de QRZ'
+                  : qrzFoundSource === 'qrz'
+                  ? 'Datos obtenidos de QRZ.com'
                   : 'País autodetectado'}
               </span>
             )}
