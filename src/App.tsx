@@ -59,7 +59,6 @@ export default function App() {
     const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
     const profileImportCall = urlParams.get('qrz_call') || hashParams.get('qrz_call');
-    const isQRZBridgeWaiting = window.location.hash === '#qrz-bridge-waiting';
     // El puente desde QRZ usa el fragmento (#), que no se envía al servidor en la petición HTTP.
     // Se elimina tras leerlo para no dejar el correo en la barra de direcciones.
     if (profileImportCall) {
@@ -74,12 +73,8 @@ export default function App() {
       window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + (nextHash ? `#${nextHash}` : ''));
     }
 
-    // Mostrar el formulario solo si se pidió expresamente o faltan credenciales.
-    // Las credenciales no persistentes viven en sessionStorage.
-    const hasQRZCredentials = Boolean(
-      (sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user')) &&
-      (sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass'))
-    );
+    // QRZ XML no es obligatorio para usar el libro ni para importar datos visibles
+    // desde un perfil QRZ abierto. Solo mostrar el modal si el usuario lo solicita.
     if (forceQRZConnect) {
       setIsQRZModalOpen(true);
     } else if (replyToParam) {
@@ -96,26 +91,6 @@ export default function App() {
         whatsapp: urlParams.get('wa') || '',
       });
       setIsReplyModalOpen(true);
-    } else if (!hasQRZCredentials && !profileImportCall && !isQRZBridgeWaiting) {
-      // Si no hay credenciales activas, solicitar conexión al abrir.
-      setIsQRZModalOpen(true);
-    } else if (!replyToParam && !profileImportCall && !isQRZBridgeWaiting) {
-      // Las credenciales antiguas pueden estar guardadas sin haber sido validadas.
-      // Verificar con QRZ en segundo plano y pedir intervención solo si la sesión falla.
-      const savedUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
-      const savedPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
-      fetch('/api/qrz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: savedUser, password: savedPass }),
-      })
-        .then(async (response) => {
-          const xml = await response.text();
-          const doc = new DOMParser().parseFromString(xml, 'text/xml');
-          const key = doc.querySelector('Key')?.textContent?.trim();
-          if (!response.ok || !key) setIsQRZModalOpen(true);
-        })
-        .catch(() => setIsQRZModalOpen(true));
     }
 
     // Recibir solo datos que el usuario decidió enviar desde la ficha QRZ abierta.
