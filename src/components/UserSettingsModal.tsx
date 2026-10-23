@@ -21,6 +21,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [callsign, setCallsign] = useState('');
   const [email, setEmail] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState('es');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -30,6 +31,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCallsign(localStorage.getItem('user_callsign') || '');
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
+      try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || 'es');
       setSavedSuccess(false);
@@ -37,6 +39,73 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // Importa varias fotos a la galería sin activar ninguna automáticamente.
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
+    e.target.value = '';
+    if (!files.length) return;
+
+    const compressImage = (file: File) => new Promise<{ id: string; name: string; dataUrl: string } | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onerror = () => resolve(null);
+      reader.onload = (event) => {
+        const source = event.target?.result as string;
+        if (!source) return resolve(null);
+        const image = new Image();
+        image.onerror = () => resolve(null);
+        image.onload = () => {
+          const scale = Math.min(1, 900 / image.width, 560 / image.height);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(image.width * scale));
+          canvas.height = Math.max(1, Math.round(image.height * scale));
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(null);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`, name: file.name, dataUrl: canvas.toDataURL('image/jpeg', 0.62) });
+        };
+        image.src = source;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const imported = [];
+    for (const file of files) {
+      const item = await compressImage(file);
+      if (item) imported.push(item);
+    }
+    if (!imported.length) {
+      window.alert('No se pudieron leer las imágenes seleccionadas. Probá con archivos JPG o PNG.');
+      return;
+    }
+    const existing = (() => {
+      try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>; }
+      catch { return []; }
+    })();
+    const next = [...existing, ...imported];
+    try {
+      localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
+      setGalleryImages(next);
+    } catch {
+      window.alert('No hay espacio suficiente para guardar todas las fotos. Elegí menos imágenes o archivos más pequeños. Las fotos anteriores no se han reemplazado.');
+    }
+  };
+
+  const handleAnchorImage = (dataUrl: string) => {
+    setCustomBg(dataUrl);
+    localStorage.setItem('eqsl_custom_bg', dataUrl);
+  };
+
+  const handleDeleteGalleryImage = (id: string) => {
+    const next = galleryImages.filter((item) => item.id !== id);
+    setGalleryImages(next);
+    localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
+    const removed = galleryImages.find((item) => item.id === id);
+    if (removed?.dataUrl === customBg) {
+      setCustomBg(null);
+      localStorage.removeItem('eqsl_custom_bg');
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,86 +235,87 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
             <p className="text-[11px] text-slate-500 mt-1">Los motivos visuales estarán disponibles más adelante como imágenes para elegir con un clic.</p>
           </div>
-          {/* Diseños temáticos: galería visual pendiente */}
-          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <ImageIcon className="w-4 h-4 text-sky-400" />
-              <span className="text-xs font-bold text-sky-300">Diseño eQSL predeterminado</span>
+          {/* Galería única: las fotos cargadas quedan aquí y solo se activan al tocar Anclar. */}
+          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-sky-400" />
+                <span className="text-xs font-bold text-sky-300">Diseños eQSL predeterminados</span>
+              </div>
+              <span className="text-[10px] text-slate-500">{galleryImages.length} fotos</span>
             </div>
-            <p className="text-[11px] text-slate-400">La selección de motivos se incorporará más adelante. Se mostrarán imágenes de cada diseño, sin una lista de nombres, y podrás seleccionar la que quieras con un solo clic.</p>
+            <p className="text-[11px] text-slate-400">Seleccioná varias fotos juntas. Todas se guardan en esta galería; ninguna se activa automáticamente. Tocá “Anclar” en la foto que quieras usar como fondo.</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleGalleryUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                  fileInputRef.current.click();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              Añadir fotos de galería (selección múltiple)
+            </button>
+            {galleryImages.length === 0 ? (
+              <p className="text-xs text-slate-400">Todavía no hay fotos guardadas. Cargá una o varias para verlas aquí.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {galleryImages.map((item) => {
+                  const selected = customBg === item.dataUrl;
+                  return (
+                    <div key={item.id} className={`overflow-hidden rounded-lg border ${selected ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
+                      <img src={item.dataUrl} alt={item.name} className="h-24 w-full object-cover" />
+                      <p className="truncate px-2 pt-1 text-[10px] text-slate-200" title={item.name}>{item.name}</p>
+                      <div className="flex items-center justify-between gap-1 p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleAnchorImage(item.dataUrl)}
+                          className={`rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`}
+                        >{selected ? '✓ Anclada' : 'Anclar'}</button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGalleryImage(item.id)}
+                          className="rounded-md px-1.5 py-1 text-[10px] text-rose-300 hover:bg-rose-950/50"
+                          aria-label={`Eliminar ${item.name}`}
+                        ><Trash2 className="h-3 w-3" /></button>
+                      </div>
+                      {selected && <p className="bg-amber-400/10 px-2 pb-1.5 text-[10px] font-semibold text-amber-300">✓ Foto activa para enviar</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Foto de fondo para tarjetas eQSL */}
-          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-slate-800 space-y-2.5">
+          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold text-slate-200">
-                  Foto de fondo para tu tarjeta eQSL
-                </span>
-              </div>
-              {customBg && (
-                <span className="text-[11px] text-emerald-400 font-semibold">
-                  ✓ Foto activa
-                </span>
-              )}
+              <span className="text-xs font-bold text-slate-200">Foto de fondo para tu tarjeta eQSL</span>
+              {customBg && <span className="text-[11px] text-emerald-400 font-semibold">✓ Foto activa</span>}
             </div>
-            <p className="text-[11px] text-slate-400">
-              Podés subir una foto de tu estación de radio, antenas o paisaje local desde tu galería para que aparezca de fondo en todas tus tarjetas eQSL.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (event) => {
-                    const dataUrl = event.target?.result as string;
-                    if (dataUrl) {
-                      setCustomBg(dataUrl);
-                      localStorage.setItem('eqsl_custom_bg', dataUrl);
-                      try {
-                        const existing = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>;
-                        const entry = { id: `${Date.now()}-${file.name}`, name: file.name, dataUrl };
-                        localStorage.setItem('eqsl_gallery_images', JSON.stringify([...existing, entry]));
-                      } catch {
-                        window.alert('La foto quedó aplicada, pero no se pudo añadir a la galería guardada.');
-                      }
-                    }
-                  };
-                  reader.readAsDataURL(file);
-                }}
-                className="hidden"
-              />
+            <p className="text-[11px] text-slate-400">La foto activa se elige desde “Diseños eQSL predeterminados”, usando el botón “Anclar”. Agregar fotos no cambia el fondo activo.</p>
+            {customBg && (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
+                onClick={() => {
+                  setCustomBg(null);
+                  localStorage.removeItem('eqsl_custom_bg');
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 text-xs rounded-lg border border-slate-700 transition-colors cursor-pointer"
               >
-                <ImageIcon className="w-3.5 h-3.5" />
-                {customBg ? 'Cambiar foto de galería' : 'Cargar foto desde mi galería'}
+                <Trash2 className="w-3.5 h-3.5" />
+                Desactivar foto activa
               </button>
-              {customBg && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomBg(null);
-                    localStorage.removeItem('eqsl_custom_bg');
-                    try {
-                      const existing = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>;
-                      localStorage.setItem('eqsl_gallery_images', JSON.stringify(existing.filter((item) => item.dataUrl !== customBg)));
-                    } catch { /* La foto ya se ha desactivado aunque la galería no se pueda leer. */ }
-                  }}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 text-xs rounded-lg border border-slate-700 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Eliminar foto
-                </button>
-              )}
-            </div>
+            )}
           </div>
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
