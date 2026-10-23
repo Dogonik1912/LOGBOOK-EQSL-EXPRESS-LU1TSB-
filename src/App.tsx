@@ -118,31 +118,25 @@ export default function App() {
         .catch(() => setIsQRZModalOpen(true));
     }
 
-    // Puente temporal: la pestaña QRZ envía solo los campos visibles mediante postMessage.
-    // No se transfieren cookies ni credenciales y el correo no viaja en la URL.
-    let bridgeHandler: ((event: MessageEvent) => void) | undefined;
-    if (isQRZBridgeWaiting) {
-      bridgeHandler = (event: MessageEvent) => {
-        if (!['https://www.qrz.com', 'https://qrz.com'].includes(event.origin)) return;
-        if (event.data?.type !== 'LOGBOOK_QRZ_PROFILE') return;
-        const profile = event.data.profile || {};
-        const call = String(profile.call || '').toUpperCase().trim();
-        if (!/^[A-Z0-9/]{3,20}$/.test(call)) return;
-        window.dispatchEvent(new CustomEvent('qrz-profile-import', {
-          detail: {
-            call,
-            email: String(profile.email || ''),
-            name: String(profile.name || ''),
-            country: String(profile.country || ''),
-            grid: String(profile.grid || ''),
-          },
-        }));
-        window.history.replaceState({}, '', window.location.pathname + window.location.search);
-      };
-      window.addEventListener('message', bridgeHandler);
-      // Mensaje sin datos: solo avisa a la pestaña QRZ que la app está lista.
-      window.opener?.postMessage({ type: 'LOGBOOK_QRZ_BRIDGE_READY' }, '*');
-    }
+    // Recibir solo datos que el usuario decidió enviar desde la ficha QRZ abierta.
+    // Se valida el origen; no se transfieren cookies ni credenciales.
+    const bridgeHandler = (event: MessageEvent) => {
+      if (!['https://www.qrz.com', 'https://qrz.com'].includes(event.origin)) return;
+      if (event.data?.type !== 'LOGBOOK_QRZ_PROFILE') return;
+      const profile = event.data.profile || {};
+      const call = String(profile.call || '').toUpperCase().trim();
+      if (!/^[A-Z0-9/]{3,20}$/.test(call)) return;
+      window.dispatchEvent(new CustomEvent('qrz-profile-import', {
+        detail: {
+          call,
+          email: String(profile.email || ''),
+          name: String(profile.name || ''),
+          country: String(profile.country || ''),
+          grid: String(profile.grid || ''),
+        },
+      }));
+    };
+    window.addEventListener('message', bridgeHandler);
 
     // Inicializar callsign por defecto si no existe
     if (!localStorage.getItem('user_callsign')) {
@@ -151,7 +145,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('qrz-auth-required', handleQRZAuthRequired);
-      if (bridgeHandler) window.removeEventListener('message', bridgeHandler);
+      window.removeEventListener('message', bridgeHandler);
     };
   }, []);
 
