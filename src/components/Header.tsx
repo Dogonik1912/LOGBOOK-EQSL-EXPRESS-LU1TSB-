@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Radio, Settings, MessageCircle, Download, Smartphone } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, X, Mail, Phone } from 'lucide-react';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -17,6 +17,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [registrationEmail, setRegistrationEmail] = useState(() => localStorage.getItem('user_email') || '');
+  const [registrationWhatsapp, setRegistrationWhatsapp] = useState(() => localStorage.getItem('user_whatsapp') || '');
+  const [registrationPassword, setRegistrationPassword] = useState('');
 
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || 'SIN REGISTRO');
 
@@ -45,20 +49,32 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
-  const handleInstall = async () => {
+  const handleInstall = () => {
+    setShowRegistration(true);
+  };
+
+  const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    localStorage.setItem('user_email', registrationEmail.trim());
+    localStorage.setItem('user_whatsapp', registrationWhatsapp.trim());
+    setRegistrationPassword('');
+    window.alert('Los datos de contacto se guardaron en este equipo. El registro de cuenta todavía no está conectado a un servidor seguro, por lo que la cuenta no se creó y la contraseña no se guardó.');
+    setShowRegistration(false);
     if (installPrompt) {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice?.outcome === 'accepted') setIsInstalled(true);
-      setInstallPrompt(null);
-      return;
+      void (async () => {
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        if (choice?.outcome === 'accepted') setIsInstalled(true);
+        setInstallPrompt(null);
+      })();
+    } else {
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      window.alert(isInstalled
+        ? 'LB EQSL EXPRESS ya está instalada en este equipo.'
+        : isIOS
+          ? 'Para instalar en iPhone/iPad: tocá Compartir en Safari y elegí “Agregar a pantalla de inicio”.'
+          : 'Para instalar: abrí el menú del navegador (⋮ o …) y elegí “Instalar aplicación” o “Agregar a pantalla de inicio”. En PC, buscá el icono de instalación en la barra de direcciones.');
     }
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    window.alert(isInstalled
-      ? 'LB EQSL EXPRESS ya está instalada en este equipo.'
-      : isIOS
-        ? 'Para instalar en iPhone/iPad: tocá Compartir en Safari y elegí “Agregar a pantalla de inicio”.'
-        : 'Para instalar: abrí el menú del navegador (⋮ o …) y elegí “Instalar aplicación” o “Agregar a pantalla de inicio”. En PC, buscá el icono de instalación en la barra de direcciones.');
   };
 
   return (
@@ -130,6 +146,32 @@ export const Header: React.FC<HeaderProps> = ({
             <Settings className="w-4 h-4" />
           </button>
         </div>
+      {showRegistration && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="registration-title">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 id="registration-title" className="text-xl font-bold text-white">Instalar / registrar cuenta</h2>
+              <button type="button" onClick={() => setShowRegistration(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Cerrar"><X className="h-5 w-5" /></button>
+            </div>
+            <form onSubmit={handleRegister} className="space-y-3">
+              <label className="block text-sm text-slate-300">Correo electrónico
+                <span className="mt-1 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3"><Mail className="h-4 w-4 text-slate-500" /><input type="email" autoComplete="email" required value={registrationEmail} onChange={(e) => setRegistrationEmail(e.target.value)} className="w-full bg-transparent py-2.5 text-white outline-none" placeholder="tu@correo.com" /></span>
+              </label>
+              <label className="block text-sm text-slate-300">WhatsApp
+                <span className="mt-1 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3"><Phone className="h-4 w-4 text-slate-500" /><input type="tel" autoComplete="tel" required value={registrationWhatsapp} onChange={(e) => setRegistrationWhatsapp(e.target.value)} className="w-full bg-transparent py-2.5 text-white outline-none" placeholder="+54 ..." /></span>
+              </label>
+              <label className="block text-sm text-slate-300">Contraseña
+                <input type="password" autoComplete="new-password" required minLength={8} value={registrationPassword} onChange={(e) => setRegistrationPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-400" placeholder="Mínimo 8 caracteres" />
+              </label>
+              <div className="rounded-lg border border-sky-900 bg-sky-950/50 p-3 text-xs leading-relaxed text-sky-100">
+                Tu contraseña debe ser privada. Este formulario todavía no está conectado a un servicio seguro de cuentas: la contraseña no se envía ni se guarda en esta app. No se puede garantizar un registro real hasta conectar ese servicio.
+              </div>
+              <button type="submit" className="w-full rounded-xl bg-amber-500 px-4 py-3 font-bold text-slate-950 hover:bg-amber-400">Guardar datos y continuar</button>
+              <button type="button" onClick={() => setShowRegistration(false)} className="w-full rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancelar</button>
+            </form>
+          </div>
+        </div>
+      )}
       </div>
     </header>
   );
