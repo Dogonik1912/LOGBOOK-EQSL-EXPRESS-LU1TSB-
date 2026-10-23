@@ -216,6 +216,26 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
     }
   };
 
+  const handlePasteEmailFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        setLookupMessage('Este navegador no permite leer el portapapeles desde la app. Pegá el correo directamente en el campo Email.');
+        return;
+      }
+      const copiedText = (await navigator.clipboard.readText()).trim();
+      const emailMatch = copiedText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      if (!emailMatch) {
+        setLookupMessage('No encontré una dirección de correo en el portapapeles. En QRZ, copiá la dirección de correo y volvé a tocar “Pegar correo copiado”.');
+        return;
+      }
+      setEmail(emailMatch[0]);
+      setLookupMessage('Correo pegado desde el portapapeles. Verificá que corresponda al indicativo ' + callsign.trim().toUpperCase() + ' antes de guardar.');
+      setQrzFoundSource(null);
+    } catch {
+      setLookupMessage('El navegador bloqueó el acceso al portapapeles. Permití el permiso si aparece o pegá el correo manualmente en el campo Email.');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!callsign.trim()) {
@@ -420,6 +440,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
                 <Mail className="w-3 h-3 text-sky-400" />
                 Email
               </span>
+              <button
+                type="button"
+                onClick={() => { void handlePasteEmailFromClipboard(); }}
+                className="inline-flex items-center gap-1 text-[10px] text-emerald-300 hover:text-emerald-200 underline mr-2"
+                title="Pegar el correo que copiaste desde el perfil del corresponsal"
+              >
+                <Mail className="w-3 h-3" /> Pegar correo copiado
+              </button>
               <button
                 type="button"
                 onClick={() => {
