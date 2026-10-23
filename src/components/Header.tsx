@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                LB <span className="text-amber-400">EQSL EXPRESS</span>
+                <span className="text-amber-400">EQSL EXPRESS</span>
               </h1>
               <span className="px-2 py-0.5 bg-amber-400/10 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold rounded-md">
                 {callsign}
