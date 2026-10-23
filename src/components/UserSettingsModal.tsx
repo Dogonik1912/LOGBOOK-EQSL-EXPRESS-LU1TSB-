@@ -21,6 +21,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [callsign, setCallsign] = useState('');
   const [email, setEmail] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
+  const [appIconImage, setAppIconImage] = useState<string | null>(null);
+  const [appHeaderImage, setAppHeaderImage] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState('es');
@@ -31,6 +33,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCallsign(localStorage.getItem('user_callsign') || '');
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
+      setAppIconImage(localStorage.getItem('app_icon_image') || null);
+      setAppHeaderImage(localStorage.getItem('app_header_image') || null);
       try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || 'es');
@@ -96,11 +100,35 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.setItem('eqsl_custom_bg', dataUrl);
   };
 
+  const handleUseAsAppIcon = (dataUrl: string) => {
+    setAppIconImage(dataUrl);
+    localStorage.setItem('app_icon_image', dataUrl);
+    const iconLinks = document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]');
+    iconLinks.forEach((link) => { link.href = dataUrl; });
+    window.dispatchEvent(new Event('user-branding-updated'));
+  };
+
+  const handleUseAsHeader = (dataUrl: string) => {
+    setAppHeaderImage(dataUrl);
+    localStorage.setItem('app_header_image', dataUrl);
+    window.dispatchEvent(new Event('user-branding-updated'));
+  };
+
   const handleDeleteGalleryImage = (id: string) => {
     const next = galleryImages.filter((item) => item.id !== id);
     setGalleryImages(next);
     localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
     const removed = galleryImages.find((item) => item.id === id);
+    if (removed?.dataUrl === appIconImage) {
+      setAppIconImage(null);
+      localStorage.removeItem('app_icon_image');
+      document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => { link.href = '/icon.svg'; });
+    }
+    if (removed?.dataUrl === appHeaderImage) {
+      setAppHeaderImage(null);
+      localStorage.removeItem('app_header_image');
+    }
+    window.dispatchEvent(new Event('user-branding-updated'));
     if (removed?.dataUrl === customBg) {
       setCustomBg(null);
       localStorage.removeItem('eqsl_custom_bg');
@@ -233,7 +261,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
-            <p className="text-[11px] text-slate-500 mt-1">Los motivos visuales estarán disponibles más adelante como imágenes para elegir con un clic.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Elegí por separado la imagen del icono, la del encabezamiento y el fondo de las tarjetas.</p>
           </div>
           {/* Galería única: las fotos cargadas quedan aquí y solo se activan al tocar Anclar. */}
           <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
@@ -244,7 +272,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               </div>
               <span className="text-[10px] text-slate-500">{galleryImages.length} fotos</span>
             </div>
-            <p className="text-[11px] text-slate-400">Seleccioná varias fotos juntas. Todas se guardan en esta galería; ninguna se activa automáticamente. Tocá “Anclar” en la foto que quieras usar como fondo.</p>
+            <p className="text-[11px] text-slate-400">Seleccioná varias fotos juntas. Después elegí por separado si una imagen será el icono de la app, el encabezamiento o el fondo de las eQSL.</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -276,20 +304,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     <div key={item.id} className={`overflow-hidden rounded-lg border ${selected ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
                       <img src={item.dataUrl} alt={item.name} className="h-24 w-full object-cover" />
                       <p className="truncate px-2 pt-1 text-[10px] text-slate-200" title={item.name}>{item.name}</p>
-                      <div className="flex items-center justify-between gap-1 p-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleAnchorImage(item.dataUrl)}
-                          className={`rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`}
-                        >{selected ? '✓ Anclada' : 'Anclar'}</button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGalleryImage(item.id)}
-                          className="rounded-md px-1.5 py-1 text-[10px] text-rose-300 hover:bg-rose-950/50"
-                          aria-label={`Eliminar ${item.name}`}
-                        ><Trash2 className="h-3 w-3" /></button>
+                      <div className="grid grid-cols-2 gap-1 p-1.5">
+                        <button type="button" onClick={() => handleAnchorImage(item.dataUrl)} className={`rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`}>{selected ? '✓ Fondo eQSL' : 'Fondo eQSL'}</button>
+                        <button type="button" onClick={() => handleUseAsAppIcon(item.dataUrl)} className={`rounded-md px-2 py-1 text-[10px] font-bold ${appIconImage === item.dataUrl ? 'bg-sky-400 text-slate-950' : 'bg-slate-800 text-sky-300 hover:bg-slate-700'}`}>{appIconImage === item.dataUrl ? '✓ Icono' : 'Usar icono'}</button>
+                        <button type="button" onClick={() => handleUseAsHeader(item.dataUrl)} className={`rounded-md px-2 py-1 text-[10px] font-bold ${appHeaderImage === item.dataUrl ? 'bg-violet-400 text-slate-950' : 'bg-slate-800 text-violet-300 hover:bg-slate-700'}`}>{appHeaderImage === item.dataUrl ? '✓ Encabezado' : 'Usar encabezado'}</button>
+                        <button type="button" onClick={() => handleDeleteGalleryImage(item.id)} className="rounded-md px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-950/50" aria-label={`Eliminar ${item.name}`}><Trash2 className="inline h-3 w-3" /> Eliminar</button>
                       </div>
-                      {selected && <p className="bg-amber-400/10 px-2 pb-1.5 text-[10px] font-semibold text-amber-300">✓ Foto activa para enviar</p>}
+                      {(selected || appIconImage === item.dataUrl || appHeaderImage === item.dataUrl) && <p className="bg-slate-800 px-2 pb-1.5 text-[10px] font-semibold text-slate-200">{selected ? '✓ Fondo activo para eQSL ' : ''}{appIconImage === item.dataUrl ? '✓ Icono de la app ' : ''}{appHeaderImage === item.dataUrl ? '✓ Encabezamiento de la página' : ''}</p>}
                     </div>
                   );
                 })}
