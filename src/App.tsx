@@ -133,6 +133,11 @@ export default function App() {
   const handleAddQSO = (qso: QSO) => {
     const updated = [qso, ...qsos];
     handleSaveQsos(updated);
+    // Si hay correo, abrir automáticamente la eQSL recién generada para completar el envío.
+    // Sin correo, el QSO se guarda normalmente y no se abre ningún flujo de envío.
+    if (qso.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(qso.email.trim())) {
+      setActiveEQSLQSO(qso);
+    }
   };
 
   const handleUpdateQSO = (updatedQSO: QSO) => {
