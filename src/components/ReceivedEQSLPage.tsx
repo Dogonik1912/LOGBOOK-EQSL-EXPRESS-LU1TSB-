@@ -89,6 +89,15 @@ export const ReceivedEQSLPage: React.FC = () => {
       const data = JSON.parse(raw) as SharedEQSL;
       if (!data.from || !data.to || !data.date || !data.time) throw new Error('invalid');
       setCard(data);
+      // Contar la estación destinataria cuando se abre la tarjeta compartida: no requiere cuenta.
+      const recipientCall = String(data.to || '').trim().toUpperCase();
+      if (/^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(recipientCall)) {
+        fetch('/api/directory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'activity', callsign: recipientCall }),
+        }).catch(() => {});
+      }
     } catch {
       setErrorKey('invalid');
     }
