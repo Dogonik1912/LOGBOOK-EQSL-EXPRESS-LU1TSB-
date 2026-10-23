@@ -89,6 +89,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   const [isSearchingQRZ, setIsSearchingQRZ] = useState(false);
   const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'qrz-web-session' | 'prefix-db' | null>(null);
@@ -238,18 +239,35 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!callsign.trim()) {
-      callsignInputRef.current?.focus();
+    setValidationError('');
+    const cleanCall = callsign.trim().toUpperCase();
+    const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
+    const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+    const normalizedFrequency = frequency.trim().replace(',', '.');
+    const numericFrequency = Number(normalizedFrequency);
+    const validFrequency = normalizedFrequency !== '' && Number.isFinite(numericFrequency) && numericFrequency > 0 && numericFrequency <= 100000;
+    const validMode = HAM_MODES.includes(mode);
+    const missing = [
+      !validCall ? 'SD del destinatario (indicativo válido)' : '',
+      !validDate ? 'fecha válida' : '',
+      !validTime ? 'hora válida en UTC' : '',
+      !validFrequency ? 'frecuencia válida en MHz' : '',
+      !validMode ? 'modo válido' : '',
+    ].filter(Boolean);
+    if (missing.length) {
+      setValidationError('No se guardó el QSO ni se puede emitir la eQSL. Corregí: ' + missing.join(', ') + '.');
+      if (!validCall) callsignInputRef.current?.focus();
       return;
     }
 
     const newQSO: QSO = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      callsign: callsign.trim().toUpperCase(),
+      callsign: cleanCall,
       date,
       time,
       band,
-      frequency,
+      frequency: normalizedFrequency,
       mode,
       rstSent: rstSent.trim() || '59',
       rstRcvd: rstRcvd.trim() || '59',
@@ -491,43 +509,45 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
           </div>
         )}
 
+        {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
+
         {/* Fila 2: Fecha UTC, Hora UTC, Frecuencia, Modo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> Fecha UTC
+              <Calendar className="w-3 h-3" /> Fecha UTC <span className="text-rose-500">*</span>
             </label>
             <input
               type="date"
               required
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => { setDate(e.target.value); setValidationError(''); }}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Hora UTC
+              <Clock className="w-3 h-3" /> Hora UTC <span className="text-rose-500">*</span>
             </label>
             <input
               type="time"
               required
               value={time}
-              onChange={(e) => setTime(e.target.value)}
+              onChange={(e) => { setTime(e.target.value); setValidationError(''); }}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
-              Frecuencia (MHz)
+              Frecuencia (MHz) <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               required
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
+              onChange={(e) => { setFrequency(e.target.value); setValidationError(''); }}
               placeholder="7.120"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-amber-300 font-semibold focus:border-amber-400 focus:outline-hidden"
             />
@@ -535,11 +555,12 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">
-              Modo
+              Modo <span className="text-rose-500">*</span>
             </label>
             <select
+              required
               value={mode}
-              onChange={(e) => handleModeChange(e.target.value)}
+              onChange={(e) => { handleModeChange(e.target.value); setValidationError(''); }}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:border-amber-400 focus:outline-hidden"
             >
               {HAM_MODES.map((m) => (
