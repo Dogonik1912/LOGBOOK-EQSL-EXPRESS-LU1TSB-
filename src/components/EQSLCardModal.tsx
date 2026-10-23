@@ -76,51 +76,65 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const myQth = localStorage.getItem('user_qth') || 'Argentina';
   const myGrid = localStorage.getItem('user_grid') || 'GF05te';
 
-  // Cargar imagen personalizada desde la galería/dispositivo
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Reducir fotos grandes del móvil para que la galería no agote el almacenamiento local.
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const source = event.target?.result as string;
-      if (!source) return;
-      const image = new Image();
-      image.onload = () => {
-        const maxWidth = 1600;
-        const maxHeight = 1000;
-        const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
-        const resized = document.createElement('canvas');
-        resized.width = Math.max(1, Math.round(image.width * scale));
-        resized.height = Math.max(1, Math.round(image.height * scale));
-        const resizeContext = resized.getContext('2d');
-        if (!resizeContext) return;
-        resizeContext.drawImage(image, 0, 0, resized.width, resized.height);
-        const dataUrl = resized.toDataURL('image/jpeg', 0.86);
-        try {
-          const saved = (() => { try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; } })() as Array<{ id: string; name: string; dataUrl: string }>;
-          const entry = { id: `${Date.now()}-${file.name}`, name: file.name, dataUrl };
-          const next = [...saved, entry];
-          try {
-            localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
-            localStorage.setItem('eqsl_custom_bg', dataUrl);
-            setGalleryImages(next);
-            setCustomBgImage(dataUrl);
-          } catch {
-            setCustomBgImage(dataUrl);
-            window.alert('La imagen se aplicó a esta tarjeta, pero no se pudo guardar en la galería. Probá con una imagen más pequeña.');
-          }
-        } catch {
-          setCustomBgImage(dataUrl);
-          window.alert('La imagen se aplicó a esta tarjeta, pero el navegador no pudo guardarla para la próxima sesión. Probá con una foto más pequeña.');
-        }
-      };
-      image.onerror = () => window.alert('No se pudo abrir esa imagen. Elegí otra foto de la galería.');
-      image.src = source;
-    };
-    reader.readAsDataURL(file);
+  // Importar una o varias imágenes a la galería de diseños eQSL sin anclar ninguna automáticamente.
+  // El usuario decide después qué miniatura anclar para los próximos envíos.
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
     e.target.value = '';
+    if (!files.length) return;
+
+    const compressImage = (file: File) => new Promise<{ id: string; name: string; dataUrl: string } | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onerror = () => resolve(null);
+      reader.onload = (event) => {
+        const source = event.target?.result as string;
+        if (!source) return resolve(null);
+        const image = new Image();
+        image.onerror = () => resolve(null);
+        image.onload = () => {
+          const maxWidth = 1200;
+          const maxHeight = 750;
+          const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+          const resized = document.createElement('canvas');
+          resized.width = Math.max(1, Math.round(image.width * scale));
+          resized.height = Math.max(1, Math.round(image.height * scale));
+          const context = resized.getContext('2d');
+          if (!context) return resolve(null);
+          context.drawImage(image, 0, 0, resized.width, resized.height);
+          resolve({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`,
+            name: file.name,
+            dataUrl: resized.toDataURL('image/jpeg', 0.78),
+          });
+        };
+        image.src = source;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const imported: Array<{ id: string; name: string; dataUrl: string }> = [];
+    for (const file of files) {
+      const entry = await compressImage(file);
+      if (entry) imported.push(entry);
+    }
+    if (!imported.length) {
+      window.alert('No se pudieron leer las imágenes seleccionadas. Probá con archivos JPG o PNG.');
+      return;
+    }
+
+    const saved = (() => {
+      try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); }
+      catch { return []; }
+    })() as Array<{ id: string; name: string; dataUrl: string }>;
+    const next = [...saved, ...imported];
+    try {
+      localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
+      setGalleryImages(next);
+      setThemeNotice(`Se añadieron ${imported.length} imagen(es) a Diseños eQSL. Tocá “Anclar” en la que quieras usar para enviar.`);
+    } catch {
+      // No reemplazar ni anclar la selección actual si el almacenamiento está lleno.
+      window.alert('No hay espacio suficiente para guardar todas las imágenes. Elegí menos imágenes o archivos más pequeños; no se cambió el diseño anclado.');
+    }
   };
 
   const handleThemeChange = (nextTheme: string) => {
@@ -550,7 +564,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
           <p className="mb-2 text-[11px] text-slate-400">Fotos guardadas de tu galería</p>
           {galleryImages.length === 0 ? (
-            <p className="text-xs text-slate-400">Todavía no hay fotos propias. Cargá una desde tu dispositivo y quedará archivada junto con estos diseños.</p>
+            <p className="text-xs text-slate-400">Podés cargar varias imágenes juntas. Aparecerán aquí como diseños disponibles; elegí “Anclar” en la que quieras usar para enviar.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {galleryImages.map((item) => {
@@ -597,6 +611,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleImageUpload}
               className="hidden"
             />
