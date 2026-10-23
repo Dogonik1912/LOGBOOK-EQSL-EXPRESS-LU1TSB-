@@ -375,11 +375,13 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!isQsoValidForEQSL()) return;
     const firma = getFirma();
     const replyLink = getReplyUrl();
+    const receivedCardLink = getReceivedCardUrl();
     const text = `📻 *Tarjeta eQSL Oficial*\n` +
       `De: *${myCallsign}* para: *${qso.callsign}*\n` +
       `📅 Contacto: ${qso.date} ${qso.time} UTC\n` +
       `📡 ${qso.band} (${qso.frequency} MHz) · Modo: ${qso.mode}\n` +
       `📶 RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'}\n` +
+      `🖼️ *Ver y descargar la tarjeta eQSL:*\n${receivedCardLink}\n\n` +
       (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
       `\n${firma}\n\n` +
       `💌 *¿Querés responder con tu eQSL?*\n` +
@@ -427,6 +429,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `• Banda: ${qso.band} (${qso.frequency} MHz)\n` +
       `• Modo: ${qso.mode}\n` +
       `• Reporte RST: ${qso.rstSent || '59'} / ${qso.rstRcvd || '59'}\n` +
+      `• Ver y descargar la eQSL: ${receivedCardLink}\n\n` +
       (qso.grid ? `• Mi Grid: ${myGrid}\n` : '') +
       `\n¡Gracias por el QSO y espero reencontrarte en el éter!\n\n` +
       `💌 RESPONDER CON TU eQSL:\n` +
