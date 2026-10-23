@@ -1,6 +1,6 @@
 # LogBook eQSL Express 📻
 
-Aplicación web completa para radioaficionados: libro de guardia de contactos (QSOs) en tiempo real, integración automática con **QRZ.com** para autocompletar correos electrónicos, y generador oficial de **tarjetas eQSL** con opción de fotos personalizadas desde la galería y respuestas recíprocas 2-Way.
+Aplicación web para radioaficionados: libro de guardia de contactos (QSOs), importación/exportación ADIF y generador de tarjetas eQSL con fotos personalizadas y respuestas recíprocas 2-Way. No requiere conexión con la API XML de QRZ para registrar contactos.
 
 Desarrollado con dedicación para la comunidad de radioaficionados por **LU1TSB**.
 
