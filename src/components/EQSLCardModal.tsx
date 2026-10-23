@@ -70,7 +70,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [themeNotice, setThemeNotice] = useState('');
 
   const myCallsign = getUserCallsign();
-  const myName = localStorage.getItem('user_name') || 'Operador LU1TSB';
+  const myName = localStorage.getItem('user_name')?.trim() || '';
   const myQth = localStorage.getItem('user_qth') || 'Argentina';
   const myGrid = localStorage.getItem('user_grid') || 'GF05te';
 
@@ -158,7 +158,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       // Información del emisor (Nombre, QTH, Grid)
       ctx.font = '22px sans-serif';
       ctx.fillStyle = '#cbd5e1';
-      ctx.fillText(`${myName} · ${myQth} · Grid: ${myGrid}`, width / 2, 230);
+      const stationDetails = [myName, myQth, myGrid ? `Grid: ${myGrid}` : ''].filter(Boolean).join(' · ');
+      if (stationDetails) ctx.fillText(stationDetails, width / 2, 230);
 
       // Línea separadora
       ctx.strokeStyle = theme === 'cyber' ? 'rgba(56, 189, 248, 0.6)' : 'rgba(245, 158, 11, 0.6)';
@@ -422,7 +423,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const body = encodeURIComponent(
       `Hola colega ${qso.callsign},\n\n` +
       `Te confirmo con mucho agrado nuestro contacto en radio:\n\n` +
-      `• Mi Indicativo: ${myCallsign} (${myName})\n` +
+      `• Mi Indicativo: ${myCallsign}\n` +
       `• Tu Indicativo: ${qso.callsign}\n` +
       `• Fecha: ${qso.date}\n` +
       `• Hora: ${qso.time} UTC\n` +
