@@ -24,10 +24,9 @@ import {
 
 interface NewQSOFormProps {
   onAddQSO: (qso: QSO) => void;
-  onOpenQRZModal: () => void;
 }
 
-export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal }) => {
+export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const getNowUTC = () => {
     const now = new Date();
     const y = now.getUTCFullYear();
@@ -144,11 +143,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
     return () => window.removeEventListener('qrz-profile-import', handleProfileImport);
   }, []);
-
-  // Comprobar si QRZ está configurado
-  const activeQRZUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
-  const activeQRZPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
-  const hasQRZConfig = Boolean(activeQRZUser && activeQRZPass);
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
@@ -373,24 +367,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
           </div>
         </div>
 
-        {/* Estado de conexión QRZ */}
         <div className="flex items-center gap-2">
-          {hasQRZConfig ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              QRZ configurado ({activeQRZUser})
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onOpenQRZModal}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-medium transition-colors cursor-pointer"
-            >
-              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-              Conectar QRZ para obtener Email
-            </button>
-          )}
-
           <button
             type="button"
             onClick={handleUpdateToCurrentUTC}
