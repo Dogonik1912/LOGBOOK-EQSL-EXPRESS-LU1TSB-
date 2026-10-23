@@ -73,13 +73,33 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reducir fotos grandes del móvil para que la galería no agote el almacenamiento local.
     const reader = new FileReader();
     reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setCustomBgImage(dataUrl);
-        localStorage.setItem('eqsl_custom_bg', dataUrl);
-      }
+      const source = event.target?.result as string;
+      if (!source) return;
+      const image = new Image();
+      image.onload = () => {
+        const maxWidth = 1600;
+        const maxHeight = 1000;
+        const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+        const resized = document.createElement('canvas');
+        resized.width = Math.max(1, Math.round(image.width * scale));
+        resized.height = Math.max(1, Math.round(image.height * scale));
+        const resizeContext = resized.getContext('2d');
+        if (!resizeContext) return;
+        resizeContext.drawImage(image, 0, 0, resized.width, resized.height);
+        const dataUrl = resized.toDataURL('image/jpeg', 0.86);
+        try {
+          localStorage.setItem('eqsl_custom_bg', dataUrl);
+          setCustomBgImage(dataUrl);
+        } catch {
+          setCustomBgImage(dataUrl);
+          window.alert('La imagen se aplicó a esta tarjeta, pero el navegador no pudo guardarla para la próxima sesión. Probá con una foto más pequeña.');
+        }
+      };
+      image.onerror = () => window.alert('No se pudo abrir esa imagen. Elegí otra foto de la galería.');
+      image.src = source;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
