@@ -28,7 +28,9 @@ export const Header: React.FC<HeaderProps> = ({
       setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
       setHeaderImage(localStorage.getItem('app_header_image') || '');
-      setAppIcon(localStorage.getItem('app_icon_image') || '');
+      const nextIcon = localStorage.getItem('app_icon_image') || '';
+      setAppIcon(nextIcon);
+      document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => { link.href = nextIcon || '/icon.svg'; });
     };
     window.addEventListener('user-profile-updated', syncCallsign);
     window.addEventListener('storage', syncCallsign);
@@ -107,7 +109,8 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
             <p className="text-xs text-slate-400">Libro de guardia y tarjetas eQSL</p>
-          </div>        </div>
+          </div>
+        </div>
 
         {/* Zona derecha: instalación, compartir app, responder eQSL y ajustes */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
