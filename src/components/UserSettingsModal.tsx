@@ -115,6 +115,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         </div>
 
         <form onSubmit={handleSave} className="space-y-4 pt-4">
+          <div className="pt-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Datos de estación</h3>
+            <p className="text-[11px] text-slate-500 mt-1">Completá una sola vez los datos que aparecerán en tus tarjetas.</p>
+          </div>
           {/* Datos de mi Estación */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -186,6 +190,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             />
           </div>
 
+          <div className="pt-2 border-t border-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
+            <p className="text-[11px] text-slate-500 mt-1">Elegí la plantilla predeterminada y, si querés, una foto de fondo.</p>
+          </div>
           {/* Modelo eQSL predeterminado */}
           <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
             <div className="flex items-center gap-2">
@@ -289,6 +297,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
           </div>
 
+          <div className="pt-2 border-t border-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">3. Conexiones</h3>
+            <p className="text-[11px] text-slate-500 mt-1">Configurá QRZ por separado. Mostrar tu indicativo no requiere iniciar sesión.</p>
+          </div>
           {/* Sección QRZ.com */}
           <div className="p-4 bg-slate-950/70 rounded-xl border border-amber-500/20 space-y-3">
             <div className="flex items-center justify-between">
