@@ -109,9 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="p-1 bg-white rounded-xl shadow-lg">
             <img src={appIcon || "/icon.svg"} alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg object-contain" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 flex justify-center">
             {headerImage ? (
-              <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block h-14 sm:h-16 md:h-[4.5rem] w-auto max-w-[min(58vw,28rem)] rounded-lg bg-white p-1 object-contain object-left" />
+              <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block h-20 sm:h-24 md:h-28 w-full max-w-[min(75vw,48rem)] rounded-lg bg-white p-1 object-contain object-center mx-auto" />
             ) : (
               <div className="rounded-lg bg-white px-3 py-1.5">
                 <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
