@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { DEFAULT_CALLSIGN } from '../types';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -28,7 +27,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setCallsign(localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN);
+      setCallsign(localStorage.getItem('user_callsign') || '');
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
@@ -41,11 +40,16 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalCall = callsign.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const finalCall = callsign.trim().toUpperCase();
+    if (!finalCall) {
+      window.alert('Ingresá tu indicativo de radio antes de guardar.');
+      return;
+    }
     localStorage.setItem('user_callsign', finalCall);
     localStorage.setItem('user_email', email.trim());
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
+    window.dispatchEvent(new Event('user-profile-updated'));
 
     localStorage.removeItem('hamqth_user');
     localStorage.removeItem('hamqth_pass');
