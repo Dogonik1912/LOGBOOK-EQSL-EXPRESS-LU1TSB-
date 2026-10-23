@@ -289,11 +289,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               )}
             </div>
           </div>
-
-          <div className="pt-2 border-t border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">3. Datos de contacto</h3>
-            <p className="text-[11px] text-slate-500 mt-1">El nombre y correo se pueden completar desde QRZ cuando estén disponibles o escribir manualmente.</p>
-          </div>
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <div className="text-xs text-emerald-400 font-medium">
