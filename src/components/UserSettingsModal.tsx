@@ -203,6 +203,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     if (dataUrl) {
                       setCustomBg(dataUrl);
                       localStorage.setItem('eqsl_custom_bg', dataUrl);
+                      try {
+                        const existing = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>;
+                        const entry = { id: `${Date.now()}-${file.name}`, name: file.name, dataUrl };
+                        localStorage.setItem('eqsl_gallery_images', JSON.stringify([...existing, entry]));
+                      } catch {
+                        window.alert('La foto quedó aplicada, pero no se pudo añadir a la galería guardada.');
+                      }
                     }
                   };
                   reader.readAsDataURL(file);
@@ -223,6 +230,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   onClick={() => {
                     setCustomBg(null);
                     localStorage.removeItem('eqsl_custom_bg');
+                    try {
+                      const existing = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>;
+                      localStorage.setItem('eqsl_gallery_images', JSON.stringify(existing.filter((item) => item.dataUrl !== customBg)));
+                    } catch { /* La foto ya se ha desactivado aunque la galería no se pueda leer. */ }
                   }}
                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 text-xs rounded-lg border border-slate-700 transition-colors cursor-pointer"
                 >
