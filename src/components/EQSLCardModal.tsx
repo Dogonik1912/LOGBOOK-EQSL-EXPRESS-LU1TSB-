@@ -20,6 +20,28 @@ import {
   MessageSquare
 } from 'lucide-react';
 
+const EQSL_THEMES = [
+  { id: 'navy', name: 'Clásico azul', start: '#0f172a', mid: '#1e293b', end: '#090d16', accent: '#f59e0b', motif: '📡' },
+  { id: 'gold', name: 'Dorado', start: '#1c1917', mid: '#292524', end: '#0c0a09', accent: '#eab308', motif: '🏆' },
+  { id: 'cyber', name: 'Radio digital', start: '#020617', mid: '#0f172a', end: '#030712', accent: '#38bdf8', motif: '〰' },
+  { id: 'sunset', name: 'Puesta de sol', start: '#431407', mid: '#9a3412', end: '#111827', accent: '#fdba74', motif: '🌅' },
+  { id: 'mountain', name: 'Montaña y antenas', start: '#082f49', mid: '#155e75', end: '#0f172a', accent: '#67e8f9', motif: '🏔️' },
+  { id: 'aurora', name: 'Aurora boreal', start: '#052e2b', mid: '#115e59', end: '#111827', accent: '#5eead4', motif: '🌌' },
+  { id: 'ocean', name: 'Mar y DX', start: '#082f49', mid: '#075985', end: '#020617', accent: '#7dd3fc', motif: '🌊' },
+  { id: 'forest', name: 'Radio en el bosque', start: '#14532d', mid: '#166534', end: '#052e16', accent: '#86efac', motif: '🌲' },
+  { id: 'space', name: 'Espacio y satélites', start: '#1e1b4b', mid: '#312e81', end: '#030712', accent: '#c4b5fd', motif: '🛰️' },
+  { id: 'world', name: 'Mundo DX', start: '#172554', mid: '#1d4ed8', end: '#0f172a', accent: '#93c5fd', motif: '🌐' },
+  { id: 'cw', name: 'Código Morse', start: '#18181b', mid: '#27272a', end: '#09090b', accent: '#f4f4f5', motif: '· − ·' },
+  { id: 'field', name: 'Radio portátil', start: '#365314', mid: '#3f6212', end: '#111827', accent: '#d9f99d', motif: '⛺' },
+  { id: 'vintage', name: 'Vintage radio', start: '#451a03', mid: '#78350f', end: '#1c1917', accent: '#fcd34d', motif: '📻' },
+  { id: 'signal', name: 'Ondas de radio', start: '#164e63', mid: '#155e75', end: '#082f49', accent: '#a5f3fc', motif: '〰️' },
+  { id: 'contest', name: 'Concurso y diplomas', start: '#312e81', mid: '#4338ca', end: '#111827', accent: '#fde68a', motif: '🥇' },
+  { id: 'moon', name: 'Luna y noche', start: '#0f172a', mid: '#1e293b', end: '#020617', accent: '#e2e8f0', motif: '🌙' },
+  { id: 'tropical', name: 'Tropical', start: '#064e3b', mid: '#047857', end: '#022c22', accent: '#a7f3d0', motif: '🌴' },
+  { id: 'arctic', name: 'Polar', start: '#164e63', mid: '#0e7490', end: '#082f49', accent: '#cffafe', motif: '❄️' },
+  { id: 'red', name: 'Alta potencia', start: '#450a0a', mid: '#991b1b', end: '#1c1917', accent: '#fecaca', motif: '⚡' },
+];
+
 interface EQSLCardModalProps {
   qso: QSO | null;
   isOpen: boolean;
@@ -35,7 +57,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [theme, setTheme] = useState<'navy' | 'gold' | 'cyber'>('navy');
+  const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [customBgImage, setCustomBgImage] = useState<string | null>(() => {
     return localStorage.getItem('eqsl_custom_bg') || null;
   });
@@ -61,6 +83,13 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  const handleThemeChange = (nextTheme: string) => {
+    setTheme(nextTheme);
+    localStorage.setItem('eqsl_theme', nextTheme);
+    setCustomBgImage(null);
+    localStorage.removeItem('eqsl_custom_bg');
   };
 
   const handleRemoveCustomImage = () => {
@@ -174,10 +203,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       ctx.fillStyle = theme === 'cyber' ? '#7dd3fc' : '#fde047';
       ctx.fillText(firma, width / 2, 635);
 
-      // Marca de agua y crédito inferior
-      ctx.font = '16px monospace';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText('Desarrollado por LU1TSB · LogBook eQSL Express', width / 2, 680);
+      // Marca de agua discreta, visible y aplicada a todas las tarjetas, incluso a imágenes de galería.
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.font = 'italic 18px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.82)';
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('LogBook eqsl app.', width - 52, height - 48);
+      ctx.restore();
     };
 
     if (customBgImage) {
@@ -190,7 +224,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
         // Capa oscura translúcida para legibilidad profesional
-        ctx.fillStyle = 'rgba(10, 15, 30, 0.72)';
+        ctx.fillStyle = 'rgba(10, 15, 30, 0.48)';
         ctx.fillRect(0, 0, width, height);
 
         // Marco
@@ -206,45 +240,38 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       };
       img.src = customBgImage;
     } else {
-      // Fondo según tema
-      if (theme === 'navy') {
-        const grad = ctx.createLinearGradient(0, 0, width, height);
-        grad.addColorStop(0, '#0f172a');
-        grad.addColorStop(0.5, '#1e293b');
-        grad.addColorStop(1, '#090d16');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
+      // Plantillas temáticas: 19 motivos de radioafición.
+      const selectedTheme = EQSL_THEMES.find((item) => item.id === theme) || EQSL_THEMES[0];
+      const grad = ctx.createLinearGradient(0, 0, width, height);
+      grad.addColorStop(0, selectedTheme.start);
+      grad.addColorStop(0.52, selectedTheme.mid);
+      grad.addColorStop(1, selectedTheme.end);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
 
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 6;
-        ctx.strokeRect(30, 30, width - 60, height - 60);
-
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(42, 42, width - 84, height - 84);
-      } else if (theme === 'gold') {
-        const grad = ctx.createLinearGradient(0, 0, width, height);
-        grad.addColorStop(0, '#1c1917');
-        grad.addColorStop(0.5, '#292524');
-        grad.addColorStop(1, '#0c0a09');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 8;
-        ctx.strokeRect(30, 30, width - 60, height - 60);
-      } else {
-        const grad = ctx.createLinearGradient(0, 0, width, height);
-        grad.addColorStop(0, '#020617');
-        grad.addColorStop(0.5, '#0f172a');
-        grad.addColorStop(1, '#030712');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 6;
-        ctx.strokeRect(30, 30, width - 60, height - 60);
+      // Ondas decorativas y símbolo asociado al motivo elegido.
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = selectedTheme.accent;
+      ctx.lineWidth = 3;
+      for (let ring = 0; ring < 5; ring++) {
+        ctx.beginPath();
+        ctx.ellipse(width - 180, 150, 90 + ring * 45, 38 + ring * 25, -0.25, 0, Math.PI * 2);
+        ctx.stroke();
       }
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = selectedTheme.accent;
+      ctx.font = 'bold 88px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(selectedTheme.motif, 70, 150);
+      ctx.restore();
+
+      ctx.strokeStyle = selectedTheme.accent;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(30, 30, width - 60, height - 60);
+      ctx.strokeStyle = selectedTheme.accent + '66';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(42, 42, width - 84, height - 84);
 
       drawCardContent();
     }
@@ -364,36 +391,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Selector de tema o foto */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setTheme('navy')}
-                className={`px-2 py-0.5 text-xs rounded-md transition-colors cursor-pointer ${
-                  theme === 'navy' && !customBgImage ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Navy
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme('gold')}
-                className={`px-2 py-0.5 text-xs rounded-md transition-colors cursor-pointer ${
-                  theme === 'gold' && !customBgImage ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Dorado
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme('cyber')}
-                className={`px-2 py-0.5 text-xs rounded-md transition-colors cursor-pointer ${
-                  theme === 'cyber' && !customBgImage ? 'bg-sky-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Cyber
-              </button>
-            </div>
+            {/* Cerrar */}
 
             <button
               onClick={onClose}
@@ -401,6 +399,30 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+
+        {/* Selector visual de 19 motivos de radioafición */}
+        <div className="mb-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-xs font-semibold text-slate-300">Elegí uno de los 19 motivos de radioafición</p>
+            <span className="text-[10px] text-slate-500">Se recuerda en este dispositivo</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5">
+            {EQSL_THEMES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleThemeChange(item.id)}
+                aria-pressed={theme === item.id && !customBgImage}
+                className={`min-h-[54px] rounded-lg border px-2 py-1.5 text-left transition-colors ${theme === item.id && !customBgImage ? 'border-amber-400 ring-1 ring-amber-400/60' : 'border-slate-700 hover:border-slate-500'}`}
+                style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}
+                title={item.name}
+              >
+                <span className="block text-base leading-5">{item.motif}</span>
+                <span className="block text-[10px] leading-3 text-white/90">{item.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
