@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from './types';
-import { lookupQRZCallsign } from './services/qrzService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { NewQSOForm } from './components/NewQSOForm';
@@ -110,19 +109,6 @@ export default function App() {
     // Inicializar callsign por defecto si no existe
     if (!localStorage.getItem('user_callsign')) {
       localStorage.setItem('user_callsign', DEFAULT_CALLSIGN);
-    }
-
-    // Recuperar automáticamente el nombre del operador desde el perfil QRZ al abrir la app.
-    // No se pisa un nombre ya guardado manualmente y nunca se inventan datos.
-    const ownCall = (localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN).trim().toUpperCase();
-    if (!(localStorage.getItem('user_name') || '').trim()) {
-      void lookupQRZCallsign(ownCall).then((profile) => {
-        const profileName = (profile.name || '').trim();
-        if (profileName && !(localStorage.getItem('user_name') || '').trim()) {
-          localStorage.setItem('user_name', profileName);
-          setRefreshKey((key) => key + 1);
-        }
-      }).catch((error) => console.warn('No se pudo recuperar el nombre del operador desde QRZ:', error));
     }
 
     return () => {
