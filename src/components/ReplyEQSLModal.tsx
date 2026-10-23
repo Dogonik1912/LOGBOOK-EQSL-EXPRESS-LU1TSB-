@@ -498,7 +498,12 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
               <button key={item.id} type="button" onClick={() => handleThemeChange(item.id)} aria-pressed={theme === item.id && !customBgImage}
                 className={`min-h-[54px] rounded-lg border px-2 py-1.5 text-left transition-colors ${theme === item.id && !customBgImage ? 'border-sky-400 ring-1 ring-sky-400/60' : 'border-slate-700 hover:border-slate-500'}`}
                 style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }} title={item.name}>
-                <span className="block text-base leading-5">{item.motif}</span><span className="block text-[10px] leading-3 text-white/90">{item.name}</span>
+                <span className="block relative overflow-hidden rounded-md border border-white/20 mb-1.5 h-10 px-1.5" style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}>
+                  <span className="absolute inset-x-0 top-0.5 text-[6px] font-bold tracking-wider text-white/80 text-center">eQSL · RADIO</span>
+                  <span className="absolute left-1 bottom-0 text-sm leading-4">{item.motif}</span>
+                  <span className="absolute right-1 bottom-0 text-[6px] font-mono text-white/90">59 · 73</span>
+                  <span className="absolute left-1/2 top-1/2 w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border opacity-40" style={{ borderColor: item.accent }} />
+                </span><span className="block text-[10px] leading-3 text-white/90">{item.name}</span>
               </button>
             ))}
           </div>
