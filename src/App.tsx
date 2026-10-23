@@ -12,7 +12,6 @@ import { LiveLog } from './components/LiveLog';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
-import { QRZLoginModal } from './components/QRZLoginModal';
 import { Radio, Award, Globe, Zap, Send, Info, ArrowRightLeft } from 'lucide-react';
 
 function MainApp() {
@@ -29,7 +28,6 @@ function MainApp() {
   });
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isQRZLoginModalOpen, setIsQRZLoginModalOpen] = useState(() => !(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass')));
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyData, setReplyData] = useState<{
@@ -259,13 +257,6 @@ function MainApp() {
 
       {/* PRIORIDAD 1: Footer con crédito discreto */}
       <Footer />
-
-      {/* Inicio de sesión QRZ: se solicita en cada apertura de la aplicación */}
-      <QRZLoginModal
-        isOpen={isQRZLoginModalOpen}
-        onClose={() => setIsQRZLoginModalOpen(false)}
-        onSaved={() => setRefreshKey((key) => key + 1)}
-      />
 
       {/* Modales */}
       {/* Modal de Configuración General */}
