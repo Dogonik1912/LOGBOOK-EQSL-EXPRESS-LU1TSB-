@@ -105,22 +105,16 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
         {/* Marca */}
-        <div className="flex items-center gap-3">
-          <div className="p-1 bg-white rounded-xl shadow-lg">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="shrink-0 p-1 bg-white rounded-xl shadow-lg">
             <img src={appIcon || "/icon.svg"} alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg object-contain" />
           </div>
           <div className="min-w-0 flex-1 flex justify-center">
             {headerImage ? (
               <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block h-20 sm:h-24 md:h-28 w-full max-w-[min(75vw,48rem)] rounded-lg bg-white p-1 object-contain object-center mx-auto" />
             ) : (
-              <div className="rounded-lg bg-white px-3 py-1.5">
-                <div className="text-center text-lg sm:text-xl font-extrabold tracking-tight text-sky-500 whitespace-nowrap">LOG BOOK</div>
-                <h1 className="flex items-center justify-center gap-2 text-lg sm:text-xl font-extrabold tracking-tight whitespace-nowrap">
-                  <span className="text-black font-black text-3xl sm:text-4xl leading-none" style={{ fontWeight: 900, WebkitTextStroke: '1px currentColor' }}>ℒ 𝔅</span><span className="text-sky-500">EQSL EXP<span className="text-3xl sm:text-4xl leading-none">R</span>ESS</span>
-                </h1>
-              </div>
+              <div className="h-20 sm:h-24 md:h-28 w-full max-w-[min(75vw,48rem)]" aria-hidden="true" />
             )}
-            {!headerImage && <p className="text-xs text-slate-400">Libro de guardia y tarjetas eQSL</p>}
           </div>
         </div>
 
