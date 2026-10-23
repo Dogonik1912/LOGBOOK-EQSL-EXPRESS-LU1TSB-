@@ -635,14 +635,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
         {/* Botón de Guardado */}
         <div className="flex items-center justify-between pt-2">
           <div className="text-xs text-slate-400 italic">
-            * Al guardar, fecha, hora, banda, frecuencia y modo quedan precargados para el siguiente contacto.
+            * Al guardar, se abre la tarjeta eQSL para elegir diseño y completar el envío por email o WhatsApp. Los datos del QSO quedan precargados.
           </div>
           <button
             type="submit"
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
-            Guardar QSO
+            Guardar así y enviar eQSL
           </button>
         </div>
       </form>
