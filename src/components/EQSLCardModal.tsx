@@ -133,9 +133,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     window.setTimeout(() => setThemeNotice(''), 3500);
   };
 
-  const handleSelectGalleryImage = (dataUrl: string) => {
+  const handleSelectGalleryImage = (dataUrl: string, name = 'foto de galería') => {
     setCustomBgImage(dataUrl);
     localStorage.setItem('eqsl_custom_bg', dataUrl);
+    setThemeNotice(`⚓ ANCLADA PARA ENVIAR: ${name}. Se mantendrá seleccionada hasta que elijas otro diseño.`);
   };
 
   const handleDeleteGalleryImage = (id: string) => {
@@ -337,9 +338,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   useEffect(() => {
     if (isOpen && qso) {
-      // Leer siempre el modelo predeterminado guardado en Ajustes al abrir una tarjeta nueva.
-      setTheme('navy');
-      localStorage.setItem('eqsl_theme', 'navy');
+      // Restaurar el diseño anclado: no cambiarlo automáticamente al abrir otro QSO.
+      setTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
       try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
     }
@@ -515,33 +515,48 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         </div>
 
-        {/* Imágenes predeterminadas: todas las fotos cargadas se muestran aquí. */}
+        {/* Galería unificada: diseños incluidos en la app y fotos subidas por el usuario. */}
         <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-200">Imágenes predeterminadas · Mi galería</p>
-            <span className="text-[10px] text-slate-500">{galleryImages.length} imagen(es)</span>
+            <p className="text-xs font-semibold text-slate-200">Diseño eQSL predeterminado · Elegí con un toque</p>
+            <span className="text-[10px] text-slate-500">{EQSL_THEMES.length + galleryImages.length} diseños</span>
           </div>
+          <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {EQSL_THEMES.map((item) => {
+              const selected = !customBgImage && theme === item.id;
+              return (
+                <button key={item.id} type="button" onClick={() => handleThemeChange(item.id)} className={`relative overflow-hidden rounded-lg border text-left transition ${selected ? 'border-amber-400 ring-2 ring-amber-400/60' : 'border-slate-700 hover:border-slate-500'}`} title={`Seleccionar ${item.name} para enviar`}>
+                  <span className="flex h-24 flex-col items-center justify-center gap-1" style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }}>
+                    <span className="text-3xl" style={{ color: item.accent }}>{item.motif}</span>
+                    <span className="text-[10px] font-bold text-white">{item.name}</span>
+                  </span>
+                  {selected && <span className="block bg-amber-400 px-2 py-1 text-center text-[10px] font-black text-slate-950">⚓ ANCLADA PARA ENVIAR</span>}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mb-2 text-[11px] text-slate-400">Fotos guardadas de tu galería</p>
           {galleryImages.length === 0 ? (
-            <p className="text-xs text-slate-400">Todavía no hay fotos. Pulsa «Cargar foto desde mi galería»; cada imagen que añadas aparecerá aquí.</p>
+            <p className="text-xs text-slate-400">Todavía no hay fotos propias. Cargá una desde tu dispositivo y quedará archivada junto con estos diseños.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {galleryImages.map((item) => {
                 const selected = customBgImage === item.dataUrl;
                 return (
                   <div key={item.id} className={`overflow-hidden rounded-lg border ${selected ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
-                    <button type="button" onClick={() => setThemeNotice(`Pulsa «Anclar» para seleccionar ${item.name} para esta eQSL.`)} className="block w-full text-left" title="Ver opciones de esta imagen">
+                    <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl, item.name)} className="block w-full text-left" title="Ver opciones de esta imagen">
                       <img src={item.dataUrl} alt={item.name} className="h-24 w-full object-cover" />
                       <span className="block truncate px-2 pt-1 text-[10px] text-slate-200">{item.name}</span>
                     </button>
                     <div className="flex items-center justify-between gap-1 border-t border-slate-800 p-1.5">
-                      <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`} title="Anclar esta imagen para enviar">
+                      <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl, item.name)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`} title="Anclar esta imagen para enviar">
                         <Anchor className="h-3 w-3" /> {selected ? 'Anclada' : 'Anclar'}
                       </button>
                       <button type="button" onClick={() => handleDeleteGalleryImage(item.id)} className="rounded-md px-1.5 py-1 text-[10px] text-rose-300 hover:bg-rose-950/50" title="Eliminar imagen">
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                    {selected && <span className="block bg-amber-400/10 px-2 pb-1.5 text-[10px] font-semibold text-amber-300">⚓ Seleccionada para enviar</span>}
+                    {selected && <span className="block bg-amber-400/10 px-2 pb-1.5 text-[10px] font-semibold text-amber-300">⚓ ANCLADA PARA ENVIAR</span>}
                   </div>
                 );
               })}
