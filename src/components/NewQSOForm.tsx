@@ -316,7 +316,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setWhatsapp('');
     setWhatsappRaw('');
     setLookupMessage('');
-    setName('');
     setCountry('');
     setGrid('');
     setNotes('');
