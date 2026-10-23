@@ -40,6 +40,11 @@ const EQSL_THEMES = [
   { id: 'tropical', name: 'Tropical', start: '#064e3b', mid: '#047857', end: '#022c22', accent: '#a7f3d0', motif: '🌴' },
   { id: 'arctic', name: 'Polar', start: '#164e63', mid: '#0e7490', end: '#082f49', accent: '#cffafe', motif: '❄️' },
   { id: 'red', name: 'Alta potencia', start: '#450a0a', mid: '#991b1b', end: '#1c1917', accent: '#fecaca', motif: '⚡' },
+  { id: 'yl-radio', name: 'Operadora YL', start: '#4a044e', mid: '#86198f', end: '#1e1b4b', accent: '#f5d0fe', motif: '👩‍💻' },
+  { id: 'yl-dx', name: 'YL en estación DX', start: '#172554', mid: '#1d4ed8', end: '#312e81', accent: '#bfdbfe', motif: '👩‍🔧' },
+  { id: 'yl-portable', name: 'Operadora en portable', start: '#14532d', mid: '#0f766e', end: '#082f49', accent: '#a7f3d0', motif: '👩‍🚀' },
+  { id: 'yl-contest', name: 'YL en concurso', start: '#7f1d1d', mid: '#9d174d', end: '#312e81', accent: '#fbcfe8', motif: '👩‍🎤' },
+  { id: 'yl-antenna', name: 'YL y antenas', start: '#78350f', mid: '#b45309', end: '#431407', accent: '#fde68a', motif: '👩‍🔬' },
 ];
 
 interface EQSLCardModalProps {
