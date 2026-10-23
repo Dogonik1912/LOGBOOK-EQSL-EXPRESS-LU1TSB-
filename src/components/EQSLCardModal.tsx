@@ -401,9 +401,21 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     link.click();
   };
 
+  // Registra la estación que inicia una acción eQSL. No afirma que el proveedor externo haya entregado el mensaje.
+  const trackEQSLActivity = () => {
+    const callsign = String(myCallsign || '').trim().toUpperCase();
+    if (!callsign) return;
+    fetch('/api/directory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'activity', callsign }),
+    }).catch(() => {});
+  };
+
   // PRIORIDAD 1: Compartir por WhatsApp con firma dinámica y link de respuesta eQSL
   const handleShareWhatsApp = () => {
     if (!isQsoValidForEQSL()) return;
+    trackEQSLActivity();
     const firma = getFirma();
     const replyLink = getReplyUrl();
     const receivedCardLink = getReceivedCardUrl();
@@ -446,6 +458,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // Enviar por Email (con link de respuesta eQSL y firma dinámica)
   const handleSendEmail = () => {
     if (!isQsoValidForEQSL()) return;
+    trackEQSLActivity();
     const firma = getFirma();
     const replyLink = getReplyUrl();
     const receivedCardLink = getReceivedCardUrl();
