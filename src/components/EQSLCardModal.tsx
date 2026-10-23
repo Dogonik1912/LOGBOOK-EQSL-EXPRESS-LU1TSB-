@@ -92,8 +92,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         const image = new Image();
         image.onerror = () => resolve(null);
         image.onload = () => {
-          const maxWidth = 1200;
-          const maxHeight = 750;
+          // Comprimir con límites más bajos para que varias fotos quepan en el almacenamiento
+          // local del navegador, especialmente en móviles Android.
+          const maxWidth = 900;
+          const maxHeight = 560;
           const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
           const resized = document.createElement('canvas');
           resized.width = Math.max(1, Math.round(image.width * scale));
@@ -104,7 +106,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           resolve({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`,
             name: file.name,
-            dataUrl: resized.toDataURL('image/jpeg', 0.78),
+            dataUrl: resized.toDataURL('image/jpeg', 0.62),
           });
         };
         image.src = source;
@@ -621,7 +623,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-medium rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
             >
               <ImageIcon className="w-3.5 h-3.5" />
-              {customBgImage ? 'Cambiar foto de galería' : 'Cargar foto desde mi galería'}
+              {customBgImage ? 'Añadir varias fotos' : 'Cargar varias fotos'}
             </button>
 
             {customBgImage && (
