@@ -26,6 +26,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [qth, setQth] = useState('');
   const [grid, setGrid] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
+  const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [qrzUser, setQrzUser] = useState('');
   const [qrzPass, setQrzPass] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -38,6 +39,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setQth(localStorage.getItem('user_qth') || '');
       setGrid(localStorage.getItem('user_grid') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
+      setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setQrzUser(localStorage.getItem('qrz_user') || '');
       setQrzPass(localStorage.getItem('qrz_pass') || '');
       setSavedSuccess(false);
@@ -54,6 +56,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.setItem('user_email', email.trim());
     localStorage.setItem('user_qth', qth.trim());
     localStorage.setItem('user_grid', grid.trim().toUpperCase());
+    localStorage.setItem('eqsl_theme', defaultEQSLTheme);
 
     if (qrzUser.trim()) {
       localStorage.setItem('qrz_user', qrzUser.trim());
@@ -181,6 +184,47 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               placeholder="Buenos Aires, Argentina"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden"
             />
+          </div>
+
+          {/* Modelo eQSL predeterminado */}
+          <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-sky-400" />
+              <span className="text-xs font-bold text-sky-300">Diseño eQSL predeterminado</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Elegí el modelo que se usará automáticamente al abrir el generador. Podés cambiarlo para una tarjeta concreta cuando quieras.
+            </p>
+            <select
+              value={defaultEQSLTheme}
+              onChange={(e) => setDefaultEQSLTheme(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:border-sky-400 focus:outline-hidden"
+            >
+              <option value="navy">Clásico azul</option>
+              <option value="gold">Dorado</option>
+              <option value="cyber">Radio digital</option>
+              <option value="sunset">Puesta de sol</option>
+              <option value="mountain">Montaña y antenas</option>
+              <option value="aurora">Aurora boreal</option>
+              <option value="ocean">Mar y DX</option>
+              <option value="forest">Radio en el bosque</option>
+              <option value="space">Espacio y satélites</option>
+              <option value="world">Mundo DX</option>
+              <option value="cw">Código Morse</option>
+              <option value="field">Radio portátil</option>
+              <option value="vintage">Vintage radio</option>
+              <option value="signal">Ondas de radio</option>
+              <option value="contest">Concurso y diplomas</option>
+              <option value="moon">Luna y noche</option>
+              <option value="tropical">Tropical</option>
+              <option value="arctic">Polar</option>
+              <option value="red">Alta potencia</option>
+              <option value="yl-radio">YL · Ondas y estrellas</option>
+              <option value="yl-dx">YL · Mundo DX</option>
+              <option value="yl-portable">YL · Aurora y naturaleza</option>
+              <option value="yl-contest">YL · Brillo y concurso</option>
+              <option value="yl-antenna">YL · Antenas al atardecer</option>
+            </select>
           </div>
 
           {/* Foto de fondo para tarjetas eQSL */}
