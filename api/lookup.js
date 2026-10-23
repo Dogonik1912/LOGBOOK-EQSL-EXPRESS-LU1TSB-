@@ -241,9 +241,23 @@ export default async function handler(req, res) {
       // pie de página o componentes compartidos y asociarlos al indicativo equivocado.
       // El correo solo se acepta más abajo desde la respuesta XML autenticada del callsign exacto.
 
-      const nameMatch = html.match(/<span[^>]*class=["'][^"']*\bm0\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)
-        || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-      if (nameMatch) name = decode(nameMatch[1]);
+      // QRZ cambia el marcado de sus perfiles. Probar varios campos del perfil
+      // y descartar títulos genéricos o el propio indicativo.
+      const metaName = html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i);
+      const jsonFirst = html.match(/["'](?:fname|firstName|givenName)["']\s*:\s*["']([^"']{2,80})["']/i);
+      const jsonLast = html.match(/["'](?:surname|lastName|familyName)["']\s*:\s*["']([^"']{2,80})["']/i);
+      const profileName = html.match(/<[^>]+class=["'][^"']*(?:m0|fullname|full-name|callsign-name|profile-name)[^"']*["'][^>]*>([\s\S]{1,160}?)<\//i);
+      const headingName = html.match(/<h1[^>]*>([\s\S]{1,160}?)<\/h1>/i);
+      const cleanName = (value) => decode(value || '').replace(/\s*[|–-]\s*(?:QRZ|Ham Radio)[^|]*$/i, '').trim();
+      const candidates = [
+        jsonFirst && jsonLast ? cleanName(jsonFirst[1] + ' ' + jsonLast[1]) : '',
+        profileName ? cleanName(profileName[1]) : '',
+        metaName ? cleanName(metaName[1]) : '',
+        headingName ? cleanName(headingName[1]) : ''
+      ];
+      name = candidates.find(value => value && value.toUpperCase() !== call &&
+        !/^(?:QRZ\.COM|HAM RADIO CALLSIGN LOOKUP|CALLSIGN LOOKUP)$/i.test(value)) || '';
       const gridMatch = html.match(/Grid Square:<\/td>\s*<td[^>]*>\s*([A-R]{2}[0-9]{2}(?:[A-X]{2})?)/i);
       if (gridMatch) grid = gridMatch[1];
       const countryMatch = html.match(/Country:<\/td>\s*<td[^>]*>([^<]+)/i);
