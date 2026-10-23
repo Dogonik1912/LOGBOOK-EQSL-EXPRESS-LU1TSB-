@@ -15,6 +15,7 @@ import {
   Sparkles, 
   Image as ImageIcon, 
   Trash2, 
+  Anchor,
   Copy,
   ExternalLink,
   MessageSquare
@@ -340,6 +341,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       setTheme('navy');
       localStorage.setItem('eqsl_theme', 'navy');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
+      try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
     }
   }, [isOpen, qso]);
 
@@ -513,9 +515,39 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         </div>
 
-        {/* Galería de motivos visuales pendiente de incorporar */}
-        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-400">
-          Los motivos de eQSL con imágenes para seleccionar con un clic se incorporarán más adelante.
+        {/* Imágenes predeterminadas: todas las fotos cargadas se muestran aquí. */}
+        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-200">Imágenes predeterminadas · Mi galería</p>
+            <span className="text-[10px] text-slate-500">{galleryImages.length} imagen(es)</span>
+          </div>
+          {galleryImages.length === 0 ? (
+            <p className="text-xs text-slate-400">Todavía no hay fotos. Pulsa «Cargar foto desde mi galería»; cada imagen que añadas aparecerá aquí.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {galleryImages.map((item) => {
+                const selected = customBgImage === item.dataUrl;
+                return (
+                  <div key={item.id} className={`overflow-hidden rounded-lg border ${selected ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
+                    <button type="button" onClick={() => setThemeNotice(`Pulsa «Anclar» para seleccionar ${item.name} para esta eQSL.`)} className="block w-full text-left" title="Ver opciones de esta imagen">
+                      <img src={item.dataUrl} alt={item.name} className="h-24 w-full object-cover" />
+                      <span className="block truncate px-2 pt-1 text-[10px] text-slate-200">{item.name}</span>
+                    </button>
+                    <div className="flex items-center justify-between gap-1 border-t border-slate-800 p-1.5">
+                      <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl)} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`} title="Anclar esta imagen para enviar">
+                        <Anchor className="h-3 w-3" /> {selected ? 'Anclada' : 'Anclar'}
+                      </button>
+                      <button type="button" onClick={() => handleDeleteGalleryImage(item.id)} className="rounded-md px-1.5 py-1 text-[10px] text-rose-300 hover:bg-rose-950/50" title="Eliminar imagen">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    {selected && <span className="block bg-amber-400/10 px-2 pb-1.5 text-[10px] font-semibold text-amber-300">⚓ Seleccionada para enviar</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {themeNotice && <p className="mt-2 text-[11px] text-amber-300">{themeNotice}</p>}
         </div>
 
         {/* Barra de personalización de imagen de fondo desde Galería */}
@@ -563,29 +595,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         </div>
 
-        {/* Galería única de diseños y fotos personales */}
-        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-300">Mi galería de eQSL</p>
-            <span className="text-[10px] text-slate-500">{galleryImages.length} imagen(es)</span>
-          </div>
-          {galleryImages.length === 0 ? (
-            <p className="text-xs text-slate-500">Todavía no hay imágenes guardadas. Las que subas se añadirán aquí y podrás conservarlas o eliminarlas.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {galleryImages.map((item) => (
-                <div key={item.id} className={`overflow-hidden rounded-lg border ${customBgImage === item.dataUrl ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
-                  <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl)} className="block w-full text-left" title="Seleccionar esta imagen">
-                    <img src={item.dataUrl} alt={item.name} className="h-20 w-full object-cover" />
-                    <span className="block truncate px-2 py-1 text-[10px] text-slate-200">{item.name}</span>
-                    <span className="block px-2 pb-2 text-[10px] font-semibold text-amber-300">{customBgImage === item.dataUrl ? '✓ Seleccionada' : 'Tocar para usar'}</span>
-                  </button>
-                  <button type="button" onClick={() => handleDeleteGalleryImage(item.id)} className="w-full border-t border-slate-800 px-2 py-1.5 text-[10px] text-rose-300 hover:bg-rose-950/50">Eliminar de la galería</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+
 
         {/* Vista previa Canvas */}
         <div className="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner flex items-center justify-center p-2 mb-4">
