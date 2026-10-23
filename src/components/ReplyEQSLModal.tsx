@@ -233,6 +233,14 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       ctx.font = '16px monospace';
       ctx.fillStyle = '#94a3b8';
       ctx.fillText('Desarrollado por LU1TSB · LogBook eQSL Express', width / 2, 680);
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.font = 'italic 18px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.88)';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('LogBook eqsl app.', width - 52, height - 48);
+      ctx.restore();
     };
 
     if (customBgImage) {
