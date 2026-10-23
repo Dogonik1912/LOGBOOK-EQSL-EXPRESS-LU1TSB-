@@ -94,7 +94,7 @@ export const QRZLoginModal: React.FC<QRZLoginModalProps> = ({ isOpen, onClose, o
               Conectá tu cuenta QRZ
             </h2>
             <p className="text-sm text-slate-300 mt-1 leading-relaxed">
-              Iniciá sesión en QRZ.com para consultar los datos disponibles de tus corresponsales. Cada vez que abras la app te preguntaremos si querés conectar. Guardar tus credenciales es opcional.
+              Iniciá sesión en QRZ.com para consultar los datos disponibles de tus corresponsales. Si guardás tus credenciales en este dispositivo, no volveremos a pedirlas en próximas aperturas.
             </p>
           </div>
         </div>
