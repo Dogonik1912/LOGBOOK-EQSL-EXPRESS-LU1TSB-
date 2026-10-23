@@ -307,9 +307,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       // Leer siempre el modelo predeterminado guardado en Ajustes al abrir una tarjeta nueva.
       setTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
-      setTimeout(renderCard, 50);
     }
   }, [isOpen, qso]);
+
+  useEffect(() => {
+    if (isOpen && qso) {
+      const timer = window.setTimeout(renderCard, 50);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isOpen, qso, theme, customBgImage]);
 
   if (!isOpen || !qso) return null;
 
