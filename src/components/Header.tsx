@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Radio, Settings, MessageCircle, Download, Smartphone } from 'lucide-react';
-import { getUserCallsign } from '../services/qrzService';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -19,7 +18,17 @@ export const Header: React.FC<HeaderProps> = ({
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
-  const callsign = getUserCallsign();
+  const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || 'SIN REGISTRO');
+
+  useEffect(() => {
+    const syncCallsign = () => setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || 'SIN REGISTRO');
+    window.addEventListener('user-profile-updated', syncCallsign);
+    window.addEventListener('storage', syncCallsign);
+    return () => {
+      window.removeEventListener('user-profile-updated', syncCallsign);
+      window.removeEventListener('storage', syncCallsign);
+    };
+  }, []);
 
   useEffect(() => {
     const checkInstalled = () => setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true);
