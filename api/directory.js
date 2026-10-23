@@ -37,7 +37,7 @@ export default async function handler(req, res) {
       }
       if (action === 'count') {
         const rows = await db('eqsl_directory?select=callsign&activity_count=gt.0');
-        return res.status(200).json({ activeUsers: new Set(rows.map(r => r.callsign)).size });
+        return res.status(200).json({ activeUsers: new Set(rows.map(r => r.callsign)).size, totalActions: rows.reduce((sum, row) => sum + Number(row.activity_count || 0), 0) });
       }
       return res.status(400).json({ error: 'Acción no válida' });
     } catch (error) {
