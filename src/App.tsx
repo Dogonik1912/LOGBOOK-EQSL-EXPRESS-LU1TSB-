@@ -12,7 +12,7 @@ import { LiveLog } from './components/LiveLog';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
-import { Radio, Award, Globe, Zap, Send, Info, ArrowRightLeft } from 'lucide-react';
+import { Radio, Award, Globe, Send, Download } from 'lucide-react';
 
 function MainApp() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
@@ -170,7 +170,13 @@ function MainApp() {
   // Estadísticas rápidas
   const uniqueCallsigns = new Set(qsos.map((q) => q.callsign)).size;
   const uniqueCountries = new Set(qsos.map((q) => q.country).filter(Boolean)).size;
-  const eQslSentCount = qsos.filter((q) => q.qslSent).length;
+  const eQslSentCount = qsos.filter((q) => q.qslSent === true).length;
+  const eQslReceivedCount = qsos.filter((q) => q.qslRcvd === true).length;
+  const countryRanking = Object.entries(qsos.reduce<Record<string, number>>((acc, q) => {
+    const country = (q.country || '').trim();
+    if (country) acc[country] = (acc[country] || 0) + 1;
+    return acc;
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 8);
 
   const handleOpenReplyForQSO = (qso: QSO) => {
     const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
@@ -215,7 +221,7 @@ function MainApp() {
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Banner de resumen de estación */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
             <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg shrink-0">
               <Radio className="w-5 h-5" />
@@ -252,10 +258,56 @@ function MainApp() {
             </div>
             <div>
               <div className="text-xl font-bold font-mono text-white">{eQslSentCount}</div>
-              <div className="text-xs text-slate-400">eQSLs Emitidas</div>
+              <div className="text-xs text-slate-400">eQSL enviadas</div>
+            </div>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
+            <div className="p-2.5 bg-cyan-500/10 text-cyan-400 rounded-lg shrink-0">
+              <Download className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xl font-bold font-mono text-white">{eQslReceivedCount}</div>
+              <div className="text-xs text-slate-400">eQSL recibidas</div>
             </div>
           </div>
         </div>
+
+        <section className="mb-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/90">
+          <div className="border-b border-slate-800 px-4 py-4 sm:px-5">
+            <h2 className="text-lg font-bold text-white">Mapamundi de actividad eQSL</h2>
+            <p className="mt-1 text-sm text-slate-400">Siempre visible, incluso cuando no hay contactos en directo.</p>
+          </div>
+          <div className="grid gap-4 p-3 sm:p-5 lg:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]">
+            <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#071525] p-2 sm:p-4">
+              <svg viewBox="0 0 900 440" role="img" aria-label="Mapamundi ilustrativo" className="h-auto w-full">
+                <defs><pattern id="worldGrid" width="75" height="55" patternUnits="userSpaceOnUse"><path d="M75 0H0V55" fill="none" stroke="#24445d" strokeWidth="1"/></pattern></defs>
+                <rect width="900" height="440" rx="12" fill="#0b2033"/><rect width="900" height="440" fill="url(#worldGrid)"/>
+                <g fill="#214d57" stroke="#3e7780" strokeWidth="2">
+                  <path d="M72 91L104 61 151 52 184 67 213 64 242 88 269 96 283 123 261 143 242 148 228 175 203 184 192 213 171 225 159 255 141 247 128 215 111 195 97 162 77 144 64 116Z"/>
+                  <path d="M222 235L251 224 278 239 290 270 279 301 267 333 250 369 232 391 219 359 211 326 199 294 203 266Z"/>
+                  <path d="M362 89L391 70 424 75 444 91 464 89 483 105 508 105 523 127 507 144 482 141 467 160 447 153 434 174 414 163 402 139 381 127 366 109Z"/>
+                  <path d="M407 175L437 160 466 174 486 206 478 244 459 278 445 315 427 339 411 307 400 273 389 235 391 202Z"/>
+                  <path d="M479 84L521 58 574 49 624 64 664 70 704 91 744 91 776 117 804 147 786 169 752 165 728 187 693 180 671 202 643 191 624 165 598 156 577 135 548 141 525 124 498 126Z"/>
+                  <path d="M677 248L706 235 738 245 758 267 748 291 721 306 695 294 678 274Z"/>
+                </g>
+                <text x="450" y="415" textAnchor="middle" fill="#8aa8bb" fontSize="13">VISTA MUNDIAL · CONTACTOS COMPARTIDOS</text>
+              </svg>
+              <p className="mt-2 text-center text-xs text-slate-500">Mapa de referencia; no muestra estaciones en directo hasta conectar el servicio compartido.</p>
+            </div>
+            <aside className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+              <h3 className="font-semibold text-white">Contactos por país</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">Resumen local de QSOs, no un censo de usuarios registrados.</p>
+              {countryRanking.length ? (
+                <ol className="mt-4 space-y-3">
+                  {countryRanking.map(([country, count], index) => (
+                    <li key={country} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 truncate text-slate-300"><span className="mr-2 text-amber-400">{index + 1}.</span>{country}</span><span className="font-mono text-white">{count}</span></li>
+                  ))}
+                </ol>
+              ) : <div className="mt-4 rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-400">Todavía no hay países registrados en este libro de guardia.</div>}
+              <div className="mt-4 rounded-lg bg-slate-900 p-3 text-xs leading-relaxed text-slate-400">El mapa permanece visible sin actividad. El ranking mundial de usuarios y los contactos sincronizados requieren cuentas y base de datos compartida.</div>
+            </aside>
+          </div>
+        </section>
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
