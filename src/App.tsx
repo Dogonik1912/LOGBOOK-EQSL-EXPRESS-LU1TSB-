@@ -59,6 +59,7 @@ export default function App() {
     const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
     const profileImportCall = urlParams.get('qrz_call') || hashParams.get('qrz_call');
+    const isQRZBridgeWaiting = window.location.hash === '#qrz-bridge-waiting';
     // El puente desde QRZ usa el fragmento (#), que no se envía al servidor en la petición HTTP.
     // Se elimina tras leerlo para no dejar el correo en la barra de direcciones.
     if (profileImportCall) {
@@ -95,10 +96,10 @@ export default function App() {
         whatsapp: urlParams.get('wa') || '',
       });
       setIsReplyModalOpen(true);
-    } else if (!hasQRZCredentials && !profileImportCall) {
+    } else if (!hasQRZCredentials && !profileImportCall && !isQRZBridgeWaiting) {
       // Si no hay credenciales activas, solicitar conexión al abrir.
       setIsQRZModalOpen(true);
-    } else if (!replyToParam && !profileImportCall) {
+    } else if (!replyToParam && !profileImportCall && !isQRZBridgeWaiting) {
       // Las credenciales antiguas pueden estar guardadas sin haber sido validadas.
       // Verificar con QRZ en segundo plano y pedir intervención solo si la sesión falla.
       const savedUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
@@ -117,12 +118,41 @@ export default function App() {
         .catch(() => setIsQRZModalOpen(true));
     }
 
+    // Puente temporal: la pestaña QRZ envía solo los campos visibles mediante postMessage.
+    // No se transfieren cookies ni credenciales y el correo no viaja en la URL.
+    let bridgeHandler: ((event: MessageEvent) => void) | undefined;
+    if (isQRZBridgeWaiting) {
+      bridgeHandler = (event: MessageEvent) => {
+        if (!['https://www.qrz.com', 'https://qrz.com'].includes(event.origin)) return;
+        if (event.data?.type !== 'LOGBOOK_QRZ_PROFILE') return;
+        const profile = event.data.profile || {};
+        const call = String(profile.call || '').toUpperCase().trim();
+        if (!/^[A-Z0-9/]{3,20}$/.test(call)) return;
+        window.dispatchEvent(new CustomEvent('qrz-profile-import', {
+          detail: {
+            call,
+            email: String(profile.email || ''),
+            name: String(profile.name || ''),
+            country: String(profile.country || ''),
+            grid: String(profile.grid || ''),
+          },
+        }));
+        window.history.replaceState({}, '', window.location.pathname + window.location.search);
+      };
+      window.addEventListener('message', bridgeHandler);
+      // Mensaje sin datos: solo avisa a la pestaña QRZ que la app está lista.
+      window.opener?.postMessage({ type: 'LOGBOOK_QRZ_BRIDGE_READY' }, '*');
+    }
+
     // Inicializar callsign por defecto si no existe
     if (!localStorage.getItem('user_callsign')) {
       localStorage.setItem('user_callsign', DEFAULT_CALLSIGN);
     }
 
-    return () => window.removeEventListener('qrz-auth-required', handleQRZAuthRequired);
+    return () => {
+      window.removeEventListener('qrz-auth-required', handleQRZAuthRequired);
+      if (bridgeHandler) window.removeEventListener('message', bridgeHandler);
+    };
   }, []);
 
   // Guardar QSOs en localStorage cada vez que cambien
