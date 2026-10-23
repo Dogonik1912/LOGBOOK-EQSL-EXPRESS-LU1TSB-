@@ -18,7 +18,8 @@ import {
   Sparkles, 
   RefreshCw,
   AlertCircle,
-  Phone
+  Phone,
+  ExternalLink
 } from 'lucide-react';
 
 interface NewQSOFormProps {
@@ -93,6 +94,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'qrz-web-session' | 'prefix-db' | null>(null);
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
+  const callsignCurrentRef = useRef(callsign);
+  callsignCurrentRef.current = callsign;
   const lookupRequestId = useRef(0);
 
   // Importar datos visibles desde un perfil QRZ abierto mediante postMessage o un enlace de prueba.
@@ -102,6 +105,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       const importedCall = String(profile.call || '').toUpperCase().trim();
       if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
       const importedEmail = String(profile.email || '').trim();
+      const currentCall = callsignCurrentRef.current.toUpperCase().trim();
+      if (currentCall && currentCall !== importedCall) {
+        setLookupMessage(`El perfil abierto es ${importedCall}, pero el QSO actual es ${currentCall}. No se importaron los datos para evitar mezclar corresponsales.`);
+        return;
+      }
       setCallsign(importedCall);
       setEmail(importedEmail);
       setName(String(profile.name || '').trim());
@@ -412,13 +420,27 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
                 <Mail className="w-3 h-3 text-sky-400" />
                 Email
               </span>
-              {email && email !== 'NOT FOUND' ? (
-                <span className="text-[10px] text-emerald-400 font-semibold">✓ Dirección cargada</span>
-              ) : !hasQRZConfig ? (
-                <span className="text-[10px] text-amber-400/90 underline cursor-pointer" onClick={onOpenQRZModal}>
-                  Conectar QRZ
-                </span>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  const call = callsign.trim().toUpperCase();
+                  if (!/^[A-Z0-9/]{3,20}$/.test(call)) {
+                    callsignInputRef.current?.focus();
+                    setLookupMessage('Primero escribí el indicativo del corresponsal. Después abrí su perfil QRZ desde aquí.');
+                    return;
+                  }
+                  const tab = window.open(`https://www.qrz.com/db/${encodeURIComponent(call)}`, '_blank', 'noopener=false');
+                  if (!tab) {
+                    setLookupMessage('El navegador bloqueó la pestaña de QRZ. Permití ventanas emergentes para esta aplicación e intentá nuevamente.');
+                    return;
+                  }
+                  setLookupMessage('Se abrió el perfil QRZ de ' + call + '. En esa pestaña, ejecutá el marcador “Enviar perfil QRZ a LogBook” para importar los datos que estén visibles.');
+                }}
+                className="inline-flex items-center gap-1 text-[10px] text-sky-300 hover:text-sky-200 underline"
+                title="Abrir el perfil QRZ del indicativo actual"
+              >
+                <ExternalLink className="w-3 h-3" /> Abrir QRZ / importar
+              </button>
             </label>
             <input
               type="text"
