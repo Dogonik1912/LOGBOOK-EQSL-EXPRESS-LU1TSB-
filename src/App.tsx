@@ -30,7 +30,7 @@ export default function App() {
   });
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isQRZLoginModalOpen, setIsQRZLoginModalOpen] = useState(true);
+  const [isQRZLoginModalOpen, setIsQRZLoginModalOpen] = useState(() => !(localStorage.getItem('qrz_user') && localStorage.getItem('qrz_pass')));
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyData, setReplyData] = useState<{
