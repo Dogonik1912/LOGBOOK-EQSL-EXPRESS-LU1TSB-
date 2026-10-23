@@ -227,7 +227,6 @@ function MainApp() {
         <section className="mb-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/90">
           <div className="border-b border-slate-800 px-4 py-4 sm:px-5">
             <h2 className="text-lg font-bold text-white">Mapamundi de actividad eQSL</h2>
-            <p className="mt-1 text-sm text-slate-400">Siempre visible, incluso cuando no hay contactos en directo.</p>
           </div>
           <div className="grid gap-4 p-3 sm:p-5 lg:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]">
             <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#071525] p-2 sm:p-4">
@@ -250,7 +249,6 @@ function MainApp() {
               <h3 className="font-semibold text-white">Top 5 países por usuarios registrados</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-400">Solo se incluyen cuentas registradas, según el país declarado en su perfil.</p>
               <div className="mt-4 rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-400">Ranking pendiente de conexión al servicio de registro compartido. No se cuentan visitantes ni contactos del log.</div>
-              <div className="mt-4 rounded-lg bg-slate-900 p-3 text-xs leading-relaxed text-slate-400">El mapa permanece visible aunque no haya actividad. Los marcadores reales se mostrarán cuando existan datos compartidos confirmados.</div>
             </aside>
           </div>
         </section>
