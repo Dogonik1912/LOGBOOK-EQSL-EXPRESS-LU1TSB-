@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* PRIORIDAD 2: Botón Compartir app por WhatsApp */}
           <a
-            href="https://wa.me/?text=LogBook%20eQSL%20Express%20-%20https://logbook-eqsl-express.ai.studio/"
+            href="https://wa.me/?text=LogBook%20eQSL%20Express%20-%20https%3A%2F%2Flogbook-eqsl-express-lu-1-tsb.vercel.app%2F"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-sm hover:shadow-emerald-500/20 transition-all cursor-pointer"
