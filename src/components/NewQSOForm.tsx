@@ -189,27 +189,25 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   // Primero usa la libreta local; solo consulta QRZ si faltan datos guardados.
   const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
     if (!cleanCall || cleanCall.length < 3) return;
-    const saved = getContactBook()[cleanCall];
-    if (saved && (saved.email || saved.name || saved.whatsapp)) {
-      if (requestId !== lookupRequestId.current) return;
-      setName(saved.name || '');
-      setEmail(saved.email || '');
-      setCountry(saved.country || '');
-      setGrid(saved.grid || '');
-      setLookupMessage('Datos recuperados de tu libreta local para ' + cleanCall + '.');
-      setQrzFoundSource(saved.email ? 'cache' : null);
-      setIsSearchingQRZ(false);
-      return;
-    }
+    const saved = getContactBook()[cleanCall] || {};
+    // Mostrar enseguida los datos locales, pero no omitir la consulta pública de QRZ:
+    // un contacto puede tener correo guardado y seguir sin nombre.
+    if (requestId !== lookupRequestId.current) return;
+    if (saved.name) setName(saved.name);
+    if (saved.email) setEmail(saved.email);
+    if (saved.country) setCountry(saved.country);
+    if (saved.grid) setGrid(saved.grid);
     setIsSearchingQRZ(true);
     try {
       const details = await lookupQRZCallsign(cleanCall);
       if (requestId !== lookupRequestId.current) return;
-      if (details.name) setName(details.name);
-      setEmail(details.email || '');
+      setName(details.name || saved.name || '');
+      setEmail(details.email || saved.email || '');
       setLookupMessage('');
       if (details.country) setCountry(details.country);
+      else if (saved.country) setCountry(saved.country);
       if (details.grid) setGrid(details.grid);
+      else if (saved.grid) setGrid(saved.grid);
       setQrzFoundSource(details.email ? (details.source as any) : null);
       if (details.email || details.name || details.whatsapp) saveContact(cleanCall, {
         email: details.email || '', name: details.name || '', country: details.country || '',
