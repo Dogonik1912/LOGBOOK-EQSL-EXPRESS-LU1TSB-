@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "LB EQSL EXPRESS",
+  "short_name": "LB EQSL",
+  "description": "Libro de guardia y tarjetas eQSL para radioaficionados",
+  "lang": "es-AR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
