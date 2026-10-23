@@ -24,6 +24,11 @@ export const Header: React.FC<HeaderProps> = ({
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
 
   useEffect(() => {
+    // Retira la imagen de encabezado equivocada una sola vez al iniciar la app; no toca el icono ni el indicativo.
+    if (localStorage.getItem('app_header_reset_v2') !== 'done') {
+      localStorage.removeItem('app_header_image');
+      localStorage.setItem('app_header_reset_v2', 'done');
+    }
     const syncCallsign = () => {
       setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
@@ -32,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
       setAppIcon(nextIcon);
       document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => { link.href = nextIcon || '/icon.svg'; });
     };
+    syncCallsign();
     window.addEventListener('user-profile-updated', syncCallsign);
     window.addEventListener('storage', syncCallsign);
     window.addEventListener('user-branding-updated', syncCallsign);
