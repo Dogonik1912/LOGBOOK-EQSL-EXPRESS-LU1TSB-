@@ -4,27 +4,22 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Radio, Settings, Clock, Share2, ShieldCheck, AlertCircle, MessageCircle } from 'lucide-react';
+import { Radio, Settings, Clock, MessageCircle } from 'lucide-react';
 import { getUserCallsign } from '../services/qrzService';
 
 interface HeaderProps {
   onOpenSettings: () => void;
-  onOpenQRZModal: () => void;
   onOpenReplyModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
-  onOpenQRZModal,
   onOpenReplyModal,
 }) => {
   const [utcTime, setUtcTime] = useState('');
   const [utcDate, setUtcDate] = useState('');
 
   const callsign = getUserCallsign();
-  const qrzUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
-  const qrzPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
-  const hasQRZ = Boolean(qrzUser && qrzPass);
 
   useEffect(() => {
     const updateClock = () => {
@@ -100,30 +95,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Responder eQSL</span>
             </button>
           )}
-
-          {/* Estado de conexión QRZ */}
-          <button
-            type="button"
-            onClick={onOpenQRZModal}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
-              hasQRZ
-                ? 'bg-slate-950 border-emerald-500/30 text-emerald-400 hover:bg-emerald-950/20'
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-            }`}
-            title="Configurar credenciales de QRZ.com para autocompletar correos"
-          >
-            {hasQRZ ? (
-              <>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">QRZ:</span> {qrzUser}
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span>Conectar QRZ</span>
-              </>
-            )}
-          </button>
 
           {/* Botón Ajustes */}
           <button
