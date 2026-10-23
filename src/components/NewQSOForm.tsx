@@ -213,7 +213,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
       if (requestId !== lookupRequestId.current) return;
       if (details.name) setName(details.name);
       setEmail(details.email || '');
-      setLookupMessage(details.lookupMessage || '');
+      setLookupMessage('');
       if (details.country) setCountry(details.country);
       if (details.grid) setGrid(details.grid);
       setQrzFoundSource(details.email ? (details.source as any) : null);
@@ -538,7 +538,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
 
         </div>
 
-        {lookupMessage && !email && callsign.length >= 3 && (
+        {false && lookupMessage && !email && callsign.length >= 3 && (
           <div role="status" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
             <div className="font-semibold mb-1">QRZ no entregó el correo</div>
             <p>{lookupMessage}</p>
