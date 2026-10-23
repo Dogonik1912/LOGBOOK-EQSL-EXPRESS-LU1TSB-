@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MessageCircle, Download, Smartphone, X, Mail, Phone } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, Mail, Phone } from 'lucide-react';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -17,7 +17,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [showRegistration, setShowRegistration] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(() => !localStorage.getItem('user_email')?.trim() && !localStorage.getItem('user_whatsapp')?.trim());
+  const [installAfterRegistration, setInstallAfterRegistration] = useState(false);
   const [registrationEmail, setRegistrationEmail] = useState(() => localStorage.getItem('user_email') || '');
   const [registrationWhatsapp, setRegistrationWhatsapp] = useState(() => localStorage.getItem('user_whatsapp') || '');
   const [registrationPassword, setRegistrationPassword] = useState('');
@@ -50,30 +51,44 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const handleInstall = () => {
+    if (!localStorage.getItem('user_email')?.trim() && !localStorage.getItem('user_whatsapp')?.trim()) {
+      setInstallAfterRegistration(true);
+    }
     setShowRegistration(true);
   };
 
   const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    localStorage.setItem('user_email', registrationEmail.trim());
-    localStorage.setItem('user_whatsapp', registrationWhatsapp.trim());
-    setRegistrationPassword('');
-    window.alert('Los datos de contacto se guardaron en este equipo. El registro de cuenta todavía no está conectado a un servidor seguro, por lo que la cuenta no se creó y la contraseña no se guardó.');
+    const email = registrationEmail.trim();
+    const whatsapp = registrationWhatsapp.trim();
+    if (!email && !whatsapp) {
+      window.alert('Para continuar, ingresá al menos un dato de contacto: correo electrónico o WhatsApp. Podés completar ambos.');
+      return;
+    }
+    if (email) localStorage.setItem('user_email', email);
+    else localStorage.removeItem('user_email');
+    if (whatsapp) localStorage.setItem('user_whatsapp', whatsapp);
+    else localStorage.removeItem('user_whatsapp');
     setShowRegistration(false);
-    if (installPrompt) {
-      void (async () => {
-        await installPrompt.prompt();
-        const choice = await installPrompt.userChoice;
-        if (choice?.outcome === 'accepted') setIsInstalled(true);
-        setInstallPrompt(null);
-      })();
-    } else {
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      window.alert(isInstalled
-        ? 'LB EQSL EXPRESS ya está instalada en este equipo.'
-        : isIOS
-          ? 'Para instalar en iPhone/iPad: tocá Compartir en Safari y elegí “Agregar a pantalla de inicio”.'
-          : 'Para instalar: abrí el menú del navegador (⋮ o …) y elegí “Instalar aplicación” o “Agregar a pantalla de inicio”. En PC, buscá el icono de instalación en la barra de direcciones.');
+    window.dispatchEvent(new Event('user-profile-updated'));
+    window.alert('Datos de contacto guardados en este dispositivo. Importante: todavía no existe un servidor de cuentas, así que esto no crea una cuenta sincronizada entre dispositivos.');
+    if (installAfterRegistration) {
+      setInstallAfterRegistration(false);
+      if (installPrompt) {
+        void (async () => {
+          await installPrompt.prompt();
+          const choice = await installPrompt.userChoice;
+          if (choice?.outcome === 'accepted') setIsInstalled(true);
+          setInstallPrompt(null);
+        })();
+      } else {
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        window.alert(isInstalled
+          ? 'LB EQSL EXPRESS ya está instalada en este equipo.'
+          : isIOS
+            ? 'Para instalar en iPhone/iPad: tocá Compartir en Safari y elegí “Agregar a pantalla de inicio”.'
+            : 'Para instalar: abrí el menú del navegador (⋮ o …) y elegí “Instalar aplicación” o “Agregar a pantalla de inicio”. En PC, buscá el icono de instalación en la barra de direcciones.');
+      }
     }
   };
 
@@ -150,24 +165,20 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="registration-title">
           <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 id="registration-title" className="text-xl font-bold text-white">Instalar / registrar cuenta</h2>
-              <button type="button" onClick={() => setShowRegistration(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Cerrar"><X className="h-5 w-5" /></button>
+              <h2 id="registration-title" className="text-xl font-bold text-white">Registro obligatorio de contacto</h2>
             </div>
             <form onSubmit={handleRegister} className="space-y-3">
+              <p className="text-sm leading-relaxed text-slate-300">Para usar LogBook eQSL Express, completá al menos un dato de contacto. Podés ingresar correo, WhatsApp o ambos.</p>
               <label className="block text-sm text-slate-300">Correo electrónico
-                <span className="mt-1 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3"><Mail className="h-4 w-4 text-slate-500" /><input type="email" autoComplete="email" required value={registrationEmail} onChange={(e) => setRegistrationEmail(e.target.value)} className="w-full bg-transparent py-2.5 text-white outline-none" placeholder="tu@correo.com" /></span>
+                <span className="mt-1 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3"><Mail className="h-4 w-4 text-slate-500" /><input type="email" autoComplete="email" value={registrationEmail} onChange={(e) => setRegistrationEmail(e.target.value)} className="w-full bg-transparent py-2.5 text-white outline-none" placeholder="tu@correo.com" /></span>
               </label>
               <label className="block text-sm text-slate-300">WhatsApp
-                <span className="mt-1 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3"><Phone className="h-4 w-4 text-slate-500" /><input type="tel" autoComplete="tel" required value={registrationWhatsapp} onChange={(e) => setRegistrationWhatsapp(e.target.value)} className="w-full bg-transparent py-2.5 text-white outline-none" placeholder="+54 ..." /></span>
-              </label>
-              <label className="block text-sm text-slate-300">Contraseña
-                <input type="password" autoComplete="new-password" required minLength={8} value={registrationPassword} onChange={(e) => setRegistrationPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-400" placeholder="Mínimo 8 caracteres" />
+                <span className="mt-1 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3"><Phone className="h-4 w-4 text-slate-500" /><input type="tel" autoComplete="tel" value={registrationWhatsapp} onChange={(e) => setRegistrationWhatsapp(e.target.value)} className="w-full bg-transparent py-2.5 text-white outline-none" placeholder="+54 ..." /></span>
               </label>
               <div className="rounded-lg border border-sky-900 bg-sky-950/50 p-3 text-xs leading-relaxed text-sky-100">
-                Tu contraseña debe ser privada. Este formulario todavía no está conectado a un servicio seguro de cuentas: la contraseña no se envía ni se guarda en esta app. No se puede garantizar un registro real hasta conectar ese servicio.
+                Este registro guarda los datos únicamente en este dispositivo. Todavía no hay un servidor seguro de cuentas ni sincronización entre dispositivos. No ingreses contraseñas: esta versión no las necesita ni las guarda.
               </div>
-              <button type="submit" className="w-full rounded-xl bg-amber-500 px-4 py-3 font-bold text-slate-950 hover:bg-amber-400">Guardar datos y continuar</button>
-              <button type="button" onClick={() => setShowRegistration(false)} className="w-full rounded-xl border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800">Cancelar</button>
+              <button type="submit" className="w-full rounded-xl bg-amber-500 px-4 py-3 font-bold text-slate-950 hover:bg-amber-400">Guardar contacto y entrar</button>
             </form>
           </div>
         </div>
