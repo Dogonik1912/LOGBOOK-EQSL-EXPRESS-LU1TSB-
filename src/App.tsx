@@ -55,15 +55,22 @@ export default function App() {
 
     // Revisar si vino desde un enlace de respuesta compartida
     const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const forceQRZConnect = urlParams.get('connect_qrz') === '1';
     const replyToParam = urlParams.get('reply_to');
-    const profileImportCall = urlParams.get('qrz_call');
-    // El puente desde un perfil QRZ ya abierto no requiere volver a autenticar XML.
+    const profileImportCall = urlParams.get('qrz_call') || hashParams.get('qrz_call');
+    // El puente desde QRZ usa el fragmento (#), que no se envía al servidor en la petición HTTP.
+    // Se elimina tras leerlo para no dejar el correo en la barra de direcciones.
     if (profileImportCall) {
       const cleanParams = new URLSearchParams(urlParams);
-      ['qrz_call', 'qrz_email', 'qrz_name', 'qrz_country', 'qrz_grid'].forEach((key) => cleanParams.delete(key));
+      const cleanHash = new URLSearchParams(hashParams);
+      ['qrz_call', 'qrz_email', 'qrz_name', 'qrz_country', 'qrz_grid'].forEach((key) => {
+        cleanParams.delete(key);
+        cleanHash.delete(key);
+      });
       const nextQuery = cleanParams.toString();
-      window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + window.location.hash);
+      const nextHash = cleanHash.toString();
+      window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + (nextHash ? `#${nextHash}` : ''));
     }
 
     // Mostrar el formulario solo si se pidió expresamente o faltan credenciales.
