@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from './types';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -28,6 +28,34 @@ function MainApp() {
   });
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const settingsHistoryEntry = useRef(false);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (settingsHistoryEntry.current) {
+        settingsHistoryEntry.current = false;
+        setIsSettingsModalOpen(false);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleOpenSettings = () => {
+    if (!settingsHistoryEntry.current) {
+      window.history.pushState({ logbookSettingsModal: true }, '', window.location.href);
+      settingsHistoryEntry.current = true;
+    }
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    setIsSettingsModalOpen(false);
+    if (settingsHistoryEntry.current) {
+      settingsHistoryEntry.current = false;
+      if (window.history.state?.logbookSettingsModal) window.history.back();
+    }
+  };
   const [showCountryRanking, setShowCountryRanking] = useState(false);
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
@@ -208,7 +236,7 @@ function MainApp() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenSettings={handleOpenSettings}
         onOpenReplyModal={handleOpenManualReply}
       />
 
@@ -281,7 +309,7 @@ function MainApp() {
       {/* Modal de Configuración General */}
       <UserSettingsModal
         isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
+        onClose={handleCloseSettings}
         onUpdate={handleSettingsUpdated}
       />
 
