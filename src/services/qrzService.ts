@@ -7,7 +7,6 @@ import { QRZ_API_URL } from '../types';
 
 export interface CallsignDetails {
   callsign: string;
-  name?: string;
   email?: string;
   whatsapp?: string;     // Dígitos limpios para wa.me (ej. 5493886067078)
   whatsappRaw?: string;  // Formato original (ej. 0054 9 388...)
@@ -177,7 +176,6 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
       if (data && !data.error) {
         result = {
           callsign: cleanCall,
-          name: data.name || '',
           // El correo se obtiene exclusivamente desde una consulta autenticada de QRZ.
           email: data.email || '',
           whatsapp: data.whatsapp || '',
@@ -213,7 +211,6 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
             return /^(?:use mouse to view|not found|n\/a|none)$/i.test(text) ? '' : text;
           };
           const xmlEmail = value('email');
-          const xmlName = [value('fname'), value('name')].filter(Boolean).join(' ');
           const xmlGrid = value('grid');
           const xmlCountry = value('country');
           result = {
@@ -221,10 +218,9 @@ export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> 
             // Authenticated QRZ XML is the only allowed email source.
             // No borrar un correo legítimo obtenido por la biografía XML si el campo <email> viene vacío.
             email: xmlEmail || result.email || '',
-            name: result.name || xmlName,
             grid: result.grid || xmlGrid,
             country: result.country === 'Desconocido' ? (xmlCountry || result.country) : (result.country || xmlCountry),
-            source: (xmlEmail || result.email || xmlName || xmlGrid || result.whatsapp) ? 'qrz' : result.source,
+            source: (xmlEmail || result.email || xmlGrid || result.whatsapp) ? 'qrz' : result.source,
           };
         }
       }
