@@ -16,8 +16,36 @@ import {
   Radio,
   Sparkles,
   ArrowRightLeft,
-  Trash2
+  Trash2,
+  Palette
 } from 'lucide-react';
+
+const REPLY_EQSL_THEMES = [
+  { id: 'navy', name: 'Clásico azul', start: '#0f172a', mid: '#1e293b', end: '#090d16', accent: '#f59e0b', motif: '📡' },
+  { id: 'gold', name: 'Dorado', start: '#1c1917', mid: '#292524', end: '#0c0a09', accent: '#eab308', motif: '🏆' },
+  { id: 'cyber', name: 'Radio digital', start: '#020617', mid: '#0f172a', end: '#030712', accent: '#38bdf8', motif: '〰' },
+  { id: 'sunset', name: 'Puesta de sol', start: '#431407', mid: '#9a3412', end: '#111827', accent: '#fdba74', motif: '🌅' },
+  { id: 'mountain', name: 'Montaña y antenas', start: '#082f49', mid: '#155e75', end: '#0f172a', accent: '#67e8f9', motif: '🏔️' },
+  { id: 'aurora', name: 'Aurora boreal', start: '#052e2b', mid: '#115e59', end: '#111827', accent: '#5eead4', motif: '🌌' },
+  { id: 'ocean', name: 'Mar y DX', start: '#082f49', mid: '#075985', end: '#020617', accent: '#7dd3fc', motif: '🌊' },
+  { id: 'forest', name: 'Radio en el bosque', start: '#14532d', mid: '#166534', end: '#052e16', accent: '#86efac', motif: '🌲' },
+  { id: 'space', name: 'Espacio y satélites', start: '#1e1b4b', mid: '#312e81', end: '#030712', accent: '#c4b5fd', motif: '🛰️' },
+  { id: 'world', name: 'Mundo DX', start: '#172554', mid: '#1d4ed8', end: '#0f172a', accent: '#93c5fd', motif: '🌐' },
+  { id: 'cw', name: 'Código Morse', start: '#18181b', mid: '#27272a', end: '#09090b', accent: '#f4f4f5', motif: '· − ·' },
+  { id: 'field', name: 'Radio portátil', start: '#365314', mid: '#3f6212', end: '#111827', accent: '#d9f99d', motif: '⛺' },
+  { id: 'vintage', name: 'Vintage radio', start: '#451a03', mid: '#78350f', end: '#1c1917', accent: '#fcd34d', motif: '📻' },
+  { id: 'signal', name: 'Ondas de radio', start: '#164e63', mid: '#155e75', end: '#082f49', accent: '#a5f3fc', motif: '〰️' },
+  { id: 'contest', name: 'Concurso y diplomas', start: '#312e81', mid: '#4338ca', end: '#111827', accent: '#fde68a', motif: '🥇' },
+  { id: 'moon', name: 'Luna y noche', start: '#0f172a', mid: '#1e293b', end: '#020617', accent: '#e2e8f0', motif: '🌙' },
+  { id: 'tropical', name: 'Tropical', start: '#064e3b', mid: '#047857', end: '#022c22', accent: '#a7f3d0', motif: '🌴' },
+  { id: 'arctic', name: 'Polar', start: '#164e63', mid: '#0e7490', end: '#082f49', accent: '#cffafe', motif: '❄️' },
+  { id: 'red', name: 'Alta potencia', start: '#450a0a', mid: '#991b1b', end: '#1c1917', accent: '#fecaca', motif: '⚡' },
+  { id: 'yl-radio', name: 'YL · Ondas y estrellas', start: '#4a044e', mid: '#86198f', end: '#1e1b4b', accent: '#f5d0fe', motif: 'YL' },
+  { id: 'yl-dx', name: 'YL · Mundo DX', start: '#172554', mid: '#1d4ed8', end: '#312e81', accent: '#bfdbfe', motif: 'YL' },
+  { id: 'yl-portable', name: 'YL · Aurora y naturaleza', start: '#14532d', mid: '#0f766e', end: '#082f49', accent: '#a7f3d0', motif: 'YL' },
+  { id: 'yl-contest', name: 'YL · Brillo y concurso', start: '#7f1d1d', mid: '#9d174d', end: '#312e81', accent: '#fbcfe8', motif: 'YL' },
+  { id: 'yl-antenna', name: 'YL · Antenas al atardecer', start: '#78350f', mid: '#b45309', end: '#431407', accent: '#fde68a', motif: 'YL' },
+];
 
 interface ReplyEQSLModalProps {
   initialData: {
@@ -57,6 +85,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const [rstRcvd, setRstRcvd] = useState('59');
   const [emailTo, setEmailTo] = useState('');
   const [customBgImage, setCustomBgImage] = useState<string | null>(null);
+  const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [savedToLog, setSavedToLog] = useState(false);
 
   useEffect(() => {
@@ -74,6 +103,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       setRstRcvd(initialData.rst || '59');
       setEmailTo(initialData.email || '');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
+      setTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setSavedToLog(false);
     }
   }, [isOpen, initialData]);
@@ -228,14 +258,29 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       };
       img.src = customBgImage;
     } else {
+      const selectedTheme = REPLY_EQSL_THEMES.find((item) => item.id === theme) || REPLY_EQSL_THEMES[0];
       const grad = ctx.createLinearGradient(0, 0, width, height);
-      grad.addColorStop(0, '#0c4a6e');
-      grad.addColorStop(0.5, '#0f172a');
-      grad.addColorStop(1, '#020617');
+      grad.addColorStop(0, selectedTheme.start);
+      grad.addColorStop(0.5, selectedTheme.mid);
+      grad.addColorStop(1, selectedTheme.end);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      ctx.strokeStyle = selectedTheme.accent;
+      ctx.lineWidth = 3;
+      for (let ring = 0; ring < 5; ring++) {
+        ctx.beginPath();
+        ctx.ellipse(width - 180, 150, 90 + ring * 45, 38 + ring * 25, -0.25, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = selectedTheme.accent;
+      ctx.font = 'bold 88px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(selectedTheme.motif, 70, 150);
+      ctx.restore();
 
-      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeStyle = selectedTheme.accent;
       ctx.lineWidth = 6;
       ctx.strokeRect(30, 30, width - 60, height - 60);
 
@@ -247,7 +292,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (isOpen) {
       setTimeout(renderReplyCard, 50);
     }
-  }, [isOpen, myCall, replyToCall, date, time, band, frequency, mode, rstSent, rstRcvd, customBgImage]);
+  }, [isOpen, myCall, replyToCall, date, time, band, frequency, mode, rstSent, rstRcvd, customBgImage, theme]);
 
   if (!isOpen) return null;
 
@@ -259,7 +304,14 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     link.click();
   };
 
-  // PRIORIDAD 1: Compartir respuesta por WhatsApp con firma dinámica
+  const handleThemeChange = (nextTheme: string) => {
+    setTheme(nextTheme);
+    localStorage.setItem('eqsl_theme', nextTheme);
+    setCustomBgImage(null);
+    localStorage.removeItem('eqsl_custom_bg');
+  };
+
+  // Compartir respuesta: WhatsApp puede elegirse desde la hoja nativa de compartir.
   const handleShareWhatsApp = () => {
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     const firma = `73 cordiales de ${activeMyCall}`;
@@ -273,10 +325,18 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `LogBook eQSL Express`;
 
     const cleanPhone = initialData?.whatsapp ? initialData.whatsapp.replace(/[^0-9]/g, '') : '';
-    const url = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    // Sin número confirmado, compartir texto mediante el menú nativo permite elegir WhatsApp y contacto.
+    if (navigator.share) {
+      void navigator.share({ title: 'Respuesta eQSL', text }).catch((error) => {
+        if (error?.name !== 'AbortError') window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    }
   };
 
   // Enviar respuesta por Email
@@ -419,6 +479,20 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
                 className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-center text-white"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Selector de plantillas disponibles también en la respuesta */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-300"><Palette className="w-4 h-4 text-sky-400" /> Elegí un diseño para tu eQSL de respuesta</div>
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5">
+            {REPLY_EQSL_THEMES.map((item) => (
+              <button key={item.id} type="button" onClick={() => handleThemeChange(item.id)} aria-pressed={theme === item.id && !customBgImage}
+                className={`min-h-[54px] rounded-lg border px-2 py-1.5 text-left transition-colors ${theme === item.id && !customBgImage ? 'border-sky-400 ring-1 ring-sky-400/60' : 'border-slate-700 hover:border-slate-500'}`}
+                style={{ background: `linear-gradient(135deg, ${item.start}, ${item.mid}, ${item.end})` }} title={item.name}>
+                <span className="block text-base leading-5">{item.motif}</span><span className="block text-[10px] leading-3 text-white/90">{item.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
