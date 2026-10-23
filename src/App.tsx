@@ -15,7 +15,7 @@ import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { QRZLoginModal } from './components/QRZLoginModal';
 import { Radio, Award, Globe, Zap, Send, Info, ArrowRightLeft } from 'lucide-react';
 
-export default function App() {
+function MainApp() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
     const saved = localStorage.getItem('logbook_qsos');
     if (saved) {
@@ -295,4 +295,9 @@ export default function App() {
       />
     </div>
   );
+}
+
+export default function App() {
+  if (new URLSearchParams(window.location.search).has('view_eqsl')) return <ReceivedEQSLPage />;
+  return <MainApp />;
 }
