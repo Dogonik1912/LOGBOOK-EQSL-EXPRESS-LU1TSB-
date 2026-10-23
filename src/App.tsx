@@ -220,7 +220,7 @@ function MainApp() {
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
             <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-5 h-5" /></div>
-            <div><div className="text-xl font-bold font-mono text-white">{combinedEqslCount ?? '—'}</div><div className="text-xs text-slate-400">eQSL enviadas + recibidas</div></div>
+            <div><div className="text-xl font-bold font-mono text-white">{combinedEqslCount ?? '—'}</div><div className="text-xs text-slate-400">Tráfico de eQSL</div></div>
           </div>
         </div>
 
