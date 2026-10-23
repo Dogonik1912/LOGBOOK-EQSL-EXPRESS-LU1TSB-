@@ -88,6 +88,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [shareContactToDirectory, setShareContactToDirectory] = useState(false);
 
   const [isSearchingQRZ, setIsSearchingQRZ] = useState(false);
   const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'qrz-web-session' | 'prefix-db' | null>(null);
@@ -245,9 +246,33 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const requestId = ++lookupRequestId.current;
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
+    setWhatsapp('');
     setLookupMessage('');
     setCountry('');
     setGrid('');
+    // Buscar primero la libreta local; luego intentar el directorio mundial si está configurado.
+    const localContact = getContactBook()[upper];
+    if (localContact) {
+      setEmail(String(localContact.email || ''));
+      setWhatsapp(String(localContact.whatsapp || ''));
+      setCountry(String(localContact.country || ''));
+      setGrid(String(localContact.grid || '').toUpperCase());
+      setLookupMessage('Datos recuperados de tu libreta local para ' + upper + '.');
+    }
+    if (upper.length >= 3) {
+      fetch('/api/directory?action=lookup&call=' + encodeURIComponent(upper))
+        .then((response) => response.ok ? response.json() : null)
+        .then((result) => {
+          if (requestId !== lookupRequestId.current || !result?.contact) return;
+          const contact = result.contact;
+          setEmail((current) => current.trim() || String(contact.email || ''));
+          setWhatsapp((current) => current.trim() || String(contact.whatsapp || ''));
+          setCountry((current) => current.trim() || String(contact.country || ''));
+          setGrid((current) => current.trim() || String(contact.grid || '').toUpperCase());
+          setLookupMessage('Datos disponibles en el directorio comunitario para ' + upper + '.');
+        })
+        .catch(() => {});
+    }
     setIsSearchingQRZ(upper.length >= 3);
 
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
@@ -331,6 +356,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
     saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), country: country.trim(), grid: grid.trim().toUpperCase() });
+    if (shareContactToDirectory && (email.trim() || whatsapp.trim())) {
+      fetch('/api/directory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'contact', callsign: cleanCall, email: email.trim(), whatsapp: whatsapp.trim(), country: country.trim(), grid: grid.trim().toUpperCase(), consent: true }),
+      }).then((response) => {
+        if (response.ok) setLookupMessage('Contacto guardado en el directorio comunitario.');
+      }).catch(() => {});
+    }
     // La tarjeta eQSL recibe el canal elegido por el usuario cuando corresponde.
     if (preferredSendMethod) sessionStorage.setItem('eqsl_preferred_method', preferredSendMethod);
     onAddQSO(newQSO, shouldOpenEQSL);
