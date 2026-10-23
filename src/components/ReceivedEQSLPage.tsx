@@ -36,9 +36,39 @@ const translations: Record<Language, Record<string, string>> = {
   ca: { title: 'eQSL rebuda', intro: 'Pots veure i descarregar aquesta targeta sense instal·lar l’aplicació ni crear un compte.', download: 'Descarrega eQSL (PNG)', open: 'Obre LogBook eQSL Express', note: 'Aquesta targeta es reconstrueix amb les dades de l’enllaç compartit. Desa l’enllaç per tornar-la a veure.', missing: 'No s’ha trobat cap targeta eQSL en aquest enllaç.', invalid: 'L’enllaç eQSL és incomplet o està malmès. Demana a l’operador que el torni a compartir.', heading: 'TARGETA eQSL · CONFIRMACIÓ DE QSO', confirms: 'confirma el QSO amb', date: 'Data', band: 'Banda', frequency: 'Freqüència', mode: 'Mode', rst: 'RST enviat/rebut', thanks: 'Gràcies pel contacte! · 73', grid: 'Grid' },
 };
 
-const getLanguage = (): Language => {
-  const candidates = [...(navigator.languages || []), navigator.language || 'es'];
-  for (const candidate of candidates) {
+const languageForRecipient = (): Language => {
+  const params = new URLSearchParams(window.location.search);
+  let targetCall = '';
+  try {
+    const raw = params.get('view_eqsl');
+    if (raw) targetCall = String((JSON.parse(raw) as SharedEQSL).to || '');
+  } catch { /* use browser language as fallback */ }
+  if (!targetCall) targetCall = params.get('to_call') || '';
+  const call = targetCall.toUpperCase().trim().split('/')[0];
+  if (/^(PP|PQ|PR|PS|PT|PU|PV|PW|PX|PY|ZV|ZW|ZX|ZY|ZZ)\d/.test(call)) return 'pt';
+  if (/^PZ\d/.test(call)) return 'nl';
+  if (/^(LU|LW|AY|AZ|CE|CA|CB|CC|CD|3G|CX|CV|CW|CP|OA|OB|OC|4T|HC|HD|HJ|HK|5J|5K|YV|YW|YY|ZP|HI|TG|YS|HR|HQ|YN|HT|HO|HP|3E|3F|XE|XF|XG|XH|XI|TI)\d/.test(call)) return 'es';
+  if (/^(CT|CR|CS|CU)\d/.test(call)) return 'pt';
+  if (/^F\d/.test(call)) return 'fr';
+  if (/^(DA|DB|DC|DD|DE|DF|DG|DH|DI|DJ|DK|DL|DM|DN|DO|DP|DQ|DR)\d/.test(call)) return 'de';
+  if (/^I[A-Z]?\d/.test(call)) return 'it';
+  if (/^(JA|JH|JR|JE|JF|JG|JI|JJ|JK|JL|JM|JN|JO|JP|JQ|JS|7J|7K|7L|7M|7N|8J|8K|8L|8M|8N)\d/.test(call)) return 'ja';
+  if (/^(BA|BD|BG|BH|BI|BJ|BK|BL|BM|BN|BO|BP|BQ|BR|BS|BT|BU|BV|BW|BX|BY|BZ|VR)\d/.test(call)) return 'zh';
+  if (/^(SP|SQ|SR|SO|SN|3Z)\d/.test(call)) return 'pl';
+  if (/^(SM|SA|SB|SC|SD|SE|SF|SG|SH|SI|SJ|SK|SL|7S|8S)\d/.test(call)) return 'sv';
+  if (/^(LA|LB|LC|LD|LE|LF|LG|LH|LI|LJ|LK|LL|LM|LN)\d/.test(call)) return 'no';
+  if (/^(OZ|OU|OV|OW|OX|OY)\d/.test(call)) return 'da';
+  if (/^(OH|OF|OG|OI|OJ)\d/.test(call)) return 'fi';
+  if (/^(OK|OL)\d/.test(call)) return 'cs';
+  if (/^OM\d/.test(call)) return 'sk';
+  if (/^(HA|HG)\d/.test(call)) return 'hu';
+  if (/^(YO|YP|YQ|YR)\d/.test(call)) return 'ro';
+  if (/^(TA|TB|TC|YM)\d/.test(call)) return 'tr';
+  if (/^(SV|SW|SX|SY|SZ)\d/.test(call)) return 'el';
+  if (/^(UR|US|UT|UU|UV|UW|UX|UY|UZ)\d/.test(call)) return 'uk';
+  if (/^9A\d/.test(call)) return 'hr';
+  if (/^(YT|YU)\d/.test(call)) return 'sr';
+  for (const candidate of [...(navigator.languages || []), navigator.language || 'es']) {
     const code = candidate.toLowerCase().split('-')[0] as Language;
     if (code in translations) return code;
   }
@@ -49,7 +79,7 @@ export const ReceivedEQSLPage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [card, setCard] = useState<SharedEQSL | null>(null);
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
-  const language = getLanguage();
+  const language = languageForRecipient();
   const t = translations[language];
 
   useEffect(() => {
