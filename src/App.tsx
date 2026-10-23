@@ -106,6 +106,27 @@ function MainApp() {
     whatsapp?: string;
   } | null>(null);
   const [, setRefreshKey] = useState(0);
+  const [registeredUsersCount, setRegisteredUsersCount] = useState<number | null>(null);
+  const [combinedEqslCount, setCombinedEqslCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const refreshDirectoryStats = async () => {
+      try {
+        const response = await fetch('/api/directory?action=count', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active) {
+          setRegisteredUsersCount(Number.isFinite(data.activeUsers) ? data.activeUsers : null);
+          setCombinedEqslCount(Number.isFinite(data.totalActions) ? data.totalActions : null);
+        }
+      } catch { /* El directorio global puede no estar configurado todavía. */ }
+    };
+    void refreshDirectoryStats();
+    const interval = window.setInterval(refreshDirectoryStats, 60000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, []);
+
 
   // PRIORIDAD 4: Al cargar la app, si NO existen en localStorage las claves 'qrz_user' y 'qrz_pass'
   // y 'qrz_skipped' no existe, mostrar el modal de aviso
@@ -226,10 +247,6 @@ function MainApp() {
     setRefreshKey((k) => k + 1);
   };
 
-  // Métricas mundiales: solo se mostrarán cuando exista el servicio de cuentas compartidas.
-  const registeredUsersCount: number | null = null;
-  const combinedEqslCount: number | null = null;
-
   const handleOpenReplyForQSO = (qso: QSO) => {
     const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
     setReplyData({
@@ -275,11 +292,11 @@ function MainApp() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><Award className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">{registeredUsersCount ?? '—'}</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Usuarios registrados</div></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">{registeredUsersCount ?? '—'}</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Estaciones activas eQSL</div></div>
           </div>
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">{combinedEqslCount ?? '—'}</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Tráfico de eQSL</div></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">{combinedEqslCount ?? '—'}</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones registradas</div></div>
           </div>
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3">
             <div className="text-[10px] sm:text-xs leading-tight text-slate-400 mb-2">Ranking mundial</div>
