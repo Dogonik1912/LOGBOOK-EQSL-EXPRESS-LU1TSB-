@@ -252,12 +252,8 @@ function MainApp() {
                 </g>
                 <text x="450" y="415" textAnchor="middle" fill="#8aa8bb" fontSize="13">VISTA MUNDIAL · CONTACTOS COMPARTIDOS</text>
               </svg>
-              <p className="mt-2 text-center text-xs text-slate-500">Mapa de referencia; no muestra estaciones en directo hasta conectar el servicio compartido.</p>
             </div>
             <aside className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-              <h3 className="font-semibold text-white">Top 5 países por usuarios registrados</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-400">Solo se incluyen cuentas registradas, según el país declarado en su perfil.</p>
-              <div className="mt-4 rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-400">Ranking pendiente de conexión al servicio de registro compartido. No se cuentan visitantes ni contactos del log.</div>
             </aside>
           </div>
         </section>
