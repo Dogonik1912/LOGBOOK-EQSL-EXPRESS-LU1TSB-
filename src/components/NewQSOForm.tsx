@@ -515,14 +515,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
         </div>
 
-        {false && lookupMessage && !email && callsign.length >= 3 && (
-          <div role="status" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
-            <div className="font-semibold mb-1">QRZ no entregó el correo</div>
-            <p>{lookupMessage}</p>
-            <p className="mt-1 text-slate-400">El nombre puede estar disponible en el perfil público aunque QRZ no entregue el email por XML. No se completará una dirección inventada.</p>
-          </div>
-        )}
-
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
         {/* Fila 2: Fecha UTC, Hora UTC, Frecuencia, Modo */}
