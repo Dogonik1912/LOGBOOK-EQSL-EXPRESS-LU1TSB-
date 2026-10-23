@@ -63,8 +63,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
-  const [customBgImage, setCustomBgImage] = useState<string | null>(() => {
-    return localStorage.getItem('eqsl_custom_bg') || null;
+  const [customBgImage, setCustomBgImage] = useState<string | null>(() => localStorage.getItem('eqsl_custom_bg') || null);
+  const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; }
   });
   const [copied, setCopied] = useState(false);
   const [themeNotice, setThemeNotice] = useState('');
@@ -97,8 +98,18 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         resizeContext.drawImage(image, 0, 0, resized.width, resized.height);
         const dataUrl = resized.toDataURL('image/jpeg', 0.86);
         try {
-          localStorage.setItem('eqsl_custom_bg', dataUrl);
-          setCustomBgImage(dataUrl);
+          const saved = (() => { try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; } })() as Array<{ id: string; name: string; dataUrl: string }>;
+          const entry = { id: `${Date.now()}-${file.name}`, name: file.name, dataUrl };
+          const next = [...saved, entry];
+          try {
+            localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
+            localStorage.setItem('eqsl_custom_bg', dataUrl);
+            setGalleryImages(next);
+            setCustomBgImage(dataUrl);
+          } catch {
+            setCustomBgImage(dataUrl);
+            window.alert('La imagen se aplicó a esta tarjeta, pero no se pudo guardar en la galería. Probá con una imagen más pequeña.');
+          }
         } catch {
           setCustomBgImage(dataUrl);
           window.alert('La imagen se aplicó a esta tarjeta, pero el navegador no pudo guardarla para la próxima sesión. Probá con una foto más pequeña.');
@@ -119,6 +130,22 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const selected = EQSL_THEMES.find((item) => item.id === nextTheme);
     setThemeNotice(`“${selected?.name || nextTheme}” quedó seleccionada como tu eQSL predeterminada.`);
     window.setTimeout(() => setThemeNotice(''), 3500);
+  };
+
+  const handleSelectGalleryImage = (dataUrl: string) => {
+    setCustomBgImage(dataUrl);
+    localStorage.setItem('eqsl_custom_bg', dataUrl);
+  };
+
+  const handleDeleteGalleryImage = (id: string) => {
+    const next = galleryImages.filter((item) => item.id !== id);
+    setGalleryImages(next);
+    localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
+    const removed = galleryImages.find((item) => item.id === id);
+    if (removed?.dataUrl === customBgImage) {
+      setCustomBgImage(null);
+      localStorage.removeItem('eqsl_custom_bg');
+    }
   };
 
   const handleRemoveCustomImage = () => {
@@ -534,6 +561,30 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               </button>
             )}
           </div>
+        </div>
+
+        {/* Galería única de diseños y fotos personales */}
+        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-300">Mi galería de eQSL</p>
+            <span className="text-[10px] text-slate-500">{galleryImages.length} imagen(es)</span>
+          </div>
+          {galleryImages.length === 0 ? (
+            <p className="text-xs text-slate-500">Todavía no hay imágenes guardadas. Las que subas se añadirán aquí y podrás conservarlas o eliminarlas.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {galleryImages.map((item) => (
+                <div key={item.id} className={`overflow-hidden rounded-lg border ${customBgImage === item.dataUrl ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
+                  <button type="button" onClick={() => handleSelectGalleryImage(item.dataUrl)} className="block w-full text-left" title="Seleccionar esta imagen">
+                    <img src={item.dataUrl} alt={item.name} className="h-20 w-full object-cover" />
+                    <span className="block truncate px-2 py-1 text-[10px] text-slate-200">{item.name}</span>
+                    <span className="block px-2 pb-2 text-[10px] font-semibold text-amber-300">{customBgImage === item.dataUrl ? '✓ Seleccionada' : 'Tocar para usar'}</span>
+                  </button>
+                  <button type="button" onClick={() => handleDeleteGalleryImage(item.id)} className="w-full border-t border-slate-800 px-2 py-1.5 text-[10px] text-rose-300 hover:bg-rose-950/50">Eliminar de la galería</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Vista previa Canvas */}
