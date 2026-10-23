@@ -590,6 +590,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
         </div>
 
+        <label className="flex items-start gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-300">
+          <input type="checkbox" checked={shareContactToDirectory} onChange={(e) => setShareContactToDirectory(e.target.checked)} className="mt-0.5 accent-amber-400" />
+          <span><strong className="text-amber-300">Opcional:</strong> autorizo guardar el correo y/o WhatsApp junto a este indicativo en el directorio comunitario para que se completen automáticamente en futuros QSOs. Puedo dejarlo desmarcado y seguir usando la app sin registrarme.</span>
+        </label>
+
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
         {/* Fila 2: Fecha UTC, Hora UTC, Frecuencia, Modo */}
