@@ -95,25 +95,45 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onOpenQRZModal
   const callsignInputRef = useRef<HTMLInputElement>(null);
   const lookupRequestId = useRef(0);
 
-  // Importar datos visibles desde un perfil QRZ abierto mediante el puente del navegador.
-  // Solo acepta los campos enviados explícitamente por el usuario; nunca deduce un correo.
+  // Importar datos visibles desde un perfil QRZ abierto mediante postMessage o un enlace de prueba.
+  // Solo acepta campos explícitos enviados por el usuario; nunca deduce un correo.
   useEffect(() => {
+    const applyProfile = (profile: { call?: string; email?: string; name?: string; country?: string; grid?: string }) => {
+      const importedCall = String(profile.call || '').toUpperCase().trim();
+      if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
+      const importedEmail = String(profile.email || '').trim();
+      setCallsign(importedCall);
+      setEmail(importedEmail);
+      setName(String(profile.name || '').trim());
+      setCountry(String(profile.country || '').trim());
+      setGrid(String(profile.grid || '').trim().toUpperCase());
+      setLookupMessage(importedEmail
+        ? 'Correo importado desde el perfil QRZ abierto. Verificá que corresponda a este indicativo antes de guardar.'
+        : 'Se importó el indicativo desde QRZ, pero no se encontró un correo visible en el perfil. No se completó ninguno automáticamente.');
+      setQrzFoundSource(importedEmail ? 'qrz-web-session' : null);
+    };
+
+    const handleProfileImport = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      applyProfile(detail);
+    };
+    window.addEventListener('qrz-profile-import', handleProfileImport);
+
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const getImportValue = (key: string) => params.get(key) || hashParams.get(key) || '';
     const importedCall = getImportValue('qrz_call').toUpperCase().trim();
-    if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
+    if (/^[A-Z0-9/]{3,20}$/.test(importedCall)) {
+      applyProfile({
+        call: importedCall,
+        email: getImportValue('qrz_email'),
+        name: getImportValue('qrz_name'),
+        country: getImportValue('qrz_country'),
+        grid: getImportValue('qrz_grid'),
+      });
+    }
 
-    const importedEmail = getImportValue('qrz_email').trim();
-    setCallsign(importedCall);
-    setEmail(importedEmail);
-    setName(getImportValue('qrz_name').trim());
-    setCountry(getImportValue('qrz_country').trim());
-    setGrid(getImportValue('qrz_grid').trim().toUpperCase());
-    setLookupMessage(importedEmail
-      ? 'Correo importado desde el perfil QRZ abierto. Verificá que corresponda a este indicativo antes de guardar.'
-      : 'Se importó el indicativo desde QRZ, pero no se encontró un correo visible en el perfil. No se completó ninguno automáticamente.');
-    setQrzFoundSource(importedEmail ? 'qrz-web-session' : null);
+    return () => window.removeEventListener('qrz-profile-import', handleProfileImport);
   }, []);
 
   // Comprobar si QRZ está configurado
