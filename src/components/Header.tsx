@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Radio, Settings, Clock, MessageCircle } from 'lucide-react';
+import { Radio, Settings, Clock, MessageCircle, Download, Smartphone } from 'lucide-react';
 import { getUserCallsign } from '../services/qrzService';
 
 interface HeaderProps {
@@ -18,8 +18,41 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [utcTime, setUtcTime] = useState('');
   const [utcDate, setUtcDate] = useState('');
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   const callsign = getUserCallsign();
+
+  useEffect(() => {
+    const checkInstalled = () => setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true);
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    checkInstalled();
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', checkInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', checkInstalled);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === 'accepted') setIsInstalled(true);
+      setInstallPrompt(null);
+      return;
+    }
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    window.alert(isInstalled
+      ? 'LB EQSL EXPRESS ya está instalada en este equipo.'
+      : isIOS
+        ? 'Para instalar en iPhone/iPad: tocá Compartir en Safari y elegí “Agregar a pantalla de inicio”.'
+        : 'Para instalar: abrí el menú del navegador (⋮ o …) y elegí “Instalar aplicación” o “Agregar a pantalla de inicio”. En PC, buscá el icono de instalación en la barra de direcciones.');
+  };
 
   useEffect(() => {
     const updateClock = () => {
@@ -46,19 +79,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Marca y Callsign */}
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 rounded-xl shadow-lg shadow-amber-500/20">
-            <Radio className="w-6 h-6 stroke-[2.5]" />
+            <img src="/icon.svg" alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                LogBook <span className="text-amber-400">eQSL Express</span>
+                LB <span className="text-amber-400">EQSL EXPRESS</span>
               </h1>
               <span className="px-2 py-0.5 bg-amber-400/10 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold rounded-md">
                 {callsign}
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Libro de Guardia y Generador de Tarjetas eQSL
+              Libro de guardia y tarjetas eQSL
             </p>
           </div>
         </div>
@@ -71,6 +104,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-400 hidden sm:inline">{utcDate}</span>
             <span className="text-amber-300 font-bold">{utcTime} UTC</span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => { void handleInstall(); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            title="Instalar LB EQSL EXPRESS en este equipo"
+          >
+            {isInstalled ? <Smartphone className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+            <span>{isInstalled ? 'App instalada' : 'Instalar app'}</span>
+          </button>
 
           {/* PRIORIDAD 2: Botón Compartir app por WhatsApp */}
           <a
