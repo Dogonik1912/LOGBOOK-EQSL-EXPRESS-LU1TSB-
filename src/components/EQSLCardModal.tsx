@@ -430,7 +430,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         {/* Selector visual de 19 motivos de radioafición */}
         <div className="mb-3">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-xs font-semibold text-slate-300">Elegí uno de los 19 motivos de radioafición</p>
+            <p className="text-xs font-semibold text-slate-300">Elegí un motivo de radioafición</p>
             <span className="text-[10px] text-slate-500">Se recuerda en este dispositivo</span>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5">
