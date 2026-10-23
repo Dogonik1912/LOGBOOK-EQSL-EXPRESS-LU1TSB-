@@ -102,12 +102,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.setItem('eqsl_custom_bg', dataUrl);
   };
 
-  const handleUseAsHeader = (dataUrl: string) => {
-    localStorage.setItem('app_header_image', dataUrl);
-    window.dispatchEvent(new Event('user-branding-updated'));
-    window.alert('Imagen aplicada al encabezado. El icono cuadrado y el indicativo se mantienen sin cambios.');
-  };
-
   const handleDeleteGalleryImage = (id: string) => {
     const next = galleryImages.filter((item) => item.id !== id);
     setGalleryImages(next);
@@ -246,7 +240,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
-            <p className="text-[11px] text-slate-500 mt-1">Las imágenes quedan en la galería. Podés elegir Fondo eQSL, usar una foto como encabezamiento o eliminarla.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Las imágenes quedan en la galería. Podés elegir Fondo eQSL o eliminar una foto.</p>
           </div>
           {/* Galería única: las fotos cargadas quedan aquí y solo se activan al tocar Anclar. */}
           <div className="p-3.5 bg-slate-950/70 rounded-xl border border-sky-500/20 space-y-3">
@@ -257,7 +251,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               </div>
               <span className="text-[10px] text-slate-500">{galleryImages.length} fotos</span>
             </div>
-            <p className="text-[11px] text-slate-400">Cargá tus imágenes. Para cada foto podés elegir Fondo eQSL, usarla como encabezamiento o eliminarla de la galería.</p>
+            <p className="text-[11px] text-slate-400">Cargá tus imágenes. Para cada foto podés elegir Fondo eQSL o eliminarla de la galería.</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -289,9 +283,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     <div key={item.id} className={`overflow-hidden rounded-lg border ${selected ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-700'}`}>
                       <img src={item.dataUrl} alt={item.name} className="h-24 w-full object-cover" />
                       <p className="truncate px-2 pt-1 text-[10px] text-slate-200" title={item.name}>{item.name}</p>
-                      <div className="grid grid-cols-3 gap-1 p-1.5">
+                      <div className="grid grid-cols-2 gap-1 p-1.5">
                         <button type="button" onClick={() => handleAnchorImage(item.dataUrl)} className={`rounded-md px-2 py-1 text-[10px] font-bold ${selected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-amber-300 hover:bg-slate-700'}`}>{selected ? '✓ Fondo eQSL' : 'Fondo eQSL'}</button>
-                        <button type="button" onClick={() => handleUseAsHeader(item.dataUrl)} className="rounded-md px-2 py-1 text-[10px] font-bold bg-sky-900 text-sky-200 hover:bg-sky-800">Usar como encabezamiento</button>
                         <button type="button" onClick={() => handleDeleteGalleryImage(item.id)} className="rounded-md px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-950/50" aria-label={`Eliminar ${item.name}`}><Trash2 className="inline h-3 w-3" /> Eliminar</button>
                       </div>
                       {selected && <p className="bg-slate-800 px-2 pb-1.5 text-[10px] font-semibold text-slate-200">✓ Fondo activo para eQSL</p>}
