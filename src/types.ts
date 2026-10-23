@@ -24,6 +24,7 @@ export interface QSO {
   qslRcvd?: boolean;     // eQSL recibida
   exchangeSent?: string;   // Progresivo/intercambio enviado en concursos
   exchangeReceived?: string; // Progresivo/intercambio recibido en concursos
+  mapActivityAt?: number; // Marca temporal local para mostrar actividad en el mapamundi durante 30 minutos
 }
 
 export interface UserSettings {
