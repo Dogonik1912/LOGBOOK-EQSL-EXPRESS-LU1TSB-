@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, User, Mail, MapPin, Radio, Key, Check, X, ExternalLink, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { QRZ_LOGIN_URL, DEFAULT_CALLSIGN } from '../types';
+import { lookupQRZCallsign } from '../services/qrzService';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -75,6 +76,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     setSavedSuccess(true);
     onUpdate();
+    // Intentar completar el nombre propio desde el perfil QRZ del indicativo de estación.
+    // Si QRZ no devuelve un nombre, se conserva el dato existente y no se inventa uno.
+    void lookupQRZCallsign(finalCall).then((profile) => {
+      if (profile.name && profile.name.trim()) {
+        localStorage.setItem('user_name', profile.name.trim());
+        setName(profile.name.trim());
+        onUpdate();
+      }
+    }).catch((error) => console.warn('No se pudo obtener el nombre del operador desde QRZ:', error));
     setTimeout(() => {
       onClose();
     }, 600);
