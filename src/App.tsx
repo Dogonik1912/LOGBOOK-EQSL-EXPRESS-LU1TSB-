@@ -167,16 +167,9 @@ function MainApp() {
     setRefreshKey((k) => k + 1);
   };
 
-  // Estadísticas rápidas
-  const uniqueCallsigns = new Set(qsos.map((q) => q.callsign)).size;
-  const uniqueCountries = new Set(qsos.map((q) => q.country).filter(Boolean)).size;
-  const eQslSentCount = qsos.filter((q) => q.qslSent === true).length;
-  const eQslReceivedCount = qsos.filter((q) => q.qslRcvd === true).length;
-  const countryRanking = Object.entries(qsos.reduce<Record<string, number>>((acc, q) => {
-    const country = (q.country || '').trim();
-    if (country) acc[country] = (acc[country] || 0) + 1;
-    return acc;
-  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  // Métricas mundiales: solo se mostrarán cuando exista el servicio de cuentas compartidas.
+  const registeredUsersCount: number | null = null;
+  const combinedEqslCount: number | null = null;
 
   const handleOpenReplyForQSO = (qso: QSO) => {
     const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
@@ -220,55 +213,14 @@ function MainApp() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Banner de resumen de estación */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg shrink-0">
-              <Radio className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl font-bold font-mono text-white">{qsos.length}</div>
-              <div className="text-xs text-slate-400">Total QSOs</div>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+            <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><Award className="w-5 h-5" /></div>
+            <div><div className="text-xl font-bold font-mono text-white">{registeredUsersCount ?? '—'}</div><div className="text-xs text-slate-400">Usuarios registrados</div></div>
           </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
-            <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-lg shrink-0">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl font-bold font-mono text-white">{uniqueCallsigns}</div>
-              <div className="text-xs text-slate-400">Indicativos únicos</div>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg shrink-0">
-              <Globe className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl font-bold font-mono text-white">{uniqueCountries}</div>
-              <div className="text-xs text-slate-400">Países / DXCC</div>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
-            <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-lg shrink-0">
-              <Send className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl font-bold font-mono text-white">{eQslSentCount}</div>
-              <div className="text-xs text-slate-400">eQSL enviadas</div>
-            </div>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
-            <div className="p-2.5 bg-cyan-500/10 text-cyan-400 rounded-lg shrink-0">
-              <Download className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl font-bold font-mono text-white">{eQslReceivedCount}</div>
-              <div className="text-xs text-slate-400">eQSL recibidas</div>
-            </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+            <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-5 h-5" /></div>
+            <div><div className="text-xl font-bold font-mono text-white">{combinedEqslCount ?? '—'}</div><div className="text-xs text-slate-400">eQSL enviadas + recibidas</div></div>
           </div>
         </div>
 
@@ -295,16 +247,10 @@ function MainApp() {
               <p className="mt-2 text-center text-xs text-slate-500">Mapa de referencia; no muestra estaciones en directo hasta conectar el servicio compartido.</p>
             </div>
             <aside className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-              <h3 className="font-semibold text-white">Contactos por país</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-400">Resumen local de QSOs, no un censo de usuarios registrados.</p>
-              {countryRanking.length ? (
-                <ol className="mt-4 space-y-3">
-                  {countryRanking.map(([country, count], index) => (
-                    <li key={country} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 truncate text-slate-300"><span className="mr-2 text-amber-400">{index + 1}.</span>{country}</span><span className="font-mono text-white">{count}</span></li>
-                  ))}
-                </ol>
-              ) : <div className="mt-4 rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-400">Todavía no hay países registrados en este libro de guardia.</div>}
-              <div className="mt-4 rounded-lg bg-slate-900 p-3 text-xs leading-relaxed text-slate-400">El mapa permanece visible sin actividad. El ranking mundial de usuarios y los contactos sincronizados requieren cuentas y base de datos compartida.</div>
+              <h3 className="font-semibold text-white">Top 5 países por usuarios registrados</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">Solo se incluyen cuentas registradas, según el país declarado en su perfil.</p>
+              <div className="mt-4 rounded-lg border border-dashed border-slate-700 p-4 text-sm text-slate-400">Ranking pendiente de conexión al servicio de registro compartido. No se cuentan visitantes ni contactos del log.</div>
+              <div className="mt-4 rounded-lg bg-slate-900 p-3 text-xs leading-relaxed text-slate-400">El mapa permanece visible aunque no haya actividad. Los marcadores reales se mostrarán cuando existan datos compartidos confirmados.</div>
             </aside>
           </div>
         </section>
