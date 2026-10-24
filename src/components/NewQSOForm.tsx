@@ -247,12 +247,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     }
   };
 
-  // Abrir el selector general para compartir por Telegram, sin enviar a un usuario concreto.
-  const handleOpenTelegram = () => {
-    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(window.location.origin);
-    window.open(shareUrl, '_blank', 'noopener,noreferrer');
-  };
-
   // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
   const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
     if (!cleanCall || cleanCall.length < 3 || requestId !== lookupRequestId.current) return;
@@ -636,7 +630,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                onClick={() => { void handleOpenWhatsApp(); }}
+                onClick={() => { if (!whatsapp.trim()) void handleOpenWhatsApp(); }}
                 placeholder="Tocá para elegir contacto o escribí el teléfono"
                 aria-label="Número de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
@@ -665,7 +659,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           <div className="sm:col-span-4 min-w-0">
             <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram del corresponsal (@usuario)</label>
             <div className="flex items-center gap-2">
-              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} onClick={handleOpenTelegram} placeholder="Tocá para elegir en Telegram o escribí el usuario" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
+              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="Escribí @usuario de Telegram" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
               <button type="submit" name="qsoAction" value="send-telegram" disabled={!telegram.trim()} className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-sky-700 hover:bg-sky-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-sky-600/60 disabled:border-slate-700 transition-colors" title="Guardar QSO y abrir Telegram">Enviar eQSL</button>
             </div>
           </div>
