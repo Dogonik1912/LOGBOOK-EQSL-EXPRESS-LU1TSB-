@@ -437,8 +437,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     // El enlace corto abre LogBook eQSL Express directamente en la pantalla de respuesta.
     const receivedCardLink = getReceivedCardUrl();
     const message =
-      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
-      'Abre la tarjeta y pulsa el botón para responder:\\n' +
+      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\n' +
+      'Abre la tarjeta y pulsa el botón para responder:\n' +
       receivedCardLink;
 
     const canvas = canvasRef.current;
@@ -489,8 +489,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleShareTelegram = () => {
     if (!isQsoValidForEQSL()) return;
     trackEQSLActivity();
-    const text = 'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
-      'Abre la tarjeta y pulsa el botón para responder.\\n' + getFirma();
+    const text = 'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\n' +
+      'Abre la tarjeta y pulsa el botón para responder.\n' + getFirma();
     // Abrir el selector de Telegram para que el operador elija a quién enviarla.
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(getReceivedCardUrl()) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
