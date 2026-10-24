@@ -148,6 +148,16 @@ export const ReceivedEQSLPage: React.FC = () => {
     ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 28px sans-serif'; ctx.fillText(t.thanks, 600, 650, 1080);
   }, [card, t]);
 
+  // After the web download starts, leave a brief window for the optional Android fallback,
+  // then return home automatically unless the native save reported a failure.
+  useEffect(() => {
+    if (!downloadAttempted || !card?.isResponse || galleryStatus !== '') return;
+    const timer = window.setTimeout(() => {
+      window.location.replace(window.location.origin + '/');
+    }, 8000);
+    return () => window.clearTimeout(timer);
+  }, [downloadAttempted, card?.isResponse, galleryStatus]);
+
   const getReplyAppUrl = () => {
     if (shareId) return window.location.origin + '/?reply_eqsl=' + encodeURIComponent(shareId);
     if (!card) return window.location.origin + '/';
