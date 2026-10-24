@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { QRZ_API_URL } from '../types';
-
 export interface CallsignDetails {
   callsign: string;
   email?: string;
@@ -96,138 +94,19 @@ function getCountryFromPrefix(callsign: string): { country: string; defaultGrid?
   return { country: 'Desconocido' };
 }
 
-let cachedSessionKey: string | null = null;
-let cachedSessionUser = '';
-let sessionTimestamp = 0;
-
 /**
- * Autentica o reutiliza una clave de sesión XML de QRZ.com
- */
-async function getQRZSessionKey(user: string, pass: string): Promise<string | null> {
-  // Reutilizar token si tiene menos de 45 minutos
-  if (cachedSessionKey && cachedSessionUser === user && Date.now() - sessionTimestamp < 45 * 60 * 1000) {
-    return cachedSessionKey;
-  }
-
-  try {
-    const res = await fetch('/api/qrz', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, password: pass }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const xmlText = await res.text();
-
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-    const keyNode = xmlDoc.querySelector('Key');
-    const errNode = xmlDoc.querySelector('Error');
-
-    if (errNode && !keyNode) {
-      const message = errNode.textContent || 'No se pudo validar la sesión QRZ.';
-      console.warn('QRZ Auth Error:', message);
-      return null;
-    }
-
-
-    if (keyNode && keyNode.textContent) {
-      cachedSessionKey = keyNode.textContent.trim();
-      cachedSessionUser = user;
-      sessionTimestamp = Date.now();
-      return cachedSessionKey;
-    }
-  } catch (err) {
-    console.warn('Error connecting to QRZ XML API:', err);
-  }
-  return null;
-}
-
-/**
- * Consulta un indicativo en QRZ.com para autocompletar Email, Nombre, Grid, etc.
- */
-/**
- * Consulta un indicativo en QRZ.com cruzando datos (Biografía decodificada, Web Scraping y XML)
- * para obtener automáticamente Email o WhatsApp / Celular del corresponsal.
+ * Consulta local por indicativo. No llama a QRZ ni a servicios externos.
+ * Los correos deben ser aportados por el usuario o recuperados de datos
+ * guardados localmente; nunca se inventan ni se extraen de perfiles ajenos.
  */
 export async function lookupQRZCallsign(call: string): Promise<CallsignDetails> {
   const cleanCall = call.trim().toUpperCase();
   const prefixInfo = getCountryFromPrefix(cleanCall);
-  const qrzUser = sessionStorage.getItem('qrz_user') || localStorage.getItem('qrz_user') || '';
-  const qrzPass = sessionStorage.getItem('qrz_pass') || localStorage.getItem('qrz_pass') || '';
-
-  let result: CallsignDetails = {
+  return {
     callsign: cleanCall,
     country: prefixInfo.country,
     grid: '',
     source: 'prefix-db',
+    lookupMessage: 'No se consulta QRZ automáticamente. Si el correo figura públicamente, copialo manualmente y verificá que corresponda al indicativo.',
   };
-
-  // Public profile lookup: only fields explicitly linked to this operator's profile.
-  try {
-    const res = await fetch('/api/lookup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        call: cleanCall, user: qrzUser, pass: qrzPass,
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && !data.error) {
-        result = {
-          callsign: cleanCall,
-          // El correo se obtiene exclusivamente desde una consulta autenticada de QRZ.
-          email: data.email || '',
-          whatsapp: data.whatsapp || '',
-          whatsappRaw: data.whatsappRaw || '',
-          country: data.country || prefixInfo.country,
-          grid: data.grid || '',
-          lookupMessage: '',
-          source: data.foundSource === 'qrz-web-session' || data.foundSource === 'qrz-xml' || data.foundSource === 'qrz-authenticated-profile-html' ? data.foundSource : data.foundSource ? 'qrz-bio' : 'qrz',
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('Public QRZ lookup failed:', err);
-  }
-
-  // QRZ XML is the official authenticated source for the user's own account.
-  // QRZ decides which fields are available under that account's subscription.
-  if (qrzUser && qrzPass) {
-    try {
-      const sessionKey = await getQRZSessionKey(qrzUser, qrzPass);
-      if (sessionKey) {
-        const xmlRes = await fetch('/api/qrz', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionKey, callsign: cleanCall }),
-        });
-        if (xmlRes.ok) {
-          const xmlText = await xmlRes.text();
-          const xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
-          const value = (tag: string) => {
-            const node = xmlDoc.getElementsByTagName(tag)[0];
-            const text = node?.textContent?.trim() || '';
-            return /^(?:use mouse to view|not found|n\/a|none)$/i.test(text) ? '' : text;
-          };
-          const xmlEmail = value('email');
-          const xmlGrid = value('grid');
-          const xmlCountry = value('country');
-          result = {
-            ...result,
-            // Authenticated QRZ XML is the only allowed email source.
-            // No borrar un correo legítimo obtenido por la biografía XML si el campo <email> viene vacío.
-            email: xmlEmail || result.email || '',
-            grid: result.grid || xmlGrid,
-            country: result.country === 'Desconocido' ? (xmlCountry || result.country) : (result.country || xmlCountry),
-            source: (xmlEmail || result.email || xmlGrid || result.whatsapp) ? 'qrz' : result.source,
-          };
-        }
-      }
-    } catch (err) {
-      console.warn('QRZ XML callsign lookup failed:', err);
-    }
-  }
-
-  return result;
 }
