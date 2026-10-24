@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { 
   PlusCircle, 
@@ -14,7 +14,6 @@ import {
   User, 
   Globe, 
   Sparkles, 
-  RefreshCw,
   AlertCircle
 } from 'lucide-react';
 
@@ -89,91 +88,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [notes, setNotes] = useState('');
   const [validationError, setValidationError] = useState('');
 
-  const [isSearchingQRZ, setIsSearchingQRZ] = useState(false);
-  const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'qrz-web-session' | 'prefix-db' | null>(null);
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
-  const callsignCurrentRef = useRef(callsign);
-  callsignCurrentRef.current = callsign;
   const lookupRequestId = useRef(0);
-
-  // Importar datos visibles desde un perfil QRZ abierto mediante postMessage o un enlace de prueba.
-  // Solo acepta campos explícitos enviados por el usuario; nunca deduce un correo.
-  useEffect(() => {
-    const applyProfile = (profile: { call?: string; email?: string; country?: string; grid?: string }) => {
-      const importedCall = String(profile.call || '').toUpperCase().trim();
-      if (!/^[A-Z0-9/]{3,20}$/.test(importedCall)) return;
-      const importedEmail = String(profile.email || '').trim();
-      const currentCall = callsignCurrentRef.current.toUpperCase().trim();
-      if (currentCall && currentCall !== importedCall) {
-        setLookupMessage(`El perfil abierto es ${importedCall}, pero el QSO actual es ${currentCall}. No se importaron los datos para evitar mezclar corresponsales.`);
-        return;
-      }
-      setCallsign(importedCall);
-      setEmail(importedEmail);
-      setCountry(String(profile.country || '').trim());
-      setGrid(String(profile.grid || '').trim().toUpperCase());
-      setLookupMessage(importedEmail
-        ? 'Correo importado desde el perfil QRZ abierto. Verificá que corresponda a este indicativo antes de guardar.'
-        : 'Se importó el indicativo desde QRZ, pero no se encontró un correo visible en el perfil. No se completó ninguno automáticamente.');
-      setQrzFoundSource(importedEmail ? 'qrz-web-session' : null);
-    };
-
-    const handleProfileImport = (event: Event) => {
-      const detail = (event as CustomEvent).detail || {};
-      applyProfile(detail);
-    };
-    window.addEventListener('qrz-profile-import', handleProfileImport);
-
-    const params = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const getImportValue = (key: string) => params.get(key) || hashParams.get(key) || '';
-    const importedCall = getImportValue('qrz_call').toUpperCase().trim();
-    if (/^[A-Z0-9/]{3,20}$/.test(importedCall)) {
-      applyProfile({
-        call: importedCall,
-        email: getImportValue('qrz_email'),
-        country: getImportValue('qrz_country'),
-        grid: getImportValue('qrz_grid'),
-      });
-    }
-
-    return () => window.removeEventListener('qrz-profile-import', handleProfileImport);
-  }, []);
-
-  // Al volver desde QRZ a esta pestaña, revisar el portapapeles y completar el email
-  // si el usuario acaba de copiar una dirección. El navegador puede pedir permiso de lectura.
-  useEffect(() => {
-    let lastReadAt = 0;
-    const tryImportClipboardEmail = async () => {
-      const now = Date.now();
-      if (now - lastReadAt < 700) return;
-      lastReadAt = now;
-      if (email.trim() || !callsignCurrentRef.current.trim()) return;
-      if (!navigator.clipboard?.readText) return;
-      try {
-        const copiedText = (await navigator.clipboard.readText()).trim();
-        const match = copiedText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);
-        if (!match) return;
-        // No sobrescribir un correo escrito por el usuario mientras la lectura esperaba.
-        setEmail((current) => current.trim() ? current : match[0]);
-        setLookupMessage('Correo detectado del portapapeles al volver de QRZ. Verificá que corresponda a ' + callsignCurrentRef.current.toUpperCase().trim() + '.');
-        setQrzFoundSource('qrz-web-session');
-      } catch {
-        // El navegador puede bloquear la lectura automática; el botón manual sigue disponible.
-      }
-    };
-    const onFocus = () => { void tryImportClipboardEmail(); };
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') void tryImportClipboardEmail();
-    };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [email]);
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
@@ -203,7 +120,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setTime(now.time);
   };
 
-  // Libreta local por SD: reutiliza correos y datos ya confirmados antes de consultar QRZ.
+  // Libreta local: reutiliza correos y datos que el usuario ya guardó.
   const getContactBook = (): Record<string, any> => {
     try { return JSON.parse(localStorage.getItem('logbook_contacts') || '{}'); }
     catch { return {}; }
@@ -224,8 +141,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   };
 
 
-  // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
-  const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
+  // Completar solo información de país por prefijo, sin consultar servicios externos.
+  const applyPrefixDetails = async (cleanCall: string, requestId: number) => {
     if (!cleanCall || cleanCall.length < 3 || requestId !== lookupRequestId.current) return;
     const prefixes: Record<string, string> = {
       LU: 'Argentina', LW: 'Argentina', AY: 'Argentina', AZ: 'Argentina',
@@ -240,7 +157,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     };
     setCountry(prefixes[cleanCall.slice(0, 2)] || prefixes[cleanCall.slice(0, 1)] || '');
     setGrid('');
-    setIsSearchingQRZ(false);
   };
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -248,7 +164,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const handleCallsignChange = (val: string) => {
     const upper = val.toUpperCase().trim();
     setCallsign(upper);
-    setQrzFoundSource(null);
     const requestId = ++lookupRequestId.current;
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
@@ -296,29 +211,15 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       setGrid(String(localContact.grid || '').toUpperCase());
       setLookupMessage('Datos recuperados de la libreta o de un QSO anterior para ' + upper + '.');
     }
-    if (upper.length >= 3) {
-      fetch('/api/directory?action=lookup&call=' + encodeURIComponent(upper))
-        .then((response) => response.ok ? response.json() : null)
-        .then((result) => {
-          if (requestId !== lookupRequestId.current || !result?.contact) return;
-          const contact = result.contact;
-          setEmail((current) => current.trim() || String(contact.email || ''));
-          setWhatsapp((current) => current.trim() || String(contact.whatsapp || ''));
-          setWhatsappUsername((current) => current.trim() || String(contact.whatsappUsername || ''));
-          setTelegram((current) => current.trim() || String(contact.telegram || ''));
-          setCountry((current) => current.trim() || String(contact.country || ''));
-          setGrid((current) => current.trim() || String(contact.grid || '').toUpperCase());
-          setLookupMessage('Datos disponibles en el directorio comunitario para ' + upper + '.');
-        })
-        .catch(() => {});
+    if (!localContact && upper.length >= 3) {
+      setLookupMessage('No hay datos guardados en este dispositivo para este indicativo. El directorio comunitario compartido aún no está disponible.');
     }
-    setIsSearchingQRZ(upper.length >= 3);
 
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 
     if (upper.length >= 3) {
       debounceTimeout.current = setTimeout(() => {
-        searchCallsignDetails(upper, requestId);
+        applyPrefixDetails(upper, requestId);
       }, 500);
     }
   };
@@ -410,7 +311,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setCountry('');
     setGrid('');
     setNotes('');
-    setQrzFoundSource(null);
 
     // Re-enfocar en el indicativo para el próximo QSO rápido
     setTimeout(() => {
@@ -507,24 +407,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 placeholder={band === '11 metros' ? 'Ej. móvil 23, estación Sol' : 'ej. LU7YS, EA1EXP'}
                 className="w-full px-3 py-2 bg-slate-950 border border-amber-500/40 rounded-xl text-lg font-mono font-black text-amber-300 uppercase tracking-widest placeholder:text-slate-600 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
               />
-              {isSearchingQRZ && (
-                <div className="absolute right-3 top-2.5 text-xs text-amber-400 flex items-center gap-1 animate-pulse">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                </div>
-              )}
+
             </div>
-            {qrzFoundSource && (
-              <span className="text-[11px] text-emerald-400 mt-1 inline-flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                {qrzFoundSource === 'qrz-web-session'
-                  ? 'Importado desde perfil QRZ abierto'
-                  : qrzFoundSource === 'qrz-bio'
-                  ? 'Correo de QRZ'
-                  : qrzFoundSource === 'qrz'
-                  ? 'Datos obtenidos de QRZ.com'
-                  : 'País autodetectado'}
-              </span>
-            )}
           </div>
 
           {/* RST Enviada */}
