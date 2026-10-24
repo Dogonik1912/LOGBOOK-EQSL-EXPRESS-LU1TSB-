@@ -672,7 +672,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
         </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
-        <p className="text-[11px] text-slate-500">Elegí un contacto del teléfono para copiar su número aquí sin abrir el chat ni salir de la app. Si el navegador no admite el selector, podés pegar o escribir el número. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
