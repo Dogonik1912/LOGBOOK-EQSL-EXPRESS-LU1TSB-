@@ -77,26 +77,7 @@ function MainApp() {
     telegram?: string;
   } | null>(null);
   const [, setRefreshKey] = useState(0);
-  const [registeredUsersCount, setRegisteredUsersCount] = useState<number | null>(null);
-  const [combinedEqslCount, setCombinedEqslCount] = useState<number | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    const refreshDirectoryStats = async () => {
-      try {
-        const response = await fetch('/api/directory?action=count', { cache: 'no-store' });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (active) {
-          setRegisteredUsersCount(Number.isFinite(data.activeUsers) ? data.activeUsers : null);
-          setCombinedEqslCount(Number.isFinite(data.totalActions) ? data.totalActions : null);
-        }
-      } catch { /* El directorio global puede no estar configurado todavía. */ }
-    };
-    void refreshDirectoryStats();
-    const interval = window.setInterval(refreshDirectoryStats, 60000);
-    return () => { active = false; window.clearInterval(interval); };
-  }, []);
 
 
   // Verificar si se abrió mediante un enlace de responder eQSL (?reply_to=...).
@@ -281,14 +262,14 @@ function MainApp() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><Award className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">{registeredUsersCount ?? '—'}</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Estaciones activas eQSL</div></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Estaciones activas · sin datos verificados</div></div>
           </div>
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">{combinedEqslCount ?? '—'}</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones registradas</div></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones eQSL · sin datos verificados</div></div>
           </div>
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3">
-            <div className="text-[10px] sm:text-xs leading-tight text-slate-400 mb-2">Ranking mundial</div>
+            <div className="text-[10px] sm:text-xs leading-tight text-slate-400 mb-2">Ranking mundial · pendiente</div>
             <button type="button" onClick={() => setShowCountryRanking((open) => !open)} aria-expanded={showCountryRanking} className="w-full flex items-center justify-between gap-1 text-sm text-white">
               <span className="font-mono">—</span>
               <span className="text-slate-400"><svg className={`w-4 h-4 transition-transform ${showCountryRanking ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg></span>
