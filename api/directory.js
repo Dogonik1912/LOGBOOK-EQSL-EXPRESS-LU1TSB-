@@ -32,7 +32,13 @@ export default async function handler(req, res) {
       if (action === 'lookup') {
         const call = cleanCall(req.query?.call);
         if (!CALL_RE.test(call)) return res.status(400).json({ error: 'Indicativo no válido' });
-        const rows = await db(`eqsl_directory?select=callsign,email,whatsapp,telegram,country,grid&callsign=eq.${encodeURIComponent(call)}&contact_public=eq.true&limit=1`);
+        let rows;
+        try {
+          rows = await db(`eqsl_directory?select=callsign,email,whatsapp,telegram,country,grid&callsign=eq.${encodeURIComponent(call)}&contact_public=eq.true&limit=1`);
+        } catch {
+          // Compatibilidad mientras se aplica la migración que añade la columna telegram.
+          rows = await db(`eqsl_directory?select=callsign,email,whatsapp,country,grid&callsign=eq.${encodeURIComponent(call)}&contact_public=eq.true&limit=1`);
+        }
         return res.status(200).json({ contact: rows[0] || null });
       }
       if (action === 'count') {
@@ -78,8 +84,15 @@ export default async function handler(req, res) {
       if (!email && !whatsapp && !telegram) return res.status(400).json({ error: 'Falta correo, WhatsApp o Telegram' });
       const existing = await db(`eqsl_directory?select=callsign&callsign=eq.${encodeURIComponent(call)}&limit=1`);
       const data = { callsign: call, email: email || null, whatsapp: whatsapp || null, telegram: telegram || null, country, grid, contact_public: true, contact_updated_at: now };
-      if (existing.length) await db(`eqsl_directory?callsign=eq.${encodeURIComponent(call)}`, { method: 'PATCH', body: JSON.stringify(data) });
-      else await db('eqsl_directory', { method: 'POST', body: JSON.stringify({ ...data, activity_count: 0 }) });
+      const legacyData = { callsign: call, email: email || null, whatsapp: whatsapp || null, country, grid, contact_public: true, contact_updated_at: now };
+      try {
+        if (existing.length) await db(`eqsl_directory?callsign=eq.${encodeURIComponent(call)}`, { method: 'PATCH', body: JSON.stringify(data) });
+        else await db('eqsl_directory', { method: 'POST', body: JSON.stringify({ ...data, activity_count: 0 }) });
+      } catch {
+        // La función de correo/WhatsApp sigue disponible si aún no se añadió la columna Telegram en Supabase.
+        if (existing.length) await db(`eqsl_directory?callsign=eq.${encodeURIComponent(call)}`, { method: 'PATCH', body: JSON.stringify(legacyData) });
+        else await db('eqsl_directory', { method: 'POST', body: JSON.stringify({ ...legacyData, activity_count: 0 }) });
+      }
       return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ error: 'Acción no válida' });
