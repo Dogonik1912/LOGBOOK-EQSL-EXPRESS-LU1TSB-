@@ -29,12 +29,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setCallsign(localStorage.getItem('user_callsign') || '');
-      // Limpia la imagen de encabezado anterior una sola vez; conserva el icono cuadrado y el indicativo.
-      if (localStorage.getItem('app_header_reset_v1') !== 'done') {
-        localStorage.removeItem('app_header_image');
-        localStorage.setItem('app_header_reset_v1', 'done');
-        window.dispatchEvent(new Event('user-branding-updated'));
-      }
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
