@@ -99,7 +99,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       setReplyToCall(initialData.replyToCall || DEFAULT_CALLSIGN);
       const defaultUser = getUserCallsign();
       // Si el usuario actual es el mismo que replyToCall, sugerimos dejar vacío o el otro
-      setMyCall(initialData.myCall || (initialData.band === '11 metros' ? (localStorage.getItem('cb_station_callsign') || '') : (defaultUser !== initialData.replyToCall ? defaultUser : '')));
+      setMyCall(initialData.myCall || (/11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(initialData.band || '')) ? (localStorage.getItem('cb_station_callsign') || '') : (defaultUser !== initialData.replyToCall ? defaultUser : '')));
       setDate(initialData.date || new Date().toISOString().slice(0, 10));
       setTime(initialData.time || '12:00');
       setBand(initialData.band || '40m');
@@ -428,7 +428,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const newQSO: QSO = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       callsign: normalizedCall,
-      ...(band === '11 metros' ? { stationCallsign: localStorage.getItem('cb_station_callsign') || normalizedMyCall } : {}),
+      ...(/11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(band)) ? { stationCallsign: localStorage.getItem('cb_station_callsign') || normalizedMyCall } : {}),
       date,
       time,
       band,
