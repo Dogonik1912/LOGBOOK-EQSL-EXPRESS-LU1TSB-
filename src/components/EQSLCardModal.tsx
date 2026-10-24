@@ -384,6 +384,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       rst: qso.rstSent || '59',
       email: qso.email || '',
       wa: qso.whatsapp || '',
+      wa_user: qso.whatsappUsername || '',
+      telegram: qso.telegram || '',
     });
     return `${origin}/?${params.toString()}`;
   };
@@ -447,9 +449,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `Ingresá aquí para emitir tu confirmación recíproca gratuita:\n${replyLink}`;
 
     const cleanPhone = qso.whatsapp ? qso.whatsapp.replace(/[^0-9]/g, '') : '';
+    const username = String(qso.whatsappUsername || '').replace(/^@+/, '');
+    const message = (username ? 'Destinatario WhatsApp: @' + username + ' (buscá este alias en WhatsApp si tu cuenta tiene nombres de usuario habilitados).\n\n' : '') + text;
     const url = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -469,6 +473,21 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       return false;
     }
     return true;
+  };
+
+  const handleShareTelegram = () => {
+    if (!isQsoValidForEQSL()) return;
+    trackEQSLActivity();
+    const text = '📻 Tarjeta eQSL de ' + myCallsign + ' para ' + qso.callsign + '\n' +
+      '📅 ' + qso.date + ' ' + qso.time + ' UTC · ' + qso.band + ' ' + qso.frequency + ' MHz · ' + qso.mode + '\n' +
+      '📶 RST ' + (qso.rstSent || '59') + '/' + (qso.rstRcvd || '59') + '\n' +
+      '🖼️ Ver y descargar la eQSL: ' + getReceivedCardUrl() + '\n' +
+      '💌 Responder con tu eQSL: ' + getReplyUrl() + '\n' + getFirma();
+    const username = String(qso.telegram || '').replace(/^@+/, '');
+    const url = username
+      ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
+      : 'https://t.me/share/url?url=' + encodeURIComponent(getReceivedCardUrl()) + '&text=' + encodeURIComponent(text);
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Enviar por Email (con link de respuesta eQSL y firma dinámica)
@@ -704,6 +723,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               Enviar por Email
             </button>
 
+            <button type="button" onClick={handleShareTelegram} className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"><MessageSquare className="w-4 h-4" /> Telegram</button>
             {/* Compartir por WhatsApp con firma dinámica y link para responder */}
             <button
               type="button"
