@@ -11,14 +11,12 @@ import {
   Radio, 
   Clock, 
   Calendar, 
-  Mail, 
   User, 
   Globe, 
   Sparkles, 
   RefreshCw,
   AlertCircle,
   Phone,
-  ExternalLink
 } from 'lucide-react';
 
 interface NewQSOFormProps {
@@ -319,26 +317,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     }
   };
 
-  const handlePasteEmailFromClipboard = async () => {
-    try {
-      if (!navigator.clipboard?.readText) {
-        setLookupMessage('Este navegador no permite leer el portapapeles desde la app. Pegá el correo directamente en el campo Email.');
-        return;
-      }
-      const copiedText = (await navigator.clipboard.readText()).trim();
-      const emailMatch = copiedText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-      if (!emailMatch) {
-        setLookupMessage('No encontré una dirección de correo en el portapapeles. En QRZ, copiá la dirección de correo y volvé a tocar “Pegar correo copiado”.');
-        return;
-      }
-      setEmail(emailMatch[0]);
-      setLookupMessage('Correo pegado desde el portapapeles. Verificá que corresponda al indicativo ' + callsign.trim().toUpperCase() + ' antes de guardar.');
-      setQrzFoundSource(null);
-    } catch {
-      setLookupMessage('El navegador bloqueó el acceso al portapapeles. Permití el permiso si aparece o pegá el correo manualmente en el campo Email.');
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
@@ -542,88 +520,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               className="w-full px-2 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
-
-          {/* Email del Corresponsal */}
-          <div className="sm:col-span-4">
-            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <Mail className="w-3 h-3 text-sky-400" />
-                Email
-              </span>
-              <button
-                type="button"
-                onClick={() => { void handlePasteEmailFromClipboard(); }}
-                className="inline-flex items-center gap-1 text-[10px] text-emerald-300 hover:text-emerald-200 underline mr-2"
-                title="Pegar el correo que copiaste desde el perfil del corresponsal"
-              >
-                <Mail className="w-3 h-3" /> Pegar correo copiado
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const call = callsign.trim().toUpperCase();
-                  if (!/^[A-Z0-9/]{3,20}$/.test(call)) {
-                    callsignInputRef.current?.focus();
-                    setLookupMessage('Primero escribí el indicativo del corresponsal. Después abrí su perfil QRZ desde aquí.');
-                    return;
-                  }
-                  const tab = window.open(`https://www.qrz.com/db/${encodeURIComponent(call)}`, '_blank', 'noopener=false');
-                  if (!tab) {
-                    setLookupMessage('El navegador bloqueó la pestaña de QRZ. Permití ventanas emergentes para esta aplicación e intentá nuevamente.');
-                    return;
-                  }
-                  setLookupMessage('Se abrió el perfil QRZ de ' + call + '. En esa pestaña, ejecutá el marcador “Enviar perfil QRZ a LogBook” para importar los datos que estén visibles.');
-                }}
-                className="inline-flex items-center gap-1 text-[10px] text-sky-300 hover:text-sky-200 underline"
-                title="Abrir el perfil QRZ del indicativo actual"
-              >
-                <ExternalLink className="w-3 h-3" /> Abrir QRZ / importar
-              </button>
-            </label>
-            <input
-              type="text"
-              inputMode="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder=""
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder-slate-600 focus:border-sky-400 focus:outline-hidden"
-            />
-
-          </div>
-
-          <div className="sm:col-span-4 min-w-0">
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              <Phone className="w-3 h-3 text-emerald-400 inline mr-1" /> WhatsApp del corresponsal
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
-              <input
-                type="tel"
-                inputMode="tel"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="Número internacional si lo conocés"
-                aria-label="Número de WhatsApp del corresponsal"
-                className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
-              />
-              <input
-                type="text"
-                inputMode="text"
-                value={whatsappUsername}
-                onChange={(e) => setWhatsappUsername(e.target.value.replace(/^@+/, ''))}
-                placeholder="@usuario"
-                aria-label="Nombre de usuario de WhatsApp del corresponsal"
-                className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
-              />
-            </div>
-          </div>
-          <div className="sm:col-span-4 min-w-0">
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram del corresponsal (@usuario)</label>
-            <div className="flex items-center gap-2">
-              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="Escribí @usuario de Telegram" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
-
-            </div>
-          </div>
-        </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
 
