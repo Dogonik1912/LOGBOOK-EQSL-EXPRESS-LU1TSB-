@@ -457,6 +457,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       qslRcvd: true,
     };
     onSaveQSO(newQSO);
+    // En la próxima entrada, ignorar cualquier enlace antiguo y abrir siempre Inicio.
+    localStorage.setItem('logbook_return_home_after_reply', '1');
     setSavedToLog(true);
     return true;
   };
