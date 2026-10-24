@@ -330,7 +330,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const validFrequency = normalizedFrequency !== '' && Number.isFinite(numericFrequency) && numericFrequency > 0 && numericFrequency <= 100000;
     const validMode = HAM_MODES.includes(mode);
     const missing = [
-      !validCall ? 'SD del destinatario (indicativo válido)' : '',
+      !validCall ? (band === '11 metros' ? 'identificador de estación de 11 metros' : 'indicativo válido') : '',
       !validDate ? 'fecha válida' : '',
       !validTime ? 'hora válida en UTC' : '',
       !validFrequency ? 'frecuencia válida en MHz' : '',
@@ -417,7 +417,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               Nuevo QSO Express
             </h2>
             <p className="text-xs text-slate-400">
-              Precarga automática de banda, hora y modo del QSO anterior
+              Registro separado de radioafición y banda ciudadana
             </p>
           </div>
         </div>
@@ -469,7 +469,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 required
                 value={callsign}
                 onChange={(e) => handleCallsignChange(e.target.value)}
-                placeholder="ej. LU7YS, EA1EXP"
+                placeholder={band === '11 metros' ? 'Ej. móvil 23, estación Sol' : 'ej. LU7YS, EA1EXP'}
                 className="w-full px-3 py-2 bg-slate-950 border border-amber-500/40 rounded-xl text-lg font-mono font-black text-amber-300 uppercase tracking-widest placeholder:text-slate-600 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
               />
               {isSearchingQRZ && (
@@ -563,7 +563,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               required
               value={frequency}
               onChange={(e) => { setFrequency(e.target.value); setValidationError(''); }}
-              placeholder="7.120"
+              placeholder={band === '11 metros' ? '27.125' : '7.120'}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-amber-300 font-semibold focus:border-amber-400 focus:outline-hidden"
             />
           </div>
