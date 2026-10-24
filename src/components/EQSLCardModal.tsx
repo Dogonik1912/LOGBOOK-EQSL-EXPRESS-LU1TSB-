@@ -536,7 +536,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!isQsoValidForEQSL()) return;
     const targetEmail = window.prompt(`Pegá el correo de ${qso.callsign} (por ejemplo, obtenido en QRZ):`, '')?.trim() || '';
     if (!targetEmail) return;
-    if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(targetEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
       window.alert('La dirección de correo no parece válida. Revisala y volvé a intentarlo.');
       return;
     }
