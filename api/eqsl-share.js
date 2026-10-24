@@ -33,7 +33,7 @@ function validateCard(body) {
     card.imageDataUrl.length > 1800000 ||
     !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl)
   )) return null;
-  const isCB = /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(card.band);
+  const isCB = /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(card.band);
   const validStation = (value) => isCB
     ? /^[A-Z0-9][A-Z0-9 /_-]{0,39}$/.test(value)
     : CALL_RE.test(value);
