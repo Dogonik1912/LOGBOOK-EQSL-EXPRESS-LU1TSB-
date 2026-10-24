@@ -133,8 +133,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const dy = event.clientY - lastDragPoint.current.y;
       const previewWidth = Math.max(1, event.currentTarget.clientWidth);
       const previewHeight = Math.max(1, event.currentTarget.clientHeight);
-      setImagePositionX((value) => Math.max(-100, Math.min(100, value - dx * 100 / previewWidth)));
-      setImagePositionY((value) => Math.max(-100, Math.min(100, value - dy * 100 / previewHeight)));
+      setImagePositionX((value) => Math.max(-100, Math.min(100, value + dx * 100 / previewWidth)));
+      setImagePositionY((value) => Math.max(-100, Math.min(100, value + dy * 100 / previewHeight)));
       lastDragPoint.current = { x: event.clientX, y: event.clientY };
     }
   };
@@ -738,7 +738,9 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
               onPointerMove={handleImagePointerMove}
               onPointerUp={handleImagePointerUp}
               onPointerCancel={handleImagePointerUp}
+              onLostPointerCapture={handleImagePointerUp}
               className="absolute inset-2 z-10 rounded-lg cursor-grab active:cursor-grabbing"
+              data-image-gesture="enabled"
               style={{ touchAction: 'none', userSelect: 'none' }}
             />
           )}
