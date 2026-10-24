@@ -219,10 +219,18 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
-  // Abrir WhatsApp sin fijar el número del indicativo actual.
-  // El sitio no puede leer ni recuperar desde WhatsApp el contacto elegido en su selector.
+  // Si la libreta ya tiene un teléfono válido, abrir directamente el chat de ese número.
+  // Si solo hay un alias o el campo está vacío, abrir WhatsApp para compartir/seleccionar destinatario.
   const handleOpenWhatsApp = () => {
-    window.open('https://wa.me/', '_blank', 'noopener,noreferrer');
+    const raw = whatsapp.trim();
+    const digits = raw.replace(/\\D/g, '');
+    const looksLikePhone = !raw.startsWith('@') && digits.length >= 7 && digits.length <= 15;
+    const url = looksLikePhone
+      ? `https://wa.me/${digits}`
+      : 'whatsapp://send';
+    const fallback = looksLikePhone ? url : 'https://wa.me/';
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened && !looksLikePhone) window.location.href = fallback;
   };
 
   // Abrir el selector general para compartir por Telegram, sin enviar a un usuario concreto.
