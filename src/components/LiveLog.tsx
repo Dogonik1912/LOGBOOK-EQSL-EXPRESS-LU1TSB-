@@ -42,6 +42,11 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onOpenReply,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
+  const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.9 && f <= 27.5; })();
+  const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
+  const cbQSOs = qsos.filter(isCitizenBand);
+  const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
   const [filterBand, setFilterBand] = useState('ALL');
   const [filterMode, setFilterMode] = useState('ALL');
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
@@ -151,7 +156,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     adif += `<PROGRAMID:20>LogBook eQSL Express\n`;
     adif += `<EOH>\n\n`;
 
-    qsos.forEach((q) => {
+    categoryQSOs.forEach((q) => {
       const qDate = q.date.replace(/-/g, '');
       const qTime = q.time.replace(/:/g, '') + '00';
       adif += `<CALL:${q.callsign.length}>${q.callsign}`;
@@ -186,7 +191,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
 
   // Exportar Cabrillo para concursos. El formato es genérico; algunos concursos exigen categorías/cabeceras específicas.
   const handleExportCabrillo = () => {
-    if (!qsos.length) return;
+    if (!categoryQSOs.length) return;
     const contestInput = window.prompt('Código oficial del concurso para la cabecera Cabrillo:', 'GENERIC');
     if (contestInput === null) return;
     const contestCode = contestInput.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'GENERIC';
@@ -205,7 +210,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       `OPERATORS: ${myCall}`,
       'CREATED-BY: LogBook eQSL Express',
     ];
-    [...qsos].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).forEach((q) => {
+    [...categoryQSOs].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).forEach((q) => {
       const date = q.date || '';
       const time = (q.time || '').replace(/:/g, '').slice(0, 4).padEnd(4, '0');
       const frequencyMHz = Number.parseFloat((q.frequency || '').trim());
@@ -296,7 +301,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   };
 
   // Filtrado de QSOs
-  const filteredQSOs = qsos.filter((q) => {
+  const filteredQSOs = categoryQSOs.filter((q) => {
     const matchesSearch =
       q.callsign.toLowerCase().includes(searchTerm.toLowerCase()) ||
       q.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -321,12 +326,21 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-wide">
-                Live Logbook ({qsos.length} QSOs)
+                {activeLog === 'ham' ? 'Radioafición' : '11 metros'} ({categoryQSOs.length} QSO)
               </h2>
               <p className="text-xs text-slate-400">
 </p>
             </div>
           </div>
+        </div>
+
+        <div className="flex gap-2 mb-3" role="tablist" aria-label="Listas de contactos">
+          <button type="button" role="tab" aria-selected={activeLog === 'ham'} onClick={() => { setActiveLog('ham'); setFilterBand('ALL'); }} className={`flex-1 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${activeLog === 'ham' ? 'border-amber-400 bg-amber-500 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300'}`}>
+            Radioafición <span className="ml-1 rounded-md bg-black/15 px-2 py-0.5">{hamQSOs.length}</span>
+          </button>
+          <button type="button" role="tab" aria-selected={activeLog === 'cb'} onClick={() => { setActiveLog('cb'); setFilterBand('ALL'); }} className={`flex-1 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${activeLog === 'cb' ? 'border-emerald-400 bg-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300'}`}>
+            11 metros <span className="ml-1 rounded-md bg-black/15 px-2 py-0.5">{cbQSOs.length}</span>
+          </button>
         </div>
 
         {/* Búsqueda, Filtros y Acciones ADIF */}
@@ -352,7 +366,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             className="px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-300 focus:border-amber-400 focus:outline-hidden"
           >
             <option value="ALL">Todas las bandas</option>
-            {['160m', '80m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '70cm'].map((b) => (
+            {['160m', '80m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '11 metros', '6m', '2m', '70cm'].map((b) => (
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
@@ -384,7 +398,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           <button
             type="button"
             onClick={handleExportCabrillo}
-            disabled={qsos.length === 0}
+            disabled={categoryQSOs.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
             title="Exportar Cabrillo base; los intercambios y categorías específicos dependen del concurso"
           >
@@ -432,7 +446,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             {filteredQSOs.length === 0 ? (
               <tr>
                 <td colSpan={9} className="py-8 text-center text-slate-500">
-                  {searchTerm ? 'No se encontraron contactos con los filtros actuales.' : 'No hay contactos en el log. ¡Ingresá el primero arriba!'}
+                  {searchTerm ? 'No se encontraron contactos con los filtros actuales.' : `Todavía no hay QSO en la lista de ${activeLog === 'ham' ? 'radioafición' : '11 metros'}.`}
                 </td>
               </tr>
             ) : (
@@ -644,6 +658,20 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             )}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 border-t border-slate-800 pt-4" aria-label={`Contadores de ${activeLog === 'ham' ? 'radioafición' : '11 metros'}`}>
+        <div className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-3">
+          <div className="text-xs text-slate-400">QSO cargados</div>
+          <div className="text-xl font-bold text-white">{categoryQSOs.length}</div>
+        </div>
+        <div className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-3">
+          <div className="text-xs text-slate-400">eQSL enviadas</div>
+          <div className="text-xl font-bold text-emerald-400">{categoryQSOs.filter((q) => q.qslSent).length}</div>
+        </div>
+        <div className="rounded-xl bg-slate-950 border border-slate-800 px-3 py-3">
+          <div className="text-xs text-slate-400">eQSL recibidas</div>
+          <div className="text-xl font-bold text-sky-400">{categoryQSOs.filter((q) => q.qslRcvd).length}</div>
+        </div>
       </div>
     </div>
   );
