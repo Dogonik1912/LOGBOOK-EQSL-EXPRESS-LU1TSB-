@@ -1,13 +1,17 @@
 import { randomBytes } from 'node:crypto';
 import { get, put } from '@vercel/blob';
 
-// Short-lived eQSL links are stored in a private Vercel Blob store.
-// Only this server endpoint can read the stored cards; the public link contains
-// a random ID and this handler returns only cards that have not expired.
+// Shared eQSL cards live in private Vercel Blob storage.
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
 const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
+
+function getToken() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) throw new Error('EQSL_SHARE_NOT_CONFIGURED');
+  return token;
+}
 
 function validateCard(body) {
   const card = {
@@ -24,14 +28,12 @@ function validateCard(body) {
     grid: clean(body?.grid, 12),
     imageDataUrl: typeof body?.imageDataUrl === 'string' ? body.imageDataUrl : '',
   };
-  // Preserve the sender's rendered card image, crop and layout.
   if (card.imageDataUrl && (
     card.imageDataUrl.length > 1800000 ||
     !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl)
   )) return null;
   if (
-    !CALL_RE.test(card.from) ||
-    !CALL_RE.test(card.to) ||
+    !CALL_RE.test(card.from) || !CALL_RE.test(card.to) ||
     !/^\d{4}-\d{2}-\d{2}$/.test(card.date) ||
     !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(card.time) ||
     !card.band || !card.frequency || !card.mode
@@ -39,17 +41,11 @@ function validateCard(body) {
   return card;
 }
 
-function ensureConfigured() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error('EQSL_SHARE_NOT_CONFIGURED');
-  }
-}
-
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   try {
-    ensureConfigured();
+    const token = getToken();
 
     if (req.method === 'POST') {
       const card = validateCard(req.body || {});
@@ -60,6 +56,7 @@ export default async function handler(req, res) {
       const pathname = `eqsl-shares/${id}.json`;
       await put(pathname, JSON.stringify({ id, card, expiresAt }), {
         access: 'private',
+        token,
         contentType: 'application/json; charset=utf-8',
         addRandomSuffix: false,
       });
@@ -71,8 +68,8 @@ export default async function handler(req, res) {
       if (!/^[a-z0-9]{6,24}$/i.test(id)) {
         return json(res, 400, { error: 'Enlace eQSL inválido.' });
       }
-      const stored = await get(`eqsl-shares/${id}.json`, { access: 'private' });
-      if (!stored) {
+      const stored = await get(`eqsl-shares/${id}.json`, { access: 'private', token });
+      if (!stored || stored.statusCode !== 200 || !stored.stream) {
         return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
       }
       const record = await new Response(stored.stream).json();
@@ -86,11 +83,12 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Método no permitido.' });
   } catch (error) {
     const message = String(error?.message || '');
+    console.error('[eqsl-share] storage operation failed:', message);
     const notConfigured = message.includes('EQSL_SHARE_NOT_CONFIGURED');
     return json(res, notConfigured ? 503 : 500, {
       error: notConfigured
         ? 'Los enlaces cortos eQSL necesitan configurar el almacenamiento del servidor.'
-        : 'No se pudo crear o recuperar el enlace eQSL.',
+        : 'No se pudo recuperar la tarjeta eQSL. Pedile al colega que vuelva a compartirla.',
     });
   }
 }
