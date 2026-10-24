@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 type SharedEQSL = {
   from: string; to: string; date: string; time: string; band: string;
   frequency: string; mode: string; rstSent: string; rstRcvd: string;
-  name?: string; qth?: string; grid?: string; imageDataUrl?: string;
+  name?: string; qth?: string; grid?: string; imageDataUrl?: string; isResponse?: boolean;
 };
 
 type Language = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'ja' | 'zh' | 'pl' | 'sv' | 'no' | 'da' | 'fi' | 'cs' | 'sk' | 'hu' | 'ro' | 'tr' | 'el' | 'uk' | 'hr' | 'sr' | 'ca';
@@ -79,6 +79,7 @@ export const ReceivedEQSLPage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [card, setCard] = useState<SharedEQSL | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
   const t = translations[language];
@@ -152,20 +153,25 @@ export const ReceivedEQSLPage: React.FC = () => {
     const isJpeg = Boolean(card.imageDataUrl?.startsWith('data:image/jpeg'));
     link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + (isJpeg ? '.jpg' : '.png');
     link.href = card.imageDataUrl || canvasRef.current!.toDataURL('image/png'); link.click();
+    if (card.isResponse) {
+      setDownloaded(true);
+      window.setTimeout(() => { window.location.href = window.location.origin + '/'; }, 3000);
+    }
   };
 
   return <main lang={language} className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-5">
     <section className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-900 p-3 sm:p-6 shadow-2xl">
-      <h1 className="text-xl sm:text-3xl font-extrabold text-amber-300 mb-2 text-center">{t.title}</h1>
-      <p className="text-base sm:text-lg font-semibold text-slate-100 mb-4 text-center">{t.intro}</p>
+      <h1 className="text-xl sm:text-3xl font-extrabold text-amber-300 mb-2 text-center">{card?.isResponse ? 'Respuesta eQSL recibida' : t.title}</h1>
+      <p className="text-base sm:text-lg font-semibold text-slate-100 mb-4 text-center">{card?.isResponse ? 'Esta es la tarjeta de respuesta. Podés verla y descargarla sin volver a responder.' : t.intro}</p>
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
-        <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
+        <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={card.isResponse ? 'Tarjeta eQSL de respuesta' : t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
         <div className="mt-4 flex flex-col gap-3">
-          <a href={getReplyAppUrl()} className="block rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{t.open}</a>
+          {!card.isResponse && <a href={getReplyAppUrl()} className="block rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{t.open}</a>}
           <button onClick={download} className="rounded-lg border border-slate-600 px-4 py-3 font-semibold text-slate-100">{t.download}</button>
+          {card.isResponse && <button onClick={() => { window.location.href = window.location.origin + '/'; }} className="rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{downloaded ? 'Volver al inicio (también volverá automáticamente)' : 'Volver a la página principal'}</button>}
         </div>
       </>}
-      <p className="mt-4 text-center text-xs text-slate-400">{t.note}</p>
+      <p className="mt-4 text-center text-xs text-slate-400">{card?.isResponse ? 'Después de descargar la tarjeta, volverás automáticamente a LogBook eQSL Express.' : t.note}</p>
     </section>
   </main>;
 };
