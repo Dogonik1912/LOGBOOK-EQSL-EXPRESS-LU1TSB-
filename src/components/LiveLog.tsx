@@ -592,6 +592,14 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                       >
                         {q.qslSent ? '✓ Enviada' : 'Emitir eQSL'}
                       </button>
+                      <div className="mt-1 flex justify-center gap-1">
+                        <button type="button" onClick={() => onUpdateQSO({ ...q, qslSent: !q.qslSent })} className={`rounded px-1.5 py-0.5 text-[9px] border ${q.qslSent ? 'border-emerald-500/50 text-emerald-300 bg-emerald-500/10' : 'border-slate-700 text-slate-400'}`} title="Marcar si la eQSL fue enviada">
+                          E: {q.qslSent ? 'Sí' : 'No'}
+                        </button>
+                        <button type="button" onClick={() => onUpdateQSO({ ...q, qslRcvd: !q.qslRcvd })} className={`rounded px-1.5 py-0.5 text-[9px] border ${q.qslRcvd ? 'border-sky-500/50 text-sky-300 bg-sky-500/10' : 'border-slate-700 text-slate-400'}`} title="Marcar si la eQSL fue recibida">
+                          R: {q.qslRcvd ? 'Sí' : 'No'}
+                        </button>
+                      </div>
                     </td>
 
                     {/* Acciones */}
