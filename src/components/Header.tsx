@@ -20,13 +20,21 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
+  // El encabezado queda bloqueado en la imagen que ya estaba mostrándose.
+  // La galería de eQSL es independiente y nunca debe reemplazar esta imagen.
   const readHeaderImage = () => {
+    const locked = localStorage.getItem('app_header_image_locked');
+    if (locked) return locked;
     const explicitlyChosen = localStorage.getItem('app_header_image');
-    if (explicitlyChosen) return explicitlyChosen;
+    if (explicitlyChosen) {
+      localStorage.setItem('app_header_image_locked', explicitlyChosen);
+      return explicitlyChosen;
+    }
     try {
       const gallery = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>;
-      // Si no hay una imagen de encabezado asignada, usar automáticamente una imagen ya cargada en la galería.
-      return gallery.find((item) => item.dataUrl)?.dataUrl || '';
+      const currentVisibleImage = gallery.find((item) => item.dataUrl)?.dataUrl || '';
+      if (currentVisibleImage) localStorage.setItem('app_header_image_locked', currentVisibleImage);
+      return currentVisibleImage;
     } catch {
       return '';
     }
