@@ -78,29 +78,46 @@ const languageForRecipient = (): Language => {
 export const ReceivedEQSLPage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [card, setCard] = useState<SharedEQSL | null>(null);
+  const [shareId, setShareId] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
   const t = translations[language];
 
   useEffect(() => {
-    try {
-      const raw = new URLSearchParams(window.location.search).get('view_eqsl');
-      if (!raw) { setErrorKey('missing'); return; }
-      const data = JSON.parse(raw) as SharedEQSL;
-      if (!data.from || !data.to || !data.date || !data.time) throw new Error('invalid');
-      setCard(data);
-      // Contar la estación destinataria cuando se abre la tarjeta compartida: no requiere cuenta.
-      const recipientCall = String(data.to || '').trim().toUpperCase();
-      if (/^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(recipientCall)) {
-        fetch('/api/directory', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'activity', callsign: recipientCall }),
-        }).catch(() => {});
+    let active = true;
+    const load = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('e');
+      try {
+        let data: SharedEQSL;
+        if (id) {
+          setShareId(id);
+          const response = await fetch('/api/eqsl-share?id=' + encodeURIComponent(id), { cache: 'no-store' });
+          const result = await response.json();
+          if (!response.ok || !result.card) throw new Error('invalid');
+          data = result.card as SharedEQSL;
+        } else {
+          const raw = params.get('view_eqsl');
+          if (!raw) { if (active) setErrorKey('missing'); return; }
+          data = JSON.parse(raw) as SharedEQSL;
+        }
+        if (!data.from || !data.to || !data.date || !data.time) throw new Error('invalid');
+        if (!active) return;
+        setCard(data);
+        const recipientCall = String(data.to || '').trim().toUpperCase();
+        if (/^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\\/[A-Z0-9]{1,5})?$/.test(recipientCall)) {
+          fetch('/api/directory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'activity', callsign: recipientCall }),
+          }).catch(() => {});
+        }
+      } catch {
+        if (active) setErrorKey('invalid');
       }
-    } catch {
-      setErrorKey('invalid');
-    }
+    };
+    void load();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -130,6 +147,7 @@ export const ReceivedEQSLPage: React.FC = () => {
   }, [card, t]);
 
   const getReplyAppUrl = () => {
+    if (shareId) return window.location.origin + '/?reply_eqsl=' + encodeURIComponent(shareId);
     if (!card) return window.location.origin + '/';
     const params = new URLSearchParams({ reply_to: card.from, to_call: card.to, date: card.date, time: card.time, band: card.band, freq: card.frequency, mode: card.mode, rst: card.rstSent || '59' });
     return window.location.origin + '/?' + params.toString();
