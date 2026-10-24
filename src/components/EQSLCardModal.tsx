@@ -373,6 +373,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // Enlace para que el corresponsal que reciba el mensaje pueda responder con su propia eQSL
   const getReplyUrl = () => {
     const origin = window.location.origin;
+    // El enlace de respuesta solo lleva los datos necesarios del QSO; nunca expone correo ni teléfono.
     const params = new URLSearchParams({
       reply_to: myCallsign,
       to_call: qso.callsign,
@@ -382,11 +383,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       freq: qso.frequency,
       mode: qso.mode,
       rst: qso.rstSent || '59',
-      // Datos del operador que envía esta tarjeta; no reutilizar los del destinatario del QSO.
-      email: localStorage.getItem('user_email') || '',
-      wa: localStorage.getItem('user_whatsapp') || '',
-      wa_user: localStorage.getItem('user_whatsapp_username') || '',
-      telegram: localStorage.getItem('user_telegram') || '',
     });
     return `${origin}/?${params.toString()}`;
   };
@@ -433,26 +429,43 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   // Guardar los datos introducidos en la pantalla de envío, solo en la libreta privada local.
   // PRIORIDAD 1: Compartir por WhatsApp con firma dinámica y link de respuesta eQSL
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = async () => {
     if (!isQsoValidForEQSL()) return;
     trackEQSLActivity();
-    const firma = getFirma();
-    const replyLink = getReplyUrl();
-    const receivedCardLink = getReceivedCardUrl();
-    const text = `📻 *Tarjeta eQSL Oficial*\n` +
-      `De: *${myCallsign}* para: *${qso.callsign}*\n` +
-      `📅 Contacto: ${qso.date} ${qso.time} UTC\n` +
-      `📡 ${qso.band} (${qso.frequency} MHz) · Modo: ${qso.mode}\n` +
-      `📶 RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'}\n` +
-      `🖼️ *Ver y descargar la tarjeta eQSL:*\n${receivedCardLink}\n\n` +
-      (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
-      `\n${firma}\n\n` +
-      `💌 *¿Querés responder con tu eQSL?*\n` +
-      `Ingresá aquí para emitir tu confirmación recíproca gratuita:\n${replyLink}`;
 
-    // Sin teléfono preconfigurado: WhatsApp permite elegir el destinatario en la propia app.
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // WhatsApp debe recibir la tarjeta como imagen adjunta grande, no un bloque de URLs.
+    // El enlace corto abre LogBook eQSL Express directamente en la pantalla de respuesta.
+    const replyLink = getReplyUrl();
+    const message =
+      'Has recibido una QSL por medio de LogBook eQSL Express.\\n' +
+      'Pulsa aquí para descargar y responder esta QSL:\\n' +
+      replyLink;
+
+    const canvas = canvasRef.current;
+    if (canvas && typeof navigator.share === 'function' && typeof File !== 'undefined') {
+      try {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (blob) {
+          const imageFile = new File([blob], `eQSL_${myCallsign}_${qso.callsign}.png`, { type: 'image/png' });
+          if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [imageFile] })) {
+            await navigator.share({
+              files: [imageFile],
+              title: 'Tarjeta eQSL',
+              text: message,
+            });
+            return;
+          }
+        }
+      } catch (error) {
+        // Si el usuario cancela el selector, no abrir una segunda ventana ni enviar nada inesperado.
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        // Si el navegador no admite compartir imágenes, usar el mensaje corto como alternativa.
+      }
+    }
+
+    // Alternativa para navegadores sin compartir archivos: un único enlace corto, sin datos privados.
+    const fallbackText = message;
+    window.open(`https://wa.me/?text=${encodeURIComponent(fallbackText)}`, '_blank', 'noopener,noreferrer');
   };
 
   const isQsoValidForEQSL = () => {
