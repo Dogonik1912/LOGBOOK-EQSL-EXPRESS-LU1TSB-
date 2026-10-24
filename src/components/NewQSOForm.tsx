@@ -301,6 +301,12 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
     saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), whatsappUsername: whatsappUsername.trim().replace(/^@+/, '') || (/^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : ''), telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
 // Se conserva en la libreta local sin publicar automáticamente datos privados en el directorio mundial.
+    // En móvil, cerrar el teclado ANTES de montar el editor de eQSL.
+    // El navegador puede conservar el foco del campo anterior durante el cambio de pantalla.
+    if (shouldOpenEQSL && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     // La tarjeta eQSL recibe el canal elegido por el usuario cuando corresponde.
     onAddQSO(newQSO, shouldOpenEQSL);
 
@@ -329,13 +335,23 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setGrid('');
     setNotes('');
 
-    // No abrir el teclado del móvil al pasar al editor de eQSL.
-    // Solo volver al campo de indicativo cuando se guarda un QSO sin abrir la eQSL.
+    // Asegurar que el teclado siga cerrado después de que React monte el editor.
+    // Se repite el blur tras el cambio de pantalla porque algunos navegadores móviles
+    // restauran el foco del último campo durante el siguiente render.
     if (shouldOpenEQSL) {
-      const activeElement = document.activeElement;
-      if (activeElement instanceof HTMLElement) activeElement.blur();
+      window.setTimeout(() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }, 0);
+      window.setTimeout(() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }, 180);
     } else {
-      setTimeout(() => {
+      // Mantener el flujo rápido para cargar QSOs consecutivos sin abrir eQSL.
+      window.setTimeout(() => {
         callsignInputRef.current?.focus();
       }, 50);
     }
