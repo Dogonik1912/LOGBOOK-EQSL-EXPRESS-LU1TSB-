@@ -105,7 +105,7 @@ export const ReceivedEQSLPage: React.FC = () => {
         if (!active) return;
         setCard(data);
         const recipientCall = String(data.to || '').trim().toUpperCase();
-        if (/^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\\/[A-Z0-9]{1,5})?$/.test(recipientCall)) {
+        if (/^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(recipientCall)) {
           fetch('/api/directory', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
