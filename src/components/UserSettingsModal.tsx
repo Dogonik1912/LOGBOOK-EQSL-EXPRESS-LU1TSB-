@@ -20,6 +20,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
   const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [whatsappUsername, setWhatsappUsername] = useState('');
+  const [telegram, setTelegram] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
@@ -30,6 +33,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     if (isOpen) {
       setCallsign(localStorage.getItem('user_callsign') || '');
       setEmail(localStorage.getItem('user_email') || '');
+      setWhatsapp(localStorage.getItem('user_whatsapp') || '');
+      setWhatsappUsername(localStorage.getItem('user_whatsapp_username') || '');
+      setTelegram(localStorage.getItem('user_telegram') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       let savedGallery: Array<{ id: string; name: string; dataUrl: string }> = [];
       try {
@@ -157,6 +163,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
     localStorage.setItem('user_callsign', finalCall);
     localStorage.setItem('user_email', email.trim());
+    localStorage.setItem('user_whatsapp', whatsapp.trim());
+    localStorage.setItem('user_whatsapp_username', whatsappUsername.trim().replace(/^@+/, ''));
+    localStorage.setItem('user_telegram', telegram.trim().replace(/^@+/, ''));
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
     window.dispatchEvent(new Event('user-profile-updated'));
@@ -256,21 +265,25 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Email Personal (para envío de eQSL)
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="lu1tsb@radioclub.org"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi email de respuesta</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
             </div>
-
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi WhatsApp (teléfono internacional)</label>
+              <input type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="54911..." className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi usuario de WhatsApp (opcional)</label>
+              <input type="text" value={whatsappUsername} onChange={(e) => setWhatsappUsername(e.target.value.replace(/^@+/, ''))} placeholder="usuario" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi usuario de Telegram (opcional)</label>
+              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="usuario" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
+            </div>
           </div>
+          <p className="text-[11px] text-slate-500">Estos datos se incluyen en el enlace de respuesta que compartís con el corresponsal para que pueda elegir un canal de vuelta. Completá solo los medios por los que aceptás recibir respuestas.</p>
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
