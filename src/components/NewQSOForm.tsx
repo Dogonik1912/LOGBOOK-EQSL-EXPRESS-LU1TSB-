@@ -322,7 +322,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const shouldOpenEQSL = submitter?.value === 'send';
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
-    const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
+    const validCall = band === '11 metros' ? /^[A-Z0-9][A-Z0-9 /-]{0,19}$/.test(cleanCall) : /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
     const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
     const normalizedFrequency = frequency.trim().replace(',', '.');
