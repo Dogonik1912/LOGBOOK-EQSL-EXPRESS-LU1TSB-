@@ -128,8 +128,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (lastDragPoint.current) {
       const dx = event.clientX - lastDragPoint.current.x;
       const dy = event.clientY - lastDragPoint.current.y;
-      setImagePositionX((value) => Math.max(-100, Math.min(100, value - dx * 100 / Math.max(1, event.currentTarget.clientWidth))));
-      setImagePositionY((value) => Math.max(-100, Math.min(100, value - dy * 100 / Math.max(1, event.currentTarget.clientHeight))));
+      const previewWidth = Math.max(1, event.currentTarget.clientWidth);
+      const previewHeight = Math.max(1, event.currentTarget.clientHeight);
+      setImagePositionX((value) => Math.max(-100, Math.min(100, value - dx * 100 / previewWidth)));
+      setImagePositionY((value) => Math.max(-100, Math.min(100, value - dy * 100 / previewHeight)));
       lastDragPoint.current = { x: event.clientX, y: event.clientY };
     }
   };
@@ -378,6 +380,13 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       setTimeout(renderReplyCard, 50);
     }
   }, [isOpen, myCall, replyToCall, date, time, band, frequency, mode, rstSent, rstRcvd, customBgImage, theme, imagePositionX, imagePositionY, imageZoom]);
+
+  useEffect(() => {
+    if (!customBgImage) return;
+    localStorage.setItem('eqsl_reply_image_position_x', String(imagePositionX));
+    localStorage.setItem('eqsl_reply_image_position_y', String(imagePositionY));
+    localStorage.setItem('eqsl_reply_image_zoom', String(imageZoom));
+  }, [customBgImage, imagePositionX, imagePositionY, imageZoom]);
 
   if (!isOpen) return null;
 
