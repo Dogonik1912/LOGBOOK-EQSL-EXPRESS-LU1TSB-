@@ -101,7 +101,9 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const pinchStartDistance = useRef(0);
   const pinchStartZoom = useRef(0);
 
+  // Control táctil directo: un dedo mueve la imagen y dos dedos hacen zoom.
   const handleImagePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     gesturePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (gesturePointers.current.size === 1) {
@@ -116,12 +118,13 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
 
   const handleImagePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!gesturePointers.current.has(event.pointerId)) return;
+    event.preventDefault();
     gesturePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (gesturePointers.current.size >= 2) {
       const points = Array.from(gesturePointers.current.values());
       const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
       if (pinchStartDistance.current > 0) {
-        setImageZoom(Math.max(0, Math.min(100, pinchStartZoom.current + (distance - pinchStartDistance.current) / 2)));
+        setImageZoom(Math.max(-50, Math.min(200, pinchStartZoom.current + (distance - pinchStartDistance.current) / 2)));
       }
       return;
     }
@@ -145,9 +148,6 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       lastDragPoint.current = null;
     }
     if (gesturePointers.current.size < 2) pinchStartDistance.current = 0;
-    localStorage.setItem('eqsl_reply_image_position_x', String(imagePositionX));
-    localStorage.setItem('eqsl_reply_image_position_y', String(imagePositionY));
-    localStorage.setItem('eqsl_reply_image_zoom', String(imageZoom));
   };
 
   useEffect(() => {
@@ -323,7 +323,9 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (customBgImage) {
       const img = new Image();
       img.onload = () => {
-        const scale = Math.max(width / img.width, height / img.height) * (1 + imageZoom / 100);
+        const scale = Math.max(width / img.width, height / img.height) * Math.max(0.5, 1 + imageZoom / 100);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
         const overflowX = Math.max(0, img.width * scale - width);
         const overflowY = Math.max(0, img.height * scale - height);
         const x = (width - img.width * scale) / 2 - (imagePositionX / 100) * overflowX / 2;
@@ -695,10 +697,16 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         </div>
 
         {customBgImage && (
-          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3">
-            <p className="text-sm font-bold text-white">Encuadrá tu foto con los dedos</p>
-            <p className="mt-1 text-xs text-slate-300">Arrastrá con un dedo para moverla y pellizcá con dos dedos para acercar o alejar. También podés ajustar el encuadre directamente sobre la vista previa.</p>
-            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); setImageZoom(0); localStorage.setItem('eqsl_reply_image_position_x','0'); localStorage.setItem('eqsl_reply_image_position_y','0'); localStorage.setItem('eqsl_reply_image_zoom','0'); }} className="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar y restablecer zoom</button>
+          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3 space-y-3">
+            <p className="text-sm font-bold text-white">Ajuste táctil de la imagen</p>
+            <p className="text-xs text-slate-300">Sobre la vista previa: arrastrá con un dedo para mover la foto y juntá/separá dos dedos para achicarla o ampliarla. También podés usar estos controles.</p>
+            <div className="flex items-center gap-3">
+              <button type="button" aria-label="Achicar imagen" onClick={() => setImageZoom((value) => Math.max(-50, value - 10))} className="min-w-11 rounded-lg border border-slate-700 px-3 py-2 text-lg font-bold text-white hover:bg-slate-800">−</button>
+              <input aria-label="Tamaño de la imagen" type="range" min="-50" max="200" step="1" value={imageZoom} onChange={(event) => setImageZoom(Number(event.target.value))} className="w-full accent-sky-400" />
+              <button type="button" aria-label="Ampliar imagen" onClick={() => setImageZoom((value) => Math.min(200, value + 10))} className="min-w-11 rounded-lg border border-slate-700 px-3 py-2 text-lg font-bold text-white hover:bg-slate-800">+</button>
+              <span className="min-w-12 text-right text-xs tabular-nums text-sky-300">{Math.round(Math.max(0.5, 1 + imageZoom / 100) * 100)}%</span>
+            </div>
+            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); setImageZoom(0); localStorage.setItem('eqsl_reply_image_position_x','0'); localStorage.setItem('eqsl_reply_image_position_y','0'); localStorage.setItem('eqsl_reply_image_zoom','0'); }} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar y restablecer tamaño</button>
           </div>
         )}
 
@@ -731,7 +739,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
               onPointerUp={handleImagePointerUp}
               onPointerCancel={handleImagePointerUp}
               className="absolute inset-2 z-10 rounded-lg cursor-grab active:cursor-grabbing"
-              style={{ touchAction: 'none' }}
+              style={{ touchAction: 'none', userSelect: 'none' }}
             />
           )}
         </div>
