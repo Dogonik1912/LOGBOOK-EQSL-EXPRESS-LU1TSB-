@@ -219,33 +219,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
-  // Usar el selector nativo de contactos del teléfono: devuelve el número elegido
-  // a la app sin abrir el chat de WhatsApp ni abandonar la página.
-  // Por seguridad, WhatsApp no permite que una web recupere un contacto elegido dentro de WhatsApp.
-  const handleOpenWhatsApp = async () => {
-    const contacts = (navigator as Navigator & {
-      contacts?: { select: (properties: string[], options?: { multiple?: boolean }) => Promise<Array<{ name?: string[]; tel?: string[] }>> }
-    }).contacts;
-
-    if (!contacts?.select) {
-      setLookupMessage('Este navegador no ofrece selector de contactos. Escribí o pegá el teléfono internacional en este campo; la app permanecerá abierta.');
-      return;
-    }
-
-    try {
-      const selected = await contacts.select(['name', 'tel'], { multiple: false });
-      const phone = String(selected?.[0]?.tel?.[0] || '').trim();
-      if (!phone) {
-        setLookupMessage('El contacto elegido no tiene un teléfono disponible. Podés escribirlo o pegarlo aquí.');
-        return;
-      }
-      setWhatsapp(phone);
-      setWhatsappUsername('');
-      setLookupMessage('Teléfono copiado al campo WhatsApp. Seguís en LogBook eQSL Express.');
-    } catch {
-      // Si el usuario cancela el selector, no mostrar alertas ni abrir aplicaciones externas.
-    }
-  };
 
   // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
   const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
@@ -369,7 +342,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const shouldOpenEQSL = submitter?.value === 'create-eqsl';
+    const shouldOpenEQSL = submitter?.value === 'send';
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
     const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
@@ -628,8 +601,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                onClick={() => { if (!whatsapp.trim()) void handleOpenWhatsApp(); }}
-                placeholder="Tocá para elegir contacto o escribí el teléfono"
+                placeholder="Número internacional si lo conocés"
                 aria-label="Número de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
@@ -767,16 +739,25 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
         </div>
 
-        {/* Acción principal única: guardar el QSO y abrir automáticamente la vista previa eQSL. */}
+        {/* El QSO se puede guardar solo o preparar la eQSL tras guardarlo. */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 pt-2">
           <button
             type="submit"
             name="qsoAction"
-            value="create-eqsl"
+            value="save"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all active:scale-95 cursor-pointer bg-slate-700 hover:bg-slate-600 text-white border border-slate-600"
+          >
+            <PlusCircle className="w-4 h-4" />
+            CARGAR QSO
+          </button>
+          <button
+            type="submit"
+            name="qsoAction"
+            value="send"
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all active:scale-95 cursor-pointer bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20"
           >
             <PlusCircle className="w-4 h-4" />
-            CREAR eQSL RÁPIDA
+            CARGAR QSO Y PREPARAR eQSL
           </button>
         </div>
       </form>
