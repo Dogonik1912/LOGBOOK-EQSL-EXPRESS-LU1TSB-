@@ -80,41 +80,12 @@ export default async function handler(req, res) {
     }
 
     if (body.action === 'contact') {
-      // Publication is opt-in; the UI must collect this consent from the station owner,
-      // never from someone entering a correspondent's contact details.
-      if (body.consent !== true) {
-        return json(res, 400, { error: 'Se requiere autorización explícita para publicar los datos de esta estación' });
-      }
-
-      const email = cleanText(body.email, 254);
-      const whatsapp = String(body.whatsapp || '').replace(/[^0-9]/g, '').slice(0, 15);
-      const telegram = cleanText(body.telegram, 32).replace(/^@+/, '').replace(/[^A-Za-z0-9_]/g, '');
-      const country = cleanText(body.country, 100);
-      const grid = cleanText(body.grid, 12).toUpperCase();
-
-      if (email && !validEmail(email)) return json(res, 400, { error: 'Correo no válido' });
-      if (whatsapp && (whatsapp.length < 7 || whatsapp.length > 15)) {
-        return json(res, 400, { error: 'WhatsApp debe incluir el código internacional y entre 7 y 15 dígitos' });
-      }
-      if (telegram && !/^[A-Za-z0-9_]{5,32}$/.test(telegram)) {
-        return json(res, 400, { error: 'Usuario de Telegram no válido' });
-      }
-      if (!email && !whatsapp && !telegram) {
-        return json(res, 400, { error: 'Ingresá al menos un contacto que quieras publicar' });
-      }
-
-      await db('rpc/publish_eqsl_contact', {
-        method: 'POST',
-        body: JSON.stringify({
-          p_callsign: call,
-          p_email: email || null,
-          p_whatsapp: whatsapp || null,
-          p_telegram: telegram || null,
-          p_country: country || null,
-          p_grid: grid || null,
-        }),
+      // Fail closed until station ownership verification and safe withdrawal are implemented.
+      // A public consent flag alone can be forged and must not allow someone to publish
+      // another operator's email or phone number under their callsign.
+      return json(res, 501, {
+        error: 'La publicación mundial de contactos está temporalmente deshabilitada hasta implementar la verificación del titular del indicativo.',
       });
-      return json(res, 200, { ok: true, callsign: call });
     }
 
     return json(res, 400, { error: 'Acción no válida' });
