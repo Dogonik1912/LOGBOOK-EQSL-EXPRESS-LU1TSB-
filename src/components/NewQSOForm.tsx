@@ -219,6 +219,48 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
+  // Selector de contactos del teléfono (solo con permiso explícito del usuario).
+  // WhatsApp no expone su agenda completa a páginas web; se pueden seleccionar contactos compatibles.
+  const handleChoosePhoneContact = async () => {
+    const contactApi = (navigator as any).contacts;
+    if (!contactApi?.select) {
+      setLookupMessage('Este navegador no ofrece selector de contactos. Podés escribir el teléfono manualmente o abrir Contactos del teléfono y copiarlo aquí.');
+      return;
+    }
+    try {
+      const picked = await contactApi.select(['name', 'tel', 'email'], { multiple: false });
+      const person = picked?.[0];
+      if (!person) return;
+      const names = Array.isArray(person.name) ? person.name : [];
+      const phones = Array.isArray(person.tel) ? person.tel : [];
+      const emails = Array.isArray(person.email) ? person.email : [];
+      const displayName = String(names[0] || '').trim();
+      const phone = String(phones[0] || '').trim();
+      const address = String(emails[0] || '').trim();
+      const callMatch = displayName.toUpperCase().match(/(?:^|[^A-Z0-9])([A-Z]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?)(?=$|[^A-Z0-9])/);
+      const pickedCall = callMatch?.[1] || callsign.trim().toUpperCase();
+      if (pickedCall) {
+        setCallsign(pickedCall);
+        if (phone) setWhatsapp(phone);
+        if (address) setEmail(address);
+        saveContact(pickedCall, {
+          whatsapp: phone,
+          email: address,
+          contactName: displayName,
+        });
+        setLookupMessage('Contacto seleccionado' + (displayName ? ': ' + displayName : '') + '. Datos guardados en esta libreta para ' + pickedCall + '.');
+      } else {
+        if (phone) setWhatsapp(phone);
+        if (address) setEmail(address);
+        setLookupMessage('Contacto seleccionado. Escribí el indicativo del corresponsal para asociar estos datos a su SD.');
+      }
+    } catch (error) {
+      if ((error as any)?.name !== 'AbortError') {
+        setLookupMessage('No se pudo seleccionar el contacto. Podés ingresar el teléfono manualmente.');
+      }
+    }
+  };
+
   // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
   const searchCallsignDetails = async (cleanCall: string, requestId: number) => {
     if (!cleanCall || cleanCall.length < 3 || requestId !== lookupRequestId.current) return;
@@ -589,6 +631,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
               <button
+                type="button"
+                onClick={() => { void handleChoosePhoneContact(); }}
+                className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-slate-600 transition-colors"
+                title="Elegir un contacto del teléfono; el navegador pedirá permiso"
+              >
+                <User className="w-3.5 h-3.5" /> <span>Contactos</span>
+              </button>
+              <button
                 type="submit"
                 name="qsoAction"
                 value="send-whatsapp"
@@ -609,7 +659,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-500">Los contactos utilizados se recuerdan automáticamente en tu libreta local. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
+        {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
+        <p className="text-[11px] text-slate-500">Los contactos utilizados se recuerdan automáticamente en esta libreta. La agenda de WhatsApp no puede leerse completa automáticamente desde el navegador; el botón Contactos solicita permiso y funciona solo en navegadores compatibles. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
