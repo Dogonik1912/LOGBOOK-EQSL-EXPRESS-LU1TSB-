@@ -15,8 +15,7 @@ import {
   Globe, 
   Sparkles, 
   RefreshCw,
-  AlertCircle,
-  Phone,
+  AlertCircle
 } from 'lucide-react';
 
 interface NewQSOFormProps {
@@ -520,6 +519,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               className="w-full px-2 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-white focus:border-amber-400 focus:outline-hidden"
             />
           </div>
+
+        </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
 
