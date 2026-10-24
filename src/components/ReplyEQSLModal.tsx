@@ -336,7 +336,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     const response = await fetch('/api/eqsl-share', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/png') }),
+      body: JSON.stringify({ from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.9) }),
     });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
@@ -353,7 +353,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
       const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
       if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
-      await navigator.share({ files: [file], title: 'Respuesta eQSL', text: text + '\n' + cardUrl, url: cardUrl });
+      await navigator.share({ files: [file], title: 'Respuesta eQSL', text });
       return true;
     } catch (error: any) {
       if (error?.name === 'AbortError') return true;
