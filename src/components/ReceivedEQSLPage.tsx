@@ -148,9 +148,9 @@ export const ReceivedEQSLPage: React.FC = () => {
       <p className="text-base sm:text-lg font-semibold text-slate-100 mb-4 text-center">{t.intro}</p>
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
         <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg"><canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" /></div>
-        <div className="mt-4 flex flex-col sm:flex-row gap-3">
-          <button onClick={download} className="rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950">{t.download}</button>
-          <a href={window.location.origin + '/'} className="rounded-lg border border-slate-600 px-4 py-3 text-center font-semibold">{t.open}</a>
+        <div className="mt-4 flex flex-col gap-3">
+          <a href={getReplyAppUrl()} className="block rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{t.open}</a>
+          <button onClick={download} className="rounded-lg border border-slate-600 px-4 py-3 font-semibold text-slate-100">{t.download}</button>
         </div>
       </>}
       <p className="mt-4 text-center text-xs text-slate-400">{t.note}</p>
