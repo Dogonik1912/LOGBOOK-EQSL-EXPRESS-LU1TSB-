@@ -453,7 +453,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const message = (username ? 'Destinatario WhatsApp: @' + username + ' (buscá este alias en WhatsApp si tu cuenta tiene nombres de usuario habilitados).\n\n' : '') + text;
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-      : `https://wa.me/?text=${encodeURIComponent(message)}`;
+      : username
+        ? `https://wa.me/${encodeURIComponent(username)}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
