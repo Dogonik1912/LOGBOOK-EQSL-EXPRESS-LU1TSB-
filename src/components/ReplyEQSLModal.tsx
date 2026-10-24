@@ -10,6 +10,7 @@ import {
   X,
   Download,
   Mail,
+  MessageSquare,
   Share2,
   Image as ImageIcon,
   Check,
