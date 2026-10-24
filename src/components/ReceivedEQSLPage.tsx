@@ -3,14 +3,14 @@ import React, { useEffect, useRef, useState } from 'react';
 type SharedEQSL = {
   from: string; to: string; date: string; time: string; band: string;
   frequency: string; mode: string; rstSent: string; rstRcvd: string;
-  name?: string; qth?: string; grid?: string;
+  name?: string; qth?: string; grid?: string; imageDataUrl?: string;
 };
 
 type Language = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'ja' | 'zh' | 'pl' | 'sv' | 'no' | 'da' | 'fi' | 'cs' | 'sk' | 'hu' | 'ro' | 'tr' | 'el' | 'uk' | 'hr' | 'sr' | 'ca';
 
 const translations: Record<Language, Record<string, string>> = {
-  es: { title: 'HAY UNA eQSL para ti', intro: 'Responde de manera rápida y gratuita en eQSL EXPRESS.', download: 'Descargar eQSL (PNG)', open: 'Pulsa aquí para descargar y responder esta QSL', note: 'Tu respuesta se prepara dentro de LogBook eQSL Express, sin necesidad de registrarte.', missing: 'No se encontró la tarjeta eQSL en este enlace.', invalid: 'El enlace de la eQSL está incompleto o dañado. Pedile al colega que vuelva a compartirla.', heading: 'TARJETA eQSL · CONFIRMACIÓN DE CONTACTO', confirms: 'confirma el QSO con', date: 'Fecha', band: 'Banda', frequency: 'Frecuencia', mode: 'Modo', rst: 'RST enviado/recibido', thanks: '¡Gracias por el contacto! · 73', grid: 'Grid' },
-  en: { title: 'eQSL received', intro: 'View and download this card without installing the app or creating an account.', download: 'Download eQSL (PNG)', open: 'Open LogBook eQSL Express', note: 'This card is recreated from the data included in the shared link. Keep the link if you want to view it again.', missing: 'No eQSL card was found in this link.', invalid: 'The eQSL link is incomplete or damaged. Ask the operator to share it again.', heading: 'eQSL CARD · QSO CONFIRMATION', confirms: 'confirms the QSO with', date: 'Date', band: 'Band', frequency: 'Frequency', mode: 'Mode', rst: 'RST sent/received', thanks: 'Thanks for the contact! · 73', grid: 'Grid' },
+  es: { title: 'HAY UNA eQSL para ti', intro: 'Responde de manera rápida y gratuita en eQSL EXPRESS.', download: 'Descargar eQSL (PNG)', open: 'Pulsa aquí para descargar y responder esta QSL', note: 'La tarjeta conserva la imagen y el diseño elegidos por quien la envió. Podés descargarla y responder sin registrarte.', missing: 'No se encontró la tarjeta eQSL en este enlace.', invalid: 'El enlace de la eQSL está incompleto o dañado. Pedile al colega que vuelva a compartirla.', heading: 'TARJETA eQSL · CONFIRMACIÓN DE CONTACTO', confirms: 'confirma el QSO con', date: 'Fecha', band: 'Banda', frequency: 'Frecuencia', mode: 'Modo', rst: 'RST enviado/recibido', thanks: '¡Gracias por el contacto! · 73', grid: 'Grid' },
+  en: { title: 'eQSL received', intro: 'View and download this card without installing the app or creating an account.', download: 'Download eQSL (PNG)', open: 'Open LogBook eQSL Express', note: 'This card preserves the image and design chosen by the sender. You can download it and reply without registering.', missing: 'No eQSL card was found in this link.', invalid: 'The eQSL link is incomplete or damaged. Ask the operator to share it again.', heading: 'eQSL CARD · QSO CONFIRMATION', confirms: 'confirms the QSO with', date: 'Date', band: 'Band', frequency: 'Frequency', mode: 'Mode', rst: 'RST sent/received', thanks: 'Thanks for the contact! · 73', grid: 'Grid' },
   fr: { title: 'eQSL reçue', intro: 'Consultez et téléchargez cette carte sans installer l’application ni créer de compte.', download: 'Télécharger eQSL (PNG)', open: 'Ouvrir LogBook eQSL Express', note: 'Cette carte est recréée à partir des données du lien partagé. Conservez le lien pour la consulter à nouveau.', missing: 'Aucune carte eQSL trouvée dans ce lien.', invalid: 'Le lien eQSL est incomplet ou endommagé. Demandez à l’opérateur de le partager à nouveau.', heading: 'CARTE eQSL · CONFIRMATION DU QSO', confirms: 'confirme le QSO avec', date: 'Date', band: 'Bande', frequency: 'Fréquence', mode: 'Mode', rst: 'RST envoyé/reçu', thanks: 'Merci pour le contact ! · 73', grid: 'Locator' },
   de: { title: 'eQSL empfangen', intro: 'Diese Karte ansehen und herunterladen, ohne die App zu installieren oder ein Konto anzulegen.', download: 'eQSL herunterladen (PNG)', open: 'LogBook eQSL Express öffnen', note: 'Diese Karte wird aus den Daten des geteilten Links erstellt. Bewahren Sie den Link auf, um sie erneut anzusehen.', missing: 'In diesem Link wurde keine eQSL-Karte gefunden.', invalid: 'Der eQSL-Link ist unvollständig oder beschädigt. Bitten Sie den Funkamateur, ihn erneut zu teilen.', heading: 'eQSL-KARTE · QSO-BESTÄTIGUNG', confirms: 'bestätigt das QSO mit', date: 'Datum', band: 'Band', frequency: 'Frequenz', mode: 'Betriebsart', rst: 'RST gesendet/empfangen', thanks: 'Danke für den Kontakt! · 73', grid: 'Grid' },
   it: { title: 'eQSL ricevuta', intro: 'Visualizza e scarica questa cartolina senza installare l’app o creare un account.', download: 'Scarica eQSL (PNG)', open: 'Apri LogBook eQSL Express', note: 'Questa cartolina viene ricreata dai dati contenuti nel link condiviso. Conserva il link per rivederla.', missing: 'Nessuna cartolina eQSL trovata in questo link.', invalid: 'Il link eQSL è incompleto o danneggiato. Chiedi all’operatore di condividerlo di nuovo.', heading: 'CARTOLINA eQSL · CONFERMA QSO', confirms: 'conferma il QSO con', date: 'Data', band: 'Banda', frequency: 'Frequenza', mode: 'Modo', rst: 'RST inviato/ricevuto', thanks: 'Grazie per il contatto! · 73', grid: 'Grid' },
@@ -121,7 +121,8 @@ export const ReceivedEQSLPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!card || !canvasRef.current) return;
+    // New links carry the exact rendered card. Only recreate legacy links without an image.
+    if (!card || card.imageDataUrl || !canvasRef.current) return;
     const canvas = canvasRef.current;
     canvas.width = 1200; canvas.height = 750;
     const ctx = canvas.getContext('2d');
@@ -154,10 +155,11 @@ export const ReceivedEQSLPage: React.FC = () => {
   };
 
   const download = () => {
-    if (!canvasRef.current || !card) return;
+    if (!card || (!card.imageDataUrl && !canvasRef.current)) return;
     const link = document.createElement('a');
-    link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + '.png';
-    link.href = canvasRef.current.toDataURL('image/png'); link.click();
+    const isJpeg = Boolean(card.imageDataUrl?.startsWith('data:image/jpeg'));
+    link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + (isJpeg ? '.jpg' : '.png');
+    link.href = card.imageDataUrl || canvasRef.current!.toDataURL('image/png'); link.click();
   };
 
   return <main lang={language} className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-5">
@@ -165,7 +167,7 @@ export const ReceivedEQSLPage: React.FC = () => {
       <h1 className="text-xl sm:text-3xl font-extrabold text-amber-300 mb-2 text-center">{t.title}</h1>
       <p className="text-base sm:text-lg font-semibold text-slate-100 mb-4 text-center">{t.intro}</p>
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
-        <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg"><canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" /></div>
+        <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
         <div className="mt-4 flex flex-col gap-3">
           <a href={getReplyAppUrl()} className="block rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{t.open}</a>
           <button onClick={download} className="rounded-lg border border-slate-600 px-4 py-3 font-semibold text-slate-100">{t.download}</button>
