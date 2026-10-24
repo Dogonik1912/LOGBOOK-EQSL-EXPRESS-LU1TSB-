@@ -173,9 +173,20 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const callsignKeyboardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleCallsignChange = (val: string) => {
     const upper = val.toUpperCase().trim();
     setCallsign(upper);
+    // En móvil, cerrar el teclado cuando la carga del indicativo se detiene.
+    // Si el usuario continúa escribiendo, el temporizador se reinicia en cada tecla.
+    if (callsignKeyboardTimer.current) clearTimeout(callsignKeyboardTimer.current);
+    if (upper.length >= 3) {
+      callsignKeyboardTimer.current = setTimeout(() => {
+        const input = callsignInputRef.current;
+        if (input && document.activeElement === input) input.blur();
+      }, 1800);
+    }
     const requestId = ++lookupRequestId.current;
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
@@ -443,6 +454,12 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 required
                 value={callsign}
                 onChange={(e) => handleCallsignChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (callsignKeyboardTimer.current) clearTimeout(callsignKeyboardTimer.current);
+                    (e.currentTarget as HTMLInputElement).blur();
+                  }
+                }}
                 placeholder={band === '11 metros' ? 'Ej. móvil 23, estación Sol' : 'ej. LU7YS, EA1EXP'}
                 className="w-full px-3 py-2 bg-slate-950 border border-amber-500/40 rounded-xl text-lg font-mono font-black text-amber-300 uppercase tracking-widest placeholder:text-slate-600 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
               />
