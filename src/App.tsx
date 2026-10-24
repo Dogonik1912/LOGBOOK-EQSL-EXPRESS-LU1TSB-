@@ -470,6 +470,7 @@ function MainApp() {
 }
 
 export default function App() {
-  const sharedParams = new URLSearchParams(window.location.search);\n  if (sharedParams.has('e') || sharedParams.has('view_eqsl')) return <ReceivedEQSLPage />;
+  const sharedParams = new URLSearchParams(window.location.search);
+  if (sharedParams.has('e') || sharedParams.has('view_eqsl')) return <ReceivedEQSLPage />;
   return <MainApp />;
 }
