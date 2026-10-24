@@ -59,6 +59,7 @@ export const HAM_BANDS = [
   { name: '15m',  defaultFreq: '21.250', type: 'HF' },
   { name: '12m',  defaultFreq: '24.930', type: 'HF' },
   { name: '10m',  defaultFreq: '28.400', type: 'HF' },
+  { name: '11 metros', defaultFreq: '27.125', type: 'CB' },
   { name: '6m',   defaultFreq: '50.150', type: 'VHF' },
   { name: '2m',   defaultFreq: '144.300', type: 'VHF' },
   { name: '70cm', defaultFreq: '432.200', type: 'UHF' },
