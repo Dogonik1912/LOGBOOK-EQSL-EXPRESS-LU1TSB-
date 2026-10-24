@@ -647,11 +647,13 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
           </div>
         </div>
 
-        {/* Barra de foto de fondo personalizada */}
-        <div className="mb-3 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+        {/* Foto desde la galería del dispositivo para la eQSL de respuesta */}
+        <div className="mb-3 p-3 bg-slate-950/80 rounded-xl border border-sky-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-sky-400" />
-            <span className="text-slate-300 font-medium">Foto personalizada para tu eQSL:</span>
+            <div>
+              <span className="block text-slate-100 font-semibold">Personalizá tu respuesta con una foto</span>
+              <span className="block text-slate-400">Elegí una imagen de la galería de tu teléfono o dispositivo.</span>
             {customBgImage ? (
               <span className="text-emerald-400 font-semibold flex items-center gap-1">
                 ✓ Foto de galería cargada
@@ -675,7 +677,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 font-medium rounded-lg border border-sky-500/30 transition-colors cursor-pointer"
             >
               <ImageIcon className="w-3.5 h-3.5" />
-              {customBgImage ? 'Cambiar foto de galería' : 'Subir foto desde mi galería'}
+              {customBgImage ? 'Cambiar foto del dispositivo' : 'Elegir foto de la galería'}
             </button>
 
             {customBgImage && (
