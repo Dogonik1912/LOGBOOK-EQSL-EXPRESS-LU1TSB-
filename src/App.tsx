@@ -104,6 +104,8 @@ function MainApp() {
     rst?: string;
     email?: string;
     whatsapp?: string;
+    whatsappUsername?: string;
+    telegram?: string;
   } | null>(null);
   const [, setRefreshKey] = useState(0);
   const [registeredUsersCount, setRegisteredUsersCount] = useState<number | null>(null);
@@ -164,6 +166,8 @@ function MainApp() {
         rst: urlParams.get('rst') || '59',
         email: urlParams.get('email') || '',
         whatsapp: urlParams.get('wa') || '',
+        whatsappUsername: urlParams.get('wa_user') || '',
+        telegram: urlParams.get('telegram') || '',
       });
       setIsReplyModalOpen(true);
     }
@@ -260,6 +264,8 @@ function MainApp() {
       rst: qso.rstRcvd || '59',
       email: qso.email,
       whatsapp: qso.whatsapp,
+      whatsappUsername: qso.whatsappUsername,
+      telegram: qso.telegram,
     });
     setIsReplyModalOpen(true);
   };
