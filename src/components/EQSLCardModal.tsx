@@ -497,7 +497,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       return;
     }
     const [invite, openToReply] = getShareInvitation();
-    const message = invite + '\\n' + openToReply + '\\n' + receivedCardLink;
+    const message = invite + '\n' + openToReply + '\n' + receivedCardLink;
     const canvas = canvasRef.current;
     if (canvas && typeof navigator.share === 'function' && typeof File !== 'undefined') {
       try {
@@ -527,7 +527,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       return;
     }
     const [invite, openToReply] = getShareInvitation();
-    const text = invite + '\\n' + openToReply + '\\n' + getFirma();
+    const text = invite + '\n' + openToReply + '\n' + getFirma();
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(receivedCardLink) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -536,7 +536,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!isQsoValidForEQSL()) return;
     const targetEmail = window.prompt(`Pegá el correo de ${qso.callsign} (por ejemplo, obtenido en QRZ):`, '')?.trim() || '';
     if (!targetEmail) return;
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(targetEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(targetEmail)) {
       window.alert('La dirección de correo no parece válida. Revisala y volvé a intentarlo.');
       return;
     }
@@ -551,9 +551,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const firma = getFirma();
     const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
     const body = encodeURIComponent(
-      getShareInvitation()[0] + '\\n\\n' +
-      getShareInvitation()[1] + '\\n' +
-      receivedCardLink + '\\n\\n' + firma + '\\nLogBook eQSL Express'
+      getShareInvitation()[0] + '\n\n' +
+      getShareInvitation()[1] + '\n' +
+      receivedCardLink + '\n\n' + firma + '\nLogBook eQSL Express'
     );
     window.location.href = `mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`;
   };
