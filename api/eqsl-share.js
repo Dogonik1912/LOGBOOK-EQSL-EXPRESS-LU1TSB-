@@ -36,7 +36,11 @@ function validateCard(body) {
     rstRcvd: clean(body?.rstRcvd || '59', 8),
     qth: clean(body?.qth, 80),
     grid: clean(body?.grid, 12),
+    imageDataUrl: typeof body?.imageDataUrl === 'string' ? body.imageDataUrl : '',
   };
+  // Store the already-rendered card so recipients see the sender's exact image,
+  // crop/position and layout instead of a newly generated generic template.
+  if (card.imageDataUrl && (card.imageDataUrl.length > 1800000 || !/^data:image\\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl))) return null;
   if (!CALL_RE.test(card.from) || !CALL_RE.test(card.to) ||
       !/^\d{4}-\d{2}-\d{2}$/.test(card.date) ||
       !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(card.time) ||
