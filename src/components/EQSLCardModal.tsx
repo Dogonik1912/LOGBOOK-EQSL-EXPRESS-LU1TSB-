@@ -775,7 +775,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
             placeholder="Ej. 73 cordiales de LU1TSB"
             className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
           />
-          <p className="text-[11px] text-slate-500">La firma se guarda en este dispositivo. La marca de agua «LogBook eqsl app.» se mantiene siempre, también sobre fotos propias.</p>
+          <p className="text-[11px] text-slate-500">La firma se guarda en este dispositivo. La tarjeta se comparte sin marca de agua y conserva el diseño elegido.</p>
         </div>
 
         {/* Vista previa Canvas */}
