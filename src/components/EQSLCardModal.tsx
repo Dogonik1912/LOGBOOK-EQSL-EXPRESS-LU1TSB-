@@ -67,6 +67,60 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [customBgImage, setCustomBgImage] = useState<string | null>(() => localStorage.getItem('eqsl_custom_bg') || null);
   const [imagePositionX, setImagePositionX] = useState<number>(() => Number(localStorage.getItem('eqsl_image_position_x') || 0));
   const [imagePositionY, setImagePositionY] = useState<number>(() => Number(localStorage.getItem('eqsl_image_position_y') || 0));
+  const [imageZoom, setImageZoom] = useState<number>(() => Number(localStorage.getItem('eqsl_image_zoom') || 0));
+  const gesturePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const lastDragPoint = useRef<{ x: number; y: number } | null>(null);
+  const pinchStartDistance = useRef(0);
+  const pinchStartZoom = useRef(0);
+
+  const handleImagePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!customBgImage) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    gesturePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (gesturePointers.current.size === 1) {
+      lastDragPoint.current = { x: event.clientX, y: event.clientY };
+    } else if (gesturePointers.current.size === 2) {
+      const points = Array.from(gesturePointers.current.values());
+      pinchStartDistance.current = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      pinchStartZoom.current = imageZoom;
+      lastDragPoint.current = null;
+    }
+  };
+
+  const handleImagePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!customBgImage || !gesturePointers.current.has(event.pointerId)) return;
+    event.preventDefault();
+    gesturePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (gesturePointers.current.size >= 2) {
+      const points = Array.from(gesturePointers.current.values());
+      const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      if (pinchStartDistance.current > 0) {
+        const nextZoom = Math.max(0, Math.min(150, pinchStartZoom.current + (distance - pinchStartDistance.current) / 2));
+        setImageZoom(nextZoom);
+        localStorage.setItem('eqsl_image_zoom', String(nextZoom));
+      }
+      return;
+    }
+    if (lastDragPoint.current) {
+      const dx = event.clientX - lastDragPoint.current.x;
+      const dy = event.clientY - lastDragPoint.current.y;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const nextX = Math.max(-100, Math.min(100, imagePositionX - (dx * 200 / Math.max(1, rect.width))));
+      const nextY = Math.max(-100, Math.min(100, imagePositionY - (dy * 200 / Math.max(1, rect.height))));
+      setImagePositionX(nextX);
+      setImagePositionY(nextY);
+      localStorage.setItem('eqsl_image_position_x', String(nextX));
+      localStorage.setItem('eqsl_image_position_y', String(nextY));
+      lastDragPoint.current = { x: event.clientX, y: event.clientY };
+    }
+  };
+
+  const handleImagePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    gesturePointers.current.delete(event.pointerId);
+    lastDragPoint.current = gesturePointers.current.size === 1 ? Array.from(gesturePointers.current.values())[0] : null;
+    if (gesturePointers.current.size < 2) pinchStartDistance.current = 0;
+  };
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => {
     try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; }
   });
@@ -163,8 +217,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     localStorage.setItem('eqsl_custom_bg', dataUrl);
     setImagePositionX(0);
     setImagePositionY(0);
+    setImageZoom(0);
     localStorage.setItem('eqsl_image_position_x', '0');
     localStorage.setItem('eqsl_image_position_y', '0');
+    localStorage.setItem('eqsl_image_zoom', '0');
     setThemeNotice(`⚓ ANCLADA PARA ENVIAR: ${name}. Se mantendrá seleccionada hasta que elijas otro diseño.`);
   };
 
@@ -310,7 +366,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const img = new Image();
       img.onload = () => {
         // Dibujar imagen cubriendo el canvas respetando proporción
-        const scale = Math.max(width / img.width, height / img.height);
+        const scale = Math.max(width / img.width, height / img.height) * (1 + imageZoom / 100);
         const scaledWidth = img.width * scale;
         const scaledHeight = img.height * scale;
         // Los controles permiten desplazar la foto dentro del recorte sin deformarla.
@@ -386,7 +442,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const timer = window.setTimeout(renderCard, 50);
       return () => window.clearTimeout(timer);
     }
-  }, [isOpen, qso, theme, customBgImage, imagePositionX, imagePositionY]);
+  }, [isOpen, qso, theme, customBgImage, imagePositionX, imagePositionY, imageZoom]);
 
   if (!isOpen || !qso) return null;
 
@@ -705,24 +761,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
 
 
-        {/* Controles para centrar y encuadrar la foto personalizada en la vista previa. */}
-        {customBgImage && (
-          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3 space-y-3">
-            <div>
-              <p className="text-sm font-bold text-white">Ajustar posición de la imagen</p>
-              <p className="text-xs text-slate-400">Mové la foto horizontal o verticalmente y mirá el resultado en la vista previa. La imagen no se deforma.</p>
-            </div>
-            <div>
-              <label htmlFor="eqsl-image-position-x" className="flex justify-between text-xs text-slate-300 mb-1"><span>Horizontal</span><span>{imagePositionX === 0 ? 'Centro' : imagePositionX < 0 ? 'Izquierda' : 'Derecha'}</span></label>
-              <input id="eqsl-image-position-x" type="range" min={-100} max={100} step={1} value={imagePositionX} onChange={(e) => { const value = Number(e.target.value); setImagePositionX(value); localStorage.setItem('eqsl_image_position_x', String(value)); }} className="w-full accent-sky-400" />
-            </div>
-            <div>
-              <label htmlFor="eqsl-image-position-y" className="flex justify-between text-xs text-slate-300 mb-1"><span>Vertical</span><span>{imagePositionY === 0 ? 'Centro' : imagePositionY < 0 ? 'Arriba' : 'Abajo'}</span></label>
-              <input id="eqsl-image-position-y" type="range" min={-100} max={100} step={1} value={imagePositionY} onChange={(e) => { const value = Number(e.target.value); setImagePositionY(value); localStorage.setItem('eqsl_image_position_y', String(value)); }} className="w-full accent-sky-400" />
-            </div>
-            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); localStorage.setItem('eqsl_image_position_x', '0'); localStorage.setItem('eqsl_image_position_y', '0'); }} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar imagen</button>
-          </div>
-        )}
+
 
         {/* Configuración de firma personalizada por usuario. */}
         <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-2">
@@ -757,11 +796,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         </div>
 
         {/* Vista previa Canvas */}
-        <div className="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner flex items-center justify-center p-2 mb-4">
-          <canvas
-            ref={canvasRef}
-            className="w-full h-auto max-h-[440px] object-contain rounded-lg shadow-2xl"
-          />
+        <div
+          className={`relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner flex items-center justify-center p-2 mb-4 ${customBgImage ? 'touch-none cursor-grab active:cursor-grabbing' : ''}`}
+          onPointerDown={handleImagePointerDown}
+          onPointerMove={handleImagePointerMove}
+          onPointerUp={handleImagePointerUp}
+          onPointerCancel={handleImagePointerUp}
+        >
+          <canvas ref={canvasRef} className="w-full h-auto max-h-[440px] object-contain rounded-lg shadow-2xl pointer-events-none" />
+          {customBgImage && <span className="absolute bottom-3 left-3 rounded-md bg-black/65 px-2 py-1 text-[11px] text-white pointer-events-none">Arrastrá para mover · pellizcá para ampliar o reducir</span>}
         </div>
 
         {/* Destinatario y opción de respuesta */}
