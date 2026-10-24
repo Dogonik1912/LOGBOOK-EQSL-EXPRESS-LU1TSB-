@@ -404,9 +404,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return `${origin}/?${params.toString()}`;
   };
 
-  // Enlace público para ver y descargar la eQSL recibida sin iniciar sesión.
-  // Solo incluye los datos del QSO necesarios para reconstruir la tarjeta; no comparte email ni teléfono.
-  const getReceivedCardUrl = () => {
+  // Crear un enlace público corto. Los datos del QSO se guardan temporalmente en el servidor,
+  // no se codifican dentro de la URL ni se incluyen datos privados de contacto.
+  const getReceivedCardUrl = async () => {
     const cardData = {
       from: cardSenderCallsign,
       to: qso.callsign,
@@ -420,8 +420,16 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       qth: myQth,
       grid: myGrid,
     };
-    const params = new URLSearchParams({ view_eqsl: JSON.stringify(cardData) });
-    return `${window.location.origin}/?${params.toString()}`;
+    const response = await fetch('/api/eqsl-share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cardData),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.id) {
+      throw new Error(result.error || 'No se pudo crear el enlace corto de la eQSL.');
+    }
+    return `${window.location.origin}/?e=${encodeURIComponent(result.id)}`;
   };
 
   // Descargar archivo PNG
@@ -449,15 +457,17 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleShareWhatsApp = async () => {
     if (!isQsoValidForEQSL()) return;
     trackEQSLActivity();
-
-    // WhatsApp debe recibir la tarjeta como imagen adjunta grande, no un bloque de URLs.
-    // El enlace corto abre LogBook eQSL Express directamente en la pantalla de respuesta.
-    const receivedCardLink = getReceivedCardUrl();
+    let receivedCardLink = '';
+    try {
+      receivedCardLink = await getReceivedCardUrl();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
+      return;
+    }
     const message =
-      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\n' +
-      'Abre la tarjeta y pulsa el botón para responder:\n' +
+      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
+      'Abre la tarjeta y pulsa el botón para responder:\\n' +
       receivedCardLink;
-
     const canvas = canvasRef.current;
     if (canvas && typeof navigator.share === 'function' && typeof File !== 'undefined') {
       try {
@@ -465,24 +475,57 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         if (blob) {
           const imageFile = new File([blob], `eQSL_${myCallsign}_${qso.callsign}.png`, { type: 'image/png' });
           if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [imageFile] })) {
-            await navigator.share({
-              files: [imageFile],
-              title: 'Tarjeta eQSL',
-              text: message,
-            });
+            await navigator.share({ files: [imageFile], title: 'Tarjeta eQSL', text: message });
             return;
           }
         }
       } catch (error) {
-        // Si el usuario cancela el selector, no abrir una segunda ventana ni enviar nada inesperado.
         if (error instanceof DOMException && error.name === 'AbortError') return;
-        // Si el navegador no admite compartir imágenes, usar el mensaje corto como alternativa.
       }
     }
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
 
-    // Alternativa para navegadores sin compartir archivos: un único enlace corto, sin datos privados.
-    const fallbackText = message;
-    window.open(`https://wa.me/?text=${encodeURIComponent(fallbackText)}`, '_blank', 'noopener,noreferrer');
+  const handleShareTelegram = async () => {
+    if (!isQsoValidForEQSL()) return;
+    trackEQSLActivity();
+    let receivedCardLink = '';
+    try {
+      receivedCardLink = await getReceivedCardUrl();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
+      return;
+    }
+    const text = 'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
+      'Abre la tarjeta y pulsa el botón para responder.\\n' + getFirma();
+    const url = 'https://t.me/share/url?url=' + encodeURIComponent(receivedCardLink) + '&text=' + encodeURIComponent(text);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSendEmail = async () => {
+    if (!isQsoValidForEQSL()) return;
+    const targetEmail = window.prompt(`Pegá el correo de ${qso.callsign} (por ejemplo, obtenido en QRZ):`, '')?.trim() || '';
+    if (!targetEmail) return;
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(targetEmail)) {
+      window.alert('La dirección de correo no parece válida. Revisala y volvé a intentarlo.');
+      return;
+    }
+    trackEQSLActivity();
+    let receivedCardLink = '';
+    try {
+      receivedCardLink = await getReceivedCardUrl();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
+      return;
+    }
+    const firma = getFirma();
+    const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
+    const body = encodeURIComponent(
+      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n\\n' +
+      'Abre la tarjeta y pulsa el botón para descargarla y responder con tu propio diseño:\\n' +
+      receivedCardLink + '\\n\\n' + firma + '\\nLogBook eQSL Express'
+    );
+    window.location.href = `mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`;
   };
 
   const isQsoValidForEQSL = () => {
@@ -541,13 +584,16 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
 
   // Copiar resumen del QSO con link de respuesta
-  const handleCopyText = () => {
-    const firma = getFirma();
-    const replyLink = getReplyUrl();
-    const text = `QSO Confirmado: ${myCallsign} <-> ${qso.callsign} | ${qso.date} ${qso.time} UTC | ${qso.band} ${qso.frequency}MHz ${qso.mode} | RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'} | ${firma} | Responder con eQSL: ${replyLink}`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyText = async () => {
+    try {
+      const receivedCardLink = await getReceivedCardUrl();
+      const text = `QSO Confirmado: ${myCallsign} <-> ${qso.callsign} | ${qso.date} ${qso.time} UTC | ${qso.band} ${qso.frequency}MHz ${qso.mode} | RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'} | ${getFirma()} | Responder con eQSL: ${receivedCardLink}`;
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto.');
+    }
   };
 
   return (
