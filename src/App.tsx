@@ -205,10 +205,38 @@ function MainApp() {
   };
 
   const handleAddQSO = (qso: QSO, openEQSL = true) => {
-    const trackedQSO: QSO = { ...qso, mapActivityAt: Date.now() };
-    const updated = [trackedQSO, ...qsos];
+    // Evitar duplicados al guardar una respuesta eQSL de un QSO que ya estaba cargado.
+    const makeQsoKey = (item: QSO) => [
+      String(item.callsign || '').trim().toUpperCase(),
+      item.date,
+      item.time,
+      String(item.band || '').trim().toUpperCase(),
+      String(item.frequency || '').trim().replace(',', '.'),
+      String(item.mode || '').trim().toUpperCase(),
+    ].join('|');
+    const key = makeQsoKey(qso);
+    const existing = qsos.find((item) => makeQsoKey(item) === key);
+    const trackedQSO: QSO = existing
+      ? {
+          ...existing,
+          ...qso,
+          id: existing.id,
+          email: qso.email || existing.email,
+          whatsapp: qso.whatsapp || existing.whatsapp,
+          whatsappRaw: qso.whatsappRaw || existing.whatsappRaw,
+          whatsappUsername: qso.whatsappUsername || existing.whatsappUsername,
+          telegram: qso.telegram || existing.telegram,
+          notes: qso.notes || existing.notes,
+          qslSent: Boolean(existing.qslSent || qso.qslSent),
+          qslRcvd: Boolean(existing.qslRcvd || qso.qslRcvd),
+          mapActivityAt: Date.now(),
+        }
+      : { ...qso, mapActivityAt: Date.now() };
+    const updated = existing
+      ? qsos.map((item) => item.id === existing.id ? trackedQSO : item)
+      : [trackedQSO, ...qsos];
     handleSaveQsos(updated);
-    // La carga simple guarda el contacto sin forzar el generador; la acción eQSL lo abre explícitamente.
+    // Cargar QSO y abrir la tarjeta son acciones distintas; la respuesta usa openEQSL=false.
     if (openEQSL) setActiveEQSLQSO(trackedQSO);
   };
 
@@ -407,7 +435,7 @@ function MainApp() {
           setIsReplyModalOpen(false);
           setReplyData(null);
         }}
-        onSaveQSO={handleAddQSO}
+        onSaveQSO={(qso) => handleAddQSO(qso, false)}
       />
     </div>
   );
