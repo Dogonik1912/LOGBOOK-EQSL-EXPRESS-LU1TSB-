@@ -86,7 +86,9 @@ export const ReceivedEQSLPage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [card, setCard] = useState<SharedEQSL | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [alreadyViewed, setAlreadyViewed] = useState(false);\n  const [downloadAttempted, setDownloadAttempted] = useState(false);\n  const [galleryStatus, setGalleryStatus] = useState<'saved' | 'failed' | ''>('');
+  const [alreadyViewed, setAlreadyViewed] = useState(false);
+  const [downloadAttempted, setDownloadAttempted] = useState(false);
+  const [galleryStatus, setGalleryStatus] = useState<'saved' | 'failed' | ''>('');
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
   const t = translations[language];
