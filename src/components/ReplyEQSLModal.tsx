@@ -322,43 +322,45 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
+  // Intenta compartir siempre la misma tarjeta PNG mediante la hoja nativa del teléfono.
+  // El navegador permite elegir WhatsApp, Telegram o correo si esas apps aceptan archivos.
+  const shareReplyCardFile = async (text: string): Promise<boolean> => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof navigator.share !== 'function') return false;
+    try {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) return false;
+      const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+      const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
+      if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
+      await navigator.share({ files: [file], title: 'Respuesta eQSL', text, url: window.location.origin + '/' });
+      return true;
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return true;
+      return false;
+    }
+  };
+
   // Compartir la respuesta como tarjeta eQSL (imagen) y texto. El enlace lleva
   // siempre a la página principal: esta tarjeta ya es una confirmación recibida.
   const handleShareWhatsApp = async () => {
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
-    const text = `📻 *Respuesta a tu Tarjeta eQSL*\\n` +
-      `De: *${activeMyCall}* para: *${replyToCall}*\\n` +
-      `🤝 ¡Contacto 2-Way Confirmado!\\n` +
-      `📅 Fecha: ${date} ${time} UTC\\n` +
-      `📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\\n` +
-      `📶 RST: ${rstSent} / ${rstRcvd}\\n\\n` +
-      `73 cordiales de ${activeMyCall}\\n` +
-      `LogBook eQSL Express\\n` +
+    const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
+      `De: *${activeMyCall}* para: *${replyToCall}*\n` +
+      `🤝 ¡Contacto 2-Way Confirmado!\n` +
+      `📅 Fecha: ${date} ${time} UTC\n` +
+      `📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n` +
+      `📶 RST: ${rstSent} / ${rstRcvd}\n\n` +
+      `73 cordiales de ${activeMyCall}\n` +
+      `LogBook eQSL Express\n` +
       `Abrir la aplicación: ${window.location.origin}/`;
-
-    const canvas = canvasRef.current;
-    if (canvas && typeof navigator.share === 'function') {
-      try {
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-        if (blob) {
-          const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
-          if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'Respuesta eQSL', text, url: window.location.origin + '/' });
-            return;
-          }
-        }
-      } catch (error: any) {
-        if (error?.name === 'AbortError') return;
-        // Si el navegador no permite compartir archivos, continuar con el enlace de texto.
-      }
-    }
-
+    if (await shareReplyCardFile(text)) return;
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
     const username = String(initialData?.whatsappUsername || '').replace(/^@+/, '');
-    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\\n\\n' : '') + text;
+    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\n\n' : '') + text;
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     } else {
@@ -366,22 +368,20 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     }
   };
 
-  const handleShareTelegram = () => {
+  const handleShareTelegram = async () => {
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
-    const text = '📻 Respuesta a tu eQSL\nDe: ' + activeMyCall + ' para: ' + replyToCall + '\n' +
-      '🤝 Contacto confirmado · ' + date + ' ' + time + ' UTC\n' +
-      '📡 ' + band + ' (' + frequency + ' MHz) · ' + mode + '\n' +
-      '📶 RST: ' + rstSent + '/' + rstRcvd + '\n73 cordiales de ' + activeMyCall + '\nLogBook eQSL Express';
+    const text = `📻 Respuesta a tu eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 Contacto confirmado · ${date} ${time} UTC\n📡 ${band} (${frequency} MHz) · ${mode}\n📶 RST: ${rstSent}/${rstRcvd}\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nAbrir la aplicación: ${window.location.origin}/`;
+    if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
       ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
-      : 'https://t.me/share/url?url=' + encodeURIComponent(window.location.origin) + '&text=' + encodeURIComponent(text);
+      : 'https://t.me/share/url?url=' + encodeURIComponent(window.location.origin + '/') + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Enviar respuesta por Email
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
     if (!emailTo.trim()) {
       window.alert('Ingresá el correo del remitente original o elegí WhatsApp o Telegram para responder.');
       return;
@@ -389,23 +389,11 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     const firma = `73 cordiales de ${activeMyCall}`;
+    const text = `📻 Respuesta a tu Tarjeta eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 ¡Contacto 2-Way Confirmado!\n📅 Fecha: ${date} ${time} UTC\n📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n📶 RST: ${rstSent} / ${rstRcvd}\n\n${firma}\nLogBook eQSL Express\nAbrir la aplicación: ${window.location.origin}/`;
+    if (await shareReplyCardFile(text)) return;
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
-    const body = encodeURIComponent(
-      `Estimado colega de ${replyToCall},\n\n` +
-      `He recibido tu confirmación y con gusto te respondo con mi eQSL recíproca:\n\n` +
-      `• Mi Indicativo: ${activeMyCall}\n` +
-      `• Tu Indicativo: ${replyToCall}\n` +
-      `• Fecha: ${date} ${time} UTC\n` +
-      `• Banda: ${band} (${frequency} MHz)\n` +
-      `• Modo: ${mode}\n` +
-      `• Reporte RST: ${rstSent} / ${rstRcvd}\n\n` +
-      `¡Muchas gracias por el contacto y nos escuchamos en las frecuencias!\n\n` +
-      `${firma}\n` +
-      `LogBook eQSL Express`
-    );
-
-    const targetEmail = emailTo.trim();
-    window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+    const body = encodeURIComponent(`Estimado colega de ${replyToCall},\n\nHe recibido tu confirmación y te envío mi respuesta eQSL.\n\n${text}`);
+    window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
 
   // Guardar automáticamente el QSO de respuesta antes de abrir el canal externo.
