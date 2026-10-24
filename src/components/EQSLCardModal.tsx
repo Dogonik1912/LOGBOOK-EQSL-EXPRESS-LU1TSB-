@@ -291,6 +291,17 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         ctx.fillText(firma, width / 2, 635, width - 120);
       }
 
+      // Marca de agua solicitada por el usuario: también se aplica sobre fotos propias.
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.font = 'italic bold 18px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('LogBook eqsl app.', width - 55, height - 48);
+      ctx.restore();
+
     };
 
     if (customBgImage) {
