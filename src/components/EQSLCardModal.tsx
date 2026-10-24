@@ -65,6 +65,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [customBgImage, setCustomBgImage] = useState<string | null>(() => localStorage.getItem('eqsl_custom_bg') || null);
+  const [imagePositionX, setImagePositionX] = useState<number>(() => Number(localStorage.getItem('eqsl_image_position_x') || 0));
+  const [imagePositionY, setImagePositionY] = useState<number>(() => Number(localStorage.getItem('eqsl_image_position_y') || 0));
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => {
     try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; }
   });
@@ -152,6 +154,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleSelectGalleryImage = (dataUrl: string, name = 'foto de galería') => {
     setCustomBgImage(dataUrl);
     localStorage.setItem('eqsl_custom_bg', dataUrl);
+    setImagePositionX(0);
+    setImagePositionY(0);
+    localStorage.setItem('eqsl_image_position_x', '0');
+    localStorage.setItem('eqsl_image_position_y', '0');
     setThemeNotice(`⚓ ANCLADA PARA ENVIAR: ${name}. Se mantendrá seleccionada hasta que elijas otro diseño.`);
   };
 
@@ -294,8 +300,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       img.onload = () => {
         // Dibujar imagen cubriendo el canvas respetando proporción
         const scale = Math.max(width / img.width, height / img.height);
-        const x = (width - img.width * scale) / 2;
-        const y = (height - img.height * scale) / 2;
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        // Los controles permiten desplazar la foto dentro del recorte sin deformarla.
+        const x = (width - scaledWidth) / 2 + ((width - scaledWidth) / 2) * (imagePositionX / 100);
+        const y = (height - scaledHeight) / 2 + ((height - scaledHeight) / 2) * (imagePositionY / 100);
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
         // Capa oscura translúcida para legibilidad profesional
@@ -366,7 +375,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const timer = window.setTimeout(renderCard, 50);
       return () => window.clearTimeout(timer);
     }
-  }, [isOpen, qso, theme, customBgImage]);
+  }, [isOpen, qso, theme, customBgImage, imagePositionX, imagePositionY]);
 
   if (!isOpen || !qso) return null;
 
@@ -641,6 +650,25 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
 
 
+
+        {/* Controles para centrar y encuadrar la foto personalizada en la vista previa. */}
+        {customBgImage && (
+          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3 space-y-3">
+            <div>
+              <p className="text-sm font-bold text-white">Ajustar posición de la imagen</p>
+              <p className="text-xs text-slate-400">Mové la foto horizontal o verticalmente y mirá el resultado en la vista previa. La imagen no se deforma.</p>
+            </div>
+            <div>
+              <label htmlFor="eqsl-image-position-x" className="flex justify-between text-xs text-slate-300 mb-1"><span>Horizontal</span><span>{imagePositionX === 0 ? 'Centro' : imagePositionX < 0 ? 'Izquierda' : 'Derecha'}</span></label>
+              <input id="eqsl-image-position-x" type="range" min={-100} max={100} step={1} value={imagePositionX} onChange={(e) => { const value = Number(e.target.value); setImagePositionX(value); localStorage.setItem('eqsl_image_position_x', String(value)); }} className="w-full accent-sky-400" />
+            </div>
+            <div>
+              <label htmlFor="eqsl-image-position-y" className="flex justify-between text-xs text-slate-300 mb-1"><span>Vertical</span><span>{imagePositionY === 0 ? 'Centro' : imagePositionY < 0 ? 'Arriba' : 'Abajo'}</span></label>
+              <input id="eqsl-image-position-y" type="range" min={-100} max={100} step={1} value={imagePositionY} onChange={(e) => { const value = Number(e.target.value); setImagePositionY(value); localStorage.setItem('eqsl_image_position_y', String(value)); }} className="w-full accent-sky-400" />
+            </div>
+            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); localStorage.setItem('eqsl_image_position_x', '0'); localStorage.setItem('eqsl_image_position_y', '0'); }} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar imagen</button>
+          </div>
+        )}
 
         {/* Vista previa Canvas */}
         <div className="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner flex items-center justify-center p-2 mb-4">
