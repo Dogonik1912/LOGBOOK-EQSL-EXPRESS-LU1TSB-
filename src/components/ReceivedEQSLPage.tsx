@@ -1,5 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+declare global {
+  interface Window {
+    /** Exposed only by a native Android wrapper. Returns JSON after a verified MediaStore write. */
+    AndroidEQSL?: { saveToGallery: (dataUrl: string, filename: string) => string };
+  }
+}
+
 type SharedEQSL = {
   from: string; to: string; date: string; time: string; band: string;
   frequency: string; mode: string; rstSent: string; rstRcvd: string;
@@ -79,7 +86,7 @@ export const ReceivedEQSLPage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [card, setCard] = useState<SharedEQSL | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [alreadyViewed, setAlreadyViewed] = useState(false);
+  const [alreadyViewed, setAlreadyViewed] = useState(false);\n  const [downloadAttempted, setDownloadAttempted] = useState(false);\n  const [galleryStatus, setGalleryStatus] = useState<'saved' | 'failed' | ''>('');
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
   const t = translations[language];
@@ -148,17 +155,50 @@ export const ReceivedEQSLPage: React.FC = () => {
     return window.location.origin + '/?' + params.toString();
   };
 
-  const download = () => {
-    if (!card || (!card.imageDataUrl && !canvasRef.current)) return;
-    const link = document.createElement('a');
-    const isJpeg = Boolean(card.imageDataUrl?.startsWith('data:image/jpeg'));
-    link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + (isJpeg ? '.jpg' : '.png');
-    link.href = card.imageDataUrl || canvasRef.current!.toDataURL('image/png'); link.click();
-    if (card.isResponse) {
-      // Iniciar la descarga y luego regresar a la página principal.
-      window.setTimeout(() => { window.location.replace(window.location.origin + '/'); }, 1800);
-    }
+  const getImageDataUrl = () => {
+    if (!card) return null;
+    if (card.imageDataUrl) return card.imageDataUrl;
+    if (!canvasRef.current) return null;
+    try { return canvasRef.current.toDataURL('image/png'); } catch { return null; }
   };
+
+  const getDownloadFilename = () => {
+    if (!card) return 'eQSL.png';
+    const isJpeg = Boolean(card.imageDataUrl?.startsWith('data:image/jpeg'));
+    return 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + (isJpeg ? '.jpg' : '.png');
+  };
+
+  // Web-first and independent: use the browser's normal download mechanism.
+  const download = () => {
+    const dataUrl = getImageDataUrl();
+    if (!dataUrl || !card) return;
+    const link = document.createElement('a');
+    link.download = getDownloadFilename();
+    link.href = dataUrl;
+    link.click();
+    setDownloadAttempted(true);
+    setGalleryStatus('');
+  };
+
+  // Offered only inside a native Android wrapper; success requires a verified MediaStore URI.
+  const saveToAndroidGallery = () => {
+    const dataUrl = getImageDataUrl();
+    const bridge = window.AndroidEQSL;
+    if (!dataUrl || !bridge?.saveToGallery) { setGalleryStatus('failed'); return; }
+    try {
+      const raw = bridge.saveToGallery(dataUrl, getDownloadFilename());
+      const result = JSON.parse(raw) as { ok?: boolean; uri?: string; error?: string };
+      if (result.ok === true && result.uri) {
+        setGalleryStatus('saved');
+        window.setTimeout(() => { window.location.replace(window.location.origin + '/'); }, 900);
+      } else {
+        setGalleryStatus('failed');
+      }
+    } catch { setGalleryStatus('failed'); }
+  };
+
+  const returnHome = () => window.location.replace(window.location.origin + '/');
+  const hasAndroidGalleryBridge = typeof window !== 'undefined' && typeof window.AndroidEQSL?.saveToGallery === 'function';
 
   return <main lang={language} className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-5">
     <section className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-900 p-3 sm:p-6 shadow-2xl">
@@ -170,6 +210,13 @@ export const ReceivedEQSLPage: React.FC = () => {
         <div className="mt-4 flex flex-col gap-3">
           {!card.isResponse && <a href={getReplyAppUrl()} className="block rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{t.open}</a>}
           <button onClick={download} className="rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{card.isResponse ? 'Descargar' : t.download}</button>
+          {card.isResponse && downloadAttempted && <div className="space-y-3 rounded-xl border border-slate-700 p-3 text-center">
+            <p role="status" className="text-sm text-slate-200">La descarga web se inició. Si la imagen no quedó guardada en tu Galería, podés intentar la alternativa disponible.</p>
+            {hasAndroidGalleryBridge && <button onClick={saveToAndroidGallery} className="w-full rounded-xl border border-amber-300 px-4 py-3 font-bold text-amber-200 hover:bg-slate-800">Guardar en la Galería del dispositivo</button>}
+            {galleryStatus === 'saved' && <p role="status" className="text-sm font-semibold text-green-300">Imagen guardada y verificada en la Galería. Volviendo al inicio…</p>}
+            {galleryStatus === 'failed' && <p role="alert" className="text-sm text-red-300">No se pudo confirmar el guardado en la Galería. La descarga web sigue disponible; podés intentarlo de nuevo.</p>}
+            <button onClick={returnHome} className="w-full rounded-xl bg-slate-700 px-4 py-3 font-bold text-white hover:bg-slate-600">Volver al inicio</button>
+          </div>}
         </div>
       </>}
       {!card?.isResponse && <p className="mt-4 text-center text-xs text-slate-400">{t.note}</p>}
