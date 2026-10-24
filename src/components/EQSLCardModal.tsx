@@ -579,43 +579,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return true;
   };
 
-  const handleShareTelegram = () => {
-    if (!isQsoValidForEQSL()) return;
-    trackEQSLActivity();
-    const text = 'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\n' +
-      'Abre la tarjeta y pulsa el botón para responder.\n' + getFirma();
-    // Abrir el selector de Telegram para que el operador elija a quién enviarla.
-    const url = 'https://t.me/share/url?url=' + encodeURIComponent(getReceivedCardUrl()) + '&text=' + encodeURIComponent(text);
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  // Enviar por Email (con link de respuesta eQSL y firma dinámica)
-  const handleSendEmail = () => {
-    if (!isQsoValidForEQSL()) return;
-    trackEQSLActivity();
-    const firma = getFirma();
-    const replyLink = getReplyUrl();
-    const receivedCardLink = getReceivedCardUrl();
-    const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
-    const body = encodeURIComponent(
-      `HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\n\n` +
-      `Abre esta tarjeta y pulsa el botón para descargarla y responder con tu propio diseño:\n` +
-      `${receivedCardLink}\n\n` +
-      `${firma}\n` +
-      `LogBook eQSL Express`
-    );
-
-    // El correo solo se pide si el usuario elige este canal; puede pegarlo desde QRZ.
-    const targetEmail = window.prompt(`Pegá el correo de ${qso.callsign} (por ejemplo, obtenido en QRZ):`, '')?.trim() || '';
-    if (!targetEmail) return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
-      window.alert('La dirección de correo no parece válida. Revisala y volvé a intentarlo.');
-      return;
-    }
-    window.open(`mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`);
-  };
-
-
   // Copiar resumen del QSO con link de respuesta
   const handleCopyText = async () => {
     try {
