@@ -359,12 +359,6 @@ function MainApp() {
                   <text x="450" y="415" textAnchor="middle" fill="#8aa8bb" fontSize="13">CONTACTOS DE LOS ÚLTIMOS 30 MINUTOS</text>
                 </svg>
               </div>
-              <aside className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-                <h3 className="mb-2 font-bold text-white">Actividad reciente</h3>
-                <p className="mb-3 text-xs leading-relaxed text-slate-400">Las líneas verdes punteadas y gruesas indican contactos cargados durante los últimos 30 minutos. Se eliminan automáticamente al vencer ese plazo.</p>
-                {stationMapPoint ? <p className="mb-3 text-xs text-emerald-300">Tu estación: {myStationGrid}</p> : <p className="mb-3 text-xs text-amber-300">Para dibujar las líneas, completá tu grid locator en Ajustes.</p>}
-                {recentMapContacts.length ? <ul className="space-y-2">{recentMapContacts.map((contact) => <li key={contact.id} className="text-sm text-slate-200"><span className="font-mono text-emerald-300">{contact.callsign}</span><span className="ml-2 text-xs text-slate-400">{contact.grid}</span></li>)}</ul> : <p className="text-xs text-slate-500">No hay contactos recientes con grid locator válido.</p>}
-              </aside>
             </div>
           </div>
         </section>
