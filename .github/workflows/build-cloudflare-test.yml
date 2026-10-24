@@ -24,5 +24,7 @@ jobs:
         run: npm install
       - name: Build Vite app
         run: npm run build
+      - name: Bundle Cloudflare Pages Functions
+        run: npx --yes wrangler@latest pages functions build functions --outdir .wrangler/functions
       - name: Confirm output exists
         run: test -s dist/index.html
