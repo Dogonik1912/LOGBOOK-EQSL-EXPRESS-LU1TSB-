@@ -323,7 +323,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
 
   // Compartir respuesta: WhatsApp puede elegirse desde la hoja nativa de compartir.
   const handleShareWhatsApp = () => {
-    if (!savedToLog) handleSaveToLocalLog();
+    if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     const firma = `73 cordiales de ${activeMyCall}`;
     const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
@@ -356,7 +356,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   };
 
   const handleShareTelegram = () => {
-    if (!savedToLog) handleSaveToLocalLog();
+    if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     const text = '📻 Respuesta a tu eQSL\nDe: ' + activeMyCall + ' para: ' + replyToCall + '\n' +
       '🤝 Contacto confirmado · ' + date + ' ' + time + ' UTC\n' +
@@ -375,7 +375,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       window.alert('Ingresá el correo del remitente original o elegí WhatsApp o Telegram para responder.');
       return;
     }
-    if (!savedToLog) handleSaveToLocalLog();
+    if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     const firma = `73 cordiales de ${activeMyCall}`;
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
@@ -399,13 +399,13 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
 
   // Guardar automáticamente el QSO de respuesta antes de abrir el canal externo.
   // La aplicación no puede confirmar si WhatsApp, Telegram o el cliente de correo terminó enviándolo.
-  const handleSaveToLocalLog = () => {
-    if (!onSaveQSO) return;
+  const handleSaveToLocalLog = (): boolean => {
+    if (!onSaveQSO) return false;
     const normalizedCall = replyToCall.trim().toUpperCase();
     const normalizedMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
     if (!normalizedCall || !normalizedMyCall || !date || !time || !frequency.trim() || !mode) {
       window.alert('Completá indicativos, fecha, hora, frecuencia y modo antes de guardar o enviar la eQSL.');
-      return;
+      return false;
     }
     const newQSO: QSO = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -425,6 +425,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     };
     onSaveQSO(newQSO);
     setSavedToLog(true);
+    return true;
   };
 
   return (
