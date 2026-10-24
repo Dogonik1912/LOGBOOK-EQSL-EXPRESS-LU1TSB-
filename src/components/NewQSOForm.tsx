@@ -369,8 +369,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const shouldOpenEQSL = ['send', 'send-whatsapp', 'send-telegram'].includes(submitter?.value || '');
-    const preferredSendMethod = submitter?.value === 'send-whatsapp' ? 'whatsapp' : submitter?.value === 'send-telegram' ? 'telegram' : submitter?.value === 'send' ? 'email' : '';
+    const shouldOpenEQSL = submitter?.value === 'create-eqsl';
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
     const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
@@ -422,7 +421,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), whatsappUsername: whatsappUsername.trim().replace(/^@+/, '') || (/^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : ''), telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
 // Se conserva en la libreta local sin publicar automáticamente datos privados en el directorio mundial.
     // La tarjeta eQSL recibe el canal elegido por el usuario cuando corresponde.
-    if (preferredSendMethod) sessionStorage.setItem('eqsl_preferred_method', preferredSendMethod);
     onAddQSO(newQSO, shouldOpenEQSL);
 
     // PRIORIDAD 5: Guardar el último QSO en localStorage ('last_qso')
@@ -644,23 +642,13 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 aria-label="Nombre de usuario de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
-              <button
-                type="submit"
-                name="qsoAction"
-                value="send-whatsapp"
-                disabled={!whatsapp.trim() && !whatsappUsername.trim()}
-                className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-emerald-600/60 disabled:border-slate-700 transition-colors"
-                title={whatsapp.trim() || whatsappUsername.trim() ? "Guardar el QSO y abrir el envío de eQSL por WhatsApp" : "Ingresá un teléfono o @usuario de WhatsApp"}
-              >
-                <Phone className="w-3.5 h-3.5" /> <span>Enviar eQSL</span>
-              </button>
             </div>
           </div>
           <div className="sm:col-span-4 min-w-0">
             <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram del corresponsal (@usuario)</label>
             <div className="flex items-center gap-2">
               <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="Escribí @usuario de Telegram" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
-              <button type="submit" name="qsoAction" value="send-telegram" disabled={!telegram.trim()} className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-sky-700 hover:bg-sky-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-sky-600/60 disabled:border-slate-700 transition-colors" title="Guardar QSO y abrir Telegram">Enviar eQSL</button>
+
             </div>
           </div>
         </div>
@@ -779,16 +767,16 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
         </div>
 
-        {/* Un solo botón principal: carga simple si no hay medio de contacto; si hay email/WhatsApp, ofrece guardar y abrir eQSL. */}
+        {/* Acción principal única: guardar el QSO y abrir automáticamente la vista previa eQSL. */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 pt-2">
           <button
             type="submit"
             name="qsoAction"
-            value={email.trim() || whatsapp.trim() ? "send" : "save"}
-            className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all active:scale-95 cursor-pointer ${email.trim() || whatsapp.trim() ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20' : 'bg-slate-700 hover:bg-slate-600 text-white border border-slate-600'}`}
+            value="create-eqsl"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all active:scale-95 cursor-pointer bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20"
           >
             <PlusCircle className="w-4 h-4" />
-            {email.trim() || whatsapp.trim() ? 'GUARDAR QSO Y ENVIAR EQSL' : 'CARGAR QSO'}
+            CREAR eQSL RÁPIDA
           </button>
         </div>
       </form>
