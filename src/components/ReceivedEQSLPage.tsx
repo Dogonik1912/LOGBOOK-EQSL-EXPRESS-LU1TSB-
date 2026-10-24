@@ -129,7 +129,13 @@ export const ReceivedEQSLPage: React.FC = () => {
     ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 28px sans-serif'; ctx.fillText(t.thanks, 600, 650, 1080);
   }, [card, t]);
 
-  const getReplyAppUrl = () => {\n    if (!card) return window.location.origin + '/';\n    const params = new URLSearchParams({ reply_to: card.from, to_call: card.to, date: card.date, time: card.time, band: card.band, freq: card.frequency, mode: card.mode, rst: card.rstSent || '59' });\n    return window.location.origin + '/?' + params.toString();\n  };\n\n  const download = () => {
+  const getReplyAppUrl = () => {
+    if (!card) return window.location.origin + '/';
+    const params = new URLSearchParams({ reply_to: card.from, to_call: card.to, date: card.date, time: card.time, band: card.band, freq: card.frequency, mode: card.mode, rst: card.rstSent || '59' });
+    return window.location.origin + '/?' + params.toString();
+  };
+
+  const download = () => {
     if (!canvasRef.current || !card) return;
     const link = document.createElement('a');
     link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + '.png';
