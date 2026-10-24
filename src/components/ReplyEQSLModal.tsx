@@ -661,6 +661,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             ) : (
               <span className="text-slate-500">Fondo estándar azul</span>
             )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
