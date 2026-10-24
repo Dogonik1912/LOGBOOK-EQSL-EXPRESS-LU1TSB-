@@ -72,8 +72,14 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   });
   const [copied, setCopied] = useState(false);
   const [themeNotice, setThemeNotice] = useState('');
+  const [signatureEnabled, setSignatureEnabled] = useState(() => localStorage.getItem('eqsl_signature_enabled') !== 'false');
+  const [signatureText, setSignatureText] = useState(() => (localStorage.getItem('eqsl_signature_text') || getFirma()).slice(0, 30));
 
   const myCallsign = getUserCallsign();
+  const isCBQSO = qso?.band === '11 metros';
+  const cardSenderCallsign = isCBQSO
+    ? (qso?.stationCallsign || localStorage.getItem('cb_station_callsign') || '11 METROS')
+    : myCallsign;
   const myName = localStorage.getItem('user_name')?.trim() || '';
   const myQth = localStorage.getItem('user_qth') || 'Argentina';
   const myGrid = localStorage.getItem('user_grid') || 'GF05te';
@@ -203,7 +209,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
       ctx.shadowBlur = 12;
-      ctx.fillText(myCallsign, width / 2, 190);
+      ctx.fillText(cardSenderCallsign, width / 2, 190);
       ctx.shadowBlur = 0;
 
       // Información del emisor (Nombre, QTH, Grid)
@@ -278,11 +284,13 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       });
 
       // PRIORIDAD 1: Firma dinámica del operador en la tarjeta
-      const firma = getFirma();
-      ctx.textAlign = 'center';
-      ctx.font = 'italic bold 24px serif';
-      ctx.fillStyle = theme === 'cyber' ? '#7dd3fc' : '#fde047';
-      ctx.fillText(firma, width / 2, 635);
+      const firma = signatureText.trim().slice(0, 30);
+      if (signatureEnabled && firma) {
+        ctx.textAlign = 'center';
+        ctx.font = 'italic bold 24px serif';
+        ctx.fillStyle = theme === 'cyber' ? '#7dd3fc' : '#fde047';
+        ctx.fillText(firma, width / 2, 635, width - 120);
+      }
 
       // Marca de agua discreta, visible y aplicada a todas las tarjetas, incluso a imágenes de galería.
       ctx.save();
@@ -400,7 +408,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // Solo incluye los datos del QSO necesarios para reconstruir la tarjeta; no comparte email ni teléfono.
   const getReceivedCardUrl = () => {
     const cardData = {
-      from: myCallsign,
+      from: cardSenderCallsign,
       to: qso.callsign,
       date: qso.date,
       time: qso.time,
@@ -670,6 +678,38 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         )}
 
+        {/* Configuración de firma personalizada por usuario; la marca de agua de la app no se puede desactivar. */}
+        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <input
+              type="checkbox"
+              checked={signatureEnabled}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setSignatureEnabled(enabled);
+                localStorage.setItem('eqsl_signature_enabled', String(enabled));
+              }}
+              className="h-4 w-4 accent-amber-400"
+            />
+            Firma activa en la tarjeta
+          </label>
+          <label htmlFor="eqsl-signature-text" className="block text-xs text-slate-400">Texto de firma (máximo 30 caracteres)</label>
+          <input
+            id="eqsl-signature-text"
+            type="text"
+            maxLength={30}
+            value={signatureText}
+            onChange={(e) => {
+              const value = e.target.value.slice(0, 30);
+              setSignatureText(value);
+              localStorage.setItem('eqsl_signature_text', value);
+            }}
+            placeholder="Ej. 73 cordiales de LU1TSB"
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
+          />
+          <p className="text-[11px] text-slate-500">La firma se guarda en este dispositivo. La marca de agua «LogBook eqsl app.» se mantiene siempre, también sobre fotos propias.</p>
+        </div>
+
         {/* Vista previa Canvas */}
         <div className="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner flex items-center justify-center p-2 mb-4">
           <canvas
@@ -724,7 +764,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         {/* Botones de acción principales */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2">
           <div className="text-xs text-slate-400">
-            Firma activa: <span className="text-amber-300 font-semibold">{getFirma()}</span>
+            Firma: <span className="text-amber-300 font-semibold">{signatureEnabled ? (signatureText || 'sin texto') : 'desactivada'}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
