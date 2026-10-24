@@ -83,12 +83,12 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [exchangeReceived, setExchangeReceived] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [telegram, setTelegram] = useState('');
   const [lookupMessage, setLookupMessage] = useState('');
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
   const [validationError, setValidationError] = useState('');
-  const [shareContactToDirectory, setShareContactToDirectory] = useState(false);
 
   const [isSearchingQRZ, setIsSearchingQRZ] = useState(false);
   const [qrzFoundSource, setQrzFoundSource] = useState<'qrz' | 'qrz-bio' | 'qrz-web-session' | 'prefix-db' | null>(null);
@@ -247,6 +247,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
     setWhatsapp('');
+    setTelegram('');
     setLookupMessage('');
     setCountry('');
     setGrid('');
@@ -254,7 +255,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const localContact = getContactBook()[upper];
     if (localContact) {
       setEmail(String(localContact.email || ''));
-      setWhatsapp(String(localContact.whatsapp || ''));
+      setWhatsapp(String(localContact.whatsappUsername ? '@' + localContact.whatsappUsername : localContact.whatsapp || ''));
+      setTelegram(String(localContact.telegram || ''));
       setCountry(String(localContact.country || ''));
       setGrid(String(localContact.grid || '').toUpperCase());
       setLookupMessage('Datos recuperados de tu libreta local para ' + upper + '.');
@@ -266,7 +268,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           if (requestId !== lookupRequestId.current || !result?.contact) return;
           const contact = result.contact;
           setEmail((current) => current.trim() || String(contact.email || ''));
-          setWhatsapp((current) => current.trim() || String(contact.whatsapp || ''));
+          setWhatsapp((current) => current.trim() || String(contact.whatsappUsername ? '@' + contact.whatsappUsername : contact.whatsapp || ''));
+          setTelegram((current) => current.trim() || String(contact.telegram || ''));
           setCountry((current) => current.trim() || String(contact.country || ''));
           setGrid((current) => current.trim() || String(contact.grid || '').toUpperCase());
           setLookupMessage('Datos disponibles en el directorio comunitario para ' + upper + '.');
@@ -307,8 +310,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const shouldOpenEQSL = submitter?.value === 'send' || submitter?.value === 'send-whatsapp';
-    const preferredSendMethod = submitter?.value === 'send-whatsapp' ? 'whatsapp' : submitter?.value === 'send' ? 'email' : '';
+    const shouldOpenEQSL = ['send', 'send-whatsapp', 'send-telegram'].includes(submitter?.value || '');
+    const preferredSendMethod = submitter?.value === 'send-whatsapp' ? 'whatsapp' : submitter?.value === 'send-telegram' ? 'telegram' : submitter?.value === 'send' ? 'email' : '';
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
     const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
@@ -344,8 +347,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       exchangeSent: exchangeSent.trim(),
       exchangeReceived: exchangeReceived.trim(),
       email: email.trim(),
-      whatsapp: whatsapp.trim(),
+      whatsapp: /^@/.test(whatsapp.trim()) ? '' : whatsapp.trim(),
       whatsappRaw: whatsapp.trim(),
+      whatsappUsername: /^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : '',
+      telegram: telegram.trim().replace(/^@+/, ''),
       name: '',
       country: country.trim(),
       grid: grid.trim().toUpperCase(),
@@ -355,15 +360,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     };
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
-    saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), country: country.trim(), grid: grid.trim().toUpperCase() });
-    if (shareContactToDirectory && (email.trim() || whatsapp.trim())) {
-      fetch('/api/directory', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'contact', callsign: cleanCall, email: email.trim(), whatsapp: whatsapp.trim(), country: country.trim(), grid: grid.trim().toUpperCase(), consent: true }),
-      }).then((response) => {
-        if (response.ok) setLookupMessage('Contacto guardado en el directorio comunitario.');
-      }).catch(() => {});
-    }
+    saveContact(cleanCall, { email: email.trim(), whatsapp: /^@/.test(whatsapp.trim()) ? '' : whatsapp.trim(), whatsappUsername: /^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : '', telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
+// Se conserva en la libreta local sin publicar automáticamente datos privados en el directorio mundial.
     // La tarjeta eQSL recibe el canal elegido por el usuario cuando corresponde.
     if (preferredSendMethod) sessionStorage.setItem('eqsl_preferred_method', preferredSendMethod);
     onAddQSO(newQSO, shouldOpenEQSL);
@@ -387,6 +385,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setExchangeReceived('');
     setEmail('');
     setWhatsapp('');
+    setTelegram('');
     setLookupMessage('');
     setCountry('');
     setGrid('');
@@ -572,7 +571,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="Número confirmado"
+                placeholder="Número o @usuario"
                 className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
               <button
@@ -587,13 +586,16 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               </button>
             </div>
           </div>
-
+          <div className="sm:col-span-4 min-w-0">
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram del corresponsal (@usuario)</label>
+            <div className="flex items-center gap-2">
+              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="usuarioTelegram" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
+              <button type="submit" name="qsoAction" value="send-telegram" disabled={!telegram.trim()} className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-sky-700 hover:bg-sky-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-sky-600/60 disabled:border-slate-700 transition-colors" title="Guardar QSO y abrir Telegram">Enviar eQSL</button>
+            </div>
+          </div>
         </div>
 
-        <label className="flex items-start gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-300">
-          <input type="checkbox" checked={shareContactToDirectory} onChange={(e) => setShareContactToDirectory(e.target.checked)} className="mt-0.5 accent-amber-400" />
-          <span><strong className="text-amber-300">Opcional:</strong> autorizo guardar el correo y/o WhatsApp junto a este indicativo en el directorio comunitario para que se completen automáticamente en futuros QSOs. Puedo dejarlo desmarcado y seguir usando la app sin registrarme.</span>
-        </label>
+        <p className="text-[11px] text-slate-500">Los contactos utilizados se recuerdan automáticamente en tu libreta local. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
