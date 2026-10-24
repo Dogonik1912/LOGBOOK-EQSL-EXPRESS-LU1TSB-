@@ -6,6 +6,7 @@
 export interface QSO {
   id: string;
   callsign: string;      // Corresponsal
+  stationCallsign?: string; // Señal distintiva propia para contactos de 11 metros
   date: string;          // YYYY-MM-DD (UTC)
   time: string;          // HH:MM (UTC)
   band: string;          // e.g. "40m", "20m", etc.
