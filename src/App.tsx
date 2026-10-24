@@ -96,7 +96,7 @@ function MainApp() {
           const card = result.card;
           setReplyData({
             replyToCall: String(card.from || ''),
-            myCall: card.band === '11 metros' ? (localStorage.getItem('cb_station_callsign') || String(card.to || '')) : (localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN),
+            myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(card.band || '')) ? (localStorage.getItem('cb_station_callsign') || String(card.to || '')) : (localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN),
             date: String(card.date || ''),
             time: String(card.time || ''),
             band: String(card.band || '40m'),
@@ -219,7 +219,7 @@ function MainApp() {
     const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
     setReplyData({
       replyToCall: qso.callsign,
-      myCall: qso.band === '11 metros' ? (qso.stationCallsign || localStorage.getItem('cb_station_callsign') || myCurrentCall) : myCurrentCall,
+      myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(qso.band || '')) ? (qso.stationCallsign || localStorage.getItem('cb_station_callsign') || myCurrentCall) : myCurrentCall,
       date: qso.date,
       time: qso.time,
       band: qso.band,
