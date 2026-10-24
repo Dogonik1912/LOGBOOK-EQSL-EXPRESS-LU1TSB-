@@ -90,13 +90,16 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const [customBgImage, setCustomBgImage] = useState<string | null>(null);
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [savedToLog, setSavedToLog] = useState(false);
+  const [imagePositionX, setImagePositionX] = useState(0);
+  const [imagePositionY, setImagePositionY] = useState(0);
+  const [imageZoom, setImageZoom] = useState(0);
 
   useEffect(() => {
     if (isOpen && initialData) {
       setReplyToCall(initialData.replyToCall || DEFAULT_CALLSIGN);
       const defaultUser = getUserCallsign();
       // Si el usuario actual es el mismo que replyToCall, sugerimos dejar vacío o el otro
-      setMyCall(initialData.myCall || (defaultUser !== initialData.replyToCall ? defaultUser : ''));
+      setMyCall(initialData.myCall || (initialData.band === '11 metros' ? (localStorage.getItem('cb_station_callsign') || '') : (defaultUser !== initialData.replyToCall ? defaultUser : '')));
       setDate(initialData.date || new Date().toISOString().slice(0, 10));
       setTime(initialData.time || '12:00');
       setBand(initialData.band || '40m');
@@ -106,6 +109,9 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       setRstRcvd(initialData.rst || '59');
       setEmailTo(initialData.email || '');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
+      setImagePositionX(Number(localStorage.getItem('eqsl_reply_image_position_x') || 0));
+      setImagePositionY(Number(localStorage.getItem('eqsl_reply_image_position_y') || 0));
+      setImageZoom(Number(localStorage.getItem('eqsl_reply_image_zoom') || 0));
       setTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setSavedToLog(false);
     }
@@ -161,7 +167,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       // Subtítulo
       ctx.font = '22px sans-serif';
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`Radioaficionado Operador · Confirmación Recíproca de Contacto`, width / 2, 230);
+      ctx.fillText(`Estación de radio · Confirmación Recíproca de Contacto`, width / 2, 230);
 
       // Línea
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
@@ -249,9 +255,11 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (customBgImage) {
       const img = new Image();
       img.onload = () => {
-        const scale = Math.max(width / img.width, height / img.height);
-        const x = (width - img.width * scale) / 2;
-        const y = (height - img.height * scale) / 2;
+        const scale = Math.max(width / img.width, height / img.height) * (1 + imageZoom / 100);
+        const overflowX = Math.max(0, img.width * scale - width);
+        const overflowY = Math.max(0, img.height * scale - height);
+        const x = (width - img.width * scale) / 2 - (imagePositionX / 100) * overflowX / 2;
+        const y = (height - img.height * scale) / 2 - (imagePositionY / 100) * overflowY / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
         ctx.fillStyle = 'rgba(10, 15, 30, 0.75)';
@@ -303,7 +311,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (isOpen) {
       setTimeout(renderReplyCard, 50);
     }
-  }, [isOpen, myCall, replyToCall, date, time, band, frequency, mode, rstSent, rstRcvd, customBgImage, theme]);
+  }, [isOpen, myCall, replyToCall, date, time, band, frequency, mode, rstSent, rstRcvd, customBgImage, theme, imagePositionX, imagePositionY, imageZoom]);
 
   if (!isOpen) return null;
 
@@ -322,9 +330,21 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
+  const createReplyCardLink = async (): Promise<string> => {
+    const canvas = canvasRef.current;
+    if (!canvas) throw new Error('La vista previa de la eQSL todavía no está lista.');
+    const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const response = await fetch('/api/eqsl-share', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/png') }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
+    return window.location.origin + '/?e=' + encodeURIComponent(result.id);
+  };
   // Intenta compartir siempre la misma tarjeta PNG mediante la hoja nativa del teléfono.
   // El navegador permite elegir WhatsApp, Telegram o correo si esas apps aceptan archivos.
-  const shareReplyCardFile = async (text: string): Promise<boolean> => {
+  const shareReplyCardFile = async (text: string, cardUrl: string): Promise<boolean> => {
     const canvas = canvasRef.current;
     if (!canvas || typeof navigator.share !== 'function') return false;
     try {
@@ -333,7 +353,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
       const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
       if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
-      await navigator.share({ files: [file], title: 'Respuesta eQSL', text, url: window.location.origin + '/' });
+      await navigator.share({ files: [file], title: 'Respuesta eQSL', text: text + '\n' + cardUrl, url: cardUrl });
       return true;
     } catch (error: any) {
       if (error?.name === 'AbortError') return true;
@@ -346,6 +366,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const handleShareWhatsApp = async () => {
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    let cardUrl = '';
+    try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
       `De: *${activeMyCall}* para: *${replyToCall}*\n` +
       `🤝 ¡Contacto 2-Way Confirmado!\n` +
@@ -354,8 +376,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `📶 RST: ${rstSent} / ${rstRcvd}\n\n` +
       `73 cordiales de ${activeMyCall}\n` +
       `LogBook eQSL Express\n` +
-      `Abrir la aplicación: ${window.location.origin}/`;
-    if (await shareReplyCardFile(text)) return;
+      `Ver y descargar la tarjeta de respuesta: ${cardUrl}`;
+    if (await shareReplyCardFile(text, cardUrl)) return;
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
@@ -371,31 +393,28 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const handleShareTelegram = async () => {
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
-    const text = `📻 Respuesta a tu eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 Contacto confirmado · ${date} ${time} UTC\n📡 ${band} (${frequency} MHz) · ${mode}\n📶 RST: ${rstSent}/${rstRcvd}\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nAbrir la aplicación: ${window.location.origin}/`;
-    if (await shareReplyCardFile(text)) return;
+    let cardUrl = '';
+    try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
+    const text = `📻 Respuesta a tu eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 Contacto confirmado · ${date} ${time} UTC\n📡 ${band} (${frequency} MHz) · ${mode}\n📶 RST: ${rstSent}/${rstRcvd}\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`;
+    if (await shareReplyCardFile(text, cardUrl)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
       ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
-      : 'https://t.me/share/url?url=' + encodeURIComponent(window.location.origin + '/') + '&text=' + encodeURIComponent(text);
+      : 'https://t.me/share/url?url=' + encodeURIComponent(cardUrl) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Enviar respuesta por Email
+  // El correo incluye el enlace a la tarjeta visual completa para verla y descargarla.
   const handleSendEmail = async () => {
-    if (!emailTo.trim()) {
-      window.alert('Ingresá el correo del remitente original o elegí WhatsApp o Telegram para responder.');
-      return;
-    }
+    if (!emailTo.trim()) { window.alert('Ingresá el correo del remitente original o elegí WhatsApp o Telegram para responder.'); return; }
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
-    const firma = `73 cordiales de ${activeMyCall}`;
-    const text = `📻 Respuesta a tu Tarjeta eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 ¡Contacto 2-Way Confirmado!\n📅 Fecha: ${date} ${time} UTC\n📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n📶 RST: ${rstSent} / ${rstRcvd}\n\n${firma}\nLogBook eQSL Express\nAbrir la aplicación: ${window.location.origin}/`;
-    if (await shareReplyCardFile(text)) return;
+    let cardUrl = '';
+    try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
-    const body = encodeURIComponent(`Estimado colega de ${replyToCall},\n\nHe recibido tu confirmación y te envío mi respuesta eQSL.\n\n${text}`);
+    const body = encodeURIComponent(`📻 Respuesta a tu Tarjeta eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 ¡Contacto 2-Way Confirmado!\n📅 Fecha: ${date} ${time} UTC\n📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n📶 RST: ${rstSent} / ${rstRcvd}\n\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`);
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
-
   // Guardar automáticamente el QSO de respuesta antes de abrir el canal externo.
   // La aplicación no puede confirmar si WhatsApp, Telegram o el cliente de correo terminó enviándolo.
   const handleSaveToLocalLog = (): boolean => {
@@ -594,6 +613,16 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             )}
           </div>
         </div>
+
+        {customBgImage && (
+          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3 space-y-3">
+            <p className="text-sm font-bold text-white">Ajustar foto para la eQSL de respuesta</p>
+            <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Horizontal</span><span>{imagePositionX}</span></label><input aria-label="Ajuste horizontal de foto" type="range" min={-100} max={100} value={imagePositionX} onChange={(e) => { const v=Number(e.target.value); setImagePositionX(v); localStorage.setItem('eqsl_reply_image_position_x', String(v)); }} className="w-full accent-sky-400" /></div>
+            <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Vertical</span><span>{imagePositionY}</span></label><input aria-label="Ajuste vertical de foto" type="range" min={-100} max={100} value={imagePositionY} onChange={(e) => { const v=Number(e.target.value); setImagePositionY(v); localStorage.setItem('eqsl_reply_image_position_y', String(v)); }} className="w-full accent-sky-400" /></div>
+            <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Zoom</span><span>{imageZoom}%</span></label><input aria-label="Zoom de foto" type="range" min={0} max={100} step={1} value={imageZoom} onChange={(e) => { const v=Number(e.target.value); setImageZoom(v); localStorage.setItem('eqsl_reply_image_zoom', String(v)); }} className="w-full accent-sky-400" /></div>
+            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); setImageZoom(0); localStorage.setItem('eqsl_reply_image_position_x','0'); localStorage.setItem('eqsl_reply_image_position_y','0'); localStorage.setItem('eqsl_reply_image_zoom','0'); }} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar y restablecer zoom</button>
+          </div>
+        )}
 
         {/* Vista previa Canvas */}
         <div className="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner flex items-center justify-center p-2 mb-4">
