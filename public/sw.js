@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lb-eqsl-express-shell-v2';
+const CACHE_NAME = 'lb-eqsl-express-shell-v3';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -10,7 +10,7 @@ self.addEventListener('install', (event) => {
     const response = await fetch('/index.html', { cache: 'reload' });
     if (response.ok) {
       const html = await response.clone().text();
-      const assets = [...html.matchAll(/(?:src|href)="([^"]+\\.(?:js|css)(?:\\?[^"]*)?)"/g)]
+      const assets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css)(?:\?[^"]*)?)"/g)]
         .map((match) => new URL(match[1], self.location.origin).href)
         .filter((url) => new URL(url).origin === self.location.origin);
       await Promise.all(assets.map(async (url) => {
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Serve built app assets from cache when offline, refreshing them when online.
-  if (/\\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\\?)/i.test(url.pathname)) {
+  if (/\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\?)/i.test(url.pathname)) {
     event.respondWith((async () => {
       const cached = await caches.match(request);
       const network = fetch(request).then(async (response) => {
