@@ -76,6 +76,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [callsign, setCallsign] = useState('');
   const [cbStationCallsign, setCbStationCallsign] = useState(() => localStorage.getItem('cb_station_callsign') || '');
   const [hasSavedCbStationCallsign, setHasSavedCbStationCallsign] = useState(() => Boolean(localStorage.getItem('cb_station_callsign')?.trim()));
+  const [showCbStationCallsignPrompt, setShowCbStationCallsignPrompt] = useState(false);
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
   const [exchangeSent, setExchangeSent] = useState('');
@@ -96,6 +97,15 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
+    // Mostrar el aviso una sola vez: si el usuario sale de 11 metros sin guardar
+    // una señal, no volver a interrumpirlo en futuras visitas a esa banda.
+    if (band === '11 metros' && newBand !== '11 metros' && !hasSavedCbStationCallsign) {
+      localStorage.setItem('cb_station_callsign_prompt_seen', 'true');
+      setShowCbStationCallsignPrompt(false);
+    }
+    if (newBand === '11 metros' && !hasSavedCbStationCallsign && localStorage.getItem('cb_station_callsign_prompt_seen') !== 'true') {
+      setShowCbStationCallsignPrompt(true);
+    }
     setBand(newBand);
     const found = HAM_BANDS.find((b) => b.name === newBand);
     if (found) setFrequency(found.defaultFreq);
@@ -284,6 +294,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     if (band === '11 metros') {
       localStorage.setItem('cb_station_callsign', cleanCBStationCallsign);
       setHasSavedCbStationCallsign(true);
+      setShowCbStationCallsignPrompt(false);
+      localStorage.setItem('cb_station_callsign_prompt_seen', 'true');
     }
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
@@ -373,7 +385,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           ))}
         </div>
 
-        {band === '11 metros' && !hasSavedCbStationCallsign && (
+        {band === '11 metros' && showCbStationCallsignPrompt && !hasSavedCbStationCallsign && (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
             <label htmlFor="cb-station-callsign" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
               Mi señal distintiva de 11 metros *
