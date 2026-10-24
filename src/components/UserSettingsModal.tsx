@@ -40,6 +40,20 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  // El encabezamiento pertenece a la aplicación, no al diseño eQSL.
+  // Antes de modificar o borrar fondos eQSL, conservamos una copia independiente
+  // de la imagen que ya se estaba usando en el encabezamiento.
+  const preserveHeaderImage = (possibleCurrentHeader?: string | null) => {
+    if (localStorage.getItem('app_header_image_locked')) return;
+    const explicitHeader = localStorage.getItem('app_header_image');
+    if (explicitHeader) {
+      localStorage.setItem('app_header_image_locked', explicitHeader);
+      return;
+    }
+    const imageToPreserve = possibleCurrentHeader || customBg;
+    if (imageToPreserve) localStorage.setItem('app_header_image_locked', imageToPreserve);
+  };
+
   // Importa varias fotos a la galería sin activar ninguna automáticamente.
   const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
@@ -93,15 +107,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   };
 
   const handleAnchorImage = (dataUrl: string) => {
+    preserveHeaderImage();
     setCustomBg(dataUrl);
     localStorage.setItem('eqsl_custom_bg', dataUrl);
   };
 
   const handleDeleteGalleryImage = (id: string) => {
+    const removedImage = galleryImages.find((item) => item.id === id);
+    preserveHeaderImage(removedImage?.dataUrl || null);
     const next = galleryImages.filter((item) => item.id !== id);
     setGalleryImages(next);
     localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
-    const removed = galleryImages.find((item) => item.id === id);
+    const removed = removedImage;
     window.dispatchEvent(new Event('user-branding-updated'));
     if (removed?.dataUrl === customBg) {
       setCustomBg(null);
@@ -300,6 +317,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  preserveHeaderImage();
                   setCustomBg(null);
                   localStorage.removeItem('eqsl_custom_bg');
                 }}
