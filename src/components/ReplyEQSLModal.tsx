@@ -96,6 +96,57 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const [imagePositionX, setImagePositionX] = useState(0);
   const [imagePositionY, setImagePositionY] = useState(0);
   const [imageZoom, setImageZoom] = useState(0);
+  const gesturePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const lastDragPoint = useRef<{ x: number; y: number } | null>(null);
+  const pinchStartDistance = useRef(0);
+  const pinchStartZoom = useRef(0);
+
+  const handleImagePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    gesturePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (gesturePointers.current.size === 1) {
+      lastDragPoint.current = { x: event.clientX, y: event.clientY };
+    } else if (gesturePointers.current.size === 2) {
+      const points = Array.from(gesturePointers.current.values());
+      pinchStartDistance.current = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      pinchStartZoom.current = imageZoom;
+      lastDragPoint.current = null;
+    }
+  };
+
+  const handleImagePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!gesturePointers.current.has(event.pointerId)) return;
+    gesturePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (gesturePointers.current.size >= 2) {
+      const points = Array.from(gesturePointers.current.values());
+      const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      if (pinchStartDistance.current > 0) {
+        setImageZoom(Math.max(0, Math.min(100, pinchStartZoom.current + (distance - pinchStartDistance.current) / 2)));
+      }
+      return;
+    }
+    if (lastDragPoint.current) {
+      const dx = event.clientX - lastDragPoint.current.x;
+      const dy = event.clientY - lastDragPoint.current.y;
+      setImagePositionX((value) => Math.max(-100, Math.min(100, value - dx * 100 / Math.max(1, event.currentTarget.clientWidth))));
+      setImagePositionY((value) => Math.max(-100, Math.min(100, value - dy * 100 / Math.max(1, event.currentTarget.clientHeight))));
+      lastDragPoint.current = { x: event.clientX, y: event.clientY };
+    }
+  };
+
+  const handleImagePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    gesturePointers.current.delete(event.pointerId);
+    if (gesturePointers.current.size === 1) {
+      const remaining = Array.from(gesturePointers.current.values())[0];
+      lastDragPoint.current = remaining;
+    } else {
+      lastDragPoint.current = null;
+    }
+    if (gesturePointers.current.size < 2) pinchStartDistance.current = 0;
+    localStorage.setItem('eqsl_reply_image_position_x', String(imagePositionX));
+    localStorage.setItem('eqsl_reply_image_position_y', String(imagePositionY));
+    localStorage.setItem('eqsl_reply_image_zoom', String(imageZoom));
+  };
 
   useEffect(() => {
     if (isOpen && initialData) {
@@ -632,12 +683,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         </div>
 
         {customBgImage && (
-          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3 space-y-3">
-            <p className="text-sm font-bold text-white">Ajustar foto para la eQSL de respuesta</p>
-            <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Horizontal</span><span>{imagePositionX}</span></label><input aria-label="Ajuste horizontal de foto" type="range" min={-100} max={100} value={imagePositionX} onChange={(e) => { const v=Number(e.target.value); setImagePositionX(v); localStorage.setItem('eqsl_reply_image_position_x', String(v)); }} className="w-full accent-sky-400" /></div>
-            <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Vertical</span><span>{imagePositionY}</span></label><input aria-label="Ajuste vertical de foto" type="range" min={-100} max={100} value={imagePositionY} onChange={(e) => { const v=Number(e.target.value); setImagePositionY(v); localStorage.setItem('eqsl_reply_image_position_y', String(v)); }} className="w-full accent-sky-400" /></div>
-            <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Zoom</span><span>{imageZoom}%</span></label><input aria-label="Zoom de foto" type="range" min={0} max={100} step={1} value={imageZoom} onChange={(e) => { const v=Number(e.target.value); setImageZoom(v); localStorage.setItem('eqsl_reply_image_zoom', String(v)); }} className="w-full accent-sky-400" /></div>
-            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); setImageZoom(0); localStorage.setItem('eqsl_reply_image_position_x','0'); localStorage.setItem('eqsl_reply_image_position_y','0'); localStorage.setItem('eqsl_reply_image_zoom','0'); }} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar y restablecer zoom</button>
+          <div className="mb-3 rounded-xl border border-sky-500/30 bg-slate-950/80 p-3">
+            <p className="text-sm font-bold text-white">Encuadrá tu foto con los dedos</p>
+            <p className="mt-1 text-xs text-slate-300">Arrastrá con un dedo para moverla y pellizcá con dos dedos para acercar o alejar. También podés ajustar el encuadre directamente sobre la vista previa.</p>
+            <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); setImageZoom(0); localStorage.setItem('eqsl_reply_image_position_x','0'); localStorage.setItem('eqsl_reply_image_position_y','0'); localStorage.setItem('eqsl_reply_image_zoom','0'); }} className="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar y restablecer zoom</button>
           </div>
         )}
 
@@ -661,6 +710,18 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             ref={canvasRef}
             className="w-full h-auto max-h-[420px] object-contain rounded-lg shadow-2xl"
           />
+          {customBgImage && (
+            <div
+              role="application"
+              aria-label="Ajustar encuadre de la foto: arrastrá para mover y usá dos dedos para cambiar el zoom"
+              onPointerDown={handleImagePointerDown}
+              onPointerMove={handleImagePointerMove}
+              onPointerUp={handleImagePointerUp}
+              onPointerCancel={handleImagePointerUp}
+              className="absolute inset-2 z-10 rounded-lg cursor-grab active:cursor-grabbing"
+              style={{ touchAction: 'none' }}
+            />
+          )}
         </div>
 
         {/* Botones de acción */}
