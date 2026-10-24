@@ -31,7 +31,22 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setCallsign(localStorage.getItem('user_callsign') || '');
       setEmail(localStorage.getItem('user_email') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
-      try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
+      let savedGallery: Array<{ id: string; name: string; dataUrl: string }> = [];
+      try {
+        savedGallery = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]');
+        setGalleryImages(savedGallery);
+      } catch { setGalleryImages([]); }
+      // Recuperación única: si falta el encabezamiento protegido, copiar una sola
+      // vez la primera imagen de la galería a una clave independiente.
+      // Nunca modificarla después al cambiar o borrar diseños eQSL.
+      if (!localStorage.getItem('app_header_image_locked')) {
+        const existingHeader = localStorage.getItem('app_header_image');
+        const recoveryImage = existingHeader || savedGallery[0]?.dataUrl;
+        if (recoveryImage) {
+          localStorage.setItem('app_header_image_locked', recoveryImage);
+          window.dispatchEvent(new Event('user-branding-updated'));
+        }
+      }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || 'es');
       setSavedSuccess(false);
@@ -99,6 +114,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const next = [...existing, ...imported];
     try {
       localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
+      // Si el encabezamiento aún no existe, guardar una copia independiente
+      // de la primera imagen recién subida. No se vuelve a sobrescribir.
+      if (!localStorage.getItem('app_header_image_locked')) {
+        const existingHeader = localStorage.getItem('app_header_image');
+        const recoveryImage = existingHeader || imported[0]?.dataUrl;
+        if (recoveryImage) localStorage.setItem('app_header_image_locked', recoveryImage);
+      }
       setGalleryImages(next);
       window.dispatchEvent(new Event('user-branding-updated'));
     } catch {
