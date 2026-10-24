@@ -80,6 +80,7 @@ export const ReceivedEQSLPage: React.FC = () => {
   const [card, setCard] = useState<SharedEQSL | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+  const [alreadyViewed, setAlreadyViewed] = useState(false);
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
   const t = translations[language];
@@ -97,6 +98,7 @@ export const ReceivedEQSLPage: React.FC = () => {
           const result = await response.json();
           if (!response.ok || !result.card) throw new Error('invalid');
           data = result.card as SharedEQSL;
+          setAlreadyViewed(Boolean(result.alreadyViewed));
         } else {
           const raw = params.get('view_eqsl');
           if (!raw) { if (active) setErrorKey('missing'); return; }
@@ -163,6 +165,7 @@ export const ReceivedEQSLPage: React.FC = () => {
     <section className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-900 p-3 sm:p-6 shadow-2xl">
       <h1 className="text-xl sm:text-3xl font-extrabold text-amber-300 mb-2 text-center">{card?.isResponse ? 'Respuesta eQSL recibida' : t.title}</h1>
       <p className="text-base sm:text-lg font-semibold text-slate-100 mb-4 text-center">{card?.isResponse ? 'Esta es la tarjeta de respuesta. Podés verla y descargarla sin volver a responder.' : t.intro}</p>
+      {card && alreadyViewed && <p role="status" className="mb-4 rounded-lg border border-amber-400/50 bg-amber-950/60 p-3 text-center font-semibold text-amber-200">{card.isResponse ? 'Esta respuesta ya fue vista o enviada.' : 'Esta eQSL ya fue vista o descargada.'}</p>}
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
         <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={card.isResponse ? 'Tarjeta eQSL de respuesta' : t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
         <div className="mt-4 flex flex-col gap-3">
