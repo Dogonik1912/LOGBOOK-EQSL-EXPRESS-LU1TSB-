@@ -16,6 +16,8 @@ export interface QSO {
   email: string;         // Email del corresponsal (Editable)
   whatsapp?: string;     // WhatsApp / Teléfono (dígitos limpios para wa.me)
   whatsappRaw?: string;  // Formato original (ej. 0054 9 388...)
+  whatsappUsername?: string; // Alias de WhatsApp cuando esté disponible
+  telegram?: string;     // Usuario Telegram sin @
   name?: string;         // Nombre del operador corresponsal
   country?: string;      // País / Entidad DXCC
   grid?: string;         // Grid Locator (ej. GF05te)
