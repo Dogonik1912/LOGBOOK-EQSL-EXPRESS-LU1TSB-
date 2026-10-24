@@ -59,6 +59,8 @@ interface ReplyEQSLModalProps {
     rst?: string;
     email?: string;
     whatsapp?: string;
+    whatsappUsername?: string;
+    telegram?: string;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -332,19 +334,34 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `${firma}\n` +
       `LogBook eQSL Express`;
 
+    const username = String(initialData?.whatsappUsername || '').replace(/^@+/, '');
+    const message = (username ? 'Destinatario WhatsApp: @' + username + ' (buscá este alias en WhatsApp si tu cuenta tiene nombres de usuario habilitados).\n\n' : '') + text;
     const cleanPhone = initialData?.whatsapp ? initialData.whatsapp.replace(/[^0-9]/g, '') : '';
     if (cleanPhone) {
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       return;
     }
     // Sin número confirmado, compartir texto mediante el menú nativo permite elegir WhatsApp y contacto.
     if (navigator.share) {
       void navigator.share({ title: 'Respuesta eQSL', text }).catch((error) => {
-        if (error?.name !== 'AbortError') window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+        if (error?.name !== 'AbortError') window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       });
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const handleShareTelegram = () => {
+    const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const text = '📻 Respuesta a tu eQSL\nDe: ' + activeMyCall + ' para: ' + replyToCall + '\n' +
+      '🤝 Contacto confirmado · ' + date + ' ' + time + ' UTC\n' +
+      '📡 ' + band + ' (' + frequency + ' MHz) · ' + mode + '\n' +
+      '📶 RST: ' + rstSent + '/' + rstRcvd + '\n73 cordiales de ' + activeMyCall + '\nLogBook eQSL Express';
+    const username = String(initialData?.telegram || '').replace(/^@+/, '');
+    const url = username
+      ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
+      : 'https://t.me/share/url?url=' + encodeURIComponent(window.location.origin) + '&text=' + encodeURIComponent(text);
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Enviar respuesta por Email
@@ -598,6 +615,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
               Enviar por Email
             </button>
 
+            <button type="button" onClick={handleShareTelegram} className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"><MessageSquare className="w-4 h-4" /> Telegram</button>
             <button
               type="button"
               onClick={handleShareWhatsApp}
