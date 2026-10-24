@@ -595,7 +595,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   const handleSendEmail = async () => {
     if (!isQsoValidForEQSL()) return;
-    const targetEmail = window.prompt(`Pegá el correo de ${qso.callsign} (por ejemplo, obtenido en QRZ):`, '')?.trim() || '';
+    const savedEmail = String(qso.email || '').split(/[;,\\s]+/).find((value) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value.trim())) || '';
+    const targetEmail = window.prompt(`Correo para ${qso.callsign}${savedEmail ? ' (encontrado en la ficha del contacto)' : ' (podés obtenerlo en QRZ)' }:`, savedEmail)?.trim() || '';
     if (!targetEmail) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
       window.alert('La dirección de correo no parece válida. Revisala y volvé a intentarlo.');
@@ -844,10 +845,25 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         </div>
 
-        {/* Elección explícita del canal después de revisar la vista previa */}
+        {/* Sugerencia de canales basada en los datos guardados para el contacto */}
         <div className="pt-3 border-t border-slate-800">
           <h3 className="text-sm font-bold text-white mb-1">¿Por cuál medio querés enviar esta eQSL?</h3>
-          <p className="text-xs text-slate-400 mb-3">Revisá la tarjeta y elegí WhatsApp o Telegram para seleccionar allí al destinatario. Si preferís correo, pegá la dirección que encuentres en QRZ cuando se solicite.</p>
+          {(() => {
+            const email = String(qso.email || '').split(/[;,\\s]+/).find((value) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value.trim())) || '';
+            const whatsapp = String(qso.whatsapp || qso.whatsappRaw || '').trim();
+            const telegram = String(qso.telegram || '').trim();
+            const channels = [
+              ...(email ? [{ label: 'Correo electrónico', detail: email }] : []),
+              ...(whatsapp ? [{ label: 'WhatsApp', detail: whatsapp }] : []),
+              ...(telegram ? [{ label: 'Telegram', detail: telegram.startsWith('@') ? telegram : '@' + telegram }] : []),
+            ];
+            return channels.length ? <div className="mb-3 rounded-lg border border-sky-500/30 bg-sky-950/30 p-3">
+              <p className="text-xs text-sky-200 mb-2">Medios disponibles en los datos de este contacto:</p>
+              <ul className="space-y-1">{channels.map((channel) => <li key={channel.label} className="text-xs text-white"><strong>{channel.label}:</strong> {channel.detail}</li>)}</ul>
+              <p className="text-[11px] text-slate-400 mt-2">Elegí uno de los medios indicados. Si solo figura un teléfono, comprobá que sea WhatsApp antes de usarlo.</p>
+            </div> : <p className="text-xs text-amber-200 mb-3">No hay un medio de contacto confirmado para este indicativo en los datos del QSO. Podés consultar QRZ o completar la ficha del contacto antes de enviar.</p>;
+          })()}
+          <p className="text-xs text-slate-400 mb-3">El correo guardado se propondrá automáticamente al elegir «Enviar por Email»; podés corregirlo antes de abrir tu aplicación de correo.</p>
         </div>
 
         {/* Botones de acción principales */}
