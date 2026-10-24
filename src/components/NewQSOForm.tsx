@@ -259,16 +259,43 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setLookupMessage('');
     setCountry('');
     setGrid('');
-    // Buscar primero la libreta local; luego intentar el directorio mundial si está configurado.
-    const localContact = getContactBook()[upper];
+    // Buscar primero la libreta local. Si falta una ficha, recuperar los datos del historial de QSOs
+    // guardado en este mismo navegador (por ejemplo, contactos usados en eQSL anteriores).
+    const contactBook = getContactBook();
+    let localContact = contactBook[upper];
+    if (!localContact) {
+      try {
+        const savedQsos = JSON.parse(localStorage.getItem('logbook_qsos') || '[]');
+        if (Array.isArray(savedQsos)) {
+          const previousQso = [...savedQsos].reverse().find((q: any) =>
+            String(q?.callsign || '').trim().toUpperCase() === upper &&
+            (String(q?.email || '').trim() || String(q?.whatsapp || q?.whatsappRaw || '').trim())
+          );
+          if (previousQso) {
+            localContact = {
+              callsign: upper,
+              email: String(previousQso.email || ''),
+              whatsapp: String(previousQso.whatsapp || previousQso.whatsappRaw || ''),
+              whatsappUsername: String(previousQso.whatsappUsername || ''),
+              telegram: String(previousQso.telegram || ''),
+              country: String(previousQso.country || ''),
+              grid: String(previousQso.grid || ''),
+            };
+            saveContact(upper, localContact);
+          }
+        }
+      } catch {
+        // Si el historial no se puede leer, continuar con el directorio sin interrumpir el formulario.
+      }
+    }
     if (localContact) {
       setEmail(String(localContact.email || ''));
-      setWhatsapp(String(localContact.whatsapp || ''));
+      setWhatsapp(String(localContact.whatsapp || localContact.whatsappRaw || ''));
       setWhatsappUsername(String(localContact.whatsappUsername || ''));
       setTelegram(String(localContact.telegram || ''));
       setCountry(String(localContact.country || ''));
       setGrid(String(localContact.grid || '').toUpperCase());
-      setLookupMessage('Datos recuperados de tu libreta local para ' + upper + '.');
+      setLookupMessage('Datos recuperados de la libreta o de un QSO anterior para ' + upper + '.');
     }
     if (upper.length >= 3) {
       fetch('/api/directory?action=lookup&call=' + encodeURIComponent(upper))
