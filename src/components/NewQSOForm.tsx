@@ -219,10 +219,16 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
-  // Abrir WhatsApp directamente desde el campo, sin abrir la agenda general del teléfono.
-  // El navegador o Android pueden mostrar una confirmación si no hay una asociación configurada.
+  // Abrir WhatsApp sin fijar el número del indicativo actual.
+  // El sitio no puede leer ni recuperar desde WhatsApp el contacto elegido en su selector.
   const handleOpenWhatsApp = () => {
-    window.location.href = 'whatsapp://send';
+    window.open('https://wa.me/', '_blank', 'noopener,noreferrer');
+  };
+
+  // Abrir el selector general para compartir por Telegram, sin enviar a un usuario concreto.
+  const handleOpenTelegram = () => {
+    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(window.location.origin);
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
   };
 
   // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
@@ -609,7 +615,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 onClick={handleOpenWhatsApp}
-                placeholder="Tocá para abrir WhatsApp o escribí el teléfono"
+                placeholder="Tocá para elegir en WhatsApp o escribí el teléfono"
                 aria-label="Número de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
@@ -637,14 +643,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           <div className="sm:col-span-4 min-w-0">
             <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram del corresponsal (@usuario)</label>
             <div className="flex items-center gap-2">
-              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="usuarioTelegram" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
+              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} onClick={handleOpenTelegram} placeholder="Tocá para elegir en Telegram o escribí el usuario" className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
               <button type="submit" name="qsoAction" value="send-telegram" disabled={!telegram.trim()} className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-sky-700 hover:bg-sky-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-sky-600/60 disabled:border-slate-700 transition-colors" title="Guardar QSO y abrir Telegram">Enviar eQSL</button>
             </div>
           </div>
         </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
-        <p className="text-[11px] text-slate-500">Al tocar el campo WhatsApp se intenta abrir directamente la aplicación WhatsApp. El navegador puede pedir confirmación y no permite leer automáticamente toda la agenda interna de WhatsApp. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
+        <p className="text-[11px] text-slate-500">Al tocar WhatsApp o Telegram se abre su selector general sin dirigir el envío al indicativo actual. Por seguridad, la web no puede leer el contacto que elijas dentro de esas aplicaciones para rellenar este formulario automáticamente. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
