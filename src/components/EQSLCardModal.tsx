@@ -382,10 +382,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       freq: qso.frequency,
       mode: qso.mode,
       rst: qso.rstSent || '59',
-      email: qso.email || '',
-      wa: qso.whatsapp || '',
-      wa_user: qso.whatsappUsername || '',
-      telegram: qso.telegram || '',
+      // Datos del operador que envía esta tarjeta; no reutilizar los del destinatario del QSO.
+      email: localStorage.getItem('user_email') || '',
+      wa: localStorage.getItem('user_whatsapp') || '',
+      wa_user: localStorage.getItem('user_whatsapp_username') || '',
+      telegram: localStorage.getItem('user_telegram') || '',
     });
     return `${origin}/?${params.toString()}`;
   };
