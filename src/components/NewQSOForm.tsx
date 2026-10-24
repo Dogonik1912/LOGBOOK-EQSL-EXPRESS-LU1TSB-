@@ -74,6 +74,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   // Campos que se limpian al guardar (corresponsal, RST enviada, RST recibida, y detalles)
   const [callsign, setCallsign] = useState('');
+  const [cbStationCallsign, setCbStationCallsign] = useState(() => localStorage.getItem('cb_station_callsign') || '');
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
   const [exchangeSent, setExchangeSent] = useState('');
@@ -322,6 +323,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const shouldOpenEQSL = submitter?.value === 'send';
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
+    const cleanCBStationCallsign = cbStationCallsign.trim().toUpperCase();
     const validCall = band === '11 metros' ? /^[A-Z0-9][A-Z0-9 /-]{0,19}$/.test(cleanCall) : /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
     const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
@@ -331,6 +333,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const validMode = HAM_MODES.includes(mode);
     const missing = [
       !validCall ? (band === '11 metros' ? 'identificador de estación de 11 metros' : 'indicativo válido') : '',
+      band === '11 metros' && !cleanCBStationCallsign ? 'tu señal distintiva de 11 metros' : '',
       !validDate ? 'fecha válida' : '',
       !validTime ? 'hora válida en UTC' : '',
       !validFrequency ? 'frecuencia válida en MHz' : '',
@@ -339,12 +342,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     if (missing.length) {
       setValidationError('No se guardó el QSO ni se puede emitir la eQSL. Corregí: ' + missing.join(', ') + '.');
       if (!validCall) callsignInputRef.current?.focus();
+      if (band === '11 metros' && !cleanCBStationCallsign) document.getElementById('cb-station-callsign')?.focus();
       return;
     }
 
     const newQSO: QSO = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       callsign: cleanCall,
+      ...(band === '11 metros' ? { stationCallsign: cleanCBStationCallsign } : {}),
       date,
       time,
       band,
@@ -366,6 +371,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       qslSent: false,
       qslRcvd: false,
     };
+
+    if (band === '11 metros') localStorage.setItem('cb_station_callsign', cleanCBStationCallsign);
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
     saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), whatsappUsername: whatsappUsername.trim().replace(/^@+/, '') || (/^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : ''), telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
@@ -454,6 +461,28 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
             </button>
           ))}
         </div>
+
+        {band === '11 metros' && (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
+            <label htmlFor="cb-station-callsign" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+              Mi señal distintiva de 11 metros *
+            </label>
+            <input
+              id="cb-station-callsign"
+              type="text"
+              value={cbStationCallsign}
+              onChange={(e) => setCbStationCallsign(e.target.value.toUpperCase())}
+              placeholder="Ej. Estación Sol, móvil 23 o tu señal CB"
+              autoComplete="off"
+              required
+              maxLength={20}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              La primera vez la escribís vos. Quedará guardada en este dispositivo y aparecerá automáticamente en tus próximos QSO de 11 metros.
+            </p>
+          </div>
+        )}
 
         {/* Fila 1: Indicativo corresponsal, RSTs, Email, WhatsApp */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
