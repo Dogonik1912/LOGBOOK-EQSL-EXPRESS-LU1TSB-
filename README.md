@@ -1,76 +1,59 @@
 # LogBook eQSL Express 📻
 
-Aplicación web para radioaficionados: libro de guardia de contactos (QSOs), importación/exportación ADIF y generador de tarjetas eQSL con fotos personalizadas y respuestas recíprocas 2-Way. No requiere conexión con la API XML de QRZ para registrar contactos.
+Aplicación web para radioaficionados, desarrollada para facilitar el registro de contactos (QSOs) y la preparación e intercambio de tarjetas eQSL.
 
-Desarrollado con dedicación para la comunidad de radioaficionados por **LU1TSB**.
+## Estado actual del proyecto
 
----
+Este repositorio contiene una base React + TypeScript + Vite. La presencia de código no garantiza por sí sola que una función esté terminada: las funciones deben probarse en navegador móvil y computadora antes de anunciarse como disponibles.
 
-## 🚀 Características Principales
+### Funciones identificables en el código
 
-- **Registro en Vivo (Live Log):**
-  - Reloj UTC en vivo sincronizado en cabecera.
-  - Precarga automática de Banda, Frecuencia, Modo, Fecha y Hora del QSO anterior.
-  - Columna **Email editable directamente** en la tabla con persistencia local.
-  - Búsqueda en tiempo real por indicativo, país, email o grid locator.
-  - Exportación e importación en formato estándar **ADIF (.adi)** (compatible con LoTW, eQSL.cc y ClubLog).
+- Formulario y libro de guardia con almacenamiento local en el navegador.
+- Valores RST predeterminados 59, editables.
+- Generación de tarjetas eQSL, descarga PNG y flujo de respuesta mediante enlace.
+- Importación ADIF y exportación ADIF; exportación Cabrillo básica, pendiente de validación por concurso.
+- Ajustes locales para indicativo, datos de respuesta, diseño e idioma.
+- Soporte PWA opcional mediante service worker, sujeto a pruebas de instalación y actualización.
 
-- **Integración con QRZ.com:**
-  - Consulta automática vía XML API de datos de corresponsales al ingresar el indicativo (nombre, país, grid y correo electrónico).
-  - Almacenamiento 100% local y seguro de credenciales en tu navegador.
+### Funciones deshabilitadas o todavía pendientes
 
-- **Diseñador y Emisor de Tarjetas eQSL:**
-  - Renderizado gráfico en alta definición (1200x750 px).
-  - **Carga de foto personalizada desde la galería / archivo** (tu estación, shack, antenas o paisaje local).
-  - Temas clásicos: Clásico Navy, Dorado DX y Cibernético.
-  - Descarga en formato PNG para enviar o imprimir.
-  - Envío directo por Email (`mailto`) y compartición formateada por **WhatsApp**.
-  - **Firma dinámica:** `73 cordiales de ${callsign}` (por defecto `LU1TSB`).
+- **QRZ:** la aplicación no debe consultar la API XML de QRZ ni extraer automáticamente datos de sus páginas. El endpoint de extracción automática fue retirado. Si el usuario encuentra un correo visible en un perfil público, puede copiarlo y pegarlo manualmente, respetando las restricciones del servicio.
+- **Directorio comunitario de correos:** temporalmente deshabilitado hasta completar verificación de titularidad, privacidad, límites de consultas y protección contra scraping/spam.
+- **Estadísticas compartidas:** no disponibles mientras no exista un registro agregado, verificable y protegido contra abuso.
+- **Mapamundi en tiempo real:** se muestra como función prevista. No se simula actividad mundial ni se envían QSOs al mapa.
+- **Pronóstico de propagación, distancia/rumbo, formatos adicionales de importación/exportación, sincronización entre dispositivos y traducción integral a 25 idiomas:** requieren implementación y pruebas adicionales.
 
-- **Confirmación y Respuesta Recíproca (Responder eQSL):**
-  - Cada eQSL compartida incluye un enlace interactivo para que el corresponsal receptor pueda responder con su propia eQSL y su propia fotografía desde cualquier dispositivo.
+El directorio comunitario, el mapa compartido y las estadísticas no deben activarse solo con almacenamiento público del frontend. Requieren un backend seguro, consentimiento apropiado, controles de acceso y medidas antiabuso.
 
----
+## Desarrollo local
 
-## 🛠️ Tecnologías
+Requisitos: Node.js compatible con la versión de Vite instalada.
 
-- **React 19** + **TypeScript**
-- **Vite**
-- **Tailwind CSS v4**
-- **Lucide Icons**
-- **HTML5 Canvas API** (para generación de tarjetas gráficas)
+```bash
+npm install
+npm run dev
+```
 
----
+Para validar el proyecto:
 
-## 💻 Instalación y Desarrollo Local
+```bash
+npm run build
+npm run lint
+```
 
-1. Clonar el repositorio:
-   ```bash
-   git clone https://github.com/Dogonik1912/LU1TSB-Logbook.git
-   cd LU1TSB-Logbook
-   ```
+En este repositorio, `npm run lint` ejecuta TypeScript con `tsc --noEmit`; no sustituye pruebas funcionales en navegador.
 
-2. Instalar dependencias:
-   ```bash
-   npm install
-   ```
+## Documentación de planificación
 
-3. Iniciar el servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
+Consultar [docs/PLAN_FUNCIONES_PREVISTAS.md](docs/PLAN_FUNCIONES_PREVISTAS.md) para ver la separación entre la base actual y las funciones previstas, incluyendo propagación, mapa mundial, directorio comunitario, privacidad, manual y texto de “Acerca de”.
 
-4. Abrir en el navegador en `http://localhost:3000`.
+## Principios del proyecto
 
----
+- Gratuito y útil para la comunidad internacional de radioaficionados.
+- Sin cuentas ni instalación obligatorias para comenzar a usar las funciones locales.
+- No inventar correos, estadísticas, contactos ni información en tiempo real.
+- No afirmar que un mensaje fue enviado solo porque se abrió WhatsApp o el cliente de correo.
+- Privacidad primero: no publicar datos personales ni registros individuales sin consentimiento.
+- Mantener el repositorio principal y el repositorio de respaldo; no eliminar el respaldo.
 
-## 🌐 Publicación gratuita en GitHub Pages
-
-Para publicar tu aplicación gratis y para siempre con GitHub:
-1. En GitHub, ve a **Settings** > **Pages**.
-2. En **Build and deployment** > **Source**, selecciona **GitHub Actions**.
-3. Selecciona la plantilla de **Vite / Static Web** y ¡listo!
-
----
-
-Desarrollado por LU1TSB · LogBook eQSL Express
+Tecnologías principales: React 19, TypeScript, Vite, Tailwind CSS y Lucide Icons.
