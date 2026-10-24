@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       const card = validateCard(req.body || {});
       if (!card) return json(res, 400, { error: 'Datos de la eQSL incompletos o inválidos.' });
 
-      const id = randomBytes(9).toString('base64url').slice(0, 12);
+      const id = randomBytes(9).toString('hex'); // Solo caracteres hexadecimales para evitar problemas en enlaces compartidos.
       const expiresAt = new Date(Date.now() + LIFETIME_MS).toISOString();
       const pathname = `eqsl-shares/${id}.json`;
       await put(pathname, JSON.stringify({ id, card, expiresAt }), {
