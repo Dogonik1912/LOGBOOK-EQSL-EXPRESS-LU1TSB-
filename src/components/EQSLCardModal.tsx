@@ -435,11 +435,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
     // WhatsApp debe recibir la tarjeta como imagen adjunta grande, no un bloque de URLs.
     // El enlace corto abre LogBook eQSL Express directamente en la pantalla de respuesta.
-    const replyLink = getReplyUrl();
+    const receivedCardLink = getReceivedCardUrl();
     const message =
-      'Has recibido una QSL por medio de LogBook eQSL Express.\\n' +
-      'Pulsa aquí para descargar y responder esta QSL:\\n' +
-      replyLink;
+      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
+      'Abre la tarjeta y pulsa el botón para responder:\\n' +
+      receivedCardLink;
 
     const canvas = canvasRef.current;
     if (canvas && typeof navigator.share === 'function' && typeof File !== 'undefined') {
@@ -489,11 +489,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleShareTelegram = () => {
     if (!isQsoValidForEQSL()) return;
     trackEQSLActivity();
-    const text = '📻 Tarjeta eQSL de ' + myCallsign + ' para ' + qso.callsign + '\n' +
-      '📅 ' + qso.date + ' ' + qso.time + ' UTC · ' + qso.band + ' ' + qso.frequency + ' MHz · ' + qso.mode + '\n' +
-      '📶 RST ' + (qso.rstSent || '59') + '/' + (qso.rstRcvd || '59') + '\n' +
-      '🖼️ Ver y descargar la eQSL: ' + getReceivedCardUrl() + '\n' +
-      '💌 Responder con tu eQSL: ' + getReplyUrl() + '\n' + getFirma();
+    const text = 'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
+      'Abre la tarjeta y pulsa el botón para responder.\\n' + getFirma();
     // Abrir el selector de Telegram para que el operador elija a quién enviarla.
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(getReceivedCardUrl()) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -508,21 +505,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const receivedCardLink = getReceivedCardUrl();
     const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
     const body = encodeURIComponent(
-      `Hola colega ${qso.callsign},\n\n` +
-      `Te confirmo con mucho agrado nuestro contacto en radio:\n\n` +
-      `• Mi Indicativo: ${myCallsign}\n` +
-      `• Tu Indicativo: ${qso.callsign}\n` +
-      `• Fecha: ${qso.date}\n` +
-      `• Hora: ${qso.time} UTC\n` +
-      `• Banda: ${qso.band} (${qso.frequency} MHz)\n` +
-      `• Modo: ${qso.mode}\n` +
-      `• Reporte RST: ${qso.rstSent || '59'} / ${qso.rstRcvd || '59'}\n` +
-      `• Ver y descargar la eQSL: ${receivedCardLink}\n\n` +
-      (qso.grid ? `• Mi Grid: ${myGrid}\n` : '') +
-      `\n¡Gracias por el QSO y espero reencontrarte en el éter!\n\n` +
-      `💌 RESPONDER CON TU eQSL:\n` +
-      `Podés generar y enviarme tu eQSL de respuesta con tu propia foto haciendo clic aquí:\n` +
-      `${replyLink}\n\n` +
+      `HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\n\n` +
+      `Abre esta tarjeta y pulsa el botón para descargarla y responder con tu propio diseño:\n` +
+      `${receivedCardLink}\n\n` +
       `${firma}\n` +
       `LogBook eQSL Express`
     );
