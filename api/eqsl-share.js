@@ -1,27 +1,13 @@
 import { randomBytes } from 'node:crypto';
-// Short-lived public eQSL share links. Supabase credentials stay server-side.
+import { get, put } from '@vercel/blob';
+
+// Short-lived eQSL links are stored in a private Vercel Blob store.
+// Only this server endpoint can read the stored cards; the public link contains
+// a random ID and this handler returns only cards that have not expired.
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
-
-async function db(path, init = {}) {
-  const base = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!base || !key) throw new Error('EQSL_SHARE_NOT_CONFIGURED');
-  const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(init.headers || {}),
-    },
-  });
-  const body = await response.text();
-  if (!response.ok) throw new Error(`EQSL_SHARE_DB_${response.status}: ${body.slice(0, 160)}`);
-  return body ? JSON.parse(body) : [];
-}
+const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 
 function validateCard(body) {
   const card = {
@@ -38,38 +24,64 @@ function validateCard(body) {
     grid: clean(body?.grid, 12),
     imageDataUrl: typeof body?.imageDataUrl === 'string' ? body.imageDataUrl : '',
   };
-  // Store the already-rendered card so recipients see the sender's exact image,
-  // crop/position and layout instead of a newly generated generic template.
-  if (card.imageDataUrl && (card.imageDataUrl.length > 1800000 || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl))) return null;
-  if (!CALL_RE.test(card.from) || !CALL_RE.test(card.to) ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(card.date) ||
-      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(card.time) ||
-      !card.band || !card.frequency || !card.mode) return null;
+  // Preserve the sender's rendered card image, crop and layout.
+  if (card.imageDataUrl && (
+    card.imageDataUrl.length > 1800000 ||
+    !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl)
+  )) return null;
+  if (
+    !CALL_RE.test(card.from) ||
+    !CALL_RE.test(card.to) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(card.date) ||
+    !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(card.time) ||
+    !card.band || !card.frequency || !card.mode
+  ) return null;
   return card;
+}
+
+function ensureConfigured() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error('EQSL_SHARE_NOT_CONFIGURED');
+  }
 }
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   try {
+    ensureConfigured();
+
     if (req.method === 'POST') {
       const card = validateCard(req.body || {});
       if (!card) return json(res, 400, { error: 'Datos de la eQSL incompletos o inválidos.' });
+
       const id = randomBytes(9).toString('base64url').slice(0, 12);
-      const expiresAt = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
-      await db('eqsl_shared_cards', {
-        method: 'POST',
-        body: JSON.stringify({ id, card, expires_at: expiresAt }),
+      const expiresAt = new Date(Date.now() + LIFETIME_MS).toISOString();
+      const pathname = `eqsl-shares/${id}.json`;
+      await put(pathname, JSON.stringify({ id, card, expiresAt }), {
+        access: 'private',
+        contentType: 'application/json; charset=utf-8',
+        addRandomSuffix: false,
       });
       return json(res, 201, { id, expiresAt });
     }
+
     if (req.method === 'GET') {
       const id = clean(req.query?.id, 24);
-      if (!/^[a-z0-9]{6,24}$/i.test(id)) return json(res, 400, { error: 'Enlace eQSL inválido.' });
-      const rows = await db(`eqsl_shared_cards?select=id,card,expires_at&id=eq.${encodeURIComponent(id)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=1`);
-      if (!rows.length) return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
-      return json(res, 200, { card: rows[0].card, expiresAt: rows[0].expires_at });
+      if (!/^[a-z0-9]{6,24}$/i.test(id)) {
+        return json(res, 400, { error: 'Enlace eQSL inválido.' });
+      }
+      const stored = await get(`eqsl-shares/${id}.json`, { access: 'private' });
+      if (!stored) {
+        return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
+      }
+      const record = await new Response(stored.stream).json();
+      if (!record?.expiresAt || Date.parse(record.expiresAt) <= Date.now() || !record.card) {
+        return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
+      }
+      return json(res, 200, { card: record.card, expiresAt: record.expiresAt });
     }
+
     res.setHeader('Allow', 'GET, POST');
     return json(res, 405, { error: 'Método no permitido.' });
   } catch (error) {
