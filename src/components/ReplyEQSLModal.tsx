@@ -21,6 +21,8 @@ import {
   Palette
 } from 'lucide-react';
 
+const isCBStationBand = (value?: string) => /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(String(value || ''));
+
 const REPLY_EQSL_THEMES = [
   { id: 'navy', name: 'Clásico azul', start: '#0f172a', mid: '#1e293b', end: '#090d16', accent: '#f59e0b', motif: '📡' },
   { id: 'gold', name: 'Dorado', start: '#1c1917', mid: '#292524', end: '#0c0a09', accent: '#eab308', motif: '🏆' },
@@ -88,6 +90,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const [rstRcvd, setRstRcvd] = useState('59');
   const [emailTo, setEmailTo] = useState('');
   const [customBgImage, setCustomBgImage] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => { try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; } });
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [savedToLog, setSavedToLog] = useState(false);
   const [imagePositionX, setImagePositionX] = useState(0);
@@ -109,6 +112,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       setRstRcvd(initialData.rst || '59');
       setEmailTo(initialData.email || '');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
+      try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
       setImagePositionX(Number(localStorage.getItem('eqsl_reply_image_position_x') || 0));
       setImagePositionY(Number(localStorage.getItem('eqsl_reply_image_position_y') || 0));
       setImageZoom(Number(localStorage.getItem('eqsl_reply_image_zoom') || 0));
@@ -125,9 +129,20 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setCustomBgImage(dataUrl);
-      }
+      if (!dataUrl) return;
+      const image = new Image();
+      image.onload = () => {
+        const scale = Math.min(1, 1600 / image.width, 1000 / image.height);
+        const resized = document.createElement('canvas');
+        resized.width = Math.max(1, Math.round(image.width * scale));
+        resized.height = Math.max(1, Math.round(image.height * scale));
+        const context = resized.getContext('2d');
+        if (!context) return;
+        context.drawImage(image, 0, 0, resized.width, resized.height);
+        setCustomBgImage(resized.toDataURL('image/jpeg', 0.82));
+        setImagePositionX(0); setImagePositionY(0); setImageZoom(0);
+      };
+      image.src = dataUrl;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -145,7 +160,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     canvas.width = width;
     canvas.height = height;
 
-    const activeMyCall = myCall.trim().toUpperCase() || 'MI INDICATIVO';
+    const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? 'ESTACIÓN 11 METROS' : 'MI INDICATIVO');
     const activeTarget = replyToCall.trim().toUpperCase() || 'CORRESPONSAL';
 
     const drawCard = () => {
@@ -333,10 +348,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const createReplyCardLink = async (): Promise<string> => {
     const canvas = canvasRef.current;
     if (!canvas) throw new Error('La vista previa de la eQSL todavía no está lista.');
-    const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     const response = await fetch('/api/eqsl-share', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.9) }),
+      body: JSON.stringify({ from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.72) }),
     });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
@@ -344,13 +359,13 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   };
   // Intenta compartir siempre la misma tarjeta PNG mediante la hoja nativa del teléfono.
   // El navegador permite elegir WhatsApp, Telegram o correo si esas apps aceptan archivos.
-  const shareReplyCardFile = async (text: string, cardUrl: string): Promise<boolean> => {
+  const shareReplyCardFile = async (text: string): Promise<boolean> => {
     const canvas = canvasRef.current;
     if (!canvas || typeof navigator.share !== 'function') return false;
     try {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
       if (!blob) return false;
-      const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+      const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
       const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
       if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
       await navigator.share({ files: [file], title: 'Respuesta eQSL', text });
@@ -365,7 +380,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   // siempre a la página principal: esta tarjeta ya es una confirmación recibida.
   const handleShareWhatsApp = async () => {
     if (!handleSaveToLocalLog()) return;
-    const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
@@ -377,7 +392,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `73 cordiales de ${activeMyCall}\n` +
       `LogBook eQSL Express\n` +
       `Ver y descargar la tarjeta de respuesta: ${cardUrl}`;
-    if (await shareReplyCardFile(text, cardUrl)) return;
+    if (await shareReplyCardFile(text)) return;
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
@@ -420,7 +435,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const handleSaveToLocalLog = (): boolean => {
     if (!onSaveQSO) return false;
     const normalizedCall = replyToCall.trim().toUpperCase();
-    const normalizedMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const normalizedMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     if (!normalizedCall || !normalizedMyCall || !date || !time || !frequency.trim() || !mode) {
       window.alert('Completá indicativos, fecha, hora, frecuencia y modo antes de guardar o enviar la eQSL.');
       return false;
@@ -621,6 +636,20 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Vertical</span><span>{imagePositionY}</span></label><input aria-label="Ajuste vertical de foto" type="range" min={-100} max={100} value={imagePositionY} onChange={(e) => { const v=Number(e.target.value); setImagePositionY(v); localStorage.setItem('eqsl_reply_image_position_y', String(v)); }} className="w-full accent-sky-400" /></div>
             <div><label className="flex justify-between text-xs text-slate-300 mb-1"><span>Zoom</span><span>{imageZoom}%</span></label><input aria-label="Zoom de foto" type="range" min={0} max={100} step={1} value={imageZoom} onChange={(e) => { const v=Number(e.target.value); setImageZoom(v); localStorage.setItem('eqsl_reply_image_zoom', String(v)); }} className="w-full accent-sky-400" /></div>
             <button type="button" onClick={() => { setImagePositionX(0); setImagePositionY(0); setImageZoom(0); localStorage.setItem('eqsl_reply_image_position_x','0'); localStorage.setItem('eqsl_reply_image_position_y','0'); localStorage.setItem('eqsl_reply_image_zoom','0'); }} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Centrar y restablecer zoom</button>
+          </div>
+        )}
+
+        {galleryImages.length > 0 && (
+          <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+            <p className="mb-2 text-xs font-semibold text-slate-300">O elegir una foto guardada en Diseños eQSL</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {galleryImages.map((item) => (
+                <button key={item.id} type="button" onClick={() => { setCustomBgImage(item.dataUrl); setImagePositionX(0); setImagePositionY(0); setImageZoom(0); }} className={`overflow-hidden rounded-lg border text-left ${customBgImage === item.dataUrl ? 'border-sky-400 ring-2 ring-sky-400/50' : 'border-slate-700'}`}>
+                  <img src={item.dataUrl} alt={item.name} className="h-20 w-full object-cover" />
+                  <span className="block truncate px-2 py-1 text-[10px] text-slate-200">{item.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
