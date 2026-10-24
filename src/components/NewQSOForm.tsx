@@ -83,6 +83,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [exchangeReceived, setExchangeReceived] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [whatsappUsername, setWhatsappUsername] = useState('');
   const [telegram, setTelegram] = useState('');
   const [lookupMessage, setLookupMessage] = useState('');
   const [country, setCountry] = useState('');
@@ -247,6 +248,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     // Do not keep contact data from the previous operator while a new lookup is running.
     setEmail('');
     setWhatsapp('');
+    setWhatsappUsername('');
     setTelegram('');
     setLookupMessage('');
     setCountry('');
@@ -255,7 +257,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const localContact = getContactBook()[upper];
     if (localContact) {
       setEmail(String(localContact.email || ''));
-      setWhatsapp(String(localContact.whatsappUsername ? '@' + localContact.whatsappUsername : localContact.whatsapp || ''));
+      setWhatsapp(String(localContact.whatsapp || ''));
+      setWhatsappUsername(String(localContact.whatsappUsername || ''));
       setTelegram(String(localContact.telegram || ''));
       setCountry(String(localContact.country || ''));
       setGrid(String(localContact.grid || '').toUpperCase());
@@ -268,7 +271,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           if (requestId !== lookupRequestId.current || !result?.contact) return;
           const contact = result.contact;
           setEmail((current) => current.trim() || String(contact.email || ''));
-          setWhatsapp((current) => current.trim() || String(contact.whatsappUsername ? '@' + contact.whatsappUsername : contact.whatsapp || ''));
+          setWhatsapp((current) => current.trim() || String(contact.whatsapp || ''));
+          setWhatsappUsername((current) => current.trim() || String(contact.whatsappUsername || ''));
           setTelegram((current) => current.trim() || String(contact.telegram || ''));
           setCountry((current) => current.trim() || String(contact.country || ''));
           setGrid((current) => current.trim() || String(contact.grid || '').toUpperCase());
@@ -347,9 +351,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       exchangeSent: exchangeSent.trim(),
       exchangeReceived: exchangeReceived.trim(),
       email: email.trim(),
-      whatsapp: /^@/.test(whatsapp.trim()) ? '' : whatsapp.trim(),
+      whatsapp: whatsapp.trim(),
       whatsappRaw: whatsapp.trim(),
-      whatsappUsername: /^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : '',
+      whatsappUsername: whatsappUsername.trim().replace(/^@+/, '') || (/^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : ''),
       telegram: telegram.trim().replace(/^@+/, ''),
       name: '',
       country: country.trim(),
@@ -360,7 +364,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     };
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
-    saveContact(cleanCall, { email: email.trim(), whatsapp: /^@/.test(whatsapp.trim()) ? '' : whatsapp.trim(), whatsappUsername: /^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : '', telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
+    saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), whatsappUsername: whatsappUsername.trim().replace(/^@+/, '') || (/^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : ''), telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
 // Se conserva en la libreta local sin publicar automáticamente datos privados en el directorio mundial.
     // La tarjeta eQSL recibe el canal elegido por el usuario cuando corresponde.
     if (preferredSendMethod) sessionStorage.setItem('eqsl_preferred_method', preferredSendMethod);
@@ -565,22 +569,32 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               <Phone className="w-3 h-3 text-emerald-400 inline mr-1" /> WhatsApp del corresponsal
             </label>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
               <input
                 type="tel"
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="Número o @usuario"
-                className="min-w-0 flex-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
+                placeholder="Teléfono con código de país"
+                aria-label="Número de WhatsApp del corresponsal"
+                className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
+              />
+              <input
+                type="text"
+                inputMode="text"
+                value={whatsappUsername}
+                onChange={(e) => setWhatsappUsername(e.target.value.replace(/^@+/, ''))}
+                placeholder="@usuario"
+                aria-label="Nombre de usuario de WhatsApp del corresponsal"
+                className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
               <button
                 type="submit"
                 name="qsoAction"
                 value="send-whatsapp"
-                disabled={!whatsapp.trim()}
+                disabled={!whatsapp.trim() && !whatsappUsername.trim()}
                 className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-emerald-600/60 disabled:border-slate-700 transition-colors"
-                title={whatsapp.trim() ? "Guardar el QSO y abrir el envío de eQSL por WhatsApp" : "Se habilita cuando haya un número de WhatsApp confirmado"}
+                title={whatsapp.trim() || whatsappUsername.trim() ? "Guardar el QSO y abrir el envío de eQSL por WhatsApp" : "Ingresá un teléfono o @usuario de WhatsApp"}
               >
                 <Phone className="w-3.5 h-3.5" /> <span>Enviar eQSL</span>
               </button>
