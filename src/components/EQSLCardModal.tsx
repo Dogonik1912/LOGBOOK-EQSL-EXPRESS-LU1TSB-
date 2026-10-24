@@ -746,7 +746,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         )}
 
-        {/* Configuración de firma personalizada por usuario; la marca de agua de la app no se puede desactivar. */}
+        {/* Configuración de firma personalizada por usuario. */}
         <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-200">
             <input
