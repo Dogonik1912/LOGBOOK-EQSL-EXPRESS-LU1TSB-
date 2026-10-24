@@ -654,7 +654,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all active:scale-95 cursor-pointer bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20"
           >
             <PlusCircle className="w-4 h-4" />
-            CARGAR QSO Y PREPARAR eQSL
+            eQSL EXPRESS
           </button>
         </div>
       </form>
