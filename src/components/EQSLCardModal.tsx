@@ -70,6 +70,12 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   });
   const [copied, setCopied] = useState(false);
   const [themeNotice, setThemeNotice] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientWhatsApp, setRecipientWhatsApp] = useState('');
+  const [recipientWhatsAppUsername, setRecipientWhatsAppUsername] = useState('');
+  const [recipientTelegram, setRecipientTelegram] = useState('');
+  const [contactLookupMessage, setContactLookupMessage] = useState('');
+
 
   const myCallsign = getUserCallsign();
   const myName = localStorage.getItem('user_name')?.trim() || '';
@@ -358,6 +364,31 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       setTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
       try { setGalleryImages(JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]')); } catch { setGalleryImages([]); }
+      const call = String(qso.callsign || '').trim().toUpperCase();
+      let savedContact: Record<string, any> = {};
+      try {
+        const book = JSON.parse(localStorage.getItem('logbook_contacts') || '{}');
+        savedContact = book[call] || {};
+      } catch { savedContact = {}; }
+      setRecipientEmail(String(qso.email || savedContact.email || ''));
+      setRecipientWhatsApp(String(qso.whatsapp || qso.whatsappRaw || savedContact.whatsapp || savedContact.whatsappRaw || ''));
+      setRecipientWhatsAppUsername(String(qso.whatsappUsername || savedContact.whatsappUsername || ''));
+      setRecipientTelegram(String(qso.telegram || savedContact.telegram || ''));
+      setContactLookupMessage('');
+      let active = true;
+      fetch('/api/directory?action=lookup&call=' + encodeURIComponent(call))
+        .then((response) => response.ok ? response.json() : null)
+        .then((result) => {
+          if (!active || !result?.contact) return;
+          const contact = result.contact;
+          setRecipientEmail((current) => current.trim() || String(contact.email || ''));
+          setRecipientWhatsApp((current) => current.trim() || String(contact.whatsapp || ''));
+          setRecipientWhatsAppUsername((current) => current.trim() || String(contact.whatsappUsername || ''));
+          setRecipientTelegram((current) => current.trim() || String(contact.telegram || ''));
+          setContactLookupMessage('Se recuperaron los datos disponibles para ' + call + '. Revisalos antes de enviar.');
+        })
+        .catch(() => {});
+      return () => { active = false; };
     }
   }, [isOpen, qso]);
 
@@ -431,6 +462,20 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     }).catch(() => {});
   };
 
+  // Guardar los datos introducidos en la pantalla de envío, solo en la libreta privada local.
+  const saveRecipientField = (field: string, value: string) => {
+    const call = String(qso?.callsign || '').trim().toUpperCase();
+    if (!call) return;
+    try {
+      const book = JSON.parse(localStorage.getItem('logbook_contacts') || '{}');
+      const previous = book[call] || {};
+      book[call] = { ...previous, callsign: call, [field]: value.trim(), updatedAt: new Date().toISOString() };
+      localStorage.setItem('logbook_contacts', JSON.stringify(book));
+    } catch {
+      setContactLookupMessage('No se pudieron guardar los datos en la libreta local de este navegador.');
+    }
+  };
+
   // PRIORIDAD 1: Compartir por WhatsApp con firma dinámica y link de respuesta eQSL
   const handleShareWhatsApp = () => {
     if (!isQsoValidForEQSL()) return;
@@ -449,11 +494,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `💌 *¿Querés responder con tu eQSL?*\n` +
       `Ingresá aquí para emitir tu confirmación recíproca gratuita:\n${replyLink}`;
 
-    const rawWhatsApp = String(qso.whatsapp || '').trim();
+    const rawWhatsApp = String(recipientWhatsApp || '').trim();
     const digits = rawWhatsApp.replace(/[^0-9]/g, '');
     // Un alias no es un teléfono: nunca convertir sus números sueltos en un destino wa.me inválido.
     const cleanPhone = !rawWhatsApp.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
-    const username = String(qso.whatsappUsername || '').replace(/^@+/, '');
+    const username = String(recipientWhatsAppUsername || '').replace(/^@+/, '');
     const message = (username ? 'Destinatario WhatsApp: @' + username + ' (buscá este alias en WhatsApp si tu cuenta tiene nombres de usuario habilitados).\n\n' : '') + text;
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
@@ -487,7 +532,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       '📶 RST ' + (qso.rstSent || '59') + '/' + (qso.rstRcvd || '59') + '\n' +
       '🖼️ Ver y descargar la eQSL: ' + getReceivedCardUrl() + '\n' +
       '💌 Responder con tu eQSL: ' + getReplyUrl() + '\n' + getFirma();
-    const username = String(qso.telegram || '').replace(/^@+/, '');
+    const username = String(recipientTelegram || '').replace(/^@+/, '');
     const url = username
       ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
       : 'https://t.me/share/url?url=' + encodeURIComponent(getReceivedCardUrl()) + '&text=' + encodeURIComponent(text);
@@ -522,7 +567,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `LogBook eQSL Express`
     );
 
-    const targetEmail = qso.email || '';
+    const targetEmail = recipientEmail.trim();
     window.open(`mailto:${targetEmail}?subject=${subject}&body=${body}`);
   };
 
@@ -659,18 +704,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-slate-400">Destinatario:</span>
               <strong className="text-amber-300 font-mono text-sm">{qso.callsign}</strong>
-              {qso.email ? (
-                <span className="text-sky-400">({qso.email})</span>
-              ) : (
-                <span className="text-slate-500 italic">(Sin email)</span>
-              )}
+              {recipientEmail && <span className="text-sky-400">({recipientEmail})</span>}
             </div>
-            {qso.whatsapp && (
-              <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>WhatsApp: +{qso.whatsapp}</span>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -698,6 +733,28 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               {copied ? '¡Copiado!' : 'Copiar enlace y datos'}
             </button>
           </div>
+        </div>
+
+        {/* Datos de contacto en la etapa de envío: se recuperan por indicativo y se pueden corregir aquí. */}
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-slate-800 bg-slate-950 p-3">
+          <label className="text-xs font-semibold text-slate-300">
+            <span className="mb-1 flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-sky-400" /> Correo del destinatario</span>
+            <input type="email" value={recipientEmail} onChange={(e) => { setRecipientEmail(e.target.value); saveRecipientField('email', e.target.value); }} placeholder="Escribí el correo si lo conocés" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
+          </label>
+          <label className="text-xs font-semibold text-slate-300">
+            <span className="mb-1 flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5 text-emerald-400" /> WhatsApp · teléfono internacional</span>
+            <input type="tel" inputMode="tel" value={recipientWhatsApp} onChange={(e) => { setRecipientWhatsApp(e.target.value); saveRecipientField('whatsapp', e.target.value); }} placeholder="Ej. 54911..." className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden" />
+          </label>
+          <label className="text-xs font-semibold text-slate-300">
+            <span className="mb-1 flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5 text-emerald-400" /> Usuario WhatsApp (si dispone)</span>
+            <input type="text" value={recipientWhatsAppUsername} onChange={(e) => { const value = e.target.value.replace(/^@+/, ''); setRecipientWhatsAppUsername(value); saveRecipientField('whatsappUsername', value); }} placeholder="@usuario" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden" />
+          </label>
+          <label className="text-xs font-semibold text-slate-300">
+            <span className="mb-1 flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5 text-sky-400" /> Usuario Telegram</span>
+            <input type="text" value={recipientTelegram} onChange={(e) => { const value = e.target.value.replace(/^@+/, ''); setRecipientTelegram(value); saveRecipientField('telegram', value); }} placeholder="@usuario" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-sky-300 placeholder:text-slate-600 focus:border-sky-400 focus:outline-hidden" />
+          </label>
+          {contactLookupMessage && <p className="sm:col-span-2 text-[11px] text-sky-300">{contactLookupMessage}</p>}
+          <p className="sm:col-span-2 text-[11px] text-slate-500">Los datos se guardan en la libreta local de este navegador para reutilizarlos cuando vuelvas a escribir este indicativo.</p>
         </div>
 
         {/* Elección explícita del canal después de revisar la vista previa */}
