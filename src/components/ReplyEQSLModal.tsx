@@ -232,6 +232,17 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       ctx.fillStyle = '#38bdf8';
       ctx.fillText(firma, width / 2, 635);
 
+      // Marca de agua de la aplicación, incluida en tarjetas de respuesta.
+      ctx.save();
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.font = 'italic bold 18px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('LogBook eqsl app.', width - 55, height - 48);
+      ctx.restore();
+
     };
 
     if (customBgImage) {
