@@ -448,14 +448,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `💌 *¿Querés responder con tu eQSL?*\n` +
       `Ingresá aquí para emitir tu confirmación recíproca gratuita:\n${replyLink}`;
 
-    const cleanPhone = qso.whatsapp ? qso.whatsapp.replace(/[^0-9]/g, '') : '';
+    const rawWhatsApp = String(qso.whatsapp || '').trim();
+    const digits = rawWhatsApp.replace(/[^0-9]/g, '');
+    // Un alias no es un teléfono: nunca convertir sus números sueltos en un destino wa.me inválido.
+    const cleanPhone = !rawWhatsApp.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
     const username = String(qso.whatsappUsername || '').replace(/^@+/, '');
     const message = (username ? 'Destinatario WhatsApp: @' + username + ' (buscá este alias en WhatsApp si tu cuenta tiene nombres de usuario habilitados).\n\n' : '') + text;
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-      : username
-        ? `https://wa.me/${encodeURIComponent(username)}?text=${encodeURIComponent(text)}`
-        : `https://wa.me/?text=${encodeURIComponent(message)}`;
+      : `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
