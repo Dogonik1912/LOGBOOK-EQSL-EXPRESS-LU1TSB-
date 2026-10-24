@@ -219,46 +219,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
-  // Selector de contactos del teléfono (solo con permiso explícito del usuario).
-  // WhatsApp no expone su agenda completa a páginas web; se pueden seleccionar contactos compatibles.
-  const handleChoosePhoneContact = async () => {
-    const contactApi = (navigator as any).contacts;
-    if (!contactApi?.select) {
-      setLookupMessage('Este navegador no ofrece selector de contactos. Podés escribir el teléfono manualmente o abrir Contactos del teléfono y copiarlo aquí.');
-      return;
-    }
-    try {
-      const picked = await contactApi.select(['name', 'tel', 'email'], { multiple: false });
-      const person = picked?.[0];
-      if (!person) return;
-      const names = Array.isArray(person.name) ? person.name : [];
-      const phones = Array.isArray(person.tel) ? person.tel : [];
-      const emails = Array.isArray(person.email) ? person.email : [];
-      const displayName = String(names[0] || '').trim();
-      const phone = String(phones[0] || '').trim();
-      const address = String(emails[0] || '').trim();
-      const callMatch = displayName.toUpperCase().match(/(?:^|[^A-Z0-9])([A-Z]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?)(?=$|[^A-Z0-9])/);
-      const pickedCall = callMatch?.[1] || callsign.trim().toUpperCase();
-      if (pickedCall) {
-        setCallsign(pickedCall);
-        if (phone) setWhatsapp(phone);
-        if (address) setEmail(address);
-        saveContact(pickedCall, {
-          whatsapp: phone,
-          email: address,
-          contactName: displayName,
-        });
-        setLookupMessage('Contacto seleccionado' + (displayName ? ': ' + displayName : '') + '. Datos guardados en esta libreta para ' + pickedCall + '.');
-      } else {
-        if (phone) setWhatsapp(phone);
-        if (address) setEmail(address);
-        setLookupMessage('Contacto seleccionado. Escribí el indicativo del corresponsal para asociar estos datos a su SD.');
-      }
-    } catch (error) {
-      if ((error as any)?.name !== 'AbortError') {
-        setLookupMessage('No se pudo seleccionar el contacto. Podés ingresar el teléfono manualmente.');
-      }
-    }
+  // Abrir WhatsApp directamente desde el campo, sin abrir la agenda general del teléfono.
+  // El navegador o Android pueden mostrar una confirmación si no hay una asociación configurada.
+  const handleOpenWhatsApp = () => {
+    window.location.href = 'whatsapp://send';
   };
 
   // No consultar QRZ ni buscar nombres: el país se estima solo por prefijo.
@@ -617,8 +581,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                onClick={() => { void handleChoosePhoneContact(); }}
-                placeholder="Tocá para elegir contacto o escribí el teléfono"
+                onClick={handleOpenWhatsApp}
+                placeholder="Tocá para abrir WhatsApp o escribí el teléfono"
                 aria-label="Número de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
@@ -653,7 +617,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
         </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
-        <p className="text-[11px] text-slate-500">Los contactos utilizados se recuerdan automáticamente en esta libreta. Al tocar el campo WhatsApp se abre el selector de contactos si tu navegador lo permite. La agenda completa de WhatsApp no puede leerse automáticamente desde una página web. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
+        <p className="text-[11px] text-slate-500">Al tocar el campo WhatsApp se intenta abrir directamente la aplicación WhatsApp. El navegador puede pedir confirmación y no permite leer automáticamente toda la agenda interna de WhatsApp. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
