@@ -12,9 +12,9 @@
 - No existe `package-lock.json` en la rama base; por eso la primera instalación usa `npm install`, no `npm ci`.
 
 ## Funciones de servidor
-Cloudflare Pages no ejecuta automáticamente las funciones del directorio `api/` de Vercel. La ruta `functions/api/eqsl-share.js` es una adaptación inicial de `api/eqsl-share.js` para Cloudflare Pages Functions y conserva la lectura/escritura de las tarjetas compartidas en Supabase.
+Cloudflare Pages no ejecuta automáticamente las funciones del directorio `api/` de Vercel. Las rutas `functions/api/eqsl-share.js`, `functions/api/lookup.js`, `functions/api/qrz.js` y `functions/api/directory.js` son adaptadores iniciales de las rutas de Vercel para Cloudflare Pages Functions. Se agregó `wrangler.toml` con compatibilidad Node.js para la consulta QRZ heredada.
 
-**Migración aún no lista para cambiar el tráfico:** las rutas de QRZ/lookup y del directorio necesitan adaptación y pruebas específicas para el entorno Workers. No publicar como reemplazo principal ni dar por probado el envío/recepción de eQSL hasta completar esas rutas.
+**Migración aún no validada de extremo a extremo:** falta probar las rutas contra el proyecto Supabase real, QRZ y el flujo completo de envío/recepción/respuesta. No publicar como reemplazo principal ni dar por probado el servicio hasta completar esas pruebas.
 
 ## Configuración al crear un proyecto Pages de prueba
 1. Importar el repositorio `Dogonik1912/LOGBOOK-EQSL-EXPRESS-LU1TSB-` desde GitHub.
