@@ -81,7 +81,28 @@ export default async function handler(req, res) {
       if (!record?.expiresAt || Date.parse(record.expiresAt) <= Date.now() || !record.card) {
         return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
       }
-      return json(res, 200, { card: record.card, expiresAt: record.expiresAt });
+      const alreadyViewed = Boolean(record.firstViewedAt);
+      if (!alreadyViewed) {
+        record.firstViewedAt = new Date().toISOString();
+        record.viewCount = 1;
+        await put(`eqsl-shares/${id}.json`, JSON.stringify(record), {
+          access: 'private',
+          token,
+          contentType: 'application/json; charset=utf-8',
+          addRandomSuffix: false,
+          allowOverwrite: true,
+        });
+      } else {
+        record.viewCount = Number(record.viewCount || 1) + 1;
+        await put(`eqsl-shares/${id}.json`, JSON.stringify(record), {
+          access: 'private',
+          token,
+          contentType: 'application/json; charset=utf-8',
+          addRandomSuffix: false,
+          allowOverwrite: true,
+        });
+      }
+      return json(res, 200, { card: record.card, expiresAt: record.expiresAt, alreadyViewed });
     }
 
     res.setHeader('Allow', 'GET, POST');
