@@ -15,8 +15,9 @@ function getToken() {
 
 function validateCard(body) {
   const card = {
-    from: clean(body?.from, 24).toUpperCase(),
-    to: clean(body?.to, 24).toUpperCase(),
+    from: clean(body?.from, 40).toUpperCase(),
+    to: clean(body?.to, 40).toUpperCase(),
+    isResponse: Boolean(body?.isResponse),
     date: clean(body?.date, 10),
     time: clean(body?.time, 5),
     band: clean(body?.band, 24),
@@ -32,8 +33,12 @@ function validateCard(body) {
     card.imageDataUrl.length > 1800000 ||
     !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl)
   )) return null;
+  const isCB = /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(card.band);
+  const validStation = (value) => isCB
+    ? /^[A-Z0-9][A-Z0-9 /_-]{0,39}$/.test(value)
+    : CALL_RE.test(value);
   if (
-    !CALL_RE.test(card.from) || !CALL_RE.test(card.to) ||
+    !validStation(card.from) || !validStation(card.to) ||
     !/^\d{4}-\d{2}-\d{2}$/.test(card.date) ||
     !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(card.time) ||
     !card.band || !card.frequency || !card.mode
