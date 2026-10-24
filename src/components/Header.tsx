@@ -20,19 +20,25 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
-  const [headerImage, setHeaderImage] = useState(() => localStorage.getItem('app_header_image') || '');
+  const readHeaderImage = () => {
+    const explicitlyChosen = localStorage.getItem('app_header_image');
+    if (explicitlyChosen) return explicitlyChosen;
+    try {
+      const gallery = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]') as Array<{ id: string; name: string; dataUrl: string }>;
+      // Si no hay una imagen de encabezado asignada, usar automáticamente una imagen ya cargada en la galería.
+      return gallery.find((item) => item.dataUrl)?.dataUrl || '';
+    } catch {
+      return '';
+    }
+  };
+  const [headerImage, setHeaderImage] = useState(() => readHeaderImage());
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
 
   useEffect(() => {
-    // Retira la imagen de encabezado equivocada una sola vez al iniciar la app; no toca el icono ni el indicativo.
-    if (localStorage.getItem('app_header_reset_v2') !== 'done') {
-      localStorage.removeItem('app_header_image');
-      localStorage.setItem('app_header_reset_v2', 'done');
-    }
     const syncCallsign = () => {
       setCallsign(localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
-      setHeaderImage(localStorage.getItem('app_header_image') || '');
+      setHeaderImage(readHeaderImage());
       const nextIcon = localStorage.getItem('app_icon_image') || '';
       setAppIcon(nextIcon);
       document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach((link) => { link.href = nextIcon || '/icon.svg'; });
