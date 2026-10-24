@@ -139,6 +139,7 @@ function MainApp() {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const replyToParam = urlParams.get('reply_to');
+    const replyEQSLId = urlParams.get('reply_eqsl');
     const profileImportCall = urlParams.get('qrz_call') || hashParams.get('qrz_call');
     // El puente desde QRZ usa el fragmento (#), que no se envía al servidor en la petición HTTP.
     // Se elimina tras leerlo para no dejar el correo en la barra de direcciones.
@@ -154,7 +155,34 @@ function MainApp() {
       window.history.replaceState({}, '', window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + (nextHash ? `#${nextHash}` : ''));
     }
 
-    // La ventana de inicio de sesión QRZ se muestra siempre al abrir la aplicación.
+    // Abrir el editor de respuesta desde el enlace corto; los datos llegan desde el servidor,
+    // no desde parámetros extensos en la URL.
+    if (replyEQSLId) {
+      fetch('/api/eqsl-share?id=' + encodeURIComponent(replyEQSLId), { cache: 'no-store' })
+        .then(async (response) => {
+          const result = await response.json();
+          if (!response.ok || !result.card) throw new Error(result.error || 'No se encontró la eQSL.');
+          const card = result.card;
+          setReplyData({
+            replyToCall: String(card.from || ''),
+            myCall: localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN,
+            date: String(card.date || ''),
+            time: String(card.time || ''),
+            band: String(card.band || '40m'),
+            frequency: String(card.frequency || '7.120'),
+            mode: String(card.mode || 'SSB'),
+            rst: String(card.rstRcvd || '59'),
+          });
+          setIsReplyModalOpen(true);
+          const cleanParams = new URLSearchParams(window.location.search);
+          cleanParams.delete('reply_eqsl');
+          const nextQuery = cleanParams.toString();
+          window.history.replaceState({}, '', window.location.pathname + (nextQuery ? '?' + nextQuery : ''));
+        })
+        .catch((error) => window.alert(error instanceof Error ? error.message : 'No se pudo abrir la respuesta eQSL.'));
+    }
+
+    // Enlaces antiguos compatibles: abrir el editor desde parámetros tradicionales.
     if (replyToParam) {
       setReplyData({
         replyToCall: replyToParam,
@@ -442,6 +470,6 @@ function MainApp() {
 }
 
 export default function App() {
-  if (new URLSearchParams(window.location.search).has('view_eqsl')) return <ReceivedEQSLPage />;
+  const sharedParams = new URLSearchParams(window.location.search);\n  if (sharedParams.has('e') || sharedParams.has('view_eqsl')) return <ReceivedEQSLPage />;
   return <MainApp />;
 }
