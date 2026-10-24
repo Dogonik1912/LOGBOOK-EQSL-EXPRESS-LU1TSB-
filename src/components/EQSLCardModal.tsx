@@ -291,16 +291,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         ctx.fillText(firma, width / 2, 635, width - 120);
       }
 
-      // Marca de agua permanente de la app, incluso sobre imágenes propias de galería.
-      ctx.save();
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillStyle = '#000000';
-      ctx.shadowColor = 'rgba(255,255,255,0.65)';
-      ctx.shadowBlur = 2;
-      ctx.fillText('LogBook eQSL EXPRESS', width - 24, height - 20);
-      ctx.restore();
     };
 
     if (customBgImage) {
@@ -451,6 +441,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       rstRcvd: qso.rstRcvd || '59',
       qth: myQth,
       grid: myGrid,
+      // Compartir la tarjeta ya renderizada: conserva imagen, recorte, posición y diseño exactos.
+      imageDataUrl: canvasRef.current?.toDataURL('image/jpeg', 0.9) || '',
     };
     const response = await fetch('/api/eqsl-share', {
       method: 'POST',
