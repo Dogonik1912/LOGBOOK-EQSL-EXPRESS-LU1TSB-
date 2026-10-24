@@ -700,8 +700,14 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
         </div>
 
+        {/* Elección explícita del canal después de revisar la vista previa */}
+        <div className="pt-3 border-t border-slate-800">
+          <h3 className="text-sm font-bold text-white mb-1">¿Por cuál medio querés enviar esta eQSL?</h3>
+          <p className="text-xs text-slate-400 mb-3">Revisá la tarjeta y elegí WhatsApp, Telegram o correo electrónico.</p>
+        </div>
+
         {/* Botones de acción principales */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2">
           <div className="text-xs text-slate-400">
             Firma activa: <span className="text-amber-300 font-semibold">{getFirma()}</span>
           </div>
