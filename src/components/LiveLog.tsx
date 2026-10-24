@@ -184,7 +184,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `LogBook_${myCallsign}_${new Date().toISOString().slice(0, 10)}.adi`;
+    link.download = `LogBook_${myCallsign}_${activeLog === 'cb' ? '11metros' : 'radioaficion'}_${new Date().toISOString().slice(0, 10)}.adi`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -231,7 +231,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `LogBook_${myCall}_${new Date().toISOString().slice(0, 10)}.log`;
+    link.download = `LogBook_${myCall}_${activeLog === 'cb' ? '11metros' : 'radioaficion'}_${new Date().toISOString().slice(0, 10)}.log`;
     link.click();
     URL.revokeObjectURL(url);
   };
