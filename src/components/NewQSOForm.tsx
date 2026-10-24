@@ -75,6 +75,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   // Campos que se limpian al guardar (corresponsal, RST enviada, RST recibida, y detalles)
   const [callsign, setCallsign] = useState('');
   const [cbStationCallsign, setCbStationCallsign] = useState(() => localStorage.getItem('cb_station_callsign') || '');
+  const [hasSavedCbStationCallsign, setHasSavedCbStationCallsign] = useState(() => Boolean(localStorage.getItem('cb_station_callsign')?.trim()));
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
   const [exchangeSent, setExchangeSent] = useState('');
@@ -280,7 +281,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       qslRcvd: false,
     };
 
-    if (band === '11 metros') localStorage.setItem('cb_station_callsign', cleanCBStationCallsign);
+    if (band === '11 metros') {
+      localStorage.setItem('cb_station_callsign', cleanCBStationCallsign);
+      setHasSavedCbStationCallsign(true);
+    }
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
     saveContact(cleanCall, { email: email.trim(), whatsapp: whatsapp.trim(), whatsappUsername: whatsappUsername.trim().replace(/^@+/, '') || (/^@/.test(whatsapp.trim()) ? whatsapp.trim().replace(/^@+/, '') : ''), telegram: telegram.trim().replace(/^@+/, ''), country: country.trim(), grid: grid.trim().toUpperCase() });
@@ -369,7 +373,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           ))}
         </div>
 
-        {band === '11 metros' && (
+        {band === '11 metros' && !hasSavedCbStationCallsign && (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
             <label htmlFor="cb-station-callsign" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
               Mi señal distintiva de 11 metros *
