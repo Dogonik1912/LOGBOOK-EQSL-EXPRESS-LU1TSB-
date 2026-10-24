@@ -12,6 +12,7 @@ import { LiveLog } from './components/LiveLog';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
+import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
 import { Radio, Award, Globe, Send, Download, ChevronDown } from 'lucide-react';
 
 
