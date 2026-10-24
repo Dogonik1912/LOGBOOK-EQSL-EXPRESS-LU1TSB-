@@ -136,7 +136,10 @@ export const Header: React.FC<HeaderProps> = ({
             title="Instalar LB EQSL EXPRESS en este equipo"
           >
             {isInstalled ? <Smartphone className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-            <span>{isInstalled ? 'App instalada' : 'Instalar app'}</span>
+            <span className="flex flex-col items-start leading-tight">
+              <span>{isInstalled ? 'App instalada' : 'Instalar app'}</span>
+              <span className="text-[10px] font-medium opacity-90">Muy liviana: ocupa muy poco espacio</span>
+            </span>
           </button>
 
           {/* PRIORIDAD 2: Botón Compartir app por WhatsApp */}
