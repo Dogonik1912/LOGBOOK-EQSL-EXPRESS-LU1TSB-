@@ -341,6 +341,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       return;
     }
+    if (username) {
+      window.open(`https://wa.me/${encodeURIComponent(username)}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
     // Sin número confirmado, compartir texto mediante el menú nativo permite elegir WhatsApp y contacto.
     if (navigator.share) {
       void navigator.share({ title: 'Respuesta eQSL', text }).catch((error) => {
