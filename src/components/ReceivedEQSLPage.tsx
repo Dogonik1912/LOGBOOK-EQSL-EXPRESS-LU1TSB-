@@ -9,7 +9,7 @@ type SharedEQSL = {
 type Language = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'ja' | 'zh' | 'pl' | 'sv' | 'no' | 'da' | 'fi' | 'cs' | 'sk' | 'hu' | 'ro' | 'tr' | 'el' | 'uk' | 'hr' | 'sr' | 'ca';
 
 const translations: Record<Language, Record<string, string>> = {
-  es: { title: 'eQSL recibida', intro: 'Podés ver y descargar esta tarjeta sin instalar la aplicación ni crear una cuenta.', download: 'Descargar eQSL (PNG)', open: 'Abrir LogBook eQSL Express', note: 'Esta tarjeta se reconstruye a partir de los datos incluidos en el enlace compartido. Conservá el enlace si querés volver a verla.', missing: 'No se encontró la tarjeta eQSL en este enlace.', invalid: 'El enlace de la eQSL está incompleto o dañado. Pedile al colega que vuelva a compartirla.', heading: 'TARJETA eQSL · CONFIRMACIÓN DE CONTACTO', confirms: 'confirma el QSO con', date: 'Fecha', band: 'Banda', frequency: 'Frecuencia', mode: 'Modo', rst: 'RST enviado/recibido', thanks: '¡Gracias por el contacto! · 73', grid: 'Grid' },
+  es: { title: 'HAY UNA eQSL para ti', intro: 'Responde de manera rápida y gratuita en eQSL EXPRESS.', download: 'Descargar eQSL (PNG)', open: 'Pulsa aquí para descargar y responder esta QSL', note: 'Tu respuesta se prepara dentro de LogBook eQSL Express, sin necesidad de registrarte.', missing: 'No se encontró la tarjeta eQSL en este enlace.', invalid: 'El enlace de la eQSL está incompleto o dañado. Pedile al colega que vuelva a compartirla.', heading: 'TARJETA eQSL · CONFIRMACIÓN DE CONTACTO', confirms: 'confirma el QSO con', date: 'Fecha', band: 'Banda', frequency: 'Frecuencia', mode: 'Modo', rst: 'RST enviado/recibido', thanks: '¡Gracias por el contacto! · 73', grid: 'Grid' },
   en: { title: 'eQSL received', intro: 'View and download this card without installing the app or creating an account.', download: 'Download eQSL (PNG)', open: 'Open LogBook eQSL Express', note: 'This card is recreated from the data included in the shared link. Keep the link if you want to view it again.', missing: 'No eQSL card was found in this link.', invalid: 'The eQSL link is incomplete or damaged. Ask the operator to share it again.', heading: 'eQSL CARD · QSO CONFIRMATION', confirms: 'confirms the QSO with', date: 'Date', band: 'Band', frequency: 'Frequency', mode: 'Mode', rst: 'RST sent/received', thanks: 'Thanks for the contact! · 73', grid: 'Grid' },
   fr: { title: 'eQSL reçue', intro: 'Consultez et téléchargez cette carte sans installer l’application ni créer de compte.', download: 'Télécharger eQSL (PNG)', open: 'Ouvrir LogBook eQSL Express', note: 'Cette carte est recréée à partir des données du lien partagé. Conservez le lien pour la consulter à nouveau.', missing: 'Aucune carte eQSL trouvée dans ce lien.', invalid: 'Le lien eQSL est incomplet ou endommagé. Demandez à l’opérateur de le partager à nouveau.', heading: 'CARTE eQSL · CONFIRMATION DU QSO', confirms: 'confirme le QSO avec', date: 'Date', band: 'Bande', frequency: 'Fréquence', mode: 'Mode', rst: 'RST envoyé/reçu', thanks: 'Merci pour le contact ! · 73', grid: 'Locator' },
   de: { title: 'eQSL empfangen', intro: 'Diese Karte ansehen und herunterladen, ohne die App zu installieren oder ein Konto anzulegen.', download: 'eQSL herunterladen (PNG)', open: 'LogBook eQSL Express öffnen', note: 'Diese Karte wird aus den Daten des geteilten Links erstellt. Bewahren Sie den Link auf, um sie erneut anzusehen.', missing: 'In diesem Link wurde keine eQSL-Karte gefunden.', invalid: 'Der eQSL-Link ist unvollständig oder beschädigt. Bitten Sie den Funkamateur, ihn erneut zu teilen.', heading: 'eQSL-KARTE · QSO-BESTÄTIGUNG', confirms: 'bestätigt das QSO mit', date: 'Datum', band: 'Band', frequency: 'Frequenz', mode: 'Betriebsart', rst: 'RST gesendet/empfangen', thanks: 'Danke für den Kontakt! · 73', grid: 'Grid' },
@@ -129,25 +129,25 @@ export const ReceivedEQSLPage: React.FC = () => {
     ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 28px sans-serif'; ctx.fillText(t.thanks, 600, 650, 1080);
   }, [card, t]);
 
-  const download = () => {
+  const getReplyAppUrl = () => {\n    if (!card) return window.location.origin + '/';\n    const params = new URLSearchParams({ reply_to: card.from, to_call: card.to, date: card.date, time: card.time, band: card.band, freq: card.frequency, mode: card.mode, rst: card.rstSent || '59' });\n    return window.location.origin + '/?' + params.toString();\n  };\n\n  const download = () => {
     if (!canvasRef.current || !card) return;
     const link = document.createElement('a');
     link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + '.png';
     link.href = canvasRef.current.toDataURL('image/png'); link.click();
   };
 
-  return <main lang={language} className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-    <section className="w-full max-w-4xl rounded-2xl border border-slate-700 bg-slate-900 p-4 sm:p-6">
-      <h1 className="text-xl sm:text-2xl font-bold text-amber-300 mb-2">{t.title}</h1>
-      <p className="text-sm text-slate-300 mb-4">{t.intro}</p>
+  return <main lang={language} className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-5">
+    <section className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-900 p-3 sm:p-6 shadow-2xl">
+      <h1 className="text-xl sm:text-3xl font-extrabold text-amber-300 mb-2 text-center">{t.title}</h1>
+      <p className="text-base sm:text-lg font-semibold text-slate-100 mb-4 text-center">{t.intro}</p>
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
-        <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950 p-1"><canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" /></div>
+        <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg"><canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" /></div>
         <div className="mt-4 flex flex-col sm:flex-row gap-3">
           <button onClick={download} className="rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950">{t.download}</button>
           <a href={window.location.origin + '/'} className="rounded-lg border border-slate-600 px-4 py-3 text-center font-semibold">{t.open}</a>
         </div>
       </>}
-      <p className="mt-5 text-xs text-slate-500">{t.note}</p>
+      <p className="mt-4 text-center text-xs text-slate-400">{t.note}</p>
     </section>
   </main>;
 };
