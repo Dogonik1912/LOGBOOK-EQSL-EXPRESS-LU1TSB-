@@ -77,7 +77,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   const myCallsign = getUserCallsign();
   // Distinguir los QSOs de banda ciudadana para mostrar la señal de estación CB.
-  const isCBQSO = qso?.band === '11 metros';
+  const isCBQSO = /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(qso?.band || ''));
   const cardSenderCallsign = isCBQSO
     ? (qso?.stationCallsign || localStorage.getItem('cb_station_callsign') || '11 METROS')
     : myCallsign;
@@ -569,7 +569,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const time = qso?.time || '';
     const frequency = Number(String(qso?.frequency || '').trim().replace(',', '.'));
     const mode = qso?.mode || '';
-    const validCall = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(call);
+    const validCall = isCBQSO
+      ? /^[A-Z0-9][A-Z0-9 /_-]{0,39}$/.test(call)
+      : /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(call);
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
     const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
     const validFrequency = Number.isFinite(frequency) && frequency > 0 && frequency <= 100000;
