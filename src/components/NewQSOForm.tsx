@@ -329,10 +329,16 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     setGrid('');
     setNotes('');
 
-    // Re-enfocar en el indicativo para el próximo QSO rápido
-    setTimeout(() => {
-      callsignInputRef.current?.focus();
-    }, 50);
+    // No abrir el teclado del móvil al pasar al editor de eQSL.
+    // Solo volver al campo de indicativo cuando se guarda un QSO sin abrir la eQSL.
+    if (shouldOpenEQSL) {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) activeElement.blur();
+    } else {
+      setTimeout(() => {
+        callsignInputRef.current?.focus();
+      }, 50);
+    }
   };
 
   return (
