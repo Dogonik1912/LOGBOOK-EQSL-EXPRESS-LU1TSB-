@@ -76,6 +76,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [signatureText, setSignatureText] = useState(() => (localStorage.getItem('eqsl_signature_text') || getFirma()).slice(0, 30));
 
   const myCallsign = getUserCallsign();
+  // Distinguir los QSOs de banda ciudadana para mostrar la señal de estación CB.
+  const isCBQSO = qso?.band === '11 metros';
   const cardSenderCallsign = isCBQSO
     ? (qso?.stationCallsign || localStorage.getItem('cb_station_callsign') || '11 METROS')
     : myCallsign;
