@@ -14,7 +14,8 @@ import {
   User, 
   Globe, 
   Sparkles, 
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 interface NewQSOFormProps {
