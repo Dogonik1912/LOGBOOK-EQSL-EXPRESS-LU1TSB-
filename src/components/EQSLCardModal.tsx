@@ -76,7 +76,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [signatureText, setSignatureText] = useState(() => (localStorage.getItem('eqsl_signature_text') || getFirma()).slice(0, 30));
 
   const myCallsign = getUserCallsign();
-  const isCBQSO = qso?.band === '11 metros';
   const cardSenderCallsign = isCBQSO
     ? (qso?.stationCallsign || localStorage.getItem('cb_station_callsign') || '11 METROS')
     : myCallsign;
@@ -392,7 +391,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const origin = window.location.origin;
     // El enlace de respuesta solo lleva los datos necesarios del QSO; nunca expone correo ni teléfono.
     const params = new URLSearchParams({
-      reply_to: myCallsign,
+      reply_to: cardSenderCallsign,
       to_call: qso.callsign,
       date: qso.date,
       time: qso.time,
