@@ -334,15 +334,14 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `${firma}\n` +
       `LogBook eQSL Express`;
 
+    const rawPhone = String(initialData?.whatsapp || '').trim();
+    const digits = rawPhone.replace(/[^0-9]/g, '');
+    const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
+    // WhatsApp no ofrece un enlace wa.me fiable por alias: usarlo solo como nota, nunca como teléfono.
     const username = String(initialData?.whatsappUsername || '').replace(/^@+/, '');
-    const message = (username ? 'Destinatario WhatsApp: @' + username + ' (buscá este alias en WhatsApp si tu cuenta tiene nombres de usuario habilitados).\n\n' : '') + text;
-    const cleanPhone = initialData?.whatsapp ? initialData.whatsapp.replace(/[^0-9]/g, '') : '';
+    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\n\n' : '') + text;
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    if (username) {
-      window.open(`https://wa.me/${encodeURIComponent(username)}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
       return;
     }
     // Sin número confirmado, compartir texto mediante el menú nativo permite elegir WhatsApp y contacto.
@@ -387,7 +386,12 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       `LogBook eQSL Express`
     );
 
-    window.open(`mailto:${emailTo}?subject=${subject}&body=${body}`);
+    const targetEmail = emailTo.trim();
+    if (!targetEmail) {
+      window.alert('Ingresá el correo del remitente original o elegí WhatsApp o Telegram para responder.');
+      return;
+    }
+    window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
   };
 
   // Guardar en el Logbook local
@@ -468,6 +472,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             />
           </div>
 
+          <div>
+            <label className="block text-[11px] text-slate-300 mb-1">Email para responder (editable)</label>
+            <input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="correo del remitente original" className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white" />
+          </div>
           <div>
             <label className="block text-[11px] text-slate-300 mb-1">
               Banda / Frecuencia
