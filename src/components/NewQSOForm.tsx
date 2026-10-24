@@ -617,7 +617,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="Teléfono con código de país"
+                onClick={() => { void handleChoosePhoneContact(); }}
+                placeholder="Tocá para elegir contacto o escribí el teléfono"
                 aria-label="Número de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
@@ -630,14 +631,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 aria-label="Nombre de usuario de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
-              <button
-                type="button"
-                onClick={() => { void handleChoosePhoneContact(); }}
-                className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-[10px] sm:text-xs font-bold rounded-lg border border-slate-600 transition-colors"
-                title="Elegir un contacto del teléfono; el navegador pedirá permiso"
-              >
-                <User className="w-3.5 h-3.5" /> <span>Contactos</span>
-              </button>
               <button
                 type="submit"
                 name="qsoAction"
@@ -660,7 +653,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
         </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
-        <p className="text-[11px] text-slate-500">Los contactos utilizados se recuerdan automáticamente en esta libreta. La agenda de WhatsApp no puede leerse completa automáticamente desde el navegador; el botón Contactos solicita permiso y funciona solo en navegadores compatibles. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
+        <p className="text-[11px] text-slate-500">Los contactos utilizados se recuerdan automáticamente en esta libreta. Al tocar el campo WhatsApp se abre el selector de contactos si tu navegador lo permite. La agenda completa de WhatsApp no puede leerse automáticamente desde una página web. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
