@@ -92,6 +92,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     try {
       localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
       setGalleryImages(next);
+      window.dispatchEvent(new Event('user-branding-updated'));
     } catch {
       window.alert('No hay espacio suficiente para guardar todas las fotos. Elegí menos imágenes o archivos más pequeños. Las fotos anteriores no se han reemplazado.');
     }
