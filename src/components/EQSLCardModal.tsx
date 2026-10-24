@@ -404,6 +404,38 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return `${origin}/?${params.toString()}`;
   };
 
+  const getShareInvitation = () => {
+    const lang = (navigator.language || 'es').toLowerCase().split('-')[0];
+    const copy: Record<string, [string, string]> = {
+      es: ['HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.', 'Abre la tarjeta y pulsa el botón para responder:'],
+      en: ['YOU HAVE AN eQSL! Reply quickly and free with eQSL EXPRESS.', 'Open the card and tap the button to reply:'],
+      pt: ['VOCÊ TEM UMA eQSL! Responda de forma rápida e gratuita com eQSL EXPRESS.', 'Abra o cartão e toque no botão para responder:'],
+      fr: ['VOUS AVEZ REÇU UNE eQSL ! Répondez rapidement et gratuitement avec eQSL EXPRESS.', 'Ouvrez la carte et appuyez sur le bouton pour répondre :'],
+      de: ['DU HAST EINE eQSL! Antworte schnell und kostenlos mit eQSL EXPRESS.', 'Öffne die Karte und tippe zum Antworten auf die Schaltfläche:'],
+      it: ['HAI RICEVUTO UNA eQSL! Rispondi rapidamente e gratuitamente con eQSL EXPRESS.', 'Apri la cartolina e premi il pulsante per rispondere:'],
+      nl: ['JE HEBT EEN eQSL! Reageer snel en gratis met eQSL EXPRESS.', 'Open de kaart en tik op de knop om te antwoorden:'],
+      ru: ['ВЫ ПОЛУЧИЛИ eQSL! Ответьте быстро и бесплатно с eQSL EXPRESS.', 'Откройте карточку и нажмите кнопку ответа:'],
+      ja: ['eQSLが届きました！eQSL EXPRESSで素早く無料で返信できます。', 'カードを開き、返信ボタンを押してください：'],
+      zh: ['您收到了一张 eQSL！使用 eQSL EXPRESS 即可快速免费回复。', '打开卡片并点击回复按钮：'],
+      pl: ['MASZ eQSL! Odpowiedz szybko i bezpłatnie dzięki eQSL EXPRESS.', 'Otwórz kartę i naciśnij przycisk odpowiedzi:'],
+      sv: ['DU HAR FÅTT EN eQSL! Svara snabbt och gratis med eQSL EXPRESS.', 'Öppna kortet och tryck på svarsknappen:'],
+      no: ['DU HAR FÅTT EN eQSL! Svar raskt og gratis med eQSL EXPRESS.', 'Åpne kortet og trykk på svarknappen:'],
+      da: ['DU HAR MODTAGET EN eQSL! Svar hurtigt og gratis med eQSL EXPRESS.', 'Åbn kortet, og tryk på svarknappen:'],
+      fi: ['SAIT eQSL-KORTIN! Vastaa nopeasti ja maksutta eQSL EXPRESSillä.', 'Avaa kortti ja paina vastauspainiketta:'],
+      cs: ['DOSTALI JSTE eQSL! Odpovězte rychle a zdarma s eQSL EXPRESS.', 'Otevřete kartu a stiskněte tlačítko odpovědi:'],
+      sk: ['DOSTALI STE eQSL! Odpovedzte rýchlo a zadarmo s eQSL EXPRESS.', 'Otvorte kartu a stlačte tlačidlo odpovede:'],
+      hu: ['eQSL-T KAPTÁL! Válaszolj gyorsan és ingyen az eQSL EXPRESS segítségével.', 'Nyisd meg a kártyát, és koppints a válasz gombra:'],
+      ro: ['AI PRIMIT O eQSL! Răspundeți rapid și gratuit cu eQSL EXPRESS.', 'Deschideți cardul și apăsați butonul de răspuns:'],
+      tr: ['BİR eQSL ALDINIZ! eQSL EXPRESS ile hızlı ve ücretsiz yanıt verin.', 'Kartı açın ve yanıtlamak için düğmeye dokunun:'],
+      el: ['ΛΑΒΑΤΕ ΜΙΑ eQSL! Απαντήστε γρήγορα και δωρεάν με το eQSL EXPRESS.', 'Ανοίξτε την κάρτα και πατήστε το κουμπί απάντησης:'],
+      uk: ['ВИ ОТРИМАЛИ eQSL! Відповідайте швидко й безкоштовно через eQSL EXPRESS.', 'Відкрийте картку й натисніть кнопку відповіді:'],
+      hr: ['PRIMILI STE eQSL! Odgovorite brzo i besplatno uz eQSL EXPRESS.', 'Otvorite karticu i pritisnite gumb za odgovor:'],
+      sr: ['DOBILI STE eQSL! Odgovorite brzo i besplatno uz eQSL EXPRESS.', 'Otvorite karticu i pritisnite dugme za odgovor:'],
+      ca: ['HAS REBUT UNA eQSL! Respon ràpidament i gratuïtament amb eQSL EXPRESS.', 'Obre la targeta i prem el botó per respondre:'],
+    };
+    return copy[lang] || copy.en;
+  };
+
   // Crear un enlace público corto. Los datos del QSO se guardan temporalmente en el servidor,
   // no se codifican dentro de la URL ni se incluyen datos privados de contacto.
   const getReceivedCardUrl = async () => {
@@ -464,10 +496,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
       return;
     }
-    const message =
-      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
-      'Abre la tarjeta y pulsa el botón para responder:\\n' +
-      receivedCardLink;
+    const [invite, openToReply] = getShareInvitation();
+    const message = invite + '\\n' + openToReply + '\\n' + receivedCardLink;
     const canvas = canvasRef.current;
     if (canvas && typeof navigator.share === 'function' && typeof File !== 'undefined') {
       try {
@@ -496,8 +526,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
       return;
     }
-    const text = 'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n' +
-      'Abre la tarjeta y pulsa el botón para responder.\\n' + getFirma();
+    const [invite, openToReply] = getShareInvitation();
+    const text = invite + '\\n' + openToReply + '\\n' + getFirma();
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(receivedCardLink) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -521,8 +551,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const firma = getFirma();
     const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
     const body = encodeURIComponent(
-      'HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.\\n\\n' +
-      'Abre la tarjeta y pulsa el botón para descargarla y responder con tu propio diseño:\\n' +
+      getShareInvitation()[0] + '\\n\\n' +
+      getShareInvitation()[1] + '\\n' +
       receivedCardLink + '\\n\\n' + firma + '\\nLogBook eQSL Express'
     );
     window.location.href = `mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`;
