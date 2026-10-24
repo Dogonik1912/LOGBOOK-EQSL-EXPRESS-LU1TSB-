@@ -179,8 +179,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const handleBandChange = (newBand: string) => {
     setBand(newBand);
     const found = HAM_BANDS.find((b) => b.name === newBand);
-    if (found) {
-      setFrequency(found.defaultFreq);
+    if (found) setFrequency(found.defaultFreq);
+
+    // Al entrar en banda ciudadana, restaurar automáticamente sus parámetros propios.
+    // La señal CB se mantiene separada del indicativo de radioaficionado.
+    if (newBand === '11 metros') {
+      setCbStationCallsign(localStorage.getItem('cb_station_callsign') || '');
+      setRstSent('59');
+      setRstRcvd('59');
     }
   };
 
