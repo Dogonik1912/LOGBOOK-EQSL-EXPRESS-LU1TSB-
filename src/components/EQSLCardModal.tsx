@@ -291,15 +291,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         ctx.fillText(firma, width / 2, 635, width - 120);
       }
 
-      // Marca de agua solicitada por el usuario: también se aplica sobre fotos propias.
+      // Marca de agua obligatoria, negra e integrada en la imagen final.
       ctx.save();
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.font = 'italic bold 18px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 4;
-      ctx.fillText('LogBook eqsl app.', width - 55, height - 48);
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.shadowColor = 'rgba(255,255,255,0.85)';
+      ctx.shadowBlur = 2;
+      ctx.fillText('LogBook eQSL EXPRESS', width - 24, height - 18);
       ctx.restore();
 
     };
@@ -786,7 +786,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
             placeholder="Ej. 73 cordiales de LU1TSB"
             className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white"
           />
-          <p className="text-[11px] text-slate-500">La firma se guarda en este dispositivo. La tarjeta se comparte sin marca de agua y conserva el diseño elegido.</p>
+          <p className="text-[11px] text-slate-500">La firma se guarda en este dispositivo. La tarjeta conserva la imagen y el diseño elegidos e incluye la marca de agua obligatoria LogBook eQSL EXPRESS.</p>
         </div>
 
         {/* Vista previa Canvas */}
