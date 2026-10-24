@@ -18,6 +18,18 @@ create table if not exists public.eqsl_directory (
     check (callsign = upper(trim(callsign)) and callsign ~ '^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(/[A-Z0-9]{1,5})?$')
 );
 
+-- Upgrade an older directory table safely if one already exists.
+alter table public.eqsl_directory add column if not exists email text;
+alter table public.eqsl_directory add column if not exists whatsapp text;
+alter table public.eqsl_directory add column if not exists telegram text;
+alter table public.eqsl_directory add column if not exists country text;
+alter table public.eqsl_directory add column if not exists grid text;
+alter table public.eqsl_directory add column if not exists contact_public boolean not null default false;
+alter table public.eqsl_directory add column if not exists contact_updated_at timestamptz;
+alter table public.eqsl_directory add column if not exists activity_count bigint not null default 0;
+alter table public.eqsl_directory add column if not exists last_activity_at timestamptz;
+alter table public.eqsl_directory add column if not exists created_at timestamptz not null default now();
+
 create index if not exists eqsl_directory_public_callsign_idx
   on public.eqsl_directory (callsign) where contact_public = true;
 create index if not exists eqsl_directory_active_idx
