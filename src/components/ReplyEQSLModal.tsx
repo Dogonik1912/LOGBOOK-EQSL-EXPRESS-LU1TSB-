@@ -322,37 +322,47 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
-  // Compartir respuesta: WhatsApp puede elegirse desde la hoja nativa de compartir.
-  const handleShareWhatsApp = () => {
+  // Compartir la respuesta como tarjeta eQSL (imagen) y texto. El enlace lleva
+  // siempre a la página principal: esta tarjeta ya es una confirmación recibida.
+  const handleShareWhatsApp = async () => {
     if (!handleSaveToLocalLog()) return;
     const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
-    const firma = `73 cordiales de ${activeMyCall}`;
-    const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
-      `De: *${activeMyCall}* para: *${replyToCall}*\n` +
-      `🤝 ¡Contacto 2-Way Confirmado!\n` +
-      `📅 Fecha: ${date} ${time} UTC\n` +
-      `📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n` +
-      `📶 RST: ${rstSent} / ${rstRcvd}\n\n` +
-      `${firma}\n` +
-      `LogBook eQSL Express`;
+    const text = `📻 *Respuesta a tu Tarjeta eQSL*\\n` +
+      `De: *${activeMyCall}* para: *${replyToCall}*\\n` +
+      `🤝 ¡Contacto 2-Way Confirmado!\\n` +
+      `📅 Fecha: ${date} ${time} UTC\\n` +
+      `📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\\n` +
+      `📶 RST: ${rstSent} / ${rstRcvd}\\n\\n` +
+      `73 cordiales de ${activeMyCall}\\n` +
+      `LogBook eQSL Express\\n` +
+      `Abrir la aplicación: ${window.location.origin}/`;
+
+    const canvas = canvasRef.current;
+    if (canvas && typeof navigator.share === 'function') {
+      try {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (blob) {
+          const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
+          if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'Respuesta eQSL', text, url: window.location.origin + '/' });
+            return;
+          }
+        }
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
+        // Si el navegador no permite compartir archivos, continuar con el enlace de texto.
+      }
+    }
 
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
-    // WhatsApp no ofrece un enlace wa.me fiable por alias: usarlo solo como nota, nunca como teléfono.
     const username = String(initialData?.whatsappUsername || '').replace(/^@+/, '');
-    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\n\n' : '') + text;
+    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\\n\\n' : '') + text;
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    // Sin número confirmado, compartir texto mediante el menú nativo permite elegir WhatsApp y contacto.
-    if (navigator.share) {
-      void navigator.share({ title: 'Respuesta eQSL', text }).catch((error) => {
-        if (error?.name !== 'AbortError') window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-      });
     } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     }
   };
 
