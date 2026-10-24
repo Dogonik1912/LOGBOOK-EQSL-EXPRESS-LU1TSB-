@@ -407,11 +407,11 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
 
   const handleShareTelegram = async () => {
     if (!handleSaveToLocalLog()) return;
-    const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const text = `📻 Respuesta a tu eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 Contacto confirmado · ${date} ${time} UTC\n📡 ${band} (${frequency} MHz) · ${mode}\n📶 RST: ${rstSent}/${rstRcvd}\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`;
-    if (await shareReplyCardFile(text, cardUrl)) return;
+    if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
       ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
@@ -423,7 +423,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const handleSendEmail = async () => {
     if (!emailTo.trim()) { window.alert('Ingresá el correo del remitente original o elegí WhatsApp o Telegram para responder.'); return; }
     if (!handleSaveToLocalLog()) return;
-    const activeMyCall = myCall.trim().toUpperCase() || DEFAULT_CALLSIGN;
+    const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
