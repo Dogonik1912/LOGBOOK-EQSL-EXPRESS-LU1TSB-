@@ -219,18 +219,32 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     localStorage.setItem('logbook_contacts', JSON.stringify(book));
   };
 
-  // Si la libreta ya tiene un teléfono válido, abrir directamente el chat de ese número.
-  // Si solo hay un alias o el campo está vacío, abrir WhatsApp para compartir/seleccionar destinatario.
-  const handleOpenWhatsApp = () => {
-    const raw = whatsapp.trim();
-    const digits = raw.replace(/\\D/g, '');
-    const looksLikePhone = !raw.startsWith('@') && digits.length >= 7 && digits.length <= 15;
-    const url = looksLikePhone
-      ? `https://wa.me/${digits}`
-      : 'whatsapp://send';
-    const fallback = looksLikePhone ? url : 'https://wa.me/';
-    const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!opened && !looksLikePhone) window.location.href = fallback;
+  // Usar el selector nativo de contactos del teléfono: devuelve el número elegido
+  // a la app sin abrir el chat de WhatsApp ni abandonar la página.
+  // Por seguridad, WhatsApp no permite que una web recupere un contacto elegido dentro de WhatsApp.
+  const handleOpenWhatsApp = async () => {
+    const contacts = (navigator as Navigator & {
+      contacts?: { select: (properties: string[], options?: { multiple?: boolean }) => Promise<Array<{ name?: string[]; tel?: string[] }>> }
+    }).contacts;
+
+    if (!contacts?.select) {
+      setLookupMessage('Este navegador no ofrece selector de contactos. Escribí o pegá el teléfono internacional en este campo; la app permanecerá abierta.');
+      return;
+    }
+
+    try {
+      const selected = await contacts.select(['name', 'tel'], { multiple: false });
+      const phone = String(selected?.[0]?.tel?.[0] || '').trim();
+      if (!phone) {
+        setLookupMessage('El contacto elegido no tiene un teléfono disponible. Podés escribirlo o pegarlo aquí.');
+        return;
+      }
+      setWhatsapp(phone);
+      setWhatsappUsername('');
+      setLookupMessage('Teléfono copiado al campo WhatsApp. Seguís en LogBook eQSL Express.');
+    } catch {
+      // Si el usuario cancela el selector, no mostrar alertas ni abrir aplicaciones externas.
+    }
   };
 
   // Abrir el selector general para compartir por Telegram, sin enviar a un usuario concreto.
@@ -622,8 +636,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                onClick={handleOpenWhatsApp}
-                placeholder="Tocá para elegir en WhatsApp o escribí el teléfono"
+                onClick={() => { void handleOpenWhatsApp(); }}
+                placeholder="Tocá para elegir contacto o escribí el teléfono"
                 aria-label="Número de WhatsApp del corresponsal"
                 className="min-w-0 w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-emerald-300 placeholder:text-slate-600 focus:border-emerald-400 focus:outline-hidden"
               />
@@ -658,7 +672,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
         </div>
 
         {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
-        <p className="text-[11px] text-slate-500">Al tocar WhatsApp o Telegram se abre su selector general sin dirigir el envío al indicativo actual. Por seguridad, la web no puede leer el contacto que elijas dentro de esas aplicaciones para rellenar este formulario automáticamente. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
+        <p className="text-[11px] text-slate-500">Elegí un contacto del teléfono para copiar su número aquí sin abrir el chat ni salir de la app. Si el navegador no admite el selector, podés pegar o escribir el número. Los datos privados no se publican en el directorio mundial sin autorización del titular.</p>
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
