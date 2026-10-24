@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 // Short-lived public eQSL share links. Supabase credentials stay server-side.
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const card = validateCard(req.body || {});
       if (!card) return json(res, 400, { error: 'Datos de la eQSL incompletos o inválidos.' });
-      const id = Array.from(crypto.getRandomValues(new Uint8Array(9)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 12);
+      const id = randomBytes(9).toString('base64url').slice(0, 12);
       const expiresAt = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
       await db('eqsl_shared_cards', {
         method: 'POST',
