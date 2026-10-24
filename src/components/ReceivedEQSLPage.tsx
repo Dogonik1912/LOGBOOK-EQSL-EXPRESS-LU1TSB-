@@ -79,7 +79,6 @@ export const ReceivedEQSLPage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [card, setCard] = useState<SharedEQSL | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
   const [alreadyViewed, setAlreadyViewed] = useState(false);
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
@@ -156,7 +155,6 @@ export const ReceivedEQSLPage: React.FC = () => {
     link.download = 'eQSL_' + card.from.replace(/[^A-Z0-9]/gi, '') + '_' + card.to.replace(/[^A-Z0-9]/gi, '') + '_' + card.date + (isJpeg ? '.jpg' : '.png');
     link.href = card.imageDataUrl || canvasRef.current!.toDataURL('image/png'); link.click();
     if (card.isResponse) {
-      setDownloaded(true);
       // Iniciar la descarga y luego regresar a la página principal.
       window.setTimeout(() => { window.location.replace(window.location.origin + '/'); }, 1800);
     }
