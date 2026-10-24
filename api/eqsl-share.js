@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const id = clean(req.query?.id, 24);
-      if (!/^[a-z0-9]{6,24}$/i.test(id)) {
+      if (!/^[a-z0-9_-]{6,24}$/i.test(id)) {
         return json(res, 400, { error: 'Enlace eQSL inválido.' });
       }
       const stored = await get(`eqsl-shares/${id}.json`, { access: 'private', token });
