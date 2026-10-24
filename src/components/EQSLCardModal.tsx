@@ -291,14 +291,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         ctx.fillText(firma, width / 2, 635, width - 120);
       }
 
-      // Marca de agua discreta, visible y aplicada a todas las tarjetas, incluso a imágenes de galería.
+      // Marca de agua permanente de la app, incluso sobre imágenes propias de galería.
       ctx.save();
       ctx.textAlign = 'right';
-      ctx.font = 'italic 18px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.82)';
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur = 4;
-      ctx.fillText('LogBook eqsl app.', width - 52, height - 48);
+      ctx.textBaseline = 'bottom';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.shadowColor = 'rgba(255,255,255,0.65)';
+      ctx.shadowBlur = 2;
+      ctx.fillText('LogBook eQSL EXPRESS', width - 24, height - 20);
       ctx.restore();
     };
 
