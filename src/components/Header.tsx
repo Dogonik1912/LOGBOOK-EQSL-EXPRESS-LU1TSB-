@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MessageCircle, Download, Smartphone } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, Mail } from 'lucide-react';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -17,6 +17,26 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const appUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
+  const appShareText = `LogBook eQSL Express - ${appUrl}`;
+  const copyAppLink = async () => {
+    try { await navigator.clipboard.writeText(appUrl); window.alert('Enlace de LogBook eQSL Express copiado.'); }
+    catch { window.prompt('Copiá el enlace de la app:', appUrl); }
+    setShareMenuOpen(false);
+  };
+  const shareApp = async (channel: string) => {
+    const encoded = encodeURIComponent(appShareText);
+    if (channel === 'copy') { await copyAppLink(); return; }
+    if (channel === 'native' && navigator.share) {
+      try { await navigator.share({ title: 'LogBook eQSL Express', text: 'Conocé LogBook eQSL Express', url: appUrl }); } catch (error) { if ((error as Error)?.name !== 'AbortError') window.alert('No se pudo abrir el menú para compartir.'); }
+    } else if (channel === 'whatsapp') window.open(`https://wa.me/?text=${encoded}`, '_blank', 'noopener,noreferrer');
+    else if (channel === 'telegram') window.open(`https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent('LogBook eQSL Express')}`, '_blank', 'noopener,noreferrer');
+    else if (channel === 'email') window.location.href = `mailto:?subject=${encodeURIComponent('LogBook eQSL Express')}&body=${encoded}`;
+    else if (channel === 'messenger') window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(appUrl)}&app_id=966242223397117&redirect_uri=${encodeURIComponent(appUrl)}`, '_blank', 'noopener,noreferrer');
+    else if (channel === 'instagram' || channel === 'tiktok') { await copyAppLink(); window.open(channel === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/', '_blank', 'noopener,noreferrer'); window.alert('El enlace quedó copiado. Pegalo en tu publicación o mensaje.'); }
+    setShareMenuOpen(false);
+  };
 
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
@@ -142,17 +162,22 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>
 
-          {/* PRIORIDAD 2: Botón Compartir app por WhatsApp */}
-          <a
-            href="https://wa.me/?text=LogBook%20eQSL%20Express%20-%20https%3A%2F%2Flogbook-eqsl-express-lu-1-tsb.vercel.app%2F"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-sm hover:shadow-emerald-500/20 transition-all cursor-pointer"
-            title="Compartir app por WhatsApp"
-          >
-            <MessageCircle className="w-4 h-4 fill-white" />
-            <span>Compartir app por WhatsApp</span>
-          </a>
+          {/* Compartir la aplicación por distintos canales */}
+          <div className="relative">
+            <button type="button" onClick={() => setShareMenuOpen((open) => !open)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer" title="Compartir LogBook eQSL Express">
+              <Share2 className="w-4 h-4" /><span>Compartir app</span>
+            </button>
+            {shareMenuOpen && <div className="absolute right-0 top-full mt-2 z-50 min-w-52 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl flex flex-col gap-1">
+              <button type="button" onClick={() => void shareApp('native')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">Compartir… (menú del dispositivo)</button>
+              <button type="button" onClick={() => void shareApp('whatsapp')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">WhatsApp</button>
+              <button type="button" onClick={() => void shareApp('telegram')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">Telegram</button>
+              <button type="button" onClick={() => void shareApp('email')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">Correo electrónico</button>
+              <button type="button" onClick={() => void shareApp('messenger')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">Messenger</button>
+              <button type="button" onClick={() => void shareApp('instagram')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">Instagram (copiar enlace)</button>
+              <button type="button" onClick={() => void shareApp('tiktok')} className="text-left rounded-lg px-3 py-2 text-sm text-white hover:bg-slate-800">TikTok (copiar enlace)</button>
+              <button type="button" onClick={() => void shareApp('copy')} className="text-left rounded-lg px-3 py-2 text-sm text-emerald-300 hover:bg-slate-800"><Copy className="inline w-4 h-4 mr-2" />Copiar enlace</button>
+            </div>}
+          </div>
 
           {/* Botón Responder eQSL */}
           {onOpenReplyModal && (
