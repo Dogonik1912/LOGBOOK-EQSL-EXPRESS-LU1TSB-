@@ -358,7 +358,17 @@ function MainApp() {
 }
 
 export default function App() {
+  // Si la última operación fue responder una eQSL, la próxima entrada debe empezar
+  // en Inicio, incluso si el navegador vuelve a abrir un enlace antiguo.
+  const returningAfterReply = localStorage.getItem('logbook_return_home_after_reply') === '1';
+  if (returningAfterReply) {
+    localStorage.removeItem('logbook_return_home_after_reply');
+    if (window.location.pathname !== '/' || window.location.search || window.location.hash) {
+      window.history.replaceState({}, '', '/');
+    }
+  }
+
   const sharedParams = new URLSearchParams(window.location.search);
-  if (sharedParams.has('e') || sharedParams.has('view_eqsl')) return <ReceivedEQSLPage />;
+  if (!returningAfterReply && (sharedParams.has('e') || sharedParams.has('view_eqsl'))) return <ReceivedEQSLPage />;
   return <MainApp />;
 }
