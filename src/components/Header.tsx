@@ -61,16 +61,16 @@ export const Header: React.FC<HeaderProps> = ({
   // El encabezado queda bloqueado en la imagen que ya estaba mostrándose.
   // La galería de eQSL es independiente y nunca debe reemplazar esta imagen.
   const readHeaderImage = () => {
-    // El encabezamiento queda fijo y separado de los fondos eQSL.
-    // Si existe una copia protegida, se restaura incluso si se eliminó de la galería.
-    const locked = localStorage.getItem('app_header_image_locked');
-    if (locked) return locked;
+    // El encabezamiento usa exclusivamente su propia imagen, no la imagen anclada
+    // como fondo eQSL. La selección explícita tiene prioridad sobre copias antiguas.
     const explicitlyChosen = localStorage.getItem('app_header_image');
     if (explicitlyChosen) {
-      localStorage.setItem('app_header_image_locked', explicitlyChosen);
+      if (localStorage.getItem('app_header_image_locked') !== explicitlyChosen) {
+        localStorage.setItem('app_header_image_locked', explicitlyChosen);
+      }
       return explicitlyChosen;
     }
-    return '';
+    return localStorage.getItem('app_header_image_locked') || '';
   };
   const [headerImage, setHeaderImage] = useState(() => readHeaderImage());
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');

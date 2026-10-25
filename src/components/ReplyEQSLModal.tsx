@@ -6,6 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
+import { requestChatInvitation } from '../services/chatInvitation';
 import {
   X,
   Download,
@@ -431,6 +432,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
       if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
       await navigator.share({ files: [file], title: 'Respuesta eQSL', text });
+      requestChatInvitation('reply');
       return true;
     } catch (error: any) {
       if (error?.name === 'AbortError') return true;
@@ -445,26 +447,26 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
-      `De: *${activeMyCall}* para: *${replyToCall}*\n` +
-      `🤝 ¡Contacto 2-Way Confirmado!\n` +
-      `📅 Fecha: ${date} ${time} UTC\n` +
-      `📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n` +
-      `📶 RST: ${rstSent} / ${rstRcvd}\n\n` +
-      `73 cordiales de ${activeMyCall}\n` +
-      `LogBook eQSL Express\n` +
-      `Ver y descargar la tarjeta de respuesta: ${cardUrl}`;
-    if (await shareReplyCardFile(text)) return;
+    const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
-    const username = String(initialData?.whatsappUsername || '').replace(/^@+/, '');
-    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\n\n' : '') + text;
+
+    // Mostrar la invitación antes de salir a WhatsApp; así no depende de que
+    // el navegador conserve el evento después de cambiar de aplicación.
+    requestChatInvitation('reply');
+
+    // Si la eQSL original contiene el número, abrir directamente ese chat.
+    // No usamos primero la hoja genérica de compartir, que obliga a elegir contacto.
     if (cleanPhone) {
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+      window.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+      return;
     }
+
+    // Sin número verificado no es posible seleccionar automáticamente un destinatario.
+    // Dejamos la respuesta preparada y explicamos por qué hace falta elegir contacto.
+    if (await shareReplyCardFile(text)) return;
+    window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
   };
 
   const handleShareTelegram = async () => {
@@ -472,13 +474,14 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 Respuesta a tu eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 Contacto confirmado · ${date} ${time} UTC\n📡 ${band} (${frequency} MHz) · ${mode}\n📶 RST: ${rstSent}/${rstRcvd}\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`;
+    const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
     if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
       ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
       : 'https://t.me/share/url?url=' + encodeURIComponent(cardUrl) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
+    requestChatInvitation('reply');
   };
 
   // El correo incluye el enlace a la tarjeta visual completa para verla y descargarla.
@@ -488,8 +491,9 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
-    const body = encodeURIComponent(`📻 Respuesta a tu Tarjeta eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 ¡Contacto 2-Way Confirmado!\n📅 Fecha: ${date} ${time} UTC\n📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n📶 RST: ${rstSent} / ${rstRcvd}\n\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`);
+    const subject = encodeURIComponent(`Respuesta a tu eQSL de ${activeMyCall}`);
+    const body = encodeURIComponent(`📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`);
+    requestChatInvitation('reply');
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
   // Guardar automáticamente el QSO de respuesta antes de abrir el canal externo.

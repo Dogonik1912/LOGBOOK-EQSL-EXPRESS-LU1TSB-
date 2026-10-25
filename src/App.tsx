@@ -325,6 +325,8 @@ function MainApp() {
         }}
         onSaveQSO={(qso) => handleAddQSO(qso, false)}
       />
+
+
     </div>
   );
 }

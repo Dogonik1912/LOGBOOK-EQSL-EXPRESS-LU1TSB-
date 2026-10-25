@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Check, X, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy } from 'lucide-react';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -19,10 +19,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
-  const [email, setEmail] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [whatsappUsername, setWhatsappUsername] = useState('');
-  const [telegram, setTelegram] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
@@ -32,27 +28,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setCallsign(localStorage.getItem('user_callsign') || '');
-      setEmail(localStorage.getItem('user_email') || '');
-      setWhatsapp(localStorage.getItem('user_whatsapp') || '');
-      setWhatsappUsername(localStorage.getItem('user_whatsapp_username') || '');
-      setTelegram(localStorage.getItem('user_telegram') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       let savedGallery: Array<{ id: string; name: string; dataUrl: string }> = [];
       try {
         savedGallery = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]');
         setGalleryImages(savedGallery);
       } catch { setGalleryImages([]); }
-      // Recuperación única: si falta el encabezamiento protegido, copiar una sola
-      // vez la primera imagen de la galería a una clave independiente.
-      // Nunca modificarla después al cambiar o borrar diseños eQSL.
-      if (!localStorage.getItem('app_header_image_locked')) {
-        const existingHeader = localStorage.getItem('app_header_image');
-        const recoveryImage = existingHeader || savedGallery[0]?.dataUrl;
-        if (recoveryImage) {
-          localStorage.setItem('app_header_image_locked', recoveryImage);
-          window.dispatchEvent(new Event('user-branding-updated'));
-        }
-      }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || 'es');
       setSavedSuccess(false);
@@ -61,18 +42,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  // El encabezamiento pertenece a la aplicación, no al diseño eQSL.
-  // Antes de modificar o borrar fondos eQSL, conservamos una copia independiente
-  // de la imagen que ya se estaba usando en el encabezamiento.
-  const preserveHeaderImage = (possibleCurrentHeader?: string | null) => {
-    if (localStorage.getItem('app_header_image_locked')) return;
+  // La galería y los fondos eQSL no deben modificar la imagen del encabezado.
+  const preserveHeaderImage = () => {
     const explicitHeader = localStorage.getItem('app_header_image');
-    if (explicitHeader) {
-      localStorage.setItem('app_header_image_locked', explicitHeader);
-      return;
-    }
-    const imageToPreserve = possibleCurrentHeader || customBg;
-    if (imageToPreserve) localStorage.setItem('app_header_image_locked', imageToPreserve);
+    if (explicitHeader) localStorage.setItem('app_header_image_locked', explicitHeader);
   };
 
   // Importa varias fotos a la galería sin activar ninguna automáticamente.
@@ -120,13 +93,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const next = [...existing, ...imported];
     try {
       localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
-      // Si el encabezamiento aún no existe, guardar una copia independiente
-      // de la primera imagen recién subida. No se vuelve a sobrescribir.
-      if (!localStorage.getItem('app_header_image_locked')) {
-        const existingHeader = localStorage.getItem('app_header_image');
-        const recoveryImage = existingHeader || imported[0]?.dataUrl;
-        if (recoveryImage) localStorage.setItem('app_header_image_locked', recoveryImage);
-      }
       setGalleryImages(next);
       window.dispatchEvent(new Event('user-branding-updated'));
     } catch {
@@ -142,7 +108,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   const handleDeleteGalleryImage = (id: string) => {
     const removedImage = galleryImages.find((item) => item.id === id);
-    preserveHeaderImage(removedImage?.dataUrl || null);
+    preserveHeaderImage();
     const next = galleryImages.filter((item) => item.id !== id);
     setGalleryImages(next);
     localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
@@ -162,10 +128,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       return;
     }
     localStorage.setItem('user_callsign', finalCall);
-    localStorage.setItem('user_email', email.trim());
-    localStorage.setItem('user_whatsapp', whatsapp.trim());
-    localStorage.setItem('user_whatsapp_username', whatsappUsername.trim().replace(/^@+/, ''));
-    localStorage.setItem('user_telegram', telegram.trim().replace(/^@+/, ''));
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
     window.dispatchEvent(new Event('user-profile-updated'));
@@ -194,7 +156,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Configuración del Operador</h2>
-              <p className="text-xs text-slate-400">Tu indicativo, correo y diseño de tarjeta</p>
+              <p className="text-xs text-slate-400">Tu indicativo y diseño de tarjeta</p>
             </div>
           </div>
           <button
@@ -208,7 +170,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         <form onSubmit={handleSave} className="space-y-4 pt-4">
           <div className="pt-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Datos de estación</h3>
-            <p className="text-[11px] text-slate-500 mt-1">Completá una sola vez los datos que aparecerán en tus tarjetas.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Tu indicativo se usará como dato predeterminado en tus tarjetas eQSL.</p>
           </div>
           {/* Idioma predeterminado de la interfaz */}
           <div className="rounded-xl border border-violet-500/25 bg-slate-950/60 p-3.5 space-y-2">
@@ -265,25 +227,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi email de respuesta</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi WhatsApp (teléfono internacional)</label>
-              <input type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="54911..." className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi usuario de WhatsApp (opcional)</label>
-              <input type="text" value={whatsappUsername} onChange={(e) => setWhatsappUsername(e.target.value.replace(/^@+/, ''))} placeholder="usuario" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi usuario de Telegram (opcional)</label>
-              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="usuario" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-500">Estos datos se incluyen en el enlace de respuesta que compartís con el corresponsal para que pueda elegir un canal de vuelta. Completá solo los medios por los que aceptás recibir respuestas.</p>
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
@@ -363,6 +306,19 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               </button>
             )}
           </div>
+          <section className="rounded-xl border border-sky-500/30 bg-sky-950/30 p-4 space-y-2" aria-labelledby="logbook-contact-title">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-sky-300" />
+              <h3 id="logbook-contact-title" className="text-sm font-bold text-sky-200">Contacto con LogBook eQSL EXPRESS</h3>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">Para denuncias, suplantaciones, pérdida de acceso, recuperación de clave, consultas o solicitudes relacionadas con tus datos, contactá al administrador. Esta opción está disponible sin registro.</p>
+            <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Contacto%20con%20LogBook%20eQSL%20EXPRESS" className="block break-all text-sm font-semibold text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
+            <div className="flex flex-wrap gap-2">
+              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Denuncia%20o%20suplantacion%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Enviar denuncia</a>
+              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Perdida%20de%20acceso%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Recuperar acceso</a>
+              <button type="button" onClick={() => { void navigator.clipboard?.writeText('lu1tsb.4rc978@gmail.com').then(() => window.alert('Correo copiado.')).catch(() => window.alert('Correo de contacto: lu1tsb.4rc978@gmail.com')); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800"><Copy className="h-3 w-3" /> Copiar correo</button>
+            </div>
+          </section>
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <div className="text-xs text-emerald-400 font-medium">
