@@ -460,8 +460,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
-    const username = String(initialData?.whatsappUsername || '').replace(/^@+/, '');
-    const message = (username ? 'Alias de WhatsApp del destinatario: @' + username + '\n\n' : '') + text;
+    const message = text;
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     } else {
@@ -475,7 +474,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 ¡Respondieron a tu eQSL!\\nRecibiste una respuesta de ${activeMyCall}.\\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
+    const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
     if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
@@ -493,7 +492,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
-    const body = encodeURIComponent(`📻 ¡Respondieron a tu eQSL!\\nRecibiste una respuesta de ${activeMyCall}.\\nVer y descargar la tarjeta de respuesta: ${cardUrl}`);
+    const body = encodeURIComponent(`📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`);
     requestChatInvitation('reply');
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
