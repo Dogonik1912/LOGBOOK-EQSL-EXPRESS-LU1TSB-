@@ -187,12 +187,19 @@ export const CommunityChat: React.FC = () => {
       const { data, error: switchError } = await supabase.rpc('link_community_admin_alias', {
         p_callsign: current, p_token: identityToken, p_target_callsign: target,
       });
-      if (switchError || !data?.ok) {
-        setError(data?.reason === 'forbidden'
+      if (switchError) {
+        console.error('[CommunityChat] Error al cambiar indicativo administrador:', switchError);
+        setError('Supabase rechazó el cambio (' + (switchError.code || 'sin código') + '): ' + switchError.message);
+        return;
+      }
+      if (!data?.ok) {
+        const reason = data?.reason || 'sin motivo devuelto';
+        console.error('[CommunityChat] No se pudo cambiar indicativo administrador:', data);
+        setError(reason === 'forbidden'
           ? 'No se pudo verificar el permiso de administrador para este indicativo.'
-          : data?.reason === 'missing_target'
+          : reason === 'missing_target'
             ? 'El otro indicativo todavía no está registrado en el chat.'
-            : 'No se pudo cambiar de indicativo. Aplicá primero la nueva migración en Supabase.');
+            : 'La función respondió: ' + reason + '. Revisá la respuesta de Supabase.');
         return;
       }
       localStorage.setItem('community_chat_sd', target);
