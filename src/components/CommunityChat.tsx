@@ -3,10 +3,9 @@ import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle } from 'l
 
 type ChatMessage = { id: number; callsign: string; text: string; replyTo?: string };
 
+// Se conserva únicamente el mensaje de bienvenida fijado; se retiraron los mensajes de prueba.
 const initialMessages: ChatMessage[] = [
   { id: 1, callsign: 'LU1TSB/4RC978', text: 'Bienvenidos al espacio de la comunidad LogBook eQSL EXPRESS.' },
-  { id: 2, callsign: 'LW6HRN', text: '¡Saludos desde Argentina! Probando el chat comunitario.' },
-  { id: 3, callsign: 'PY3FG', text: 'Buena iniciativa para compartir experiencias de radio.' },
 ];
 
 export const CommunityChat: React.FC = () => {
