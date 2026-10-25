@@ -14,8 +14,9 @@ type ChatMessage = {
 
 export const CommunityChat: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
+  const [moderationRole, setModerationRole] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const isModerator = ['admin', 'moderator'].includes(String(session?.user.app_metadata?.role || '').toLowerCase()) || (Array.isArray(session?.user.app_metadata?.roles) && session.user.app_metadata.roles.some((role: unknown) => ['admin', 'moderator'].includes(String(role).toLowerCase())));
+  const isModerator = moderationRole === 'admin' || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
@@ -34,6 +35,31 @@ export const CommunityChat: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+
+  // Public chat identities use a device token, not Supabase Auth. Resolve moderation
+  // privileges against the server-side role table so public users cannot impersonate staff.
+  useEffect(() => {
+    let active = true;
+    const loadModerationRole = async () => {
+      if (!supabase || !callsign || !identityToken) {
+        if (active) setModerationRole(null);
+        return;
+      }
+      const { data, error: roleError } = await supabase.rpc('community_actor_role', {
+        p_callsign: callsign.trim().toUpperCase(),
+        p_token: identityToken,
+      });
+      if (!active) return;
+      if (roleError) {
+        console.warn('[LogBook chat] moderation role lookup:', roleError);
+        setModerationRole(null);
+      } else {
+        setModerationRole(data === 'admin' || data === 'moderator' ? data : null);
+      }
+    };
+    void loadModerationRole();
+    return () => { active = false; };
+  }, [callsign, identityToken]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -183,18 +209,32 @@ export const CommunityChat: React.FC = () => {
     } finally { setBusy(false); }
   };
   const deleteMessage = async (message: ChatMessage) => {
-    if (!supabase || !session || !isModerator || deletingId) return;
+    const actorCallsign = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
+    if (!supabase || !isModerator || !actorCallsign || deletingId) return;
     if (!window.confirm(`¿Eliminar definitivamente el mensaje de ${message.callsign}?`)) return;
     setDeletingId(message.id);
     setError('');
-    const { error: deleteError } = await supabase.from('community_messages').delete().eq('id', message.id);
-    setDeletingId(null);
-    if (deleteError) {
-      setError('No se pudo eliminar el mensaje. Verificá que tu cuenta tenga rol de administrador o moderador en Supabase.');
-      return;
+    try {
+      // Use the protected moderation RPC; direct table DELETE requires a different auth model.
+      const { data, error: deleteError } = await supabase.rpc('community_moderation_action', {
+        p_callsign: actorCallsign,
+        p_token: identityToken,
+        p_action: 'delete_message',
+        p_target_callsign: message.callsign,
+        p_reason: message.id,
+      });
+      if (deleteError || !data?.ok) {
+        console.error('[LogBook chat] moderation delete failed:', deleteError || data);
+        setError(data?.reason === 'forbidden'
+          ? 'Tu indicativo no tiene permisos de moderación en Supabase.'
+          : 'No se pudo eliminar el mensaje. Comprobá que esté aplicada la migración de moderación y que tu indicativo tenga el rol correcto.');
+        return;
+      }
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      setNotice('Mensaje eliminado.');
+    } finally {
+      setDeletingId(null);
     }
-    setMessages((current) => current.filter((item) => item.id !== message.id));
-    setNotice('Mensaje eliminado.');
   };
 
   const signOut = async () => {
