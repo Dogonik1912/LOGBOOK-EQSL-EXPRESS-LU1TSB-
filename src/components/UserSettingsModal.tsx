@@ -181,31 +181,31 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               onChange={(e) => setAppLanguage(e.target.value)}
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:border-violet-400 focus:outline-hidden"
             >
-              <option value="es">Español</option>
-              <option value="en">English</option>
-              <option value="pt">Português</option>
-              <option value="fr">Français</option>
-              <option value="de">Deutsch</option>
-              <option value="it">Italiano</option>
-              <option value="nl">Nederlands</option>
-              <option value="pl">Polski</option>
-              <option value="ru">Русский</option>
-              <option value="uk">Українська</option>
-              <option value="zh">中文</option>
-              <option value="ja">日本語</option>
-              <option value="ko">한국어</option>
-              <option value="ar">العربية</option>
-              <option value="hi">हिन्दी</option>
-              <option value="tr">Türkçe</option>
-              <option value="sv">Svenska</option>
-              <option value="no">Norsk</option>
-              <option value="da">Dansk</option>
-              <option value="fi">Suomi</option>
-              <option value="cs">Čeština</option>
-              <option value="el">Ελληνικά</option>
-              <option value="ro">Română</option>
-              <option value="hu">Magyar</option>
-              <option value="id">Bahasa Indonesia</option>
+              <option value="es">🇪🇸 Español</option>
+              <option value="en">🇬🇧 English</option>
+              <option value="pt">🇵🇹 Português</option>
+              <option value="fr">🇫🇷 Français</option>
+              <option value="de">🇩🇪 Deutsch</option>
+              <option value="it">🇮🇹 Italiano</option>
+              <option value="nl">🇳🇱 Nederlands</option>
+              <option value="pl">🇵🇱 Polski</option>
+              <option value="ru">🇷🇺 Русский</option>
+              <option value="uk">🇺🇦 Українська</option>
+              <option value="zh">🇨🇳 中文</option>
+              <option value="ja">🇯🇵 日本語</option>
+              <option value="ko">🇰🇷 한국어</option>
+              <option value="ar">🇸🇦 العربية</option>
+              <option value="hi">🇮🇳 हिन्दी</option>
+              <option value="tr">🇹🇷 Türkçe</option>
+              <option value="sv">🇸🇪 Svenska</option>
+              <option value="no">🇳🇴 Norsk</option>
+              <option value="da">🇩🇰 Dansk</option>
+              <option value="fi">🇫🇮 Suomi</option>
+              <option value="cs">🇨🇿 Čeština</option>
+              <option value="el">🇬🇷 Ελληνικά</option>
+              <option value="ro">🇷🇴 Română</option>
+              <option value="hu">🇭🇺 Magyar</option>
+              <option value="id">🇮🇩 Bahasa Indonesia</option>
             </select>
             
           </div>
