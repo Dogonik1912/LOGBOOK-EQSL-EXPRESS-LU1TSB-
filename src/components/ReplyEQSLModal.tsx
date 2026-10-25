@@ -6,6 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
+import { requestChatInvitation } from '../services/chatInvitation';
 import {
   X,
   Download,
@@ -431,6 +432,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const file = new File([blob], `eQSL_Respuesta_${activeMyCall}_para_${replyToCall}.png`, { type: 'image/png' });
       if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
       await navigator.share({ files: [file], title: 'Respuesta eQSL', text });
+      requestChatInvitation('reply');
       return true;
     } catch (error: any) {
       if (error?.name === 'AbortError') return true;
@@ -465,6 +467,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     }
+    requestChatInvitation('reply');
   };
 
   const handleShareTelegram = async () => {
@@ -479,6 +482,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       ? 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text)
       : 'https://t.me/share/url?url=' + encodeURIComponent(cardUrl) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
+    requestChatInvitation('reply');
   };
 
   // El correo incluye el enlace a la tarjeta visual completa para verla y descargarla.
@@ -490,6 +494,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
     const body = encodeURIComponent(`📻 Respuesta a tu Tarjeta eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 ¡Contacto 2-Way Confirmado!\n📅 Fecha: ${date} ${time} UTC\n📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n📶 RST: ${rstSent} / ${rstRcvd}\n\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`);
+    requestChatInvitation('reply');
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
   // Guardar automáticamente el QSO de respuesta antes de abrir el canal externo.
