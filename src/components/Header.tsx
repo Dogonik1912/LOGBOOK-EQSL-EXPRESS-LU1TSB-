@@ -31,6 +31,22 @@ export const Header: React.FC<HeaderProps> = ({
   ];
   const handleShareChoice = async (name: string, url: string) => {
     setShareMenuOpen(false);
+    if (name === 'Messenger') {
+      // El endpoint dialog/send exige un app_id válido; sin una app registrada falla.
+      // En móviles usamos el menú nativo para que el usuario elija Messenger.
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: 'LogBook eQSL Express', text: shareText, url: shareUrl });
+          return;
+        } catch (error) {
+          if ((error as Error)?.name === 'AbortError') return;
+        }
+      }
+      try { await navigator.clipboard.writeText(shareText + ' ' + shareUrl); } catch { /* Se ofrece copiar manualmente abajo. */ }
+      window.open('https://www.messenger.com/', '_blank', 'noopener,noreferrer');
+      window.alert('El enlace de la app está copiado si tu navegador lo permite. Abrí Messenger, elegí el contacto y pegalo en el mensaje.');
+      return;
+    }
     if (name === 'Instagram' || name === 'TikTok') {
       try { await navigator.clipboard.writeText(shareText + ' ' + shareUrl); } catch { /* El usuario puede copiar el enlace manualmente si el navegador lo permite. */ }
       window.open(url, '_blank', 'noopener,noreferrer');
