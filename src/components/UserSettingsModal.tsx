@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Check, X, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy } from 'lucide-react';
 import { requestChatInvitation } from '../services/chatInvitation';
 
 interface UserSettingsModalProps {
@@ -373,6 +373,19 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <button type="button" onClick={() => requestChatInvitation('settings')} className="w-full rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-sky-400">Aceptar invitación</button>
             </section>
           )}
+          <section className="rounded-xl border border-sky-500/30 bg-sky-950/30 p-4 space-y-2" aria-labelledby="logbook-contact-title">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-sky-300" />
+              <h3 id="logbook-contact-title" className="text-sm font-bold text-sky-200">Contacto con LogBook eQSL EXPRESS</h3>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">Para denuncias, suplantaciones, pérdida de acceso, recuperación de clave, consultas o solicitudes relacionadas con tus datos, contactá al administrador. Esta opción está disponible sin registro.</p>
+            <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Contacto%20con%20LogBook%20eQSL%20EXPRESS" className="block break-all text-sm font-semibold text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
+            <div className="flex flex-wrap gap-2">
+              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Denuncia%20o%20suplantacion%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Enviar denuncia</a>
+              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Perdida%20de%20acceso%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Recuperar acceso</a>
+              <button type="button" onClick={() => { void navigator.clipboard?.writeText('lu1tsb.4rc978@gmail.com').then(() => window.alert('Correo copiado.')).catch(() => window.alert('Correo de contacto: lu1tsb.4rc978@gmail.com')); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800"><Copy className="h-3 w-3" /> Copiar correo</button>
+            </div>
+          </section>
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <div className="text-xs text-emerald-400 font-medium">
