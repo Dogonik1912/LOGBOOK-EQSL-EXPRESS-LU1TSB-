@@ -53,7 +53,8 @@ function MainApp() {
     };
     const handleAuthRequest = () => {
       setIsChatInviteOpen(false);
-      setChatAuthNotice(true);
+      setChatAuthNotice(false);
+      document.getElementById('community-chat')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
     window.addEventListener('logbook-chat-invitation-open', handleInvitation);
     window.addEventListener('logbook-chat-auth-request', handleAuthRequest);
