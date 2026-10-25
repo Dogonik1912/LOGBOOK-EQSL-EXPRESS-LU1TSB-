@@ -202,7 +202,7 @@ export const CommunityChat: React.FC = () => {
     if (!supabase || busy || !isModerator) return;
     const current = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
     const target = current === 'LU1TSB' ? '4RC978' : current === '4RC978' ? 'LU1TSB/4RC978' : current === 'LU1TSB/4RC978' ? 'LU1TSB' : '';
-    if (!target) { setError('El cambio rápido está disponible únicamente entre LU1TSB y LU1TSB/4RC978.'); return; }
+    if (!target) { setError('No se reconoce esta cuenta administradora. Las tres cuentas previstas son LU1TSB, 4RC978 y LU1TSB/4RC978.'); return; }
     setBusy(true); setError(''); setNotice('');
     try {
       const { data, error: switchError } = await supabase.rpc('link_community_admin_alias', {
