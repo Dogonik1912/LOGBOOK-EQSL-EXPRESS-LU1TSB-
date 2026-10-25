@@ -14,6 +14,13 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [utcClock, setUtcClock] = useState(() => new Date().toISOString().slice(11, 19));
+  useEffect(() => {
+    const updateUtcClock = () => setUtcClock(new Date().toISOString().slice(11, 19));
+    updateUtcClock();
+    const timer = window.setInterval(updateUtcClock, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [isInstalled, setIsInstalled] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
@@ -142,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
       <div className="relative w-full px-2 sm:px-4 pt-12 pb-3.5 md:pt-3.5 flex flex-col gap-3">
-      {callsign && (
+      <div className="absolute left-2 top-2 md:top-3 z-10 rounded-md border border-sky-300/40 bg-slate-950/90 px-2 py-1 font-mono text-xs sm:text-sm font-bold text-white shadow-sm" title="Hora universal coordinada (UTC)">UTC {utcClock}</div>\n      {callsign && (
         <div className="absolute right-4 top-2 md:top-3 z-10">
           <span className="inline-flex min-w-[5.5rem] justify-center rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-sm sm:text-base font-extrabold shadow-sm" title={`Señal distintiva: ${callsign}`}>
             {callsign.split('').map((character, index) => (
