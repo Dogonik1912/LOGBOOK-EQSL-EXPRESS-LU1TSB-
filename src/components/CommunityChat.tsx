@@ -115,7 +115,11 @@ export const CommunityChat: React.FC = () => {
       },
     });
     setBusy(false);
-    if (authError) setError('No se pudo enviar el enlace de acceso. Revisá el correo y la configuración de Email en Supabase.');
+    if (authError) {
+      // Keep the diagnostic visible in Preview so configuration/rate-limit failures can be identified.
+      console.error('[LogBook chat] Supabase sign-in error:', authError);
+      setError(`No se pudo enviar el enlace: ${authError.message}`);
+    }
     else setNotice('Te enviamos un enlace de acceso por correo. Abrilo en este dispositivo para entrar al chat.');
   };
 
