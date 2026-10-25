@@ -612,7 +612,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
       return;
     }
-    const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
+    const subject = encodeURIComponent(`eQSL de ${myCallsign}`);
     const body = encodeURIComponent(
       `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`
     );
@@ -644,7 +644,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleCopyText = async () => {
     try {
       const receivedCardLink = await getReceivedCardUrl();
-      const text = `QSO Confirmado: ${myCallsign} <-> ${qso.callsign} | ${qso.date} ${qso.time} UTC | ${qso.band} ${qso.frequency}MHz ${qso.mode} | RST: ${qso.rstSent || '59'}/${qso.rstRcvd || '59'} | ${getFirma()} | Responder con eQSL: ${receivedCardLink}`;
+      const text = `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`;
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
