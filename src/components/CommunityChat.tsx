@@ -21,6 +21,7 @@ export const CommunityChat: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
+  const [showChangeCallsign, setShowChangeCallsign] = useState(false);
   const [identityToken] = useState(() => {
     const existing = localStorage.getItem('community_chat_identity_token');
     if (existing) return existing;
@@ -176,6 +177,30 @@ export const CommunityChat: React.FC = () => {
     }
   };
 
+  const switchAdminCallsign = async () => {
+    if (!supabase || busy || !isModerator) return;
+    const current = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
+    const target = current === 'LU1TSB' ? 'LU1TSB/4RC978' : current === 'LU1TSB/4RC978' ? 'LU1TSB' : '';
+    if (!target) { setError('El cambio rápido está disponible únicamente entre LU1TSB y LU1TSB/4RC978.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const { data, error: switchError } = await supabase.rpc('link_community_admin_alias', {
+        p_callsign: current, p_token: identityToken, p_target_callsign: target,
+      });
+      if (switchError || !data?.ok) {
+        setError(data?.reason === 'forbidden'
+          ? 'No se pudo verificar el permiso de administrador para este indicativo.'
+          : data?.reason === 'missing_target'
+            ? 'El otro indicativo todavía no está registrado en el chat.'
+            : 'No se pudo cambiar de indicativo. Aplicá primero la nueva migración en Supabase.');
+        return;
+      }
+      localStorage.setItem('community_chat_sd', target);
+      setCallsign(target); setSdLocked(true); setShowChangeCallsign(false);
+      setNotice('Indicativo cambiado a ' + target + '. Los permisos de administrador se mantienen.');
+    } finally { setBusy(false); }
+  };
+
   const sendMessage = async () => {
     if (!supabase || busy) return;
     const body = draft.trim();
@@ -279,7 +304,7 @@ export const CommunityChat: React.FC = () => {
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{message.body}</span></p>
+                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{message.body}</span></p>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
                   <div className="flex items-center gap-1">
@@ -292,7 +317,7 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>            {!sdLocked && (
+            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>            {isModerator && sdLocked && (\n              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">\n                <span className="text-xs font-semibold text-red-800">Administrador: {callsign}</span>\n                <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar a ${callsign === "LU1TSB" ? "LU1TSB/4RC978" : "LU1TSB"}`}</button>\n              </div>\n            )}\n            {!sdLocked && (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
                 <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva para el chat</label>
                 <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
