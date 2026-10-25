@@ -1,10 +1,5 @@
 export type ChatInvitationKind = 'send' | 'reply' | 'settings';
 
-const PROMPT_KEYS: Record<Exclude<ChatInvitationKind, 'settings'>, string> = {
-  send: 'logbook_chat_invite_send_prompted',
-  reply: 'logbook_chat_invite_reply_prompted',
-};
-
 /** Keeps the invitation pending and displays it when an unauthenticated user reaches an eQSL action. */
 export function requestChatInvitation(kind: ChatInvitationKind): void {
   if (typeof window === 'undefined') return;
