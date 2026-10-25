@@ -25,6 +25,20 @@ Este repositorio contiene una base React + TypeScript + Vite. La presencia de c�
 
 El directorio comunitario, el mapa compartido y las estadísticas no deben activarse solo con almacenamiento público del frontend. Requieren un backend seguro, consentimiento apropiado, controles de acceso y medidas antiabuso.
 
+## Chat comunitario público: configuración obligatoria
+
+El chat compartido utiliza Supabase como base de datos central. Para que dos visitantes en dispositivos distintos vean los mismos mensajes, las migraciones SQL deben ejecutarse una vez en el **proyecto Supabase correcto**:
+
+1. Abrir el SQL Editor de Supabase.
+2. Ejecutar el contenido de `supabase/migrations/202610250001_community_chat.sql`.
+3. Ejecutar después `supabase/migrations/202610250002_public_device_chat.sql`.
+4. En Vercel, verificar que `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` correspondan a ese mismo proyecto Supabase y estén configuradas para el entorno desplegado.
+5. Abrir la aplicación en dos dispositivos o navegadores distintos y enviar mensajes de prueba en ambos sentidos.
+
+El chat consulta la tabla `public.community_messages`, usa las funciones RPC `register_community_callsign` y `post_community_message`, y utiliza Realtime con consulta periódica de respaldo. Si las migraciones no están aplicadas, o las variables apuntan a otro proyecto, publicar una nueva versión del frontend por sí solo no arreglará la sincronización.
+
+La señal distintiva queda asociada a un token guardado en el almacenamiento local del navegador y la base de datos impide reutilizarla con otro token. Esto no equivale a una verificación de identidad real: borrar los datos del navegador o cambiar de dispositivo puede generar otra identidad local; no debe prometerse protección absoluta contra duplicados o suplantación.
+
 ## Desarrollo local
 
 Requisitos: Node.js compatible con la versión de Vite instalada.
