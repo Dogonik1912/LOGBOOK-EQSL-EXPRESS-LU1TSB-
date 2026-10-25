@@ -5,19 +5,14 @@ const PROMPT_KEYS: Record<Exclude<ChatInvitationKind, 'settings'>, string> = {
   reply: 'logbook_chat_invite_reply_prompted',
 };
 
-/** Stores a deferred invitation locally and requests the one-time prompt after the first share attempt. */
+/** Keeps the invitation pending and displays it when an unauthenticated user reaches an eQSL action. */
 export function requestChatInvitation(kind: ChatInvitationKind): void {
   if (typeof window === 'undefined') return;
   if (localStorage.getItem('logbook_chat_authenticated') === '1') return;
 
   localStorage.setItem('logbook_chat_invitation_pending', '1');
-  if (kind === 'settings') {
-    window.dispatchEvent(new CustomEvent('logbook-chat-invitation-open', { detail: { kind } }));
-    return;
-  }
-
-  const key = PROMPT_KEYS[kind];
-  if (localStorage.getItem(key) === '1') return;
-  localStorage.setItem(key, '1');
+  // Do not suppress the event using a persistent localStorage flag: a previous
+  // attempt may have set that flag while the app was backgrounded by WhatsApp.
+  // The app must be able to show the invitation again after each eQSL action.
   window.dispatchEvent(new CustomEvent('logbook-chat-invitation-open', { detail: { kind } }));
 }
