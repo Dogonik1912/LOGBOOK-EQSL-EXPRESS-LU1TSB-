@@ -14,8 +14,8 @@ declare
   v_target text := upper(trim(coalesce(p_target_callsign, '')));
 begin
   if p_token is null
-     or v_actor not in ('LU1TSB', 'LU1TSB/4RC978')
-     or v_target not in ('LU1TSB', 'LU1TSB/4RC978')
+     or v_actor not in ('LU1TSB', '4RC978', 'LU1TSB/4RC978')
+     or v_target not in ('LU1TSB', '4RC978', 'LU1TSB/4RC978')
      or v_actor = v_target then
     return jsonb_build_object('ok', false, 'reason', 'invalid');
   end if;
@@ -58,3 +58,30 @@ $$;
 
 revoke all on function public.link_community_admin_alias(text, uuid, text) from public;
 grant execute on function public.link_community_admin_alias(text, uuid, text) to anon, authenticated;
+
+
+-- Recover this device's registered callsign when local storage has lost the label.
+create or replace function public.resolve_community_callsign(p_token uuid)
+returns text
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  select c.callsign
+    from public.community_call_signs c
+   where p_token is not null
+     and c.identity_token = p_token
+   limit 1;
+$$;
+
+revoke all on function public.resolve_community_callsign(uuid) from public;
+grant execute on function public.resolve_community_callsign(uuid) to anon, authenticated;
+
+-- Keep the three creator identities as administrator accounts.
+insert into public.community_call_signs (callsign, identity_token)
+values ('4RC978', gen_random_uuid())
+on conflict (callsign) do nothing;
+
+insert into public.community_moderation_roles (callsign, role)
+values ('LU1TSB', 'admin'), ('4RC978', 'admin'), ('LU1TSB/4RC978', 'admin')
+on conflict (callsign) do update set role = excluded.role;
