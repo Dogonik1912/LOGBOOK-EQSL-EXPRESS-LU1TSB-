@@ -108,6 +108,48 @@ export const CommunityChat: React.FC = () => {
     };
   }, []);
 
+  const saveCallsign = async () => {
+    if (!supabase || busy) return;
+    const cleanCallsign = callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
+    if (cleanCallsign.length < 3 || cleanCallsign.length > 24) {
+      setError('Ingresá un indicativo válido de entre 3 y 24 caracteres.');
+      return;
+    }
+    const previousCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      if (previousCallsign && previousCallsign !== cleanCallsign) {
+        const { data, error: changeError } = await supabase.rpc('change_community_callsign', {
+          p_current_callsign: previousCallsign,
+          p_new_callsign: cleanCallsign,
+          p_token: identityToken,
+        });
+        if (changeError || !data?.ok) {
+          setError(data?.reason === 'taken' ? 'Ese indicativo ya está registrado por otra persona.' : 'No se pudo cambiar el indicativo. Primero hay que aplicar la migración 3 en Supabase.');
+          return;
+        }
+      } else {
+        const { data, error: registerError } = await supabase.rpc('register_community_callsign', {
+          p_callsign: cleanCallsign,
+          p_token: identityToken,
+        });
+        if (registerError || !data?.ok) {
+          setError(data?.reason === 'taken' ? 'Ese indicativo ya está registrado por otra persona.' : 'No se pudo guardar el indicativo. Revisá que las migraciones públicas estén aplicadas.');
+          return;
+        }
+      }
+      localStorage.setItem('community_chat_sd', cleanCallsign);
+      setCallsign(cleanCallsign);
+      setSdLocked(true);
+      setEditingCallsign(false);
+      setNotice('Indicativo del chat guardado. Los indicativos de eQSL siguen siendo independientes.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const sendMessage = async () => {
     if (!supabase || busy) return;
     const body = draft.trim();
@@ -224,7 +266,8 @@ export const CommunityChat: React.FC = () => {
                 <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
                 <p className="mt-1 text-[11px] text-slate-500">Este indicativo solo identifica tus mensajes en el chat. Los campos de indicativo de las eQSL se mantienen separados.</p>
                 <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => { setCallsign(localStorage.getItem('community_chat_sd') || ''); setEditingCallsign(false); setError(''); }} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Cancelar</button>
+                  <button type="button" onClick={() => void saveCallsign()} disabled={busy || callsign.trim().length < 3} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? 'Guardando…' : 'Guardar indicativo'}</button>
+                  {sdLocked && <button type="button" onClick={() => { setCallsign(localStorage.getItem('community_chat_sd') || ''); setEditingCallsign(false); setError(''); }} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Cancelar</button>}
                 </div>
               </div>
             )}
