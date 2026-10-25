@@ -5,7 +5,7 @@ import { supabase } from '../services/supabaseClient';
 
 type ChatMessage = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   callsign: string;
   body: string;
   reply_to_callsign: string | null;
@@ -18,8 +18,15 @@ export const CommunityChat: React.FC = () => {
   const isModerator = ['admin', 'moderator'].includes(String(session?.user.app_metadata?.role || '').toLowerCase()) || (Array.isArray(session?.user.app_metadata?.roles) && session.user.app_metadata.roles.some((role: unknown) => ['admin', 'moderator'].includes(String(role).toLowerCase())));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
-  const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign')));
+  const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
+  const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
+  const [identityToken] = useState(() => {
+    const existing = localStorage.getItem('community_chat_identity_token');
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    localStorage.setItem('community_chat_identity_token', created);
+    return created;
+  });
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,13 +38,13 @@ export const CommunityChat: React.FC = () => {
     let mounted = true;
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!mounted) return;
-      if (sessionError) setError('No se pudo recuperar la sesión. Intentá ingresar de nuevo.');
+      if (sessionError) console.warn('[LogBook chat] session lookup:', sessionError);
       setSession(data.session);
       if (data.session) {
         localStorage.setItem('logbook_chat_authenticated', '1');
         localStorage.removeItem('logbook_chat_invitation_pending');
       }
-      const saved = data.session?.user.user_metadata?.callsign || localStorage.getItem('user_callsign') || '';
+      const saved = localStorage.getItem('community_chat_sd') || '';
       if (saved) setCallsign(String(saved).trim().toUpperCase());
     });
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
@@ -46,7 +53,7 @@ export const CommunityChat: React.FC = () => {
       if (nextSession) {
         localStorage.setItem('logbook_chat_authenticated', '1');
         localStorage.removeItem('logbook_chat_invitation_pending');
-        const saved = nextSession.user.user_metadata?.callsign || localStorage.getItem('user_callsign') || '';
+        const saved = localStorage.getItem('community_chat_sd') || '';
         if (saved) setCallsign(String(saved).trim().toUpperCase());
         setNotice('Sesión iniciada. Ya podés participar del chat.');
       }
@@ -99,35 +106,21 @@ export const CommunityChat: React.FC = () => {
   const sendMessage = async () => {
     if (!supabase || busy) return;
     const body = draft.trim();
-    const savedSd = localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign');
-    const cleanCallsign = (savedSd || callsign).trim().toUpperCase();
+    const cleanCallsign = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
     if (!body) return;
-    if (cleanCallsign.length < 3 || cleanCallsign.length > 24) {
-      setError('Ingresá tu SD/indicativo antes de enviar.');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    const { data, error: sendError } = await supabase
-      .from('community_messages')
-      .insert({ user_id: session?.user.id || null, callsign: cleanCallsign, body, reply_to_callsign: replyTo?.callsign || null })
-      .select('id,user_id,callsign,body,reply_to_callsign,created_at')
-      .single();
-    setBusy(false);
-    if (sendError) {
-      console.error('[LogBook chat] public message insert error:', sendError);
-      setError('No se pudo enviar el mensaje. Hay que habilitar el envío público en Supabase.');
-      return;
-    }
-    if (!savedSd) {
-      localStorage.setItem('community_chat_sd', cleanCallsign);
-      localStorage.setItem('user_callsign', cleanCallsign);
-      setCallsign(cleanCallsign);
-      setSdLocked(true);
-    }
-    setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as ChatMessage].slice(-100));
-    setDraft('');
-    setReplyTo(null);
+    if (cleanCallsign.length < 3 || cleanCallsign.length > 24) { setError('Ingresá tu SD/indicativo antes de enviar.'); return; }
+    setBusy(true); setError('');
+    try {
+      if (!sdLocked) {
+        const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
+        if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado. No se permiten duplicados.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
+        localStorage.setItem('community_chat_sd', cleanCallsign); setCallsign(cleanCallsign); setSdLocked(true);
+      }
+      const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
+      if (sendError || !data?.ok) { console.error('[LogBook chat] public message insert error:', sendError || data); setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.'); return; }
+      if (data.message) setMessages((current) => current.some((item) => item.id === data.message.id) ? current : [...current, data.message as ChatMessage].slice(-100));
+      setDraft(''); setReplyTo(null);
+    } finally { setBusy(false); }
   };
   const deleteMessage = async (message: ChatMessage) => {
     if (!supabase || !session || !isModerator || deletingId) return;
@@ -163,14 +156,14 @@ export const CommunityChat: React.FC = () => {
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
           <div className="min-w-0">
             <h2 className="font-bold leading-tight">Comunidad LogBook eQSL EXPRESS</h2>
-            <p className="mt-1 text-xs text-slate-300">{session ? 'Chat comunitario en tiempo real' : 'Acceso gratuito · sin registro'}</p>
+            <p className="mt-1 text-xs text-slate-300">Chat comunitario en tiempo real · gratuito y sin registro</p>
           </div>
         </div>
         <button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button>
       </div>
       {showInfo && <div className="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600 sm:px-5">
-        <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> {session ? 'Sesión autenticada' : 'Acceso público sin registro'}</span>
+        <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> Acceso público · sin registro</span>
         {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
       </div>
 
@@ -179,7 +172,7 @@ export const CommunityChat: React.FC = () => {
           <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4 shrink-0" /> Chat pendiente de conexión</p>
           <p>El servicio del chat todavía no está configurado. Revisá las variables públicas de Supabase en Vercel.</p>
         </div>
-      ) : !session ? (
+      ) : false ? (
         <>
           <div className="max-h-[360px] min-h-[180px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
             {messages.length === 0 && <p className="py-6 text-center text-sm text-slate-500">Todavía no hay mensajes publicados.</p>}
@@ -212,8 +205,10 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Tu indicativo</label>
-            <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase())} maxLength={24} className="mb-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
+            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu SD queda fijo una vez guardado.</p>
+            {sdLocked && <p className="mb-2 text-xs text-slate-500">SD guardado; no se puede modificar desde este dispositivo.</p>}
+            <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Tu SD / indicativo</label>
+            <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase())} disabled={sdLocked} maxLength={24} className="mb-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
             <div className="flex gap-2">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
               <button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim()} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button>
