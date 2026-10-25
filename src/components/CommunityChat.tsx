@@ -20,6 +20,7 @@ export const CommunityChat: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
+  const [editingCallsign, setEditingCallsign] = useState(false);
   const [identityToken] = useState(() => {
     const existing = localStorage.getItem('community_chat_identity_token');
     if (existing) return existing;
@@ -115,9 +116,25 @@ export const CommunityChat: React.FC = () => {
     if (cleanCallsign.length < 3 || cleanCallsign.length > 24) { setError('Ingresá tu SD/indicativo antes de enviar.'); return; }
     setBusy(true); setError('');
     try {
-      const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
-      if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado por otra persona. No se permiten duplicados.' : identityData?.reason === 'locked' ? 'Este dispositivo ya tiene un SD registrado y no se puede cambiar.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
-      localStorage.setItem('community_chat_sd', cleanCallsign); setCallsign(cleanCallsign); setSdLocked(true);
+      const previousCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (previousCallsign && previousCallsign !== cleanCallsign) {
+        const { data: changeData, error: changeError } = await supabase.rpc('change_community_callsign', {
+          p_current_callsign: previousCallsign,
+          p_new_callsign: cleanCallsign,
+          p_token: identityToken,
+        });
+        if (changeError || !changeData?.ok) {
+          setError(changeData?.reason === 'taken' ? 'Ese indicativo ya está registrado por otra persona.' : 'No se pudo cambiar el indicativo. Verificá que la migración de corrección de indicativo esté aplicada.');
+          return;
+        }
+      } else {
+        const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
+        if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado por otra persona. No se permiten duplicados.' : identityData?.reason === 'locked' ? 'Este dispositivo ya tiene un SD registrado. Usá «Cambiar indicativo» para corregirlo.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
+      }
+      localStorage.setItem('community_chat_sd', cleanCallsign);
+      setCallsign(cleanCallsign);
+      setSdLocked(true);
+      setEditingCallsign(false);
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
       if (sendError || !data?.ok) { console.error('[LogBook chat] public message insert error:', sendError || data); setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.'); return; }
       if (data.message) setMessages((current) => current.some((item) => item.id === data.message.id) ? current : [...current, data.message as ChatMessage].slice(-100));
@@ -195,12 +212,20 @@ export const CommunityChat: React.FC = () => {
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
             <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>
-            {sdLocked && <p className="mb-2 text-xs font-semibold text-slate-600">Señal distintiva registrada: <span className="font-mono">{callsign}</span></p>}
-            {!sdLocked && (
+            {sdLocked && !editingCallsign && (
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                <p className="font-semibold">Indicativo del chat: <span className="font-mono">{callsign}</span></p>
+                <button type="button" onClick={() => { setEditingCallsign(true); setNotice('Podés corregir el indicativo del chat. Esto no modifica tus indicativos de eQSL.'); setError(''); }} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-sky-800 hover:bg-sky-50">Cambiar indicativo</button>
+              </div>
+            )}
+            {(!sdLocked || editingCallsign) && (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-                <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva</label>
-                <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ingresá tu señal distintiva" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
-                <p className="mt-1 text-[11px] text-slate-500">Se guarda una sola vez en este dispositivo y no se podrá cambiar.</p>
+                <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva para el chat</label>
+                <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
+                <p className="mt-1 text-[11px] text-slate-500">Este indicativo solo identifica tus mensajes en el chat. Los campos de indicativo de las eQSL se mantienen separados.</p>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => { setCallsign(localStorage.getItem('community_chat_sd') || ''); setEditingCallsign(false); setError(''); }} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700">Cancelar</button>
+                </div>
               </div>
             )}
             <div className="flex gap-2">
