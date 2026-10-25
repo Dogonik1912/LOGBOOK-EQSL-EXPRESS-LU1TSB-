@@ -18,7 +18,8 @@ export const CommunityChat: React.FC = () => {
   const isModerator = ['admin', 'moderator'].includes(String(session?.user.app_metadata?.role || '').toLowerCase()) || (Array.isArray(session?.user.app_metadata?.roles) && session.user.app_metadata.roles.some((role: unknown) => ['admin', 'moderator'].includes(String(role).toLowerCase())));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
+  const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
+  const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign')));
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -98,25 +99,31 @@ export const CommunityChat: React.FC = () => {
   const sendMessage = async () => {
     if (!supabase || busy) return;
     const body = draft.trim();
-    const cleanCallsign = callsign.trim().toUpperCase();
+    const savedSd = localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign');
+    const cleanCallsign = (savedSd || callsign).trim().toUpperCase();
     if (!body) return;
     if (cleanCallsign.length < 3 || cleanCallsign.length > 24) {
-      setError('Ingresá un indicativo válido antes de enviar.');
+      setError('Ingresá tu SD/indicativo antes de enviar.');
       return;
     }
     setBusy(true);
     setError('');
-    const { data, error: sendError } = await supabase.from('community_messages').insert({
-      user_id: session?.user.id || null,
-      callsign: cleanCallsign,
-      body,
-      reply_to_callsign: replyTo?.callsign || null,
-    }).select('id,user_id,callsign,body,reply_to_callsign,created_at').single();
+    const { data, error: sendError } = await supabase
+      .from('community_messages')
+      .insert({ user_id: session?.user.id || null, callsign: cleanCallsign, body, reply_to_callsign: replyTo?.callsign || null })
+      .select('id,user_id,callsign,body,reply_to_callsign,created_at')
+      .single();
     setBusy(false);
     if (sendError) {
       console.error('[LogBook chat] public message insert error:', sendError);
-      setError('No se pudo enviar. Hay que habilitar el envío público en Supabase.');
+      setError('No se pudo enviar el mensaje. Hay que habilitar el envío público en Supabase.');
       return;
+    }
+    if (!savedSd) {
+      localStorage.setItem('community_chat_sd', cleanCallsign);
+      localStorage.setItem('user_callsign', cleanCallsign);
+      setCallsign(cleanCallsign);
+      setSdLocked(true);
     }
     setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as ChatMessage].slice(-100));
     setDraft('');
@@ -176,22 +183,14 @@ export const CommunityChat: React.FC = () => {
         <>
           <div className="max-h-[360px] min-h-[180px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
             {messages.length === 0 && <p className="py-6 text-center text-sm text-slate-500">Todavía no hay mensajes publicados.</p>}
-            {messages.map((message) => (
-              <article key={message.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
-                {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p>
-                <span className="mt-1 block text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
-              </article>
-            ))}
+            {messages.map((message) => <article key={message.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5"><p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p><span className="mt-1 block text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span></article>)}
           </div>
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Escribí tu indicativo y mensaje.</p>
-            <label htmlFor="community-public-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Tu indicativo</label>
-            <input id="community-public-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase())} maxLength={24} minLength={3} required className="mb-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" placeholder="Ej.: LU1TSB" />
-            <div className="flex gap-2">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
-              <button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim() || callsign.trim().length < 3} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button>
-            </div>
+            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Solo necesitamos tu SD para identificarte.</p>
+            <label htmlFor="community-public-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Tu SD / indicativo</label>
+            <input id="community-public-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase())} disabled={sdLocked} maxLength={24} minLength={3} required className="mb-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none disabled:bg-slate-100 disabled:text-slate-600" placeholder="Ej.: LU1TSB" />
+            {sdLocked && <p className="mb-2 text-xs text-slate-500">Tu SD quedó guardada y no se puede modificar desde este dispositivo.</p>}
+            <div className="flex gap-2"><input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-sky-500" /><button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim() || callsign.trim().length < 3} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button></div>
           </div>
         </>      ) : (
         <>
