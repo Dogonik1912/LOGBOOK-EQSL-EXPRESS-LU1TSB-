@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Mail, LoaderCircle, Trash2 } from 'lucide-react';
+import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type ChatMessage = {
@@ -19,10 +19,8 @@ export const CommunityChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
-  const [email, setEmail] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -97,41 +95,8 @@ export const CommunityChat: React.FC = () => {
     };
   }, []);
 
-  const requestSignIn = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!supabase) return;
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanCallsign = callsign.trim().toUpperCase();
-    if (!cleanEmail.includes('@')) {
-      setError('Ingresá un correo electrónico válido.');
-      return;
-    }
-    if (cleanCallsign.length < 3 || cleanCallsign.length > 24) {
-      setError('Ingresá tu indicativo (entre 3 y 24 caracteres).');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    setNotice('');
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: cleanEmail,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { callsign: cleanCallsign },
-        shouldCreateUser: true,
-      },
-    });
-    setBusy(false);
-    if (authError) {
-      // Keep the diagnostic visible in Preview so configuration/rate-limit failures can be identified.
-      console.error('[LogBook chat] Supabase sign-in error:', authError);
-      setError(`No se pudo enviar el enlace: ${authError.message}`);
-    }
-    else setNotice('Te enviamos un enlace de acceso por correo. Abrilo en este dispositivo para entrar al chat.');
-  };
-
   const sendMessage = async () => {
-    if (!supabase || !session) return;
+    if (!supabase || busy) return;
     const body = draft.trim();
     const cleanCallsign = callsign.trim().toUpperCase();
     if (!body) return;
@@ -141,32 +106,22 @@ export const CommunityChat: React.FC = () => {
     }
     setBusy(true);
     setError('');
-    const { error: profileError } = await supabase.auth.updateUser({ data: { callsign: cleanCallsign } });
-    if (profileError) {
-      setBusy(false);
-      setError('No se pudo guardar tu indicativo. Volvé a iniciar sesión.');
-      return;
-    }
-    const { data, error: sendError } = await supabase
-      .from('community_messages')
-      .insert({
-        user_id: session.user.id,
-        callsign: cleanCallsign,
-        body,
-        reply_to_callsign: replyTo?.callsign || null,
-      })
-      .select('id,user_id,callsign,body,reply_to_callsign,created_at')
-      .single();
+    const { data, error: sendError } = await supabase.from('community_messages').insert({
+      user_id: session?.user.id || null,
+      callsign: cleanCallsign,
+      body,
+      reply_to_callsign: replyTo?.callsign || null,
+    }).select('id,user_id,callsign,body,reply_to_callsign,created_at').single();
     setBusy(false);
     if (sendError) {
-      setError('No se pudo enviar el mensaje. Verificá los permisos del chat y volvé a intentar.');
+      console.error('[LogBook chat] public message insert error:', sendError);
+      setError('No se pudo enviar. Hay que habilitar el envío público en Supabase.');
       return;
     }
     setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as ChatMessage].slice(-100));
     setDraft('');
     setReplyTo(null);
   };
-
   const deleteMessage = async (message: ChatMessage) => {
     if (!supabase || !session || !isModerator || deletingId) return;
     if (!window.confirm(`¿Eliminar definitivamente el mensaje de ${message.callsign}?`)) return;
@@ -201,44 +156,44 @@ export const CommunityChat: React.FC = () => {
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
           <div className="min-w-0">
             <h2 className="font-bold leading-tight">Comunidad LogBook eQSL EXPRESS</h2>
-            <p className="mt-1 text-xs text-slate-300">{session ? 'Chat comunitario en tiempo real' : 'Lectura pública · participación por correo'}</p>
+            <p className="mt-1 text-xs text-slate-300">{session ? 'Chat comunitario en tiempo real' : 'Acceso gratuito · sin registro'}</p>
           </div>
         </div>
         <button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button>
       </div>
-      {showInfo && <div className="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><strong>Chat comunitario:</strong> cualquier visitante puede leer los mensajes. Para publicar, se solicita acceso por correo. No compartas datos personales ni información privada de contacto.</div>}
+      {showInfo && <div className="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600 sm:px-5">
-        <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> {session ? 'Sesión autenticada' : 'Acceso público de lectura'}</span>
+        <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> {session ? 'Sesión autenticada' : 'Acceso público sin registro'}</span>
         {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
       </div>
 
       {!supabase ? (
         <div className="space-y-2 bg-amber-50 px-4 py-5 text-sm text-amber-950 sm:px-5">
           <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4 shrink-0" /> Chat pendiente de conexión</p>
-          <p>El servicio de autenticación todavía no está configurado. El chat permanece cerrado hasta agregar las variables públicas de Supabase en Vercel.</p>
+          <p>El servicio del chat todavía no está configurado. Revisá las variables públicas de Supabase en Vercel.</p>
         </div>
       ) : !session ? (
         <>
-        <div className="max-h-[360px] min-h-[180px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
-          {messages.length === 0 && <p className="py-6 text-center text-sm text-slate-500">Todavía no hay mensajes publicados.</p>}
-          {messages.map((message) => (
-            <article key={message.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
-              {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-              <p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p>
-              <span className="mt-1 block text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
-            </article>
-          ))}
-        </div>
-        {!showAuth ? <div className="bg-white px-4 py-4 sm:px-5"><button type="button" onClick={() => setShowAuth(true)} className="w-full rounded-xl bg-sky-700 px-4 py-3 text-sm font-bold text-white hover:bg-sky-600">Quiero participar y enviar mensajes</button><p className="mt-2 text-center text-xs text-slate-500">Podés leer el chat sin registrarte.</p></div> : <form onSubmit={requestSignIn} className="space-y-3 bg-white px-4 py-5 sm:px-5">
-          <p className="text-sm text-slate-700">Para publicar mensajes, ingresá tu indicativo y correo. Te enviaremos un enlace de acceso; no hace falta autentificarse para leer.</p>
-          <label htmlFor="community-callsign" className="block text-xs font-semibold text-slate-600">Tu indicativo</label>
-          <input id="community-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase())} maxLength={24} required minLength={3} placeholder="Ej.: LU1TSB" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
-          <label htmlFor="community-email" className="block text-xs font-semibold text-slate-600">Correo electrónico</label>
-          <input id="community-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="tu@correo.com" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
-          <button type="submit" disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-sm font-bold text-white hover:bg-sky-600 disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Enviarme el enlace de acceso</button>
-        <button type="button" onClick={() => setShowAuth(false)} className="w-full bg-white px-4 pb-4 text-sm text-slate-500 underline">Cancelar</button></form>}
-        </>
-      ) : (
+          <div className="max-h-[360px] min-h-[180px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
+            {messages.length === 0 && <p className="py-6 text-center text-sm text-slate-500">Todavía no hay mensajes publicados.</p>}
+            {messages.map((message) => (
+              <article key={message.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+                {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
+                <p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p>
+                <span className="mt-1 block text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
+              </article>
+            ))}
+          </div>
+          <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
+            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Escribí tu indicativo y mensaje.</p>
+            <label htmlFor="community-public-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Tu indicativo</label>
+            <input id="community-public-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase())} maxLength={24} minLength={3} required className="mb-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" placeholder="Ej.: LU1TSB" />
+            <div className="flex gap-2">
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
+              <button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim() || callsign.trim().length < 3} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button>
+            </div>
+          </div>
+        </>      ) : (
         <>
           <div className="max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
             {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
@@ -268,7 +223,7 @@ export const CommunityChat: React.FC = () => {
         </>
       )}
       {(notice || error) && <div role={error ? 'alert' : 'status'} className={`border-t px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>{error || notice}</div>}
-      <p className="flex items-start gap-1.5 border-t border-slate-200 bg-slate-50 px-4 py-3 text-[11px] leading-relaxed text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" /> El chat es de lectura pública. Evitá publicar información privada.</p>
+      <p className="flex items-start gap-1.5 border-t border-slate-200 bg-slate-50 px-4 py-3 text-[11px] leading-relaxed text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Chat gratuito y sin registro. Evitá publicar información privada.</p>
     </section>
   );
 };
