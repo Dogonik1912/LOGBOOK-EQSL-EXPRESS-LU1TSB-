@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy } from 'lucide-react';
-import { requestChatInvitation } from '../services/chatInvitation';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -25,7 +24,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState('es');
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [chatInvitePending, setChatInvitePending] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -36,38 +34,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         savedGallery = JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]');
         setGalleryImages(savedGallery);
       } catch { setGalleryImages([]); }
-      // Recuperación única: si falta el encabezamiento protegido, copiar una sola
-      // vez la primera imagen de la galería a una clave independiente.
-      // Nunca modificarla después al cambiar o borrar diseños eQSL.
-      if (!localStorage.getItem('app_header_image_locked')) {
-        const existingHeader = localStorage.getItem('app_header_image');
-        const recoveryImage = existingHeader || savedGallery[0]?.dataUrl;
-        if (recoveryImage) {
-          localStorage.setItem('app_header_image_locked', recoveryImage);
-          window.dispatchEvent(new Event('user-branding-updated'));
-        }
-      }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || 'es');
-      setChatInvitePending(localStorage.getItem('logbook_chat_invitation_pending') === '1' && localStorage.getItem('logbook_chat_authenticated') !== '1');
       setSavedSuccess(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // El encabezamiento pertenece a la aplicación, no al diseño eQSL.
-  // Antes de modificar o borrar fondos eQSL, conservamos una copia independiente
-  // de la imagen que ya se estaba usando en el encabezamiento.
-  const preserveHeaderImage = (possibleCurrentHeader?: string | null) => {
-    if (localStorage.getItem('app_header_image_locked')) return;
+  // La galería y los fondos eQSL no deben modificar la imagen del encabezado.
+  const preserveHeaderImage = () => {
     const explicitHeader = localStorage.getItem('app_header_image');
-    if (explicitHeader) {
-      localStorage.setItem('app_header_image_locked', explicitHeader);
-      return;
-    }
-    const imageToPreserve = possibleCurrentHeader || customBg;
-    if (imageToPreserve) localStorage.setItem('app_header_image_locked', imageToPreserve);
+    if (explicitHeader) localStorage.setItem('app_header_image_locked', explicitHeader);
   };
 
   // Importa varias fotos a la galería sin activar ninguna automáticamente.
@@ -115,13 +93,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     const next = [...existing, ...imported];
     try {
       localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
-      // Si el encabezamiento aún no existe, guardar una copia independiente
-      // de la primera imagen recién subida. No se vuelve a sobrescribir.
-      if (!localStorage.getItem('app_header_image_locked')) {
-        const existingHeader = localStorage.getItem('app_header_image');
-        const recoveryImage = existingHeader || imported[0]?.dataUrl;
-        if (recoveryImage) localStorage.setItem('app_header_image_locked', recoveryImage);
-      }
       setGalleryImages(next);
       window.dispatchEvent(new Event('user-branding-updated'));
     } catch {
@@ -137,7 +108,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   const handleDeleteGalleryImage = (id: string) => {
     const removedImage = galleryImages.find((item) => item.id === id);
-    preserveHeaderImage(removedImage?.dataUrl || null);
+    preserveHeaderImage();
     const next = galleryImages.filter((item) => item.id !== id);
     setGalleryImages(next);
     localStorage.setItem('eqsl_gallery_images', JSON.stringify(next));
@@ -335,13 +306,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               </button>
             )}
           </div>
-          {chatInvitePending && (
-            <section className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-3.5 space-y-2" aria-label="Invitación pendiente al chat">
-              <h3 className="text-sm font-bold text-sky-200">Invitación pendiente</h3>
-              <p className="text-xs text-slate-300">Tienes una invitación pendiente para ingresar al chat.</p>
-              <button type="button" onClick={() => requestChatInvitation('settings')} className="w-full rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-sky-400">Aceptar invitación</button>
-            </section>
-          )}
           <section className="rounded-xl border border-sky-500/30 bg-sky-950/30 p-4 space-y-2" aria-labelledby="logbook-contact-title">
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-sky-300" />
