@@ -475,7 +475,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 Respuesta a tu eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 Contacto confirmado · ${date} ${time} UTC\n📡 ${band} (${frequency} MHz) · ${mode}\n📶 RST: ${rstSent}/${rstRcvd}\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`;
+    const text = `📻 ¡Respondieron a tu eQSL!\\nRecibiste una respuesta de ${activeMyCall}.\\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
     if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
@@ -493,7 +493,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
-    const body = encodeURIComponent(`📻 Respuesta a tu Tarjeta eQSL\nDe: ${activeMyCall} para: ${replyToCall}\n🤝 ¡Contacto 2-Way Confirmado!\n📅 Fecha: ${date} ${time} UTC\n📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n📶 RST: ${rstSent} / ${rstRcvd}\n\n73 cordiales de ${activeMyCall}\nLogBook eQSL Express\nVer y descargar la tarjeta: ${cardUrl}`);
+    const body = encodeURIComponent(`📻 ¡Respondieron a tu eQSL!\\nRecibiste una respuesta de ${activeMyCall}.\\nVer y descargar la tarjeta de respuesta: ${cardUrl}`);
     requestChatInvitation('reply');
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
