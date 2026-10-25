@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -84,8 +85,23 @@ export const Header: React.FC<HeaderProps> = ({
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
 
   useEffect(() => {
-    const syncCallsign = () => {
-      setCallsign(readCallsign());
+    const syncCallsign = async () => {
+      const savedCallsign = readCallsign();
+      setCallsign(savedCallsign);
+      // If the local label was lost but this device still has its identity token,
+      // recover the callsign associated with that token from the public-chat RPC.
+      if (!savedCallsign && supabase) {
+        const token = localStorage.getItem('community_chat_identity_token') || '';
+        if (token) {
+          const { data, error } = await supabase.rpc('resolve_community_callsign', { p_token: token });
+          const recovered = !error && typeof data === 'string' ? data.trim().toUpperCase() : '';
+          if (recovered) {
+            localStorage.setItem('community_chat_sd', recovered);
+            setCallsign(recovered);
+            window.dispatchEvent(new Event('user-profile-updated'));
+          }
+        }
+      }
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
       setHeaderImage(readHeaderImage());
       const nextIcon = localStorage.getItem('app_icon_image') || '';
