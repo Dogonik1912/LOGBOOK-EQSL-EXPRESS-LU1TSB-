@@ -1,17 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#ffffff"/>
-  <rect x="12" y="12" width="488" height="488" rx="84" fill="none" stroke="#38bdf8" stroke-width="8"/>
-  <g fill="#38bdf8" font-family="Georgia, 'Times New Roman', serif" font-weight="900" text-anchor="middle">
-    <text x="116" y="310" font-size="205">L</text>
-    <text x="396" y="310" font-size="205">B</text>
-  </g>
-  <g fill="none" stroke="#111827" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="215" y="82" width="82" height="205" rx="41" stroke-width="16"/>
-    <path d="M180 220v22c0 48 34 86 76 86s76-38 76-86v-22" stroke-width="16"/>
-    <path d="M256 328v58M218 386h76" stroke-width="16"/>
-    <path d="M232 128h48M232 160h48M232 192h48M232 224h48" stroke-width="9"/>
-  </g>
-  <g fill="none" stroke="#38bdf8" stroke-width="7" stroke-linecap="round">
-    <path d="M188 155q-22 30 0 60M324 155q22 30 0 60"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#56c4f6"/><stop offset="1" stop-color="#35a8e8"/></linearGradient></defs><rect width="512" height="512" rx="104" fill="url(#b)"/><text x="256" y="155" fill="#fff" text-anchor="middle" font-family="Georgia,serif" font-size="144" font-weight="bold" font-style="italic">LB</text><g transform="translate(256 260)" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"><circle r="83"/><path d="M-48 -27 Q-78 0 -48 27 M48 -27 Q78 0 48 27 M-32 -47 Q-54 0 -32 47 M32 -47 Q54 0 32 47"/><rect x="-22" y="-48" width="44" height="86" rx="22" fill="#fff" stroke="none"/><path d="M-11 -25 H11 M-11 -6 H11 M-11 13 H11" stroke="#43b5ef" stroke-width="7"/><path d="M0 38 V63 M-25 63 H25"/></g><text x="256" y="390" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="63" font-weight="900" font-style="italic">eQSL</text><text x="256" y="451" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif" font-size="48" font-weight="900" font-style="italic">EXPRESS</text></svg>
