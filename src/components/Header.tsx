@@ -63,7 +63,8 @@ export const Header: React.FC<HeaderProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const [callsign, setCallsign] = useState('LU1TSB');
+  const readCallsign = () => (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+  const [callsign, setCallsign] = useState(() => readCallsign());
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
   // El encabezado queda bloqueado en la imagen que ya estaba mostrándose.
   // La galería de eQSL es independiente y nunca debe reemplazar esta imagen.
@@ -84,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     const syncCallsign = () => {
-      setCallsign('LU1TSB');
+      setCallsign(readCallsign());
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
       setHeaderImage(readHeaderImage());
       const nextIcon = localStorage.getItem('app_icon_image') || '';
