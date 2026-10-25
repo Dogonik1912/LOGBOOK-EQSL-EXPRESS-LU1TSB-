@@ -68,8 +68,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   // Campos que se mantienen precargados del último QSO
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
-  const [band, setBand] = useState(initial.band);
-  const [frequency, setFrequency] = useState(initial.frequency);
+  // La banda seleccionada es temporal: cada nueva apertura comienza en 40 m,
+  // aunque el último QSO guardado haya sido en 11 metros. Los datos del QSO
+  // anterior siguen disponibles para fecha, hora y modo.
+  const [band, setBand] = useState('40m');
+  const [frequency, setFrequency] = useState(HAM_BANDS.find((b) => b.name === '40m')?.defaultFreq || '7.120');
   const [mode, setMode] = useState(initial.mode);
 
   // Campos que se limpian al guardar (corresponsal, RST enviada, RST recibida, y detalles)
