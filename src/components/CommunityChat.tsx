@@ -82,6 +82,9 @@ export const CommunityChat: React.FC = () => {
       else setMessages((data || []) as ChatMessage[]);
     };
     void loadMessages();
+    // Poll as a fallback so messages still appear on other devices if Realtime
+    // publication/subscription is unavailable in the Supabase project.
+    const pollId = window.setInterval(() => { void loadMessages(); }, 5000);
     const channel = supabase
       .channel('logbook-community-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_messages' }, (payload) => {
@@ -99,6 +102,7 @@ export const CommunityChat: React.FC = () => {
       });
     return () => {
       active = false;
+      window.clearInterval(pollId);
       void supabase?.removeChannel(channel);
     };
   }, []);
