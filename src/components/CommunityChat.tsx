@@ -31,6 +31,10 @@ export const CommunityChat: React.FC = () => {
       if (!mounted) return;
       if (sessionError) setError('No se pudo recuperar la sesión. Intentá ingresar de nuevo.');
       setSession(data.session);
+      if (data.session) {
+        localStorage.setItem('logbook_chat_authenticated', '1');
+        localStorage.removeItem('logbook_chat_invitation_pending');
+      }
       const saved = data.session?.user.user_metadata?.callsign || localStorage.getItem('user_callsign') || '';
       if (saved) setCallsign(String(saved).trim().toUpperCase());
     });
@@ -38,6 +42,8 @@ export const CommunityChat: React.FC = () => {
       if (!mounted) return;
       setSession(nextSession);
       if (nextSession) {
+        localStorage.setItem('logbook_chat_authenticated', '1');
+        localStorage.removeItem('logbook_chat_invitation_pending');
         const saved = nextSession.user.user_metadata?.callsign || localStorage.getItem('user_callsign') || '';
         if (saved) setCallsign(String(saved).trim().toUpperCase());
         setNotice('Sesión iniciada. Ya podés participar del chat.');
@@ -156,13 +162,14 @@ export const CommunityChat: React.FC = () => {
     if (signOutError) setError('No se pudo cerrar la sesión.');
     else {
       setSession(null);
+      localStorage.removeItem('logbook_chat_authenticated');
       setMessages([]);
       setNotice('Sesión cerrada.');
     }
   };
 
   return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-sky-900/70 bg-white text-slate-900 shadow-xl" aria-label="Chat de la comunidad">
+    <section id="community-chat" className="mb-6 overflow-hidden rounded-2xl border border-sky-900/70 bg-white text-slate-900 shadow-xl" aria-label="Chat de la comunidad">
       <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
