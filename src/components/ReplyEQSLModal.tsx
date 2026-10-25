@@ -448,17 +448,25 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
-    if (await shareReplyCardFile(text)) return;
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
-    const message = text;
-    if (cleanPhone) {
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    }
+
+    // Mostrar la invitación antes de salir a WhatsApp; así no depende de que
+    // el navegador conserve el evento después de cambiar de aplicación.
     requestChatInvitation('reply');
+
+    // Si la eQSL original contiene el número, abrir directamente ese chat.
+    // No usamos primero la hoja genérica de compartir, que obliga a elegir contacto.
+    if (cleanPhone) {
+      window.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+      return;
+    }
+
+    // Sin número verificado no es posible seleccionar automáticamente un destinatario.
+    // Dejamos la respuesta preparada y explicamos por qué hace falta elegir contacto.
+    if (await shareReplyCardFile(text)) return;
+    window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
   };
 
   const handleShareTelegram = async () => {
