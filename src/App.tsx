@@ -47,7 +47,7 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
-    const handleInvitation = (event: Event) => {
+    const handleInvitation = () => {
       setChatAuthNotice(false);
       setIsChatInviteOpen(true);
     };
