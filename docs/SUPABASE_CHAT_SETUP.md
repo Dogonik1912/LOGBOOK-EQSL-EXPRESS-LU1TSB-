@@ -9,9 +9,8 @@ Esta rama prepara el código; el chat **no queda activo** hasta conectar un proy
 
 ## 2. Crear la tabla protegida
 1. Abrí **SQL Editor** en el panel del proyecto.
-2. Copiá y ejecutá `supabase/migrations/202610250001_community_chat.sql`.
-3. En **Authentication → URL Configuration**, configurá como Site URL el dominio de producción de Vercel y agregá también el dominio de preview que vayas a probar a Redirect URLs.
-4. En **Authentication → Sign In / Providers**, verificá que Email esté habilitado. El componente enviará un enlace mágico por correo.
+2. Ejecutá en orden `supabase/migrations/202610250001_community_chat.sql` y luego `supabase/migrations/202610250002_public_device_chat.sql` en el SQL Editor. La segunda migración habilita lectura pública sin cuenta, registro único del indicativo por dispositivo y publicación de mensajes mediante RPC.
+3. No hace falta activar autenticación por correo para el chat comunitario: el acceso es público y sin registro. El indicativo queda bloqueado con un token persistente del dispositivo; no se usa la IP como identificador único porque puede cambiar o compartirse.
 
 ## 3. Configurar Vercel
 En el proyecto `logbook-eqsl-express-lu-1-tsb`, abrí **Settings → Environment Variables** y agregá:
@@ -21,11 +20,10 @@ En el proyecto `logbook-eqsl-express-lu-1-tsb`, abrí **Settings → Environment
 Aplicá las variables al entorno Preview primero. Después de verificar, se podrán agregar a Production. Nunca agregues una clave `service_role` a variables `VITE_` ni al frontend.
 
 ## 4. Verificación antes de publicar
-- Abrir una preview y confirmar que el enlace por correo llega y crea una sesión.
-- Abrir una segunda sesión/dispositivo con otra cuenta autenticada.
-- Enviar un mensaje y comprobar que aparece en la otra sesión sin recargar.
-- Confirmar que un visitante sin sesión no puede leer ni escribir mensajes.
-- Revisar el dominio de retorno del enlace mágico y probar cerrar sesión.
+- Abrir el chat en dos dispositivos o navegadores diferentes, sin iniciar sesión.
+- Registrar indicativos distintos y comprobar que un indicativo no se puede reclamar dos veces.
+- Enviar un mensaje desde el primer dispositivo y comprobar que aparece en el segundo en tiempo real o, como respaldo, en un máximo aproximado de cinco segundos.
+- Recargar el dispositivo original y comprobar que su indicativo sigue bloqueado.
 
 ## Seguridad y límites
-La tabla aplica RLS y solo permite leer mensajes y escribir al usuario autenticado bajo su propio ID. El cliente no recibe ninguna clave de administrador. Antes de abrir el chat masivamente, conviene agregar límites antiabuso y herramientas de moderación del lado del servidor. No publicar datos personales en mensajes.
+Las tablas aplican RLS; los visitantes solo pueden leer mensajes y publicar mediante funciones SQL que verifican el token persistente del dispositivo. El cliente no recibe ninguna clave de administrador. La migración debe ejecutarse en el proyecto Supabase conectado a Vercel antes de que el chat funcione entre dispositivos. Antes de abrir el chat masivamente, conviene agregar límites antiabuso y herramientas de moderación del lado del servidor. No publicar datos personales en mensajes.
