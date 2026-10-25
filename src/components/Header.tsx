@@ -149,8 +149,9 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
       <div className="relative w-full px-2 sm:px-4 pt-12 pb-3.5 md:pt-3.5 flex flex-col gap-3">
-      <div className="absolute left-2 top-2 md:top-3 z-10 flex items-center gap-1 rounded-md border border-black bg-black px-2 py-1 font-mono text-xs sm:text-sm font-bold shadow-sm" title="Hora universal coordinada (UTC)"><span className="rounded-sm bg-white px-1 text-black">UTC</span><span className="text-white">{utcClock}</span></div>\n      {callsign && (
-        <div className="absolute right-4 top-2 md:top-3 z-10">
+      <div className="absolute right-2 top-2 md:top-3 z-10 flex items-center gap-1 rounded-md border border-black bg-black px-2 py-1 font-mono text-xs sm:text-sm font-bold shadow-sm" title="Hora universal coordinada (UTC)"><span className="rounded-sm bg-white px-1 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
+      {callsign && (
+        <div className="absolute left-2 top-2 md:top-3 z-10">
           <span className="inline-flex min-w-[5.5rem] justify-center rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-sm sm:text-base font-extrabold shadow-sm" title={`Señal distintiva: ${callsign}`}>
             {callsign.split('').map((character, index) => (
               <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
