@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Mail, LoaderCircle } from 'lucide-react';
+import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Mail, LoaderCircle, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type ChatMessage = {
@@ -14,6 +14,8 @@ type ChatMessage = {
 
 export const CommunityChat: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const isModerator = ['admin', 'moderator'].includes(String(session?.user.app_metadata?.role || '').toLowerCase()) || (Array.isArray(session?.user.app_metadata?.roles) && session.user.app_metadata.roles.some((role: unknown) => ['admin', 'moderator'].includes(String(role).toLowerCase())));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('user_callsign')?.trim().toUpperCase() || '');
@@ -78,6 +80,10 @@ export const CommunityChat: React.FC = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_messages' }, (payload) => {
         const incoming = payload.new as ChatMessage;
         setMessages((current) => current.some((item) => item.id === incoming.id) ? current : [...current, incoming].slice(-100));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'community_messages' }, (payload) => {
+        const removed = payload.old as Partial<ChatMessage>;
+        if (removed.id) setMessages((current) => current.filter((item) => item.id !== removed.id));
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -160,6 +166,21 @@ export const CommunityChat: React.FC = () => {
     setReplyTo(null);
   };
 
+  const deleteMessage = async (message: ChatMessage) => {
+    if (!supabase || !session || !isModerator || deletingId) return;
+    if (!window.confirm(`¿Eliminar definitivamente el mensaje de ${message.callsign}?`)) return;
+    setDeletingId(message.id);
+    setError('');
+    const { error: deleteError } = await supabase.from('community_messages').delete().eq('id', message.id);
+    setDeletingId(null);
+    if (deleteError) {
+      setError('No se pudo eliminar el mensaje. Verificá que tu cuenta tenga rol de administrador o moderador en Supabase.');
+      return;
+    }
+    setMessages((current) => current.filter((item) => item.id !== message.id));
+    setNotice('Mensaje eliminado.');
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     const { error: signOutError } = await supabase.auth.signOut();
@@ -226,7 +247,10 @@ export const CommunityChat: React.FC = () => {
                 <p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
-                  <button type="button" onClick={() => setReplyTo(message)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"><Reply className="h-3 w-3" /> Responder</button>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setReplyTo(message)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"><Reply className="h-3 w-3" /> Responder</button>
+                    {isModerator && <button type="button" disabled={deletingId === message.id} onClick={() => void deleteMessage(message)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50" aria-label={`Eliminar mensaje de ${message.callsign}`}><Trash2 className="h-3 w-3" /> {deletingId === message.id ? 'Eliminando…' : 'Borrar'}</button>}
+                  </div>
                 </div>
               </article>
             ))}
