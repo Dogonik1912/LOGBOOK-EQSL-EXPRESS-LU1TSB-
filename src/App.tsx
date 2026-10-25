@@ -14,6 +14,7 @@ import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
 import { Award, Send } from 'lucide-react';
+import { CommunityChat } from './components/CommunityChat';
 
 
 function MainApp() {
@@ -276,6 +277,8 @@ function MainApp() {
             {showCountryRanking && <div className="mt-2 border-t border-slate-700 pt-2 text-[10px] leading-snug text-slate-400">El ranking por banderas y cantidad estará disponible al conectar el registro compartido.</div>}
           </div>
         </div>
+
+        <CommunityChat />
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
