@@ -56,11 +56,19 @@ function MainApp() {
       setChatAuthNotice(false);
       document.getElementById('community-chat')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
+    // If the browser was backgrounded or reopened after sharing through WhatsApp,
+    // restore the pending invitation instead of losing it with the previous page.
+    if (localStorage.getItem('logbook_chat_invitation_pending') === '1' &&
+        localStorage.getItem('logbook_chat_authenticated') !== '1') {
+      setIsChatInviteOpen(true);
+    }
     window.addEventListener('logbook-chat-invitation-open', handleInvitation);
     window.addEventListener('logbook-chat-auth-request', handleAuthRequest);
+    window.addEventListener('pageshow', handleInvitation);
     return () => {
       window.removeEventListener('logbook-chat-invitation-open', handleInvitation);
       window.removeEventListener('logbook-chat-auth-request', handleAuthRequest);
+      window.removeEventListener('pageshow', handleInvitation);
     };
   }, []);
 
