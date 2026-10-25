@@ -20,10 +20,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
-  const [email, setEmail] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [whatsappUsername, setWhatsappUsername] = useState('');
-  const [telegram, setTelegram] = useState('');
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
@@ -34,10 +30,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setCallsign(localStorage.getItem('user_callsign') || '');
-      setEmail(localStorage.getItem('user_email') || '');
-      setWhatsapp(localStorage.getItem('user_whatsapp') || '');
-      setWhatsappUsername(localStorage.getItem('user_whatsapp_username') || '');
-      setTelegram(localStorage.getItem('user_telegram') || '');
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       let savedGallery: Array<{ id: string; name: string; dataUrl: string }> = [];
       try {
@@ -165,10 +157,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       return;
     }
     localStorage.setItem('user_callsign', finalCall);
-    localStorage.setItem('user_email', email.trim());
-    localStorage.setItem('user_whatsapp', whatsapp.trim());
-    localStorage.setItem('user_whatsapp_username', whatsappUsername.trim().replace(/^@+/, ''));
-    localStorage.setItem('user_telegram', telegram.trim().replace(/^@+/, ''));
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
     window.dispatchEvent(new Event('user-profile-updated'));
@@ -197,7 +185,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Configuración del Operador</h2>
-              <p className="text-xs text-slate-400">Tu indicativo, correo y diseño de tarjeta</p>
+              <p className="text-xs text-slate-400">Tu indicativo y diseño de tarjeta</p>
             </div>
           </div>
           <button
@@ -211,7 +199,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         <form onSubmit={handleSave} className="space-y-4 pt-4">
           <div className="pt-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Datos de estación</h3>
-            <p className="text-[11px] text-slate-500 mt-1">Completá una sola vez los datos que aparecerán en tus tarjetas.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Tu indicativo se usará como dato predeterminado en tus tarjetas eQSL.</p>
           </div>
           {/* Idioma predeterminado de la interfaz */}
           <div className="rounded-xl border border-violet-500/25 bg-slate-950/60 p-3.5 space-y-2">
@@ -268,25 +256,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi email de respuesta</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi WhatsApp (teléfono internacional)</label>
-              <input type="tel" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="54911..." className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi usuario de WhatsApp (opcional)</label>
-              <input type="text" value={whatsappUsername} onChange={(e) => setWhatsappUsername(e.target.value.replace(/^@+/, ''))} placeholder="usuario" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mi usuario de Telegram (opcional)</label>
-              <input type="text" value={telegram} onChange={(e) => setTelegram(e.target.value.replace(/^@+/, ''))} placeholder="usuario" className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:border-amber-400 focus:outline-hidden" />
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-500">Estos datos se incluyen en el enlace de respuesta que compartís con el corresponsal para que pueda elegir un canal de vuelta. Completá solo los medios por los que aceptás recibir respuestas.</p>
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
