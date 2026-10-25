@@ -56,7 +56,7 @@ export const CommunityChat: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!supabase || !session?.user.id) {
+    if (!supabase) {
       setMessages([]);
       return;
     }
@@ -88,7 +88,7 @@ export const CommunityChat: React.FC = () => {
       active = false;
       void supabase?.removeChannel(channel);
     };
-  }, [session?.user.id]);
+  }, []);
 
   const requestSignIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -196,6 +196,17 @@ export const CommunityChat: React.FC = () => {
           <p>El servicio de autenticación todavía no está configurado. El chat permanece cerrado hasta agregar las variables públicas de Supabase en Vercel.</p>
         </div>
       ) : !session ? (
+        <>
+        <div className="max-h-[360px] min-h-[180px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
+          {messages.length === 0 && <p className="py-6 text-center text-sm text-slate-500">Todavía no hay mensajes publicados.</p>}
+          {messages.map((message) => (
+            <article key={message.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+              {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
+              <p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p>
+              <span className="mt-1 block text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
+            </article>
+          ))}
+        </div>
         <form onSubmit={requestSignIn} className="space-y-3 bg-white px-4 py-5 sm:px-5">
           <p className="text-sm text-slate-700">Autentificate con tu correo para acceder al chat comunitario. Te enviaremos un enlace de acceso.</p>
           <label htmlFor="community-callsign" className="block text-xs font-semibold text-slate-600">Tu indicativo</label>
@@ -204,6 +215,7 @@ export const CommunityChat: React.FC = () => {
           <input id="community-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="tu@correo.com" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
           <button type="submit" disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-sm font-bold text-white hover:bg-sky-600 disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Enviarme el enlace de acceso</button>
         </form>
+        </>
       ) : (
         <>
           <div className="max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
