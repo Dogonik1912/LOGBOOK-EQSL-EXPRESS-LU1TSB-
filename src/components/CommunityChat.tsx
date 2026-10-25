@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Trash2 } from 'lucide-react';
+import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Trash2, Sun, Moon } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type ChatMessage = {
@@ -29,6 +29,8 @@ export const CommunityChat: React.FC = () => {
   });
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [darkChat, setDarkChat] = useState(() => localStorage.getItem('community_chat_theme') === 'dark');
+  const toggleChatTheme = () => setDarkChat((current) => { const next = !current; localStorage.setItem('community_chat_theme', next ? 'dark' : 'light'); return next; });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -217,7 +219,7 @@ export const CommunityChat: React.FC = () => {
             <p className="mt-1 text-xs text-slate-300">Chat comunitario en tiempo real · gratuito y sin registro</p>
           </div>
         </div>
-        <button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button>
+        <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo blanco" : "Cambiar a fondo negro"} title={darkChat ? "Fondo blanco" : "Fondo negro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button></div>
       </div>
       {showInfo && <div className="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600 sm:px-5">
@@ -232,12 +234,12 @@ export const CommunityChat: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto bg-white px-4 py-4 sm:px-5" aria-live="polite">
+          <div className={`max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
             {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
             {messages.map((message) => (
-              <article key={message.id} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5 hover:border-sky-200">
+              <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-relaxed"><strong className="font-mono font-extrabold uppercase text-slate-950">{message.callsign}:</strong> <span className="text-slate-800">{message.body}</span></p>
+                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{message.body}</span></p>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
                   <div className="flex items-center gap-1">
@@ -260,7 +262,7 @@ export const CommunityChat: React.FC = () => {
               </div>
             )}
             <div className="flex gap-2">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className={`min-w-0 flex-1 rounded-xl border px-3 py-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 ${darkChat ? "border-slate-600 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-900"}`} />
               <button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim() || callsign.trim().length < 3} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button>
             </div>
           </div>
