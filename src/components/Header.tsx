@@ -31,20 +31,20 @@ export const Header: React.FC<HeaderProps> = ({
   ];
   const handleShareChoice = async (name: string, url: string) => {
     setShareMenuOpen(false);
-    if (name === 'Messenger') {
-      // El endpoint dialog/send exige un app_id válido; sin una app registrada falla.
-      // En móviles usamos el menú nativo para que el usuario elija Messenger.
+    if (name === 'Facebook' || name === 'Messenger') {
+      // En móviles, el menú nativo permite compartir y volver a la app sin
+      // navegar la pestaña actual hacia el diálogo externo de Facebook.
       if (typeof navigator.share === 'function') {
         try {
           await navigator.share({ title: 'LogBook eQSL Express', text: shareText, url: shareUrl });
           return;
         } catch (error) {
+          // Cancelar el menú de compartir no debe sacar al usuario de LogBook.
           if ((error as Error)?.name === 'AbortError') return;
         }
       }
       try { await navigator.clipboard.writeText(shareText + ' ' + shareUrl); } catch { /* Se ofrece copiar manualmente abajo. */ }
-      window.open('https://www.messenger.com/', '_blank', 'noopener,noreferrer');
-      window.alert('El enlace de la app está copiado si tu navegador lo permite. Abrí Messenger, elegí el contacto y pegalo en el mensaje.');
+      window.alert('No se abrió el menú para compartir. El enlace está copiado si tu navegador lo permite; seguís en LogBook.');
       return;
     }
     if (name === 'Instagram' || name === 'TikTok') {
