@@ -8,12 +8,10 @@ import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDow
 
 interface HeaderProps {
   onOpenSettings: () => void;
-  onOpenReplyModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
-  onOpenReplyModal,
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -151,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Zona derecha: instalación, compartir app, responder eQSL y ajustes */}
+        {/* Zona derecha: instalación, compartir app y ajustes */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
@@ -200,18 +198,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
-
-          {/* Botón Responder eQSL */}
-          {onOpenReplyModal && (
-            <button
-              type="button"
-              onClick={onOpenReplyModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
-              title="Responder o confirmar una eQSL recibida de otro colega"
-            >
-              <span>Responder eQSL</span>
-            </button>
-          )}
 
           {/* Botón Ajustes */}
           <button
