@@ -112,7 +112,7 @@ export const CommunityChat: React.FC = () => {
     setBusy(true); setError('');
     try {
       const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
-      if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado. No se permiten duplicados.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
+      if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado por otra persona. No se permiten duplicados.' : identityData?.reason === 'locked' ? 'Este dispositivo ya tiene un SD registrado y no se puede cambiar.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
       localStorage.setItem('community_chat_sd', cleanCallsign); setCallsign(cleanCallsign); setSdLocked(true);
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
       if (sendError || !data?.ok) { console.error('[LogBook chat] public message insert error:', sendError || data); setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.'); return; }
