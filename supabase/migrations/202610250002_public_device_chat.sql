@@ -4,6 +4,15 @@
 
 create extension if not exists pgcrypto;
 
+create table if not exists public.community_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  callsign text not null check (char_length(callsign) between 3 and 24),
+  body text not null check (char_length(body) between 1 and 500),
+  reply_to_callsign text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.community_call_signs (
   callsign text primary key check (callsign = upper(trim(callsign)) and length(callsign) between 3 and 24),
   identity_token uuid not null unique,
