@@ -13,7 +13,7 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
-import { Award, Send, ChevronDown } from 'lucide-react';
+import { Award, Send } from 'lucide-react';
 
 
 function MainApp() {
@@ -59,7 +59,6 @@ function MainApp() {
     }
   };
   const [showCountryRanking, setShowCountryRanking] = useState(false);
-  const [showWorldMap, setShowWorldMap] = useState(false);
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyData, setReplyData] = useState<{
@@ -277,36 +276,6 @@ function MainApp() {
             {showCountryRanking && <div className="mt-2 border-t border-slate-700 pt-2 text-[10px] leading-snug text-slate-400">El ranking por banderas y cantidad estará disponible al conectar el registro compartido.</div>}
           </div>
         </div>
-
-        <section className="mb-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/90">
-          <button
-            type="button"
-            onClick={() => setShowWorldMap((open) => !open)}
-            aria-expanded={showWorldMap}
-            aria-controls="world-map-panel"
-            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-5 hover:bg-slate-800/60 transition-colors"
-          >
-            <span className="text-lg font-bold text-white">Mapamundi de actividad eQSL (previsto)</span>
-            <ChevronDown className={`h-5 w-5 shrink-0 text-amber-400 transition-transform duration-300 ${showWorldMap ? 'rotate-180' : ''}`} />
-          </button>
-          <div
-            id="world-map-panel"
-            hidden={!showWorldMap}
-            className="border-t border-slate-800"
-          >
-            <div className="grid gap-4 p-4 sm:p-5">
-              <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/70 p-5 sm:p-7">
-                <p className="text-sm font-bold text-amber-300">Función prevista — todavía no activa</p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">El mapa mundial compartido en tiempo real necesita un servicio seguro y participación voluntaria. Esta versión no publica ni transmite tus QSOs al mapa y no muestra actividad mundial simulada.</p>
-                <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-400">
-                  <li>La futura participación será opcional y se podrá desactivar.</li>
-                  <li>Se usará ubicación aproximada por locator o país, nunca coordenadas exactas por defecto.</li>
-                  <li>Los eventos distinguirán QSOs guardados de eQSL preparadas o compartidas.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
