@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { requestChatInvitation } from '../services/chatInvitation';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState('es');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [chatInvitePending, setChatInvitePending] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +57,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || 'es');
+      setChatInvitePending(localStorage.getItem('logbook_chat_invitation_pending') === '1' && localStorage.getItem('logbook_chat_authenticated') !== '1');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -363,6 +366,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               </button>
             )}
           </div>
+          {chatInvitePending && (
+            <section className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-3.5 space-y-2" aria-label="Invitación pendiente al chat">
+              <h3 className="text-sm font-bold text-sky-200">Invitación pendiente</h3>
+              <p className="text-xs text-slate-300">Tienes una invitación pendiente para ingresar al chat.</p>
+              <button type="button" onClick={() => requestChatInvitation('settings')} className="w-full rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-sky-400">Aceptar invitación</button>
+            </section>
+          )}
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <div className="text-xs text-emerald-400 font-medium">
