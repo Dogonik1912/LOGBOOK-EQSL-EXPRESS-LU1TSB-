@@ -194,10 +194,15 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu SD se registra una sola vez, es único y queda fijo.</p>
-            {sdLocked && <p className="mb-2 text-xs text-slate-500">SD registrado; es único y no se puede modificar.</p>}
-            <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Tu SD / indicativo</label>
-            <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => { if (!sdLocked) setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '')); }} disabled={sdLocked} maxLength={24} autoComplete="off" spellCheck={false} className="mb-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
+            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>
+            {sdLocked && <p className="mb-2 text-xs font-semibold text-slate-600">Señal distintiva registrada: <span className="font-mono">{callsign}</span></p>}
+            {!sdLocked && (
+              <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
+                <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva</label>
+                <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ingresá tu señal distintiva" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
+                <p className="mt-1 text-[11px] text-slate-500">Se guarda una sola vez en este dispositivo y no se podrá cambiar.</p>
+              </div>
+            )}
             <div className="flex gap-2">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" />
               <button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim() || callsign.trim().length < 3} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button>
