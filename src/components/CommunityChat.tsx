@@ -111,11 +111,9 @@ export const CommunityChat: React.FC = () => {
     if (cleanCallsign.length < 3 || cleanCallsign.length > 24) { setError('Ingresá tu SD/indicativo antes de enviar.'); return; }
     setBusy(true); setError('');
     try {
-      if (!sdLocked) {
-        const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
-        if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado. No se permiten duplicados.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
-        localStorage.setItem('community_chat_sd', cleanCallsign); setCallsign(cleanCallsign); setSdLocked(true);
-      }
+      const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
+      if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado. No se permiten duplicados.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
+      localStorage.setItem('community_chat_sd', cleanCallsign); setCallsign(cleanCallsign); setSdLocked(true);
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
       if (sendError || !data?.ok) { console.error('[LogBook chat] public message insert error:', sendError || data); setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.'); return; }
       if (data.message) setMessages((current) => current.some((item) => item.id === data.message.id) ? current : [...current, data.message as ChatMessage].slice(-100));
