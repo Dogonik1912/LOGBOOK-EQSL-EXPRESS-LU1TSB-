@@ -447,15 +447,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 *Respuesta a tu Tarjeta eQSL*\n` +
-      `De: *${activeMyCall}* para: *${replyToCall}*\n` +
-      `🤝 ¡Contacto 2-Way Confirmado!\n` +
-      `📅 Fecha: ${date} ${time} UTC\n` +
-      `📡 Banda: ${band} (${frequency} MHz) · Modo: ${mode}\n` +
-      `📶 RST: ${rstSent} / ${rstRcvd}\n\n` +
-      `73 cordiales de ${activeMyCall}\n` +
-      `LogBook eQSL Express\n` +
-      `Ver y descargar la tarjeta de respuesta: ${cardUrl}`;
+    const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
     if (await shareReplyCardFile(text)) return;
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
