@@ -31,8 +31,6 @@ function MainApp() {
   });
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isChatInviteOpen, setIsChatInviteOpen] = useState(false);
-  const [chatAuthNotice, setChatAuthNotice] = useState(false);
   const settingsHistoryEntry = useRef(false);
 
   useEffect(() => {
@@ -44,32 +42,6 @@ function MainApp() {
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  useEffect(() => {
-    const handleInvitation = () => {
-      setChatAuthNotice(false);
-      setIsChatInviteOpen(true);
-    };
-    const handleAuthRequest = () => {
-      setIsChatInviteOpen(false);
-      setChatAuthNotice(false);
-      document.getElementById('community-chat')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
-    // If the browser was backgrounded or reopened after sharing through WhatsApp,
-    // restore the pending invitation instead of losing it with the previous page.
-    if (localStorage.getItem('logbook_chat_invitation_pending') === '1' &&
-        localStorage.getItem('logbook_chat_authenticated') !== '1') {
-      setIsChatInviteOpen(true);
-    }
-    window.addEventListener('logbook-chat-invitation-open', handleInvitation);
-    window.addEventListener('logbook-chat-auth-request', handleAuthRequest);
-    window.addEventListener('pageshow', handleInvitation);
-    return () => {
-      window.removeEventListener('logbook-chat-invitation-open', handleInvitation);
-      window.removeEventListener('logbook-chat-auth-request', handleAuthRequest);
-      window.removeEventListener('pageshow', handleInvitation);
-    };
   }, []);
 
   const handleOpenSettings = () => {
@@ -354,28 +326,7 @@ function MainApp() {
         onSaveQSO={(qso) => handleAddQSO(qso, false)}
       />
 
-      {isChatInviteOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="chat-invitation-title">
-          <section className="w-full max-w-sm rounded-2xl border border-sky-500/40 bg-slate-900 p-5 text-slate-100 shadow-2xl">
-            <h2 id="chat-invitation-title" className="text-lg font-extrabold text-white">¡Accede al chat comunitario!</h2>
-            <p className="mt-2 text-sm text-slate-300">Autentifícate para ingresar al chat.</p>
-            <div className="mt-5 flex gap-2">
-              <button type="button" onClick={() => { setIsChatInviteOpen(false); window.dispatchEvent(new Event('logbook-chat-auth-request')); }} className="flex-1 rounded-lg bg-sky-400 px-3 py-2.5 text-sm font-bold text-slate-950 hover:bg-sky-300">Autentificarme</button>
-              <button type="button" onClick={() => setIsChatInviteOpen(false)} className="rounded-lg border border-slate-600 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800">Ahora no</button>
-            </div>
-          </section>
-        </div>
-      )}
 
-      {chatAuthNotice && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="chat-auth-notice-title">
-          <section className="w-full max-w-sm rounded-2xl border border-amber-500/40 bg-slate-900 p-5 text-slate-100 shadow-2xl">
-            <h2 id="chat-auth-notice-title" className="text-base font-bold text-white">Autenticación no configurada</h2>
-            <p className="mt-2 text-sm text-slate-300">La autenticación segura todavía debe conectarse. Tu invitación seguirá pendiente en Ajustes.</p>
-            <button type="button" onClick={() => setChatAuthNotice(false)} className="mt-4 w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-600">Entendido</button>
-          </section>
-        </div>
-      )}
     </div>
   );
 }
