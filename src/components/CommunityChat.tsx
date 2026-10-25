@@ -317,7 +317,13 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>            {isModerator && sdLocked && (\n              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">\n                <span className="text-xs font-semibold text-red-800">Administrador: {callsign}</span>\n                <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar a ${callsign === "LU1TSB" ? "LU1TSB/4RC978" : "LU1TSB"}`}</button>\n              </div>\n            )}\n            {!sdLocked && (
+            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>            {isModerator && sdLocked && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+                <span className="text-xs font-semibold text-red-800">Administrador: {callsign}</span>
+                <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar a ${callsign === "LU1TSB" ? "LU1TSB/4RC978" : "LU1TSB"}`}</button>
+              </div>
+            )}
+            {!sdLocked && (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
                 <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva para el chat</label>
                 <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
