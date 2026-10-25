@@ -141,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-3.5 md:pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="relative w-full px-2 sm:px-4 pt-12 pb-3.5 md:pt-3.5 flex flex-col gap-3">
       {callsign && (
         <div className="absolute right-4 top-2 md:top-3 z-10">
           <span className="inline-flex min-w-[5.5rem] justify-center rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-sm sm:text-base font-extrabold shadow-sm" title={`Señal distintiva: ${callsign}`}>
@@ -151,18 +151,9 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
       )}
-        {/* Marca */}
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="shrink-0 p-1 bg-white rounded-xl shadow-lg">
-            <img src={appIcon || "/icon.svg"} alt="LB EQSL EXPRESS" className="w-10 h-10 rounded-lg object-contain" />
-          </div>
-          <div className="min-w-0 flex-1 flex justify-center">
-            {headerImage ? (
-              <img src={headerImage} alt="Encabezamiento de LogBook eQSL Express" className="block h-20 sm:h-24 md:h-28 w-full max-w-[min(75vw,48rem)] rounded-lg bg-white p-1 object-contain object-center mx-auto" />
-            ) : (
-              <div className="h-20 sm:h-24 md:h-28 w-full max-w-[min(75vw,48rem)]" aria-hidden="true" />
-            )}
-          </div>
+        {/* Encabezamiento panorámico LogBook eQSL EXPRESS */}
+        <div className="w-full overflow-hidden">
+          <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
