@@ -483,7 +483,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const subject = encodeURIComponent(`Respuesta eQSL de ${activeMyCall} para ${replyToCall} [${band} ${mode}]`);
+    const subject = encodeURIComponent(`Respuesta a tu eQSL de ${activeMyCall}`);
     const body = encodeURIComponent(`📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`);
     requestChatInvitation('reply');
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
