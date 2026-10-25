@@ -612,7 +612,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
       return;
     }
-    const firma = getFirma();
     const subject = encodeURIComponent(`Tarjeta eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
     const body = encodeURIComponent(
       `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`
