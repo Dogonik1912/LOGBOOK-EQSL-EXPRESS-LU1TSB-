@@ -37,6 +37,26 @@ export const CommunityChat: React.FC = () => {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
+  // Recover a previously registered callsign from this device token if local storage
+  // lost the callsign value. Never ask the user to invent a replacement in that case.
+  useEffect(() => {
+    let active = true;
+    const recoverCallsign = async () => {
+      const saved = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (saved || !supabase || !identityToken) return;
+      const { data, error: recoveryError } = await supabase.rpc('resolve_community_callsign', { p_token: identityToken });
+      if (!active || recoveryError || typeof data !== 'string' || !data.trim()) return;
+      const recovered = data.trim().toUpperCase();
+      localStorage.setItem('community_chat_sd', recovered);
+      setCallsign(recovered);
+      setSdLocked(true);
+      window.dispatchEvent(new Event('user-profile-updated'));
+      setNotice('Recuperamos tu señal distintiva registrada: ' + recovered + '.');
+    };
+    void recoverCallsign();
+    return () => { active = false; };
+  }, [identityToken]);
+
   // Public chat identities use a device token, not Supabase Auth. Resolve moderation
   // privileges against the server-side role table so public users cannot impersonate staff.
   useEffect(() => {
@@ -171,6 +191,7 @@ export const CommunityChat: React.FC = () => {
       localStorage.setItem('community_chat_sd', cleanCallsign);
       setCallsign(cleanCallsign);
       setSdLocked(true);
+      window.dispatchEvent(new Event('user-profile-updated'));
       setNotice('Señal distintiva guardada en este dispositivo.');
     } finally {
       setBusy(false);
@@ -180,7 +201,7 @@ export const CommunityChat: React.FC = () => {
   const switchAdminCallsign = async () => {
     if (!supabase || busy || !isModerator) return;
     const current = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
-    const target = current === 'LU1TSB' ? 'LU1TSB/4RC978' : current === 'LU1TSB/4RC978' ? 'LU1TSB' : '';
+    const target = current === 'LU1TSB' ? '4RC978' : current === '4RC978' ? 'LU1TSB/4RC978' : current === 'LU1TSB/4RC978' ? 'LU1TSB' : '';
     if (!target) { setError('El cambio rápido está disponible únicamente entre LU1TSB y LU1TSB/4RC978.'); return; }
     setBusy(true); setError(''); setNotice('');
     try {
@@ -203,7 +224,7 @@ export const CommunityChat: React.FC = () => {
         return;
       }
       localStorage.setItem('community_chat_sd', target);
-      setCallsign(target); setSdLocked(true); setShowChangeCallsign(false);
+      setCallsign(target); setSdLocked(true); setShowChangeCallsign(false); window.dispatchEvent(new Event('user-profile-updated'));
       setNotice('Indicativo cambiado a ' + target + '. Los permisos de administrador se mantienen.');
     } finally { setBusy(false); }
   };
@@ -327,7 +348,7 @@ export const CommunityChat: React.FC = () => {
             <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>            {isModerator && sdLocked && (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
                 <span className="text-xs font-semibold text-red-800">Administrador: {callsign}</span>
-                <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar a ${callsign === "LU1TSB" ? "LU1TSB/4RC978" : "LU1TSB"}`}</button>
+                <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar cuenta administradora (${callsign === "LU1TSB" ? "4RC978" : callsign === "4RC978" ? "LU1TSB/4RC978" : "LU1TSB"})`}</button>
               </div>
             )}
             {!sdLocked && (
