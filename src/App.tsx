@@ -13,7 +13,8 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
-import { Award, Send } from 'lucide-react';
+import { EQSLMailbox } from './components/EQSLMailbox';
+import { Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 
@@ -261,10 +262,7 @@ function MainApp() {
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
-            <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><Award className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Estaciones activas · sin datos verificados</div></div>
-          </div>
+          <EQSLMailbox />
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
             <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones eQSL · sin datos verificados</div></div>
