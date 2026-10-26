@@ -23,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
   const [localDate, setLocalDate] = useState(() => formatLocalDate());
   const [localWeather, setLocalWeather] = useState<{ temperature: number; humidity: number } | null>(null);
+  const [weatherStatus, setWeatherStatus] = useState('Cargando clima...');
   useEffect(() => {
     let cancelled = false;
     const loadWeather = async () => {
@@ -52,10 +53,11 @@ export const Header: React.FC<HeaderProps> = ({
         const humidity = Number(data?.current?.relative_humidity_2m);
         if (Number.isFinite(temperature) && Number.isFinite(humidity)) {
           setLocalWeather({ temperature: Math.round(temperature), humidity: Math.round(humidity) });
+          setWeatherStatus('Datos meteorológicos actualizados');
         }
       } catch {
         // Si los servicios no responden, ocultamos los valores en vez de inventarlos.
-        if (!cancelled) setLocalWeather(null);
+        if (!cancelled) { setLocalWeather(null); setWeatherStatus('Clima no disponible'); }
       }
     };
     void loadWeather();
@@ -336,7 +338,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="min-w-0 flex flex-col items-start gap-1" title="Hora UTC y fecha local de este dispositivo">
             <div className="flex items-center gap-2 rounded-md border border-black bg-black px-2 sm:px-3 py-1.5 sm:py-2 font-mono text-xl sm:text-3xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
             <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
-            {localWeather && <div className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 shadow-sm" title="Clima aproximado por Internet; ubicación estimada, no GPS"><span className="inline-flex items-center justify-center rounded-md bg-slate-900 p-1.5" title={`Temperatura: ${localWeather.temperature}°C`} aria-label={`Temperatura: ${localWeather.temperature} grados Celsius`}><Thermometer className="h-5 w-5 text-red-400" /></span><span className="inline-flex items-center justify-center rounded-md bg-slate-900 p-1.5" title={`Humedad: ${localWeather.humidity}%`} aria-label={`Humedad: ${localWeather.humidity} por ciento`}><Droplets className="h-5 w-5 text-sky-400" /></span></div>}
+            <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
           </div>
           {callsign && (
             <div className="min-w-0 max-w-[58%] sm:max-w-none shrink-0">
