@@ -99,7 +99,7 @@ function MainApp() {
           const card = result.card;
           setReplyData({
             replyToCall: String(card.from || ''),
-            myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(card.band || '')) ? (localStorage.getItem('cb_station_callsign') || String(card.to || '')) : (getUserCallsign() || DEFAULT_CALLSIGN),
+            myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(card.band || '')) ? (localStorage.getItem('cb_station_callsign') || String(card.to || '')) : (String(card.to || '').trim().toUpperCase() || getUserCallsign() || DEFAULT_CALLSIGN),
             date: String(card.date || ''),
             time: String(card.time || ''),
             band: String(card.band || '40m'),
