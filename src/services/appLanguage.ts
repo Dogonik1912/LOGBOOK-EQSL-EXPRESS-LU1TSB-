@@ -78,6 +78,7 @@ const appliedText = new WeakMap<Text, { source: string; translated: string; lang
 const pending = new Set<Text>();
 let observer: MutationObserver | null = null;
 let currentLanguage: AppLanguage = 'es';
+let languageGeneration = 0;
 let translationBatchRunning = false;
 let rescanRequested = false;
 
@@ -111,6 +112,7 @@ async function translateOne(source: string, language: AppLanguage): Promise<stri
 async function translateNode(node: Text, language: AppLanguage): Promise<void> {
   if (isExcludedTextNode(node) || pending.has(node)) return;
   const source = node.nodeValue || '';
+  const generation = languageGeneration;
   const prior = appliedText.get(node);
   if (prior && source === prior.translated && prior.language === language) return;
   const original = prior && source === prior.translated ? prior.source : source;
@@ -124,7 +126,7 @@ async function translateNode(node: Text, language: AppLanguage): Promise<void> {
   pending.add(node);
   try {
     const translated = await translateOne(text, language);
-    if (node.isConnected && (node.nodeValue || '').trim() === source.trim()) {
+    if (generation === languageGeneration && language === currentLanguage && node.isConnected && (node.nodeValue || '').trim() === source.trim()) {
       const leading = source.match(/^\s*/)?.[0] || '';
       const trailing = source.match(/\s*$/)?.[0] || '';
       node.nodeValue = leading + translated + trailing;
@@ -147,7 +149,7 @@ function translateAttributes(root: ParentNode, language: AppLanguage) {
       if (!element.hasAttribute(marker)) element.setAttribute(marker, original);
       const source = element.getAttribute(marker) || original;
       void translateOne(source, language).then((value) => {
-        if (element.isConnected && element.getAttribute(marker) === source) element.setAttribute(attribute, value);
+        if (language === currentLanguage && element.isConnected && element.getAttribute(marker) === source) element.setAttribute(attribute, value);
       }).catch(() => {});
     }
   });
@@ -186,7 +188,11 @@ export function startAutomaticUiTranslation(): () => void {
     document.documentElement.lang = currentLanguage;
   };
   const changeLanguage = () => {
-    currentLanguage = getInitialAppLanguage();
+    const selected = getInitialAppLanguage();
+    if (selected !== currentLanguage) {
+      currentLanguage = selected;
+      languageGeneration += 1;
+    }
     scan();
   };
   scan();
