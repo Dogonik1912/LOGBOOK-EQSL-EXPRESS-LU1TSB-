@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Inbox, RefreshCw, MailOpen, ArrowUpRight, AlertCircle } from 'lucide-react';
 
 type InboxItem = {
@@ -20,6 +20,7 @@ export const EQSLMailbox: React.FC = () => {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const knownInboxIds = useRef<Set<string> | null>(null);
 
   const token = () => localStorage.getItem('community_chat_identity_token') || '';
   const updateAppBadge = (count: number) => {
@@ -29,6 +30,54 @@ export const EQSLMailbox: React.FC = () => {
       else void badgeNavigator.clearAppBadge?.().catch(() => {});
     } catch { /* El navegador o dispositivo puede no admitir insignias de app. */ }
   };
+  const playIncomingAlert = () => {
+    if (localStorage.getItem('eqsl_sound_alerts') === 'false') return;
+    try {
+      const AudioContextClass = window.AudioContext;
+      if (!AudioContextClass) return;
+      const audio = new AudioContextClass();
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audio.currentTime);
+      oscillator.frequency.setValueAtTime(1175, audio.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, audio.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.32);
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      oscillator.start();
+      oscillator.stop(audio.currentTime + 0.34);
+      oscillator.onended = () => { void audio.close().catch(() => {}); };
+    } catch { /* El navegador puede bloquear el audio hasta que el usuario interactúe. */ }
+  };
+
+  const checkForNewIncoming = useCallback(async () => {
+    const identityToken = token();
+    if (!identityToken) return;
+    try {
+      const response = await fetch('/api/eqsl-inbox', { headers: { 'x-identity-token': identityToken }, cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || !Array.isArray(result.items)) return;
+      const received = result.items as InboxItem[];
+      const currentIds = new Set(received.map(item => item.id));
+      if (knownInboxIds.current === null) {
+        knownInboxIds.current = currentIds;
+      } else {
+        const newItems = received.filter(item => !knownInboxIds.current?.has(item.id));
+        if (newItems.length > 0 && localStorage.getItem('eqsl_sound_alerts') !== 'false') {
+          for (let i = 0; i < Math.min(newItems.length, 3); i += 1) {
+            window.setTimeout(() => playIncomingAlert(), i * 450);
+          }
+        }
+        knownInboxIds.current = currentIds;
+      }
+      const count = Number(result.pendingReplies) || 0;
+      setPendingReplies(count);
+      updateAppBadge(count);
+    } catch { /* Reintentar en la siguiente comprobación. */ }
+  }, []);
+
   const refreshCount = useCallback(async () => {
     const identityToken = token();
     if (!identityToken) { setPendingReplies(0); updateAppBadge(0); return; }
@@ -64,19 +113,23 @@ export const EQSLMailbox: React.FC = () => {
   };
 
   useEffect(() => {
+    knownInboxIds.current = null;
     void refreshCount();
-    const onIdentityUpdated = () => { void refreshCount(); };
+    void checkForNewIncoming();
+    const onIdentityUpdated = () => { knownInboxIds.current = null; void refreshCount(); void checkForNewIncoming(); };
     window.addEventListener('user-profile-updated', onIdentityUpdated);
     window.addEventListener('eqsl-pending-count-updated', onIdentityUpdated);
+    window.addEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
     window.addEventListener('storage', onIdentityUpdated);
-    const refreshTimer = window.setInterval(() => { void refreshCount(); }, 60_000);
+    const refreshTimer = window.setInterval(() => { void refreshCount(); void checkForNewIncoming(); }, 30_000);
     return () => {
       window.clearInterval(refreshTimer);
       window.removeEventListener('user-profile-updated', onIdentityUpdated);
       window.removeEventListener('eqsl-pending-count-updated', onIdentityUpdated);
+      window.removeEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
       window.removeEventListener('storage', onIdentityUpdated);
     };
-  }, [refreshCount]);
+  }, [refreshCount, checkForNewIncoming]);
 
   const toggle = () => {
     const next = !open;
