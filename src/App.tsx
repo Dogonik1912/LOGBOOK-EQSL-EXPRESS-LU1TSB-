@@ -251,7 +251,7 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-white to-cyan-100 text-slate-900 flex flex-col font-sans selection:bg-amber-300 selection:text-slate-950">
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
         onOpenSettings={handleOpenSettings}
@@ -261,15 +261,15 @@ function MainApp() {
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
+          <div className="min-w-0 bg-white/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-sm flex items-center gap-2">
             <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><Award className="w-4 h-4" /></div>
             <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Estaciones activas · sin datos verificados</div></div>
           </div>
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
+          <div className="min-w-0 bg-white/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-sm flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
             <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones eQSL · sin datos verificados</div></div>
           </div>
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3">
+          <div className="min-w-0 bg-white/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-sm">
             <div className="text-[10px] sm:text-xs leading-tight text-slate-400 mb-2">Ranking mundial · pendiente</div>
             <button type="button" onClick={() => setShowCountryRanking((open) => !open)} aria-expanded={showCountryRanking} className="w-full flex items-center justify-between gap-1 text-sm text-white">
               <span className="font-mono">—</span>
