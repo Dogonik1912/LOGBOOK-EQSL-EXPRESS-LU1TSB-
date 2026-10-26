@@ -19,8 +19,8 @@ export const CommunityChat: React.FC = () => {
   const isModerator = moderationRole === 'admin' || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
-  const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
+  const [callsign, setCallsign] = useState(() => (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase());
+  const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign')));
   const [resolvingIdentity, setResolvingIdentity] = useState(() => !localStorage.getItem('community_chat_sd') && Boolean(localStorage.getItem('community_chat_identity_token')));
   const [showChangeCallsign, setShowChangeCallsign] = useState(false);
   const [identityToken] = useState(() => {
@@ -57,6 +57,30 @@ export const CommunityChat: React.FC = () => {
           setSdLocked(true);
           window.dispatchEvent(new Event('user-profile-updated'));
           setNotice('Recuperamos tu señal distintiva registrada: ' + recovered + '.');
+          return;
+        }
+
+        // The main station callsign is already saved on this device. Reuse it
+        // rather than asking the operator to type it again, and register it with
+        // the public chat identity token if the server has no mapping for this token.
+        const stationCallsign = (localStorage.getItem('user_callsign') || '').trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
+        if (stationCallsign.length >= 3 && stationCallsign.length <= 24) {
+          const { data: registerData, error: registerError } = await supabase.rpc('register_community_callsign', {
+            p_callsign: stationCallsign,
+            p_token: identityToken,
+          });
+          if (!active) return;
+          if (!registerError && registerData?.ok) {
+            localStorage.setItem('community_chat_sd', stationCallsign);
+            setCallsign(stationCallsign);
+            setSdLocked(true);
+            window.dispatchEvent(new Event('user-profile-updated'));
+            setNotice('Se recuperó el indicativo guardado en este dispositivo.');
+          } else {
+            setError(registerData?.reason === 'taken'
+              ? 'El indicativo guardado ya está vinculado a otra identidad del chat. No lo vuelvas a registrar; hay que recuperar la vinculación anterior en Supabase.'
+              : 'No se pudo recuperar automáticamente el indicativo. Revisá la conexión del chat en Supabase.');
+          }
         }
       } finally {
         if (active) setResolvingIdentity(false);
