@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const readCallsign = () => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+  const readCallsign = () => (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
   const [callsign, setCallsign] = useState(() => readCallsign());
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
   // El encabezado queda bloqueado en la imagen que ya estaba mostrándose.
