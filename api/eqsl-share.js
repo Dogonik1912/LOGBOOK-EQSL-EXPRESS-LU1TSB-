@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { get, list, put } from '@vercel/blob';
+import { createClient } from '@supabase/supabase-js';
 
 // Shared eQSL cards live in private Vercel Blob storage.
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
@@ -9,6 +10,17 @@ const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 
 function mailboxKey(callsign) {
   return createHash('sha256').update(String(callsign).trim().toUpperCase()).digest('hex');
+}
+
+async function verifyCommunityIdentity(callsign, identityToken) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey || !identityToken) return false;
+  const client = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data, error } = await client.rpc('resolve_community_callsign', { p_token: identityToken });
+  return !error && typeof data === 'string' && data.trim().toUpperCase() === callsign;
 }
 
 function getToken() {
@@ -86,6 +98,10 @@ export default async function handler(req, res) {
       if (requestedInbox) {
         if (!/^[A-Z0-9][A-Z0-9 /_-]{1,39}$/.test(requestedInbox)) {
           return json(res, 400, { error: 'Indicativo inválido para consultar el buzón POST.' });
+        }
+        const identityToken = clean(req.query?.token, 64);
+        if (!/^[0-9a-f-]{36}$/i.test(identityToken) || !(await verifyCommunityIdentity(requestedInbox, identityToken))) {
+          return json(res, 403, { error: 'El buzón POST requiere la señal distintiva registrada en este dispositivo.' });
         }
         const inboxPrefix = `eqsl-inbox/${mailboxKey(requestedInbox)}/`;
         const found = await list({ prefix: inboxPrefix, limit: 100, token });
