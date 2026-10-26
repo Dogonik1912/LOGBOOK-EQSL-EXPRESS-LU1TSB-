@@ -342,7 +342,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="min-w-0 w-[44%] sm:w-auto sm:max-w-none shrink-0 flex flex-col items-stretch gap-1.5">
             {callsign && (
-              <span className="inline-flex min-h-11 sm:min-h-14 min-w-0 sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
+              <span data-no-translate="true" translate="no" className="inline-flex min-h-11 sm:min-h-14 min-w-0 sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
