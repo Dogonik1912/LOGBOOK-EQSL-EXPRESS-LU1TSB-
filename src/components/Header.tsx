@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -34,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [isInstalled, setIsInstalled] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
-  const shareText = 'Compartí LogBook eQSL Express: registrá tus contactos de radio y enviá eQSL fácilmente.';
+  const shareText = getLocalizedShareText(getInitialAppLanguage());
   const shareOptions = [
     { name: 'WhatsApp', mark: 'wa', color: 'bg-green-600', url: () => 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl) },
     { name: 'Telegram', mark: 'tg', color: 'bg-sky-500', url: () => 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText) },
@@ -43,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
     { name: 'Facebook', mark: 'f', color: 'bg-blue-700', url: () => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl) },
     { name: 'TikTok', mark: '♪', color: 'bg-black', url: () => 'https://www.tiktok.com/' },
     { name: 'Messenger', mark: 'm', color: 'bg-blue-600', url: () => 'https://www.facebook.com/dialog/send?link=' + encodeURIComponent(shareUrl) },
-    { name: 'Gmail', mark: 'M', color: 'bg-red-600', url: () => 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent('LogBook eQSL Express') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
+    { name: 'Gmail', mark: 'M', color: 'bg-red-600', url: () => 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent('LogBook eQSL EXPRESS') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
     { name: 'Outlook', mark: 'O', color: 'bg-sky-700', url: () => 'https://outlook.live.com/mail/0/deeplink/compose?subject=' + encodeURIComponent('LogBook eQSL Express') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
   ];
   const handleShareChoice = async (name: string, url: string) => {
