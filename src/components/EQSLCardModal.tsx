@@ -7,6 +7,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
+import { getRecipientLanguage } from '../services/appLanguage';
 import { 
   X, 
   Download, 
@@ -465,7 +466,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   };
 
   const getShareInvitation = () => {
-    const lang = (navigator.language || 'es').toLowerCase().split('-')[0];
+    const lang = getRecipientLanguage(qso.whatsapp, qso.callsign);
     const copy: Record<string, [string, string]> = {
       es: ['HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.', 'Abre la tarjeta y pulsa el botón para responder:'],
       en: ['YOU HAVE AN eQSL! Reply quickly and free with eQSL EXPRESS.', 'Open the card and tap the button to reply:'],
