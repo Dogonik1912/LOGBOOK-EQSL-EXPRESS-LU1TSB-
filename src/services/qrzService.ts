@@ -23,13 +23,17 @@ export interface CallsignDetails {
  * const firma = `73 cordiales de ${callsign}`;
  * IMPORTANTE: si el usuario no configuró su callsign, el fallback debe ser "LU1TSB".
  */
-export function getFirma(): string {
-  const callsign = localStorage.getItem('user_callsign') || 'LU1TSB';
-  return `73 cordiales de ${callsign}`;
+export function getUserCallsign(): string {
+  // La SD verificada del chat es la identidad principal del dispositivo.
+  // Solo usarla como indicativo de radio si también existe su token de identidad.
+  const verifiedCallsign = localStorage.getItem('community_chat_identity_token')
+    ? localStorage.getItem('community_chat_sd')?.trim().toUpperCase()
+    : '';
+  return verifiedCallsign || localStorage.getItem('user_callsign')?.trim().toUpperCase() || 'LU1TSB';
 }
 
-export function getUserCallsign(): string {
-  return localStorage.getItem('user_callsign') || 'LU1TSB';
+export function getFirma(): string {
+  return `73 cordiales de ${getUserCallsign()}`;
 }
 
 // Prefijos DXCC más comunes para reconocimiento instantáneo
