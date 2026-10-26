@@ -21,13 +21,14 @@ const formatDate = (value: string) => {
 
 export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
   const callsign = callsigns[0] || '';
+  const callsignKey = callsigns.join('|');
   const [items, setItems] = useState<InboxItem[]>([]);
   const [selected, setSelected] = useState<InboxItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const loadInbox = useCallback(async () => {
-    const normalizedCalls = [...new Set(callsigns.map((value) => value.trim().toUpperCase()).filter(Boolean))];
+    const normalizedCalls = [...new Set(callsignKey.split('|').map((value) => value.trim().toUpperCase()).filter(Boolean))];
     if (normalizedCalls.length === 0) {
       setError('Primero cargá tu señal distintiva en Ajustes para abrir tu buzón POST.');
       setItems([]);
@@ -51,7 +52,7 @@ export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [callsigns.join('|')]);
+  }, [callsignKey]);
 
   useEffect(() => { void loadInbox(); }, [loadInbox]);
 
