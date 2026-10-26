@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
+import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
 import { getInitialAppLanguage } from '../services/appLanguage';
 
 interface UserSettingsModalProps {
@@ -149,8 +149,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl text-slate-100 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full max-h-[calc(100dvh-1rem)] overflow-y-auto p-4 sm:p-6 shadow-2xl text-slate-100 my-2 sm:my-4">
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
@@ -357,19 +357,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
           </section>
 
-          <section className="rounded-xl border border-sky-500/30 bg-sky-950/30 p-4 space-y-2" aria-labelledby="logbook-contact-title">
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-sky-300" />
-              <h3 id="logbook-contact-title" className="text-sm font-bold text-sky-200">Contacto con LogBook eQSL EXPRESS</h3>
-            </div>
-            <p className="text-xs leading-relaxed text-slate-300">Para denuncias, suplantaciones, pérdida de acceso, recuperación de clave, consultas o solicitudes relacionadas con tus datos, contactá al administrador. Esta opción está disponible sin registro.</p>
-            <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Contacto%20con%20LogBook%20eQSL%20EXPRESS" className="block break-all text-sm font-semibold text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
-            <div className="flex flex-wrap gap-2">
-              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Denuncia%20o%20suplantacion%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Enviar denuncia</a>
-              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Perdida%20de%20acceso%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Recuperar acceso</a>
-              <button type="button" onClick={() => { void navigator.clipboard?.writeText('lu1tsb.4rc978@gmail.com').then(() => window.alert('Correo copiado.')).catch(() => window.alert('Correo de contacto: lu1tsb.4rc978@gmail.com')); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800"><Copy className="h-3 w-3" /> Copiar correo</button>
-            </div>
-          </section>
+
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <div className="text-xs text-emerald-400 font-medium">
@@ -391,6 +379,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 Guardar Configuración
               </button>
             </div>
+          </div>
+          <div className="flex items-center justify-end gap-1.5 border-t border-slate-800 pt-2 text-[11px] text-slate-500">
+            <Mail className="h-3 w-3 shrink-0" />
+            <span>Contacto:</span>
+            <a href="mailto:lu1tsb.4rc978@gmail.com" className="text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
           </div>
         </form>
       </div>
