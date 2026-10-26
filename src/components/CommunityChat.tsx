@@ -16,7 +16,13 @@ export const CommunityChat: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [moderationRole, setModerationRole] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const isModerator = moderationRole === 'admin' || moderationRole === 'moderator';
+  const [moderationTarget, setModerationTarget] = useState<string | null>(null);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [moderatorCandidate, setModeratorCandidate] = useState('');
+  const [adminSanctions, setAdminSanctions] = useState<any[]>([]);
+  const [adminAudit, setAdminAudit] = useState<any[]>([]);
+  const isAdmin = moderationRole === 'admin';
+  const isModerator = isAdmin || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
@@ -35,6 +41,7 @@ export const CommunityChat: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [moderationBusy, setModerationBusy] = useState(false);
 
   // Recover a previously registered callsign from this device token if local storage
   // lost the callsign value. Never ask the user to invent a replacement in that case.
@@ -258,6 +265,109 @@ export const CommunityChat: React.FC = () => {
     }
   };
 
+  const callModerationAction = async (action: string, targetCallsign?: string, sanctionType?: string, durationMinutes?: number, reason?: string) => {
+    const actorCallsign = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
+    if (!supabase || !isModerator || !actorCallsign) {
+      setError('No se verificaron los permisos de moderación de este dispositivo.');
+      return null;
+    }
+    const { data, error: actionError } = await supabase.rpc('community_moderation_action', {
+      p_callsign: actorCallsign,
+      p_token: identityToken,
+      p_action: action,
+      p_target_callsign: targetCallsign || null,
+      p_sanction_type: sanctionType || null,
+      p_duration_minutes: durationMinutes ?? null,
+      p_reason: reason || null,
+    });
+    if (actionError || !data?.ok) {
+      console.error('[LogBook chat] moderation action failed:', actionError || data);
+      const reasonCode = data?.reason;
+      setError(reasonCode === 'forbidden'
+        ? 'Supabase rechazó la acción: el indicativo y el token de este dispositivo no tienen ese privilegio.'
+        : reasonCode === 'invalid_target'
+          ? 'El indicativo de destino no está registrado o no puede moderarse.'
+          : reasonCode === 'not_found'
+            ? 'El registro que intentaste modificar ya no existe o ya fue revertido.'
+            : 'La acción de moderación falló. Revisá la migración de moderación en Supabase.');
+      return null;
+    }
+    return data;
+  };
+
+  const applySanction = async (targetCallsign: string, sanctionType: 'silence' | 'block', durationMinutes?: number) => {
+    const target = targetCallsign.trim().toUpperCase();
+    const actorCallsign = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
+    if (!target || target === actorCallsign || moderationBusy) return;
+    const durationLabel = durationMinutes === 5 ? '5 minutos' : durationMinutes === 60 ? '1 hora' : durationMinutes === 10080 ? '7 días' : '';
+    const actionLabel = sanctionType === 'block' ? 'bloquear permanentemente' : `silenciar durante ${durationLabel}`;
+    if (!window.confirm(`¿Querés ${actionLabel} a ${target}?`)) return;
+    setModerationBusy(true);
+    setModerationTarget(target);
+    setError('');
+    try {
+      const result = await callModerationAction(sanctionType, target, sanctionType, durationMinutes, 'Moderación desde el chat');
+      if (!result) return;
+      setNotice(sanctionType === 'block' ? `${target} quedó bloqueado para enviar mensajes.` : `${target} quedó silenciado durante ${durationLabel}.`);
+      if (isAdmin && adminPanelOpen) await loadAdminData('list_sanctions');
+    } finally {
+      setModerationBusy(false);
+      setModerationTarget(null);
+    }
+  };
+
+  const loadAdminData = async (kind: 'list_sanctions' | 'list_audit') => {
+    if (!isAdmin) {
+      setError('Solo LU1TSB, como administrador, puede consultar estos registros.');
+      return;
+    }
+    setModerationBusy(true);
+    setError('');
+    try {
+      const result = await callModerationAction(kind);
+      if (!result) return;
+      if (kind === 'list_sanctions') setAdminSanctions(Array.isArray(result.sanctions) ? result.sanctions : []);
+      else setAdminAudit(Array.isArray(result.audit) ? result.audit : []);
+      setNotice(kind === 'list_sanctions' ? 'Listado de sanciones actualizado.' : 'Auditoría actualizada.');
+    } finally {
+      setModerationBusy(false);
+    }
+  };
+
+  const appointModerator = async () => {
+    const target = moderatorCandidate.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
+    if (!isAdmin || target.length < 3 || target === 'LU1TSB' || moderationBusy) {
+      setError('Ingresá un indicativo válido distinto de LU1TSB.');
+      return;
+    }
+    if (!window.confirm(`¿Dar privilegios de moderador a ${target}? Podrá borrar mensajes, silenciar y bloquear.`)) return;
+    setModerationBusy(true);
+    setError('');
+    try {
+      const result = await callModerationAction('appoint_moderator', target);
+      if (!result) return;
+      setModeratorCandidate('');
+      setNotice(`${target} ahora tiene rol de moderador.`);
+    } finally {
+      setModerationBusy(false);
+    }
+  };
+
+  const reverseSanction = async (sanction: any) => {
+    if (!isAdmin || moderationBusy || !sanction?.id) return;
+    if (!window.confirm(`¿Levantar la sanción aplicada a ${sanction.target_callsign}?`)) return;
+    setModerationBusy(true);
+    setError('');
+    try {
+      const result = await callModerationAction('reverse_sanction', sanction.target_callsign, undefined, undefined, sanction.id);
+      if (!result) return;
+      setAdminSanctions((current) => current.map((item) => item.id === sanction.id ? { ...item, active: false, reversed_at: new Date().toISOString(), reversed_by: 'LU1TSB' } : item));
+      setNotice(`Sanción de ${sanction.target_callsign} levantada.`);
+    } finally {
+      setModerationBusy(false);
+    }
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     const { error: signOutError } = await supabase.auth.signOut();
@@ -283,6 +393,21 @@ export const CommunityChat: React.FC = () => {
         <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo blanco" : "Cambiar a fondo negro"} title={darkChat ? "Fondo blanco" : "Fondo negro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button></div>
       </div>
       {showInfo && <div className="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
+      {isAdmin && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:px-5">
+        <button type="button" onClick={() => setAdminPanelOpen((open) => !open)} className="font-bold underline underline-offset-2">Herramientas del administrador LU1TSB {adminPanelOpen ? '−' : '+'}</button>
+        {adminPanelOpen && <div className="mt-3 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={moderationBusy} onClick={() => void loadAdminData('list_sanctions')} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50">Ver sanciones</button>
+            <button type="button" disabled={moderationBusy} onClick={() => void loadAdminData('list_audit')} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50">Ver auditoría</button>
+          </div>
+          <div className="flex gap-2">
+            <input value={moderatorCandidate} onChange={(e) => setModeratorCandidate(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo para nombrar moderador" className="min-w-0 flex-1 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-slate-900" />
+            <button type="button" disabled={moderationBusy || moderatorCandidate.trim().length < 3} onClick={() => void appointModerator()} className="rounded-lg bg-amber-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Nombrar</button>
+          </div>
+          {adminSanctions.length > 0 && <div className="space-y-2"><p className="font-bold">Sanciones</p>{adminSanctions.map((sanction) => <div key={sanction.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-white p-2 text-xs"><span><strong>{sanction.target_callsign}</strong> · {sanction.sanction_type} · {sanction.active ? 'activa' : 'levantada'}{sanction.expires_at ? ` · hasta ${new Date(sanction.expires_at).toLocaleString()}` : ''}</span>{sanction.active && <button type="button" disabled={moderationBusy} onClick={() => void reverseSanction(sanction)} className="rounded border border-amber-300 px-2 py-1 font-semibold disabled:opacity-50">Levantar</button>}</div>)}</div>}
+          {adminAudit.length > 0 && <div className="space-y-1"><p className="font-bold">Auditoría reciente</p>{adminAudit.slice(0, 20).map((entry) => <p key={entry.id} className="rounded bg-white px-2 py-1 text-xs">{new Date(entry.created_at).toLocaleString()} · {entry.actor_callsign} · {entry.action}{entry.target_callsign ? ` · ${entry.target_callsign}` : ''}</p>)}</div>}
+        </div>}
+      </div>}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600 sm:px-5">
         <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> Acceso público · sin registro</span>
         {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
@@ -306,6 +431,12 @@ export const CommunityChat: React.FC = () => {
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => setReplyTo(message)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"><Reply className="h-3 w-3" /> Responder</button>
                     {isModerator && <button type="button" disabled={deletingId === message.id} onClick={() => void deleteMessage(message)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50" aria-label={`Eliminar mensaje de ${message.callsign}`}><Trash2 className="h-3 w-3" /> {deletingId === message.id ? 'Eliminando…' : 'Borrar'}</button>}
+                    {isModerator && message.callsign.trim().toUpperCase() !== (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase() && <div className="flex flex-wrap gap-1">
+                      <button type="button" disabled={moderationBusy} onClick={() => void applySanction(message.callsign, 'silence', 5)} className="rounded-md px-2 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50" title="Silenciar 5 minutos">Silenciar 5m</button>
+                      <button type="button" disabled={moderationBusy} onClick={() => void applySanction(message.callsign, 'silence', 60)} className="rounded-md px-2 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50" title="Silenciar 1 hora">1h</button>
+                      <button type="button" disabled={moderationBusy} onClick={() => void applySanction(message.callsign, 'silence', 10080)} className="rounded-md px-2 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50" title="Silenciar 7 días">7d</button>
+                      <button type="button" disabled={moderationBusy || moderationTarget === message.callsign} onClick={() => void applySanction(message.callsign, 'block')} className="rounded-md px-2 py-1 text-[10px] font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50" title="Bloquear el envío de mensajes">Bloquear</button>
+                    </div>}
                   </div>
                 </div>
               </article>
