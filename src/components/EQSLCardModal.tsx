@@ -128,6 +128,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; }
   });
   const [copied, setCopied] = useState(false);
+  const [eqslPostSent, setEqslPostSent] = useState(false);
+  const [eqslPostSending, setEqslPostSending] = useState(false);
   const [themeNotice, setThemeNotice] = useState('');
   const [signatureEnabled, setSignatureEnabled] = useState(() => localStorage.getItem('eqsl_signature_enabled') !== 'false');
   const [signatureText, setSignatureText] = useState(() => (localStorage.getItem('eqsl_signature_text') || getFirma()).slice(0, 30));
@@ -432,6 +434,12 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   };
 
   useEffect(() => {
+    // Cada QSO nuevo empieza con el botón eQSL POST disponible.
+    setEqslPostSent(false);
+    setEqslPostSending(false);
+  }, [isOpen, qso?.id, qso?.callsign, qso?.date, qso?.time]);
+
+  useEffect(() => {
     if (isOpen && qso) {
       // Restaurar el diseño anclado: no cambiarlo automáticamente al abrir otro QSO.
       setTheme(localStorage.getItem('eqsl_theme') || 'navy');
@@ -547,11 +555,13 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   };
 
   const handleSendEQSLPost = async () => {
-    if (!isQsoValidForEQSL()) return;
+    if (eqslPostSent || eqslPostSending || !isQsoValidForEQSL()) return;
+    setEqslPostSending(true);
     try {
       await getReceivedCardUrl(true);
       if (inboxDeliveryStatus.current === true) {
-        window.alert('eQSL enviada al buzón eQSL POST del indicativo destinatario.');
+        // Confirmación visual en el propio botón: sin cartel y sin segundo envío del mismo QSO.
+        setEqslPostSent(true);
       } else if (inboxDeliveryStatus.current === false) {
         window.alert('No se pudo entregar al buzón. Podés usar WhatsApp, Telegram o correo como alternativa.');
       } else {
@@ -559,6 +569,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'No se pudo enviar la eQSL al buzón.');
+    } finally {
+      setEqslPostSending(false);
     }
   };
 
@@ -909,7 +921,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={handleSendEQSLPost} className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"><Mail className="w-4 h-4" /> eQSL POST</button>
+            <button type="button" onClick={handleSendEQSLPost} disabled={eqslPostSent || eqslPostSending} className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg shadow-sm transition-colors ${eqslPostSent ? 'bg-red-600 text-white cursor-not-allowed' : eqslPostSending ? 'bg-amber-300 text-slate-950 cursor-wait' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer'}`}><Mail className="w-4 h-4" /> {eqslPostSent ? 'eQSL ENVIADA' : eqslPostSending ? 'ENVIANDO…' : 'eQSL POST'}</button>
             {/* Descargar PNG */}
             <button
               type="button"
