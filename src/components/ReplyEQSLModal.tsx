@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
+import { getRecipientLanguage, getLocalizedEQSLNotification } from '../services/appLanguage';
 import {
   X,
   Download,
@@ -447,7 +448,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
+    const text = getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', activeMyCall, cardUrl);
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
@@ -474,7 +475,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = `📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`;
+    const text = getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', activeMyCall, cardUrl);
     if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
@@ -492,7 +493,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta a tu eQSL de ${activeMyCall}`);
-    const body = encodeURIComponent(`📻 ¡Respondieron a tu eQSL!\nRecibiste una respuesta de ${activeMyCall}.\nVer y descargar la tarjeta de respuesta: ${cardUrl}`);
+    const body = encodeURIComponent(getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', activeMyCall, cardUrl));
     requestChatInvitation('reply');
     window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
   };
