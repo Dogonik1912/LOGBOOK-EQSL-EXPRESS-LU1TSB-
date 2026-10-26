@@ -78,6 +78,7 @@ function MainApp() {
     whatsapp?: string;
     whatsappUsername?: string;
     telegram?: string;
+    originalEqslId?: string;
   } | null>(null);
   const [, setRefreshKey] = useState(0);
 
@@ -106,6 +107,7 @@ function MainApp() {
             frequency: String(card.frequency || '7.120'),
             mode: String(card.mode || 'SSB'),
             rst: String(card.rstRcvd || '59'),
+            originalEqslId: replyEQSLId,
           });
           setIsReplyModalOpen(true);
           const cleanParams = new URLSearchParams(window.location.search);
