@@ -61,6 +61,7 @@ export default async function handler(req, res) {
       const unread = items.filter(item => !item.readAt).length;
       const pendingReplies = unread;
       if (String(req.query?.count || '') === '1') return json(res, 200, { callsign, pendingReplies, unread });
+      if (String(req.query?.peek || '') === '1') return json(res, 200, { callsign, items: items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread, pendingReplies });
       const marked = items.map(item => item.readAt ? item : { ...item, readAt: new Date().toISOString() });
       if (unread) await writeInbox(callsign, marked, cfg);
       return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread, pendingReplies: 0 });
