@@ -340,15 +340,56 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
             <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
           </div>
-          {callsign && (
-            <div className="min-w-0 max-w-[58%] sm:max-w-none shrink-0">
-              <span className="inline-flex min-h-11 sm:min-h-14 min-w-[7rem] sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-3 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
+          <div className="min-w-0 w-[44%] sm:w-auto sm:max-w-none shrink-0 flex flex-col items-stretch gap-1.5">
+            {callsign && (
+              <span className="inline-flex min-h-11 sm:min-h-14 min-w-0 sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
               </span>
-            </div>
-          )}
+            )}
+            <label htmlFor="main-app-language" className="sr-only">Idioma de la aplicación</label>
+            <select
+              id="main-app-language"
+              value={shareLanguage}
+              onChange={(event) => {
+                const nextLanguage = event.target.value as ReturnType<typeof getInitialAppLanguage>;
+                localStorage.setItem('app_language', nextLanguage);
+                setShareLanguage(nextLanguage);
+                document.documentElement.lang = nextLanguage;
+                window.dispatchEvent(new Event('user-profile-updated'));
+              }}
+              className="w-full min-w-0 rounded-md border-2 border-sky-400 bg-slate-950 px-1.5 py-2 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-sky-300"
+              aria-label="Idioma de la aplicación"
+              title="Cambiar idioma de la aplicación"
+            >
+              <option value="es">🇪🇸 Español</option>
+              <option value="en">🇬🇧 English</option>
+              <option value="pt">🇵🇹 Português</option>
+              <option value="fr">🇫🇷 Français</option>
+              <option value="de">🇩🇪 Deutsch</option>
+              <option value="it">🇮🇹 Italiano</option>
+              <option value="nl">🇳🇱 Nederlands</option>
+              <option value="pl">🇵🇱 Polski</option>
+              <option value="ru">🇷🇺 Русский</option>
+              <option value="uk">🇺🇦 Українська</option>
+              <option value="zh">🇨🇳 中文</option>
+              <option value="ja">🇯🇵 日本語</option>
+              <option value="ko">🇰🇷 한국어</option>
+              <option value="ar">🇸🇦 العربية</option>
+              <option value="hi">🇮🇳 हिन्दी</option>
+              <option value="tr">🇹🇷 Türkçe</option>
+              <option value="sv">🇸🇪 Svenska</option>
+              <option value="no">🇳🇴 Norsk</option>
+              <option value="da">🇩🇰 Dansk</option>
+              <option value="fi">🇫🇮 Suomi</option>
+              <option value="cs">🇨🇿 Čeština</option>
+              <option value="el">🇬🇷 Ελληνικά</option>
+              <option value="ro">🇷🇴 Română</option>
+              <option value="hu">🇭🇺 Magyar</option>
+              <option value="id">🇮🇩 Bahasa Indonesia</option>
+            </select>
+          </div>
         </div>
         {/* Encabezamiento panorámico LogBook eQSL EXPRESS */}
         <div className="w-full overflow-hidden">
