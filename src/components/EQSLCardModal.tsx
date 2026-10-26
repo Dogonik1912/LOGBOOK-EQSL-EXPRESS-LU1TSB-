@@ -504,7 +504,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   // Crear un enlace público corto. Los datos del QSO se guardan temporalmente en el servidor,
   // no se codifican dentro de la URL ni se incluyen datos privados de contacto.
-  const getReceivedCardUrl = async () => {
+  const getReceivedCardUrl = async (registerInAppInbox = false) => {
     const cardData = {
       from: cardSenderCallsign,
       to: qso.callsign,
@@ -533,7 +533,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     inboxDeliveryStatus.current = null;
     const identityToken = localStorage.getItem('community_chat_identity_token') || '';
     const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-    if (identityToken && identityCallsign) {
+    if (registerInAppInbox && identityToken && identityCallsign) {
       try {
         const inboxResponse = await fetch('/api/eqsl-inbox', {
           method: 'POST',
@@ -549,7 +549,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const handleSendEQSLPost = async () => {
     if (!isQsoValidForEQSL()) return;
     try {
-      await getReceivedCardUrl();
+      await getReceivedCardUrl(true);
       if (inboxDeliveryStatus.current === true) {
         window.alert('eQSL enviada al buzón eQSL POST del indicativo destinatario.');
       } else if (inboxDeliveryStatus.current === false) {
