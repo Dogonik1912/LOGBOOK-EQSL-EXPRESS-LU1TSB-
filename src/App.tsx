@@ -17,6 +17,7 @@ import { EQSLMailbox } from './components/EQSLMailbox';
 import { Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
 import { startAutomaticUiTranslation } from './services/appLanguage';
+import { getUserCallsign } from './services/qrzService';
 
 
 function MainApp() {
@@ -98,7 +99,7 @@ function MainApp() {
           const card = result.card;
           setReplyData({
             replyToCall: String(card.from || ''),
-            myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(card.band || '')) ? (localStorage.getItem('cb_station_callsign') || String(card.to || '')) : (localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN),
+            myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(card.band || '')) ? (localStorage.getItem('cb_station_callsign') || String(card.to || '')) : (getUserCallsign() || DEFAULT_CALLSIGN),
             date: String(card.date || ''),
             time: String(card.time || ''),
             band: String(card.band || '40m'),
@@ -218,7 +219,7 @@ function MainApp() {
   };
 
   const handleOpenReplyForQSO = (qso: QSO) => {
-    const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
+    const myCurrentCall = getUserCallsign() || DEFAULT_CALLSIGN;
     setReplyData({
       replyToCall: qso.callsign,
       myCall: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(qso.band || '')) ? (qso.stationCallsign || localStorage.getItem('cb_station_callsign') || myCurrentCall) : myCurrentCall,
@@ -237,7 +238,7 @@ function MainApp() {
   };
 
   const handleOpenManualReply = () => {
-    const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
+    const myCurrentCall = getUserCallsign() || DEFAULT_CALLSIGN;
     setReplyData({
       replyToCall: '',
       myCall: myCurrentCall,
