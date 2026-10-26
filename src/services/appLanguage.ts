@@ -73,9 +73,17 @@ export function getInitialAppLanguage(): AppLanguage {
   return detected;
 }
 
+const TRANSLATION_CACHE_KEY = 'app_translation_cache_v1';
 const translationCache = new Map<string, string>();
+try {
+  const saved = JSON.parse(localStorage.getItem(TRANSLATION_CACHE_KEY) || '{}') as Record<string, string>;
+  for (const [key, value] of Object.entries(saved)) if (typeof value === 'string' && value) translationCache.set(key, value);
+} catch { /* Ignore unavailable or damaged cache. */ }
+function persistTranslationCache() {
+  try { localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(Object.fromEntries(Array.from(translationCache.entries()).slice(-400)))); } catch { /* Cache is optional. */ }
+}
 const appliedText = new WeakMap<Text, { source: string; translated: string; language: string }>();
-const pending = new Set<Text>();
+const pendingLanguage = new WeakMap<Text, AppLanguage>();
 let observer: MutationObserver | null = null;
 let currentLanguage: AppLanguage = 'es';
 let languageGeneration = 0;
@@ -110,11 +118,13 @@ async function translateOne(source: string, language: AppLanguage): Promise<stri
   const translated = typeof data?.translated === 'string' ? data.translated : '';
   if (!translated) throw new Error('Empty translation');
   translationCache.set(key, translated);
+  if (translationCache.size > 400) translationCache.delete(translationCache.keys().next().value as string);
+  persistTranslationCache();
   return translated;
 }
 
 async function translateNode(node: Text, language: AppLanguage): Promise<void> {
-  if (isExcludedTextNode(node) || pending.has(node)) return;
+  if (isExcludedTextNode(node) || pendingLanguage.get(node) === language) return;
   const source = node.nodeValue || '';
   const generation = languageGeneration;
   const prior = appliedText.get(node);
@@ -127,7 +137,7 @@ async function translateNode(node: Text, language: AppLanguage): Promise<void> {
   }
   const text = original.trim();
   if (!text || text.length > 500) return;
-  pending.add(node);
+  pendingLanguage.set(node, language);
   try {
     const translated = await translateOne(text, language);
     if (generation === languageGeneration && language === currentLanguage && node.isConnected && (node.nodeValue || '').trim() === source.trim()) {
@@ -139,7 +149,7 @@ async function translateNode(node: Text, language: AppLanguage): Promise<void> {
   } catch {
     // Keep the original text if the translation service is unavailable.
   } finally {
-    pending.delete(node);
+    if (pendingLanguage.get(node) === language) pendingLanguage.delete(node);
   }
 }
 
@@ -172,7 +182,7 @@ export function startAutomaticUiTranslation(): () => void {
       return;
     }
     const eligible = nodes.filter((textNode) => {
-      if (isExcludedTextNode(textNode) || pending.has(textNode)) return false;
+      if (isExcludedTextNode(textNode) || pendingLanguage.get(textNode) === currentLanguage) return false;
       const prior = appliedText.get(textNode);
       return !(prior && textNode.nodeValue === prior.translated && prior.language === currentLanguage);
     });
