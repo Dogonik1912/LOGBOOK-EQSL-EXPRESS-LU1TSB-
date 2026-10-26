@@ -34,8 +34,9 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
   const [isInstalled, setIsInstalled] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [shareLanguage, setShareLanguage] = useState(() => getInitialAppLanguage());
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
-  const shareText = getLocalizedShareText(getInitialAppLanguage());
+  const shareText = getLocalizedShareText(shareLanguage);
   const shareOptions = [
     { name: 'WhatsApp', mark: 'wa', color: 'bg-green-600', url: () => 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl) },
     { name: 'Telegram', mark: 'tg', color: 'bg-sky-500', url: () => 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText) },
@@ -113,6 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
         }
       }
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
+      setShareLanguage(getInitialAppLanguage());
       setHeaderImage(readHeaderImage());
       const nextIcon = localStorage.getItem('app_icon_image') || '';
       setAppIcon(nextIcon);
