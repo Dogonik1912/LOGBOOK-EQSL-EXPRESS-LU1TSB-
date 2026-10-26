@@ -76,6 +76,8 @@ const appliedText = new WeakMap<Text, { source: string; translated: string; lang
 const pending = new Set<Text>();
 let observer: MutationObserver | null = null;
 let currentLanguage: AppLanguage = 'es';
+let translationBatchRunning = false;
+let rescanRequested = false;
 
 function isExcludedTextNode(node: Text): boolean {
   const parent = node.parentElement;
@@ -157,6 +159,10 @@ export function startAutomaticUiTranslation(): () => void {
     const nodes: Text[] = [];
     let node: Node | null;
     while ((node = walker.nextNode())) if (node.nodeType === Node.TEXT_NODE) nodes.push(node as Text);
+    if (translationBatchRunning) {
+      rescanRequested = true;
+      return;
+    }
     const eligible = nodes.filter((textNode) => {
       if (isExcludedTextNode(textNode) || pending.has(textNode)) return false;
       const prior = appliedText.get(textNode);
@@ -164,9 +170,16 @@ export function startAutomaticUiTranslation(): () => void {
     });
     // Work in small batches so large screens do not flood the translation service.
     const batch = eligible.slice(0, 80);
-    void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage))).finally(() => {
-      if (eligible.length > batch.length) window.setTimeout(scan, 120);
-    });
+    if (batch.length) {
+      translationBatchRunning = true;
+      void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage))).finally(() => {
+        translationBatchRunning = false;
+        if (eligible.length > batch.length || rescanRequested) {
+          rescanRequested = false;
+          window.setTimeout(scan, 120);
+        }
+      });
+    }
     translateAttributes(document.body, currentLanguage);
     document.documentElement.lang = currentLanguage;
   };
@@ -176,7 +189,7 @@ export function startAutomaticUiTranslation(): () => void {
   };
   scan();
   observer = new MutationObserver(() => scan());
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   window.addEventListener('user-profile-updated', changeLanguage);
   window.addEventListener('storage', changeLanguage);
   return () => {
