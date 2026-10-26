@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
+import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -348,47 +349,16 @@ export const Header: React.FC<HeaderProps> = ({
                 ))}
               </span>
             )}
-            <label htmlFor="main-app-language" className="sr-only">Idioma de la aplicación</label>
-            <select
-              id="main-app-language"
+            <LanguageSelector
               value={shareLanguage}
-              onChange={(event) => {
-                const nextLanguage = event.target.value as ReturnType<typeof getInitialAppLanguage>;
+              className="w-full min-w-0"
+              onChange={(nextLanguage) => {
                 localStorage.setItem('app_language', nextLanguage);
                 setShareLanguage(nextLanguage);
                 document.documentElement.lang = nextLanguage;
                 window.dispatchEvent(new Event('user-profile-updated'));
               }}
-              className="w-full min-w-0 rounded-md border-2 border-sky-400 bg-slate-950 px-1.5 py-2 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-sky-300"
-              aria-label="Idioma de la aplicación"
-              title="Cambiar idioma de la aplicación"
-            >
-              <option value="es">🇪🇸 Español</option>
-              <option value="en">🇬🇧 English</option>
-              <option value="pt">🇵🇹 Português</option>
-              <option value="fr">🇫🇷 Français</option>
-              <option value="de">🇩🇪 Deutsch</option>
-              <option value="it">🇮🇹 Italiano</option>
-              <option value="nl">🇳🇱 Nederlands</option>
-              <option value="pl">🇵🇱 Polski</option>
-              <option value="ru">🇷🇺 Русский</option>
-              <option value="uk">🇺🇦 Українська</option>
-              <option value="zh">🇨🇳 中文</option>
-              <option value="ja">🇯🇵 日本語</option>
-              <option value="ko">🇰🇷 한국어</option>
-              <option value="ar">🇸🇦 العربية</option>
-              <option value="hi">🇮🇳 हिन्दी</option>
-              <option value="tr">🇹🇷 Türkçe</option>
-              <option value="sv">🇸🇪 Svenska</option>
-              <option value="no">🇳🇴 Norsk</option>
-              <option value="da">🇩🇰 Dansk</option>
-              <option value="fi">🇫🇮 Suomi</option>
-              <option value="cs">🇨🇿 Čeština</option>
-              <option value="el">🇬🇷 Ελληνικά</option>
-              <option value="ro">🇷🇴 Română</option>
-              <option value="hu">🇭🇺 Magyar</option>
-              <option value="id">🇮🇩 Bahasa Indonesia</option>
-            </select>
+            />
           </div>
         </div>
         {/* Encabezamiento panorámico LogBook eQSL EXPRESS */}
