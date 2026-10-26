@@ -448,7 +448,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', activeMyCall, cardUrl);
+    const text = getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', cardUrl);
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
