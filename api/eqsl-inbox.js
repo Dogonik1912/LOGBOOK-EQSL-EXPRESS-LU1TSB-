@@ -63,18 +63,19 @@ export default async function handler(req, res) {
       return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread });
     }
     if (req.method === 'POST') {
-      const callsign = await resolveIdentity(clean(req.body?.token, 64), cfg);
-      if (!callsign || callsign !== clean(req.body?.callsign, 40).toUpperCase()) {
+      const sender = await resolveIdentity(clean(req.body?.token, 64), cfg);
+      if (!sender || sender !== clean(req.body?.callsign, 40).toUpperCase()) {
         return json(res, 401, { error: 'La identidad de este dispositivo no pudo verificarse.' });
       }
+      const recipient = clean(req.body?.to, 40).toUpperCase();
       const id = clean(req.body?.id, 24);
-      if (!/^[a-f0-9]{12,24}$/i.test(id)) return json(res, 400, { error: 'Identificador eQSL inválido.' });
-      const items = await readInbox(callsign, cfg);
+      if (!CALL_RE.test(recipient) || !/^[a-f0-9]{12,24}$/i.test(id)) return json(res, 400, { error: 'Destinatario o identificador eQSL inválido.' });
+      const items = await readInbox(recipient, cfg);
       if (!items.some(item => item.id === id)) {
         items.unshift({
           id,
-          from: clean(req.body?.from, 40).toUpperCase(),
-          to: callsign,
+          from: clean(req.body?.from, 40).toUpperCase() || sender,
+          to: recipient,
           isResponse: Boolean(req.body?.isResponse),
           date: clean(req.body?.date, 10),
           band: clean(req.body?.band, 24),
@@ -82,7 +83,7 @@ export default async function handler(req, res) {
           createdAt: new Date().toISOString(),
           readAt: null,
         });
-        await writeInbox(callsign, items, cfg);
+        await writeInbox(recipient, items, cfg);
       }
       return json(res, 201, { ok: true });
     }
