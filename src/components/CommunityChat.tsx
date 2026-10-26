@@ -15,6 +15,7 @@ type ChatMessage = {
 export const CommunityChat: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [moderationRole, setModerationRole] = useState<string | null>(null);
+  const [moderationStatus, setModerationStatus] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [moderationTarget, setModerationTarget] = useState<string | null>(null);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
@@ -69,7 +70,7 @@ export const CommunityChat: React.FC = () => {
     let active = true;
     const loadModerationRole = async () => {
       if (!supabase || !callsign || !identityToken) {
-        if (active) setModerationRole(null);
+        if (active) { setModerationRole(null); setModerationStatus(''); }
         return;
       }
       const { data, error: roleError } = await supabase.rpc('community_actor_role', {
@@ -80,8 +81,13 @@ export const CommunityChat: React.FC = () => {
       if (roleError) {
         console.warn('[LogBook chat] moderation role lookup:', roleError);
         setModerationRole(null);
+        setModerationStatus('No se pudieron verificar los privilegios en Supabase.');
       } else {
-        setModerationRole(data === 'admin' || data === 'moderator' ? data : null);
+        const verifiedRole = data === 'admin' || data === 'moderator' ? data : null;
+        setModerationRole(verifiedRole);
+        setModerationStatus(callsign.trim().toUpperCase() === 'LU1TSB' && !verifiedRole
+          ? 'LU1TSB no está verificado como administrador en este dispositivo: el token de identidad no coincide con el registro de Supabase.'
+          : '');
       }
     };
     void loadModerationRole();
@@ -408,6 +414,7 @@ export const CommunityChat: React.FC = () => {
           {adminAudit.length > 0 && <div className="space-y-1"><p className="font-bold">Auditoría reciente</p>{adminAudit.slice(0, 20).map((entry) => <p key={entry.id} className="rounded bg-white px-2 py-1 text-xs">{new Date(entry.created_at).toLocaleString()} · {entry.actor_callsign} · {entry.action}{entry.target_callsign ? ` · ${entry.target_callsign}` : ''}</p>)}</div>}
         </div>}
       </div>}
+      {moderationStatus && <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">{moderationStatus}</div>}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600 sm:px-5">
         <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> Acceso público · sin registro</span>
         {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
