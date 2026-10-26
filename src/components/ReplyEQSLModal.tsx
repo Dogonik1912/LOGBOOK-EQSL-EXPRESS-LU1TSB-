@@ -410,7 +410,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
-  const createReplyCardLink = async (registerInAppInbox = false): Promise<string> => {
+  const createReplyCardLink = async (): Promise<string> => {
     const canvas = canvasRef.current;
     if (!canvas) throw new Error('La vista previa de la eQSL todavía no está lista.');
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
@@ -420,7 +420,9 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
-    if (registerInAppInbox) {
+    // Si la respuesta nace de una eQSL recibida en el casillero, entregarla automáticamente
+    // al casillero del corresponsal. Las respuestas a eQSL externas no generan avisos de app.
+    if (initialData?.originalEqslId) {
       const identityToken = localStorage.getItem('community_chat_identity_token') || '';
       const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
       if (identityToken && identityCallsign) {
@@ -444,16 +446,6 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     }
     return window.location.origin + '/?e=' + encodeURIComponent(result.id);
   };
-  const handleSendReplyToInbox = async () => {
-    if (!handleSaveToLocalLog()) return;
-    try {
-      await createReplyCardLink(true);
-      window.alert('Respuesta eQSL enviada al casillero de la app.');
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'No se pudo enviar la respuesta al casillero eQSL.');
-    }
-  };
-
   // Intenta compartir siempre la misma tarjeta PNG mediante la hoja nativa del teléfono.
   // El navegador permite elegir WhatsApp, Telegram o correo si esas apps aceptan archivos.
   const shareReplyCardFile = async (text: string): Promise<boolean> => {
@@ -807,15 +799,6 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             >
               <Download className="w-4 h-4 text-sky-400" />
               Descargar PNG
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSendReplyToInbox}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-violet-700 hover:bg-violet-600 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
-            >
-              <Mail className="w-4 h-4" />
-              Enviar al casillero eQSL
             </button>
 
             <button
