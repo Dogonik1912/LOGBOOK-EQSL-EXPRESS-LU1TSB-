@@ -211,3 +211,37 @@ export function getLocalizedShareText(language: AppLanguage): string {
   };
   return messages[language] || messages.en;
 }
+
+export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'received' | 'reply', callsign = '', cardUrl = ''): string {
+  const messages: Record<AppLanguage, { received: string; reply: string; view: string }> = {
+    es:{received:'📻 ¡Has recibido una eQSL!',reply:'📻 ¡Han respondido a tu eQSL!',view:'Ver y descargar la tarjeta'},
+    en:{received:'📻 You received an eQSL!',reply:'📻 Someone replied to your eQSL!',view:'View and download the card'},
+    pt:{received:'📻 Você recebeu uma eQSL!',reply:'📻 Responderam à sua eQSL!',view:'Ver e baixar o cartão'},
+    fr:{received:'📻 Vous avez reçu une eQSL !',reply:'📻 Une réponse à votre eQSL est arrivée !',view:'Voir et télécharger la carte'},
+    de:{received:'📻 Du hast eine eQSL erhalten!',reply:'📻 Deine eQSL wurde beantwortet!',view:'Karte ansehen und herunterladen'},
+    it:{received:'📻 Hai ricevuto una eQSL!',reply:'📻 Hai ricevuto una risposta alla tua eQSL!',view:'Visualizza e scarica la cartolina'},
+    nl:{received:'📻 Je hebt een eQSL ontvangen!',reply:'📻 Er is gereageerd op je eQSL!',view:'Kaart bekijken en downloaden'},
+    pl:{received:'📻 Otrzymałeś eQSL!',reply:'📻 Otrzymałeś odpowiedź na eQSL!',view:'Zobacz i pobierz kartę'},
+    ru:{received:'📻 Вы получили eQSL!',reply:'📻 Получен ответ на вашу eQSL!',view:'Посмотреть и скачать карточку'},
+    uk:{received:'📻 Ви отримали eQSL!',reply:'📻 Ви отримали відповідь на eQSL!',view:'Переглянути та завантажити картку'},
+    zh:{received:'📻 您收到了一张 eQSL！',reply:'📻 您的 eQSL 收到回复！',view:'查看并下载卡片'},
+    ja:{received:'📻 eQSLを受信しました！',reply:'📻 eQSLへの返信が届きました！',view:'カードを表示してダウンロード'},
+    ko:{received:'📻 eQSL을 받았습니다!',reply:'📻 eQSL 답장이 도착했습니다!',view:'카드 보기 및 다운로드'},
+    ar:{received:'📻 لقد تلقيت بطاقة eQSL!',reply:'📻 وصل رد على بطاقة eQSL الخاصة بك!',view:'عرض البطاقة وتنزيلها'},
+    hi:{received:'📻 आपको eQSL मिला है!',reply:'📻 आपकी eQSL का जवाब आया है!',view:'कार्ड देखें और डाउनलोड करें'},
+    tr:{received:'📻 Bir eQSL aldınız!',reply:'📻 eQSL kartınıza yanıt geldi!',view:'Kartı görüntüle ve indir'},
+    sv:{received:'📻 Du har fått en eQSL!',reply:'📻 Du har fått svar på din eQSL!',view:'Visa och ladda ner kortet'},
+    no:{received:'📻 Du har mottatt en eQSL!',reply:'📻 Du har fått svar på eQSL-en din!',view:'Vis og last ned kortet'},
+    da:{received:'📻 Du har modtaget en eQSL!',reply:'📻 Du har fået svar på din eQSL!',view:'Se og download kortet'},
+    fi:{received:'📻 Sait eQSL-kortin!',reply:'📻 Sait vastauksen eQSL-korttiisi!',view:'Näytä ja lataa kortti'},
+    cs:{received:'📻 Obdrželi jste eQSL!',reply:'📻 Přišla odpověď na vaši eQSL!',view:'Zobrazit a stáhnout kartu'},
+    el:{received:'📻 Λάβατε μια eQSL!',reply:'📻 Ήρθε απάντηση στην eQSL σας!',view:'Προβολή και λήψη κάρτας'},
+    ro:{received:'📻 Ați primit o eQSL!',reply:'📻 Ați primit un răspuns la eQSL!',view:'Vezi și descarcă felicitarea'},
+    hu:{received:'📻 eQSL-t kaptál!',reply:'📻 Válasz érkezett az eQSL-edre!',view:'Kártya megtekintése és letöltése'},
+    id:{received:'📻 Anda menerima eQSL!',reply:'📻 Ada balasan untuk eQSL Anda!',view:'Lihat dan unduh kartu'},
+  };
+  const item = messages[language] || messages.en;
+  return kind === 'received'
+    ? item.received + '\\n' + item.view + ': ' + cardUrl
+    : item.reply + (callsign ? '\\nDari / From: ' + callsign : '') + '\\n' + item.view + ': ' + cardUrl;
+}
