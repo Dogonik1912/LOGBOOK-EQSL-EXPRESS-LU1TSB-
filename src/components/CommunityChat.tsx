@@ -21,6 +21,7 @@ export const CommunityChat: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
+  const [resolvingIdentity, setResolvingIdentity] = useState(() => !localStorage.getItem('community_chat_sd') && Boolean(localStorage.getItem('community_chat_identity_token')));
   const [showChangeCallsign, setShowChangeCallsign] = useState(false);
   const [identityToken] = useState(() => {
     const existing = localStorage.getItem('community_chat_identity_token');
@@ -43,15 +44,23 @@ export const CommunityChat: React.FC = () => {
     let active = true;
     const recoverCallsign = async () => {
       const saved = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-      if (saved || !supabase || !identityToken) return;
-      const { data, error: recoveryError } = await supabase.rpc('resolve_community_callsign', { p_token: identityToken });
-      if (!active || recoveryError || typeof data !== 'string' || !data.trim()) return;
-      const recovered = data.trim().toUpperCase();
-      localStorage.setItem('community_chat_sd', recovered);
-      setCallsign(recovered);
-      setSdLocked(true);
-      window.dispatchEvent(new Event('user-profile-updated'));
-      setNotice('Recuperamos tu señal distintiva registrada: ' + recovered + '.');
+      if (saved) { setResolvingIdentity(false); return; }
+      if (!supabase || !identityToken) { setResolvingIdentity(false); return; }
+      try {
+        const { data, error: recoveryError } = await supabase.rpc('resolve_community_callsign', { p_token: identityToken });
+        if (!active) return;
+        const value = typeof data === 'string' ? data : Array.isArray(data) ? (data[0]?.callsign ?? data[0]?.sd ?? data[0]?.resolve_community_callsign) : data && typeof data === 'object' ? ((data as any).callsign ?? (data as any).sd ?? (data as any).resolve_community_callsign) : '';
+        const recovered = !recoveryError && typeof value === 'string' ? value.trim().toUpperCase() : '';
+        if (recovered) {
+          localStorage.setItem('community_chat_sd', recovered);
+          setCallsign(recovered);
+          setSdLocked(true);
+          window.dispatchEvent(new Event('user-profile-updated'));
+          setNotice('Recuperamos tu señal distintiva registrada: ' + recovered + '.');
+        }
+      } finally {
+        if (active) setResolvingIdentity(false);
+      }
     };
     void recoverCallsign();
     return () => { active = false; };
@@ -351,7 +360,7 @@ export const CommunityChat: React.FC = () => {
                 <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar cuenta administradora (${callsign === "LU1TSB" ? "4RC978" : callsign === "4RC978" ? "LU1TSB/4RC978" : "LU1TSB"})`}</button>
               </div>
             )}
-            {!sdLocked && (
+            {!sdLocked && !resolvingIdentity && (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
                 <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva para el chat</label>
                 <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
