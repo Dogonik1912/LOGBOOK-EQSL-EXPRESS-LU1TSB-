@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy } from 'lucide-react';
+import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
 import { getInitialAppLanguage } from '../services/appLanguage';
 
 interface UserSettingsModalProps {
@@ -25,6 +25,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState(() => getInitialAppLanguage());
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -228,6 +229,53 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
           </div>
 
+
+          <section className="pt-3 border-t border-slate-800 space-y-3" aria-labelledby="community-areas-title">
+            <div>
+              <h3 id="community-areas-title" className="text-xs font-bold uppercase tracking-wider text-emerald-300">Comunidad</h3>
+              <p className="text-[11px] text-slate-500 mt-1">Accesos previstos para las actividades de la comunidad. La publicación compartida y la moderación deben habilitarse con el backend correspondiente.</p>
+            </div>
+            <div className="rounded-xl border border-amber-500/25 bg-slate-950/60 overflow-hidden">
+              <button type="button" onClick={() => setCommunitySection(communitySection === 'competitions' ? null : 'competitions')} aria-expanded={communitySection === 'competitions'} className="w-full flex items-center gap-3 p-3.5 text-left">
+                <Trophy className="w-5 h-5 text-amber-300 shrink-0" />
+                <span className="flex-1">
+                  <span className="block text-sm font-bold text-amber-200">Competiciones</span>
+                  <span className="block text-[11px] text-slate-400 mt-0.5">Bases y concursos zonales, regionales, nacionales e internacionales.</span>
+                </span>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${communitySection === 'competitions' ? 'rotate-180' : ''}`} />
+              </button>
+              {communitySection === 'competitions' && <div className="px-3.5 pb-3.5 space-y-2 text-xs text-slate-300">
+                <p>El apartado reunirá las bases de las competiciones y publicaciones de los radioaficionados.</p>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <span className="rounded-full bg-slate-800 px-2 py-1">Zonales</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-1">Regionales</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-1">Nacionales</span>
+                  <span className="rounded-full bg-slate-800 px-2 py-1">Internacionales</span>
+                </div>
+                <p className="text-amber-300">Publicación compartida y borrado exclusivo del administrador: pendientes de implementar y probar.</p>
+              </div>}
+            </div>
+            <div className="rounded-xl border border-emerald-500/25 bg-slate-950/60 overflow-hidden">
+              <button type="button" onClick={() => setCommunitySection(communitySection === 'llota' ? null : 'llota')} aria-expanded={communitySection === 'llota'} className="w-full flex items-center gap-3 p-3.5 text-left">
+                <TentTree className="w-5 h-5 text-emerald-300 shrink-0" />
+                <span className="flex-1">
+                  <span className="block text-sm font-bold text-emerald-200">LLOTA</span>
+                  <span className="block text-[11px] text-slate-400 mt-0.5">Actividades de radio al aire libre: playas, parques, lagunas, lagos y montañas.</span>
+                </span>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${communitySection === 'llota' ? 'rotate-180' : ''}`} />
+              </button>
+              {communitySection === 'llota' && <div className="px-3.5 pb-3.5 space-y-2 text-xs text-slate-300">
+                <p>El espacio LLOTA permitirá anunciar activaciones y compartir fotografías, vídeos, enlaces, fecha y lugar de la actividad.</p>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1"><Camera className="w-3 h-3" /> Fotos y vídeos</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1"><LinkIcon className="w-3 h-3" /> Enlaces</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1"><MessageCircle className="w-3 h-3" /> WhatsApp voluntario</span>
+                </div>
+                <p>La participación en WhatsApp será voluntaria. El enlace real de invitación deberá configurarlo el administrador.</p>
+                <p className="text-emerald-300">Publicaciones compartidas y moderación exclusiva del administrador: pendientes de implementar y probar.</p>
+              </div>}
+            </div>
+          </section>
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Diseño eQSL</h3>
