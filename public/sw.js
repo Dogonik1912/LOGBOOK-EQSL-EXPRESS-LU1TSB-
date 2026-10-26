@@ -70,3 +70,37 @@ self.addEventListener('fetch', (event) => {
     })());
   }
 });
+
+
+// Push notifications for incoming eQSL cards.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+  const title = data.title || 'LogBook eQSL EXPRESS';
+  const options = {
+    body: data.body || 'Has recibido una nueva eQSL.',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
+    tag: data.tag || 'eqsl-incoming',
+    renotify: false,
+    data: { url: data.url || '/?open_eqsl_inbox=1' },
+    silent: data.silent === true,
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+        await client.focus();
+        client.postMessage({ type: 'OPEN_EQSL_INBOX' });
+        return;
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(target);
+  })());
+});
