@@ -20,6 +20,7 @@ export const CommunityChat: React.FC = () => {
   const [moderationTarget, setModerationTarget] = useState<string | null>(null);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [moderatorCandidate, setModeratorCandidate] = useState('');
+  const [moderatorTargetSelected, setModeratorTargetSelected] = useState<string | null>(null);
   const [adminSanctions, setAdminSanctions] = useState<any[]>([]);
   const [adminAudit, setAdminAudit] = useState<any[]>([]);
   const isAdmin = moderationRole === 'admin';
@@ -340,8 +341,8 @@ export const CommunityChat: React.FC = () => {
     }
   };
 
-  const appointModerator = async () => {
-    const target = moderatorCandidate.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
+  const appointModerator = async (selectedCallsign?: string) => {
+    const target = (selectedCallsign || moderatorCandidate).trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
     if (!isAdmin || target.length < 3 || target === 'LU1TSB' || moderationBusy) {
       setError('Ingresá un indicativo válido distinto de LU1TSB.');
       return;
@@ -353,6 +354,7 @@ export const CommunityChat: React.FC = () => {
       const result = await callModerationAction('appoint_moderator', target);
       if (!result) return;
       setModeratorCandidate('');
+      setModeratorTargetSelected(null);
       setNotice(`${target} ahora tiene rol de moderador.`);
     } finally {
       setModerationBusy(false);
@@ -432,7 +434,12 @@ export const CommunityChat: React.FC = () => {
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{message.body}</span></p>
+                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="underline decoration-dotted underline-offset-2 hover:text-amber-700" title="Opciones de administrador para este usuario">{message.callsign}</button> : message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{message.body}</span>
+                {isAdmin && moderatorTargetSelected === message.callsign.trim().toUpperCase() && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+                  <span>Usuario: <strong>{message.callsign}</strong></span>
+                  <button type="button" disabled={moderationBusy} onClick={() => void appointModerator(message.callsign)} className="rounded-md bg-amber-800 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Designar como moderador'}</button>
+                  <button type="button" onClick={() => setModeratorTargetSelected(null)} className="rounded-md px-2 py-1.5 font-semibold underline">Cancelar</button>
+                </div>}</p>
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
                   <div className="flex items-center gap-1">
