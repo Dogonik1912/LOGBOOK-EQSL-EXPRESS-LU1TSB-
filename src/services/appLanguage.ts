@@ -98,7 +98,7 @@ async function translateOne(source: string, language: AppLanguage): Promise<stri
   if (language === 'es') return source;
   const cleanSource = source.trim();
   if (!cleanSource) return source;
-  const key = language + '\\u0000' + cleanSource;
+  const key = language + '\u0000' + cleanSource;
   const cached = translationCache.get(key);
   if (cached) return cached;
 
@@ -139,8 +139,8 @@ async function translateNode(node: Text, language: AppLanguage, epoch: number): 
     if (epoch !== translationEpoch || !node.isConnected) return;
     if ((node.nodeValue || '').trim() !== source.trim()) return;
 
-    const leading = source.match(/^\\s*/)?.[0] || '';
-    const trailing = source.match(/\\s*$/)?.[0] || '';
+    const leading = source.match(/^\s*/)?.[0] || '';
+    const trailing = source.match(/\s*$/)?.[0] || '';
     node.nodeValue = leading + translated + trailing;
     appliedText.set(node, { source: original, translated: node.nodeValue || translated, language });
   } catch {
@@ -155,7 +155,7 @@ function translateAttributes(root: ParentNode, language: AppLanguage, epoch: num
     if (element.closest('[data-no-translate]')) return;
     for (const attribute of ['placeholder', 'title', 'aria-label']) {
       const original = element.getAttribute('data-lang-original-' + attribute) || element.getAttribute(attribute);
-      if (!original || !/[a-zA-ZÀ-ž\\u0400-\\u04FF\\u4e00-\\u9fff]/.test(original) || original.length > 200) continue;
+      if (!original || !/[a-zA-ZÀ-ž\u0400-\u04FF\u4e00-\u9fff]/.test(original) || original.length > 200) continue;
       const marker = 'data-lang-original-' + attribute;
       if (!element.hasAttribute(marker)) element.setAttribute(marker, original);
       void translateOne(original, language).then((value) => {
