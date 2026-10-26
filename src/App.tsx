@@ -13,6 +13,7 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
+import { EQSLViewErrorBoundary } from './components/EQSLViewErrorBoundary';
 import { EQSLMailbox } from './components/EQSLMailbox';
 import { Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
@@ -346,6 +347,6 @@ export default function App() {
   }
 
   const sharedParams = new URLSearchParams(window.location.search);
-  if (!returningAfterReply && (sharedParams.has('e') || sharedParams.has('view_eqsl'))) return <ReceivedEQSLPage />;
+  if (!returningAfterReply && (sharedParams.has('e') || sharedParams.has('view_eqsl'))) return <EQSLViewErrorBoundary><ReceivedEQSLPage /></EQSLViewErrorBoundary>;
   return <MainApp />;
 }
