@@ -15,6 +15,7 @@ import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
 import { Award, Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
+import { startAutomaticUiTranslation } from './services/appLanguage';
 
 
 function MainApp() {
@@ -332,6 +333,7 @@ function MainApp() {
 }
 
 export default function App() {
+  useEffect(() => startAutomaticUiTranslation(), []);
   // Si la última operación fue responder una eQSL, la próxima entrada debe empezar
   // en Inicio, incluso si el navegador vuelve a abrir un enlace antiguo.
   const returningAfterReply = localStorage.getItem('logbook_return_home_after_reply') === '1';
