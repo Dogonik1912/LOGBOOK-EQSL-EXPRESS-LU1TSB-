@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy } from 'lucide-react';
+import { getInitialAppLanguage } from '../services/appLanguage';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
-  const [appLanguage, setAppLanguage] = useState('es');
+  const [appLanguage, setAppLanguage] = useState(() => getInitialAppLanguage());
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         setGalleryImages(savedGallery);
       } catch { setGalleryImages([]); }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
-      setAppLanguage(localStorage.getItem('app_language') || 'es');
+      setAppLanguage(localStorage.getItem('app_language') || getInitialAppLanguage());
       setSavedSuccess(false);
     }
   }, [isOpen]);
