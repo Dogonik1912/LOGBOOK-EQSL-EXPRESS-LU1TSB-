@@ -10,6 +10,7 @@ type InboxItem = { id: string; card: SharedEQSL; receivedAt: string; expiresAt: 
 
 type Props = {
   callsigns: string[];
+  identityToken: string;
   onClose: () => void;
   onReply: (card: SharedEQSL) => void;
 };
@@ -19,7 +20,7 @@ const formatDate = (value: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
-export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
+export function EQSLPostbox({ callsigns, identityToken, onClose, onReply }: Props) {
   const callsignKey = callsigns.join('|');
   const [items, setItems] = useState<InboxItem[]>([]);
   const [selected, setSelected] = useState<InboxItem | null>(null);
@@ -28,8 +29,8 @@ export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
 
   const loadInbox = useCallback(async () => {
     const normalizedCalls = [...new Set(callsignKey.split('|').map((value) => value.trim().toUpperCase()).filter(Boolean))];
-    if (normalizedCalls.length === 0) {
-      setError('Primero cargá tu señal distintiva en Ajustes para abrir tu buzón POST.');
+    if (normalizedCalls.length === 0 || !identityToken) {
+      setError('El buzón POST se habilita al registrar tu señal distintiva en el chat comunitario.');
       setItems([]);
       return;
     }
@@ -37,21 +38,31 @@ export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
     setError('');
     try {
       const results = await Promise.all(normalizedCalls.map(async (normalized) => {
-        const response = await fetch('/api/eqsl-share?inbox=' + encodeURIComponent(normalized), { cache: 'no-store' });
+        const response = await fetch('/api/eqsl-share?inbox=' + encodeURIComponent(normalized) + '&token=' + encodeURIComponent(identityToken), { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'No se pudo consultar el buzón POST.');
         return Array.isArray(result.cards) ? result.cards as InboxItem[] : [];
       }));
       const unique = new Map<string, InboxItem>();
       results.flat().forEach((item) => unique.set(item.id, item));
-      setItems([...unique.values()].sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt)));
+      const loadedItems = [...unique.values()].sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt));
+      setItems(loadedItems);
+      // Al entrar al buzón, todo lo que ya llegó queda leído. Lo nuevo volverá a contar.
+      for (const normalized of normalizedCalls) {
+        const seenKey = 'logbook_post_seen_ids_' + normalized;
+        let priorSeen: string[] = [];
+        try { priorSeen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { priorSeen = []; }
+        const currentIds = loadedItems.filter((item) => String(item.card.to || '').trim().toUpperCase() === normalized).map((item) => item.id);
+        localStorage.setItem(seenKey, JSON.stringify([...new Set([...priorSeen, ...currentIds])].slice(-1000)));
+      }
+      window.dispatchEvent(new Event('logbook-postbox-read'));
       setSelected(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo consultar el buzón POST.');
     } finally {
       setLoading(false);
     }
-  }, [callsignKey]);
+  }, [callsignKey, identityToken]);
 
   useEffect(() => { void loadInbox(); }, [loadInbox]);
 
