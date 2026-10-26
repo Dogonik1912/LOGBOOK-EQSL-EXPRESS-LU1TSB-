@@ -6,3 +6,14 @@ coverage/
 *.log
 .env*
 !.env.example
+.vercel/
+*.pem
+*.key
+*.p12
+*.pfx
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+credentials.json
+service-account*.json
+supabase/.temp/
