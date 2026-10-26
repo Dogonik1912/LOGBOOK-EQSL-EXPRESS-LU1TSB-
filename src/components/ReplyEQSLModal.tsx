@@ -66,6 +66,7 @@ interface ReplyEQSLModalProps {
     whatsapp?: string;
     whatsappUsername?: string;
     telegram?: string;
+    originalEqslId?: string;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -423,11 +424,19 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
     if (identityToken && identityCallsign) {
       try {
-        await fetch('/api/eqsl-inbox', {
+        const inboxResponse = await fetch('/api/eqsl-inbox', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: activeMyCall, to: replyToCall.trim().toUpperCase(), isResponse: true, date, band, mode }),
         });
+        if (inboxResponse.ok && initialData?.originalEqslId) {
+          await fetch('/api/eqsl-inbox', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark-answered', id: initialData.originalEqslId, token: identityToken, callsign: identityCallsign }),
+          });
+          window.dispatchEvent(new Event('eqsl-pending-count-updated'));
+        }
       } catch { /* El enlace de respuesta se mantiene disponible si el buzón no responde. */ }
     }
     return window.location.origin + '/?e=' + encodeURIComponent(result.id);
