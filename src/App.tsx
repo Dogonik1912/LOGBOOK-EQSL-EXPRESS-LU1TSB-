@@ -238,12 +238,9 @@ function MainApp() {
   };
 
   const handleOpenPostboxReply = (card: { from: string; to: string; date: string; time: string; band: string; frequency: string; mode: string; rstSent?: string; rstRcvd?: string }) => {
-    const isCB = /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(String(card.band || ''));
     setReplyData({
       replyToCall: String(card.from || ''),
-      myCall: isCB
-        ? (localStorage.getItem('cb_station_callsign') || String(card.to || ''))
-        : (localStorage.getItem('user_callsign') || String(card.to || DEFAULT_CALLSIGN)),
+      myCall: String(card.to || localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN),
       date: String(card.date || ''),
       time: String(card.time || ''),
       band: String(card.band || '40m'),
