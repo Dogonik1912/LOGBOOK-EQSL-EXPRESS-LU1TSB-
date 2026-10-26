@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
 import { getInitialAppLanguage } from '../services/appLanguage';
+import { LanguageSelector } from './LanguageSelector';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -268,38 +269,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           {/* Idioma predeterminado de la interfaz */}
           <div className="rounded-xl border-2 border-sky-400/70 bg-slate-800 p-3.5 space-y-2">
             <label className="block text-sm font-bold text-sky-200" htmlFor="app-language">🌐 Idioma de la aplicación</label>
-            <select
-              id="app-language"
+            <LanguageSelector
               value={appLanguage}
-              onChange={(e) => setAppLanguage(e.target.value)}
-              className="w-full min-h-11 px-3 py-2 bg-slate-950 border-2 border-sky-400 rounded-lg text-base font-semibold text-white focus:border-sky-300 focus:outline-hidden"
-            >
-              <option value="es">🇪🇸 Español</option>
-              <option value="en">🇬🇧 English</option>
-              <option value="pt">🇵🇹 Português</option>
-              <option value="fr">🇫🇷 Français</option>
-              <option value="de">🇩🇪 Deutsch</option>
-              <option value="it">🇮🇹 Italiano</option>
-              <option value="nl">🇳🇱 Nederlands</option>
-              <option value="pl">🇵🇱 Polski</option>
-              <option value="ru">🇷🇺 Русский</option>
-              <option value="uk">🇺🇦 Українська</option>
-              <option value="zh">🇨🇳 中文</option>
-              <option value="ja">🇯🇵 日本語</option>
-              <option value="ko">🇰🇷 한국어</option>
-              <option value="ar">🇸🇦 العربية</option>
-              <option value="hi">🇮🇳 हिन्दी</option>
-              <option value="tr">🇹🇷 Türkçe</option>
-              <option value="sv">🇸🇪 Svenska</option>
-              <option value="no">🇳🇴 Norsk</option>
-              <option value="da">🇩🇰 Dansk</option>
-              <option value="fi">🇫🇮 Suomi</option>
-              <option value="cs">🇨🇿 Čeština</option>
-              <option value="el">🇬🇷 Ελληνικά</option>
-              <option value="ro">🇷🇴 Română</option>
-              <option value="hu">🇭🇺 Magyar</option>
-              <option value="id">🇮🇩 Bahasa Indonesia</option>
-            </select>
+              className="w-full"
+              onChange={setAppLanguage}
+              label="Idioma de la aplicación"
+            />
             
           </div>
           {/* Los usuarios con SD verificada usan la identidad registrada automáticamente. */}
