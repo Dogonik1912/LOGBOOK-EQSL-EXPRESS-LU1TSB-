@@ -9,7 +9,7 @@ type SharedEQSL = {
 type InboxItem = { id: string; card: SharedEQSL; receivedAt: string; expiresAt: string };
 
 type Props = {
-  callsign: string;
+  callsigns: string[];
   onClose: () => void;
   onReply: (card: SharedEQSL) => void;
 };
@@ -19,15 +19,16 @@ const formatDate = (value: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
-export function EQSLPostbox({ callsign, onClose, onReply }: Props) {
+export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
+  const callsign = callsigns[0] || '';
   const [items, setItems] = useState<InboxItem[]>([]);
   const [selected, setSelected] = useState<InboxItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const loadInbox = useCallback(async () => {
-    const normalized = callsign.trim().toUpperCase();
-    if (!normalized) {
+    const normalizedCalls = [...new Set(callsigns.map((value) => value.trim().toUpperCase()).filter(Boolean))];
+    if (normalizedCalls.length === 0) {
       setError('Primero cargá tu señal distintiva en Ajustes para abrir tu buzón POST.');
       setItems([]);
       return;
@@ -35,17 +36,22 @@ export function EQSLPostbox({ callsign, onClose, onReply }: Props) {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/eqsl-share?inbox=' + encodeURIComponent(normalized), { cache: 'no-store' });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'No se pudo consultar el buzón POST.');
-      setItems(Array.isArray(result.cards) ? result.cards : []);
+      const results = await Promise.all(normalizedCalls.map(async (normalized) => {
+        const response = await fetch('/api/eqsl-share?inbox=' + encodeURIComponent(normalized), { cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'No se pudo consultar el buzón POST.');
+        return Array.isArray(result.cards) ? result.cards as InboxItem[] : [];
+      }));
+      const unique = new Map<string, InboxItem>();
+      results.flat().forEach((item) => unique.set(item.id, item));
+      setItems([...unique.values()].sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt)));
       setSelected(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo consultar el buzón POST.');
     } finally {
       setLoading(false);
     }
-  }, [callsign]);
+  }, [callsigns.join('|')]);
 
   useEffect(() => { void loadInbox(); }, [loadInbox]);
 
@@ -80,7 +86,7 @@ export function EQSLPostbox({ callsign, onClose, onReply }: Props) {
             <div className="rounded-xl bg-amber-400 p-2 text-slate-950"><Inbox className="h-6 w-6" /></div>
             <div className="min-w-0">
               <h2 id="postbox-title" className="text-lg font-black text-amber-300">POST · eQSL recibidas</h2>
-              <p className="truncate text-xs text-slate-300">Buzón de {callsign || 'tu estación'}</p>
+              <p className="truncate text-xs text-slate-300">Buzón de {callsigns.filter(Boolean).join(' · ') || 'tu estación'}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar buzón" className="rounded-lg p-2 text-slate-300 hover:bg-slate-800"><X className="h-5 w-5" /></button>
@@ -120,7 +126,7 @@ export function EQSLPostbox({ callsign, onClose, onReply }: Props) {
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <div className="rounded-full bg-amber-400/10 p-4 text-amber-300"><MailOpen className="h-8 w-8" /></div>
               <h3 className="text-lg font-bold text-white">Tu buzón está vacío</h3>
-              <p className="max-w-sm text-sm text-slate-400">Cuando un colega envíe una eQSL a {callsign || 'tu indicativo'}, aparecerá aquí para que puedas verla y responderla.</p>
+              <p className="max-w-sm text-sm text-slate-400">Cuando un colega envíe una eQSL a cualquiera de tus indicativos, aparecerá aquí para que puedas verla y responderla.</p>
             </div>
           )}
 
