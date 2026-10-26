@@ -80,6 +80,8 @@ let observer: MutationObserver | null = null;
 let currentLanguage: AppLanguage = 'es';
 let translationBatchRunning = false;
 let rescanRequested = false;
+let translationEpoch = 0;
+let scanTimer: number | null = null;
 
 function isExcludedTextNode(node: Text): boolean {
   const parent = node.parentElement;
@@ -94,60 +96,72 @@ function isExcludedTextNode(node: Text): boolean {
 
 async function translateOne(source: string, language: AppLanguage): Promise<string> {
   if (language === 'es') return source;
-  const key = language + '\\u0000' + source;
+  const cleanSource = source.trim();
+  if (!cleanSource) return source;
+  const key = language + '\\u0000' + cleanSource;
   const cached = translationCache.get(key);
   if (cached) return cached;
+
   const endpoint = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' +
-    encodeURIComponent(language) + '&dt=t&q=' + encodeURIComponent(source);
-  const response = await fetch(endpoint);
+    encodeURIComponent(language) + '&dt=t&q=' + encodeURIComponent(cleanSource);
+  const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error('Translation unavailable');
   const data = await response.json();
-  const translated = Array.isArray(data?.[0]) ? data[0].map((part: any) => part?.[0] || '').join('') : '';
+  const translated = Array.isArray(data?.[0])
+    ? data[0].map((part: any) => part?.[0] || '').join('')
+    : '';
   if (!translated) throw new Error('Empty translation');
+
+  // Keep the cache bounded so a long-running app does not grow indefinitely.
+  if (translationCache.size >= 1200) {
+    const oldestKey = translationCache.keys().next().value;
+    if (oldestKey) translationCache.delete(oldestKey);
+  }
   translationCache.set(key, translated);
   return translated;
 }
 
-async function translateNode(node: Text, language: AppLanguage): Promise<void> {
+async function translateNode(node: Text, language: AppLanguage, epoch: number): Promise<void> {
   if (isExcludedTextNode(node) || pending.has(node)) return;
+
   const source = node.nodeValue || '';
   const prior = appliedText.get(node);
   if (prior && source === prior.translated && prior.language === language) return;
   const original = prior && source === prior.translated ? prior.source : source;
-  if (prior && source === prior.translated && prior.language !== language) {
-    // Translate from the original source, never from a previous language.
-  } else if (prior && source !== prior.translated) {
-    appliedText.delete(node);
-  }
+  if (prior && source !== prior.translated) appliedText.delete(node);
+
   const text = original.trim();
   if (!text || text.length > 500) return;
   pending.add(node);
   try {
     const translated = await translateOne(text, language);
-    if (node.isConnected && (node.nodeValue || '').trim() === source.trim()) {
-      const leading = source.match(/^\s*/)?.[0] || '';
-      const trailing = source.match(/\s*$/)?.[0] || '';
-      node.nodeValue = leading + translated + trailing;
-      appliedText.set(node, { source: original, translated: node.nodeValue || translated, language });
-    }
+    // Discard stale responses when the user switches language mid-request.
+    if (epoch !== translationEpoch || !node.isConnected) return;
+    if ((node.nodeValue || '').trim() !== source.trim()) return;
+
+    const leading = source.match(/^\\s*/)?.[0] || '';
+    const trailing = source.match(/\\s*$/)?.[0] || '';
+    node.nodeValue = leading + translated + trailing;
+    appliedText.set(node, { source: original, translated: node.nodeValue || translated, language });
   } catch {
-    // Keep the original text if the translation service is unavailable.
+    // Translation is best-effort: leave the original text readable on network/API failure.
   } finally {
     pending.delete(node);
   }
 }
 
-function translateAttributes(root: ParentNode, language: AppLanguage) {
+function translateAttributes(root: ParentNode, language: AppLanguage, epoch: number) {
   root.querySelectorAll<HTMLElement>('[placeholder],[title],[aria-label]').forEach((element) => {
     if (element.closest('[data-no-translate]')) return;
     for (const attribute of ['placeholder', 'title', 'aria-label']) {
-      const original = element.getAttribute(attribute);
-      if (!original || !/[a-zA-ZÀ-ž]/.test(original) || original.length > 200) continue;
+      const original = element.getAttribute('data-lang-original-' + attribute) || element.getAttribute(attribute);
+      if (!original || !/[a-zA-ZÀ-ž\\u0400-\\u04FF\\u4e00-\\u9fff]/.test(original) || original.length > 200) continue;
       const marker = 'data-lang-original-' + attribute;
       if (!element.hasAttribute(marker)) element.setAttribute(marker, original);
-      const source = element.getAttribute(marker) || original;
-      void translateOne(source, language).then((value) => {
-        if (element.isConnected && element.getAttribute(marker) === source) element.setAttribute(attribute, value);
+      void translateOne(original, language).then((value) => {
+        if (epoch === translationEpoch && element.isConnected && element.getAttribute(marker) === original) {
+          element.setAttribute(attribute, value);
+        }
       }).catch(() => {});
     }
   });
@@ -155,48 +169,71 @@ function translateAttributes(root: ParentNode, language: AppLanguage) {
 
 export function startAutomaticUiTranslation(): () => void {
   currentLanguage = getInitialAppLanguage();
+
   const scan = () => {
     if (!document.body) return;
+    const epoch = translationEpoch;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     const nodes: Text[] = [];
     let node: Node | null;
-    while ((node = walker.nextNode())) if (node.nodeType === Node.TEXT_NODE) nodes.push(node as Text);
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === Node.TEXT_NODE) nodes.push(node as Text);
+    }
+
     if (translationBatchRunning) {
       rescanRequested = true;
       return;
     }
+
     const eligible = nodes.filter((textNode) => {
       if (isExcludedTextNode(textNode) || pending.has(textNode)) return false;
       const prior = appliedText.get(textNode);
       return !(prior && textNode.nodeValue === prior.translated && prior.language === currentLanguage);
     });
-    // Work in small batches so large screens do not flood the translation service.
-    const batch = eligible.slice(0, 16);
+
+    // Limit concurrent external requests; this avoids flooding the translation service.
+    const batch = eligible.slice(0, 4);
     if (batch.length) {
       translationBatchRunning = true;
-      void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage))).finally(() => {
+      void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage, epoch))).finally(() => {
         translationBatchRunning = false;
         if (eligible.length > batch.length || rescanRequested) {
           rescanRequested = false;
-          window.setTimeout(scan, 120);
+          scheduleScan();
         }
       });
     }
-    translateAttributes(document.body, currentLanguage);
+
+    translateAttributes(document.body, currentLanguage, epoch);
     document.documentElement.lang = currentLanguage;
   };
+
+  const scheduleScan = () => {
+    if (scanTimer !== null) window.clearTimeout(scanTimer);
+    scanTimer = window.setTimeout(() => {
+      scanTimer = null;
+      scan();
+    }, 100);
+  };
+
   const changeLanguage = () => {
     currentLanguage = getInitialAppLanguage();
-    scan();
+    translationEpoch += 1;
+    rescanRequested = true;
+    scheduleScan();
   };
+
   scan();
-  observer = new MutationObserver(() => scan());
+  observer = new MutationObserver(() => scheduleScan());
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   window.addEventListener('user-profile-updated', changeLanguage);
   window.addEventListener('storage', changeLanguage);
+
   return () => {
     observer?.disconnect();
     observer = null;
+    if (scanTimer !== null) window.clearTimeout(scanTimer);
+    scanTimer = null;
     window.removeEventListener('user-profile-updated', changeLanguage);
     window.removeEventListener('storage', changeLanguage);
   };
