@@ -13,7 +13,7 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
-import { Mailbox, Send } from 'lucide-react';
+import { MessageCircle, Send } from 'lucide-react';
 import { EQSLPostbox } from './components/EQSLPostbox';
 import { CommunityChat } from './components/CommunityChat';
 import { startAutomaticUiTranslation } from './services/appLanguage';
@@ -271,16 +271,16 @@ function MainApp() {
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
         onOpenSettings={handleOpenSettings}
-        onOpenReplyModal={handleOpenManualReply}
+        onOpenPostbox={() => setIsPostboxOpen(true)}
       />
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <button type="button" onClick={() => setIsPostboxOpen(true)} aria-label="Abrir buzón POST de eQSL recibidas" className="min-w-0 bg-slate-900 border border-amber-400/40 hover:border-amber-300 rounded-xl p-2.5 sm:p-3 flex items-center gap-2 text-left transition-colors">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400 text-slate-950 shadow-[0_0_18px_rgba(251,191,36,0.2)] shrink-0"><Mailbox className="h-6 w-6" /><span className="absolute -right-1 -top-1 rounded-full border-2 border-slate-900 bg-yellow-200 px-1 text-[8px] font-black leading-3">POST</span></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-black tracking-wide text-amber-300">POST</div><div className="text-[10px] sm:text-xs leading-tight text-slate-300">eQSL recibidas · responder</div></div>
-          </button>
+<div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
+            <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><MessageCircle className="w-4 h-4" /></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Comunidad · chat compartido</div></div>
+          </div>
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
             <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones eQSL · sin datos verificados</div></div>
@@ -334,7 +334,8 @@ function MainApp() {
 
       {isPostboxOpen && (
         <EQSLPostbox
-          callsigns={[localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN, localStorage.getItem('cb_station_callsign') || ''].filter(Boolean)}
+          callsigns={[localStorage.getItem('community_chat_sd') || ''].filter(Boolean)}
+          identityToken={localStorage.getItem('community_chat_identity_token') || ''}
           onClose={() => setIsPostboxOpen(false)}
           onReply={handleOpenPostboxReply}
         />
