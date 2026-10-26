@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Trash2, Sun, Moon } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
@@ -26,6 +26,9 @@ export const CommunityChat: React.FC = () => {
   const isAdmin = moderationRole === 'admin';
   const isModerator = isAdmin || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [appLanguage, setAppLanguage] = useState(() => (localStorage.getItem('app_language') || 'es').toLowerCase());
+  const [translatedBodies, setTranslatedBodies] = useState<Record<string, string>>({});
+  const translationPending = useRef<Set<string>>(new Set());
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
@@ -169,6 +172,45 @@ export const CommunityChat: React.FC = () => {
       void supabase?.removeChannel(channel);
     };
   }, []);
+
+  // Translate messages only for display; the original text remains stored in Supabase.
+  // The selected app language is per-device, so each visitor sees their own translation.
+  useEffect(() => {
+    const syncLanguage = () => setAppLanguage((localStorage.getItem('app_language') || 'es').toLowerCase());
+    window.addEventListener('user-profile-updated', syncLanguage);
+    window.addEventListener('storage', syncLanguage);
+    return () => {
+      window.removeEventListener('user-profile-updated', syncLanguage);
+      window.removeEventListener('storage', syncLanguage);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const targetLanguage = appLanguage || 'es';
+    const recentMessages = messages.slice(-30);
+    const translateMessages = async () => {
+      for (const message of recentMessages) {
+        const key = targetLanguage + ':' + message.id;
+        if (translatedBodies[key] || translationPending.current.has(key) || !message.body.trim()) continue;
+        translationPending.current.add(key);
+        try {
+          const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(targetLanguage) + '&dt=t&q=' + encodeURIComponent(message.body);
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const result = await response.json();
+          const translated = Array.isArray(result?.[0]) ? result[0].map((part: any) => typeof part?.[0] === 'string' ? part[0] : '').join('') : '';
+          if (active && translated.trim()) setTranslatedBodies((current) => ({ ...current, [key]: translated }));
+        } catch {
+          // If translation is unavailable, leave the original message visible.
+        } finally {
+          translationPending.current.delete(key);
+        }
+      }
+    };
+    void translateMessages();
+    return () => { active = false; };
+  }, [messages, appLanguage, translatedBodies]);
 
   const saveCallsign = async () => {
     if (!supabase || busy) return;
@@ -435,7 +477,7 @@ export const CommunityChat: React.FC = () => {
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="underline decoration-dotted underline-offset-2 hover:text-amber-700" title="Opciones de administrador para este usuario">{message.callsign}</button> : message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{message.body}</span>
+                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="underline decoration-dotted underline-offset-2 hover:text-amber-700" title="Opciones de administrador para este usuario">{message.callsign}</button> : message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
                 {isAdmin && moderatorTargetSelected === message.callsign.trim().toUpperCase() && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
                   <span>Usuario: <strong>{message.callsign}</strong></span>
                   <button type="button" disabled={moderationBusy} onClick={() => void appointModerator(message.callsign)} className="rounded-md bg-amber-800 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Designar como moderador'}</button>
