@@ -20,7 +20,6 @@ const formatDate = (value: string) => {
 };
 
 export function EQSLPostbox({ callsigns, onClose, onReply }: Props) {
-  const callsign = callsigns[0] || '';
   const callsignKey = callsigns.join('|');
   const [items, setItems] = useState<InboxItem[]>([]);
   const [selected, setSelected] = useState<InboxItem | null>(null);
