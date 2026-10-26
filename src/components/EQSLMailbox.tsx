@@ -22,6 +22,7 @@ export const EQSLMailbox: React.FC = () => {
   const [error, setError] = useState('');
   const [pushStatus, setPushStatus] = useState('');
   const [pushBusy, setPushBusy] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const knownInboxIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
@@ -199,7 +200,9 @@ export const EQSLMailbox: React.FC = () => {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'No se pudo activar la notificación.');
-      setPushStatus('Notificaciones activadas. El sonido depende también de los ajustes de notificaciones del dispositivo.');
+      setPushEnabled(true);
+      localStorage.setItem('eqsl_push_enabled', 'true');
+      setPushStatus('Notificaciones activadas y guardadas en este dispositivo. Permanecerán seleccionadas mientras el navegador conserve la suscripción y el permiso.');
     } catch (e) {
       setPushStatus(e instanceof Error ? e.message : 'No se pudieron activar las notificaciones.');
     } finally {
@@ -208,6 +211,24 @@ export const EQSLMailbox: React.FC = () => {
   };
 
   useEffect(() => {
+    let cancelled = false;
+    const restorePushState = async () => {
+      const saved = localStorage.getItem('eqsl_push_enabled') === 'true';
+      if (!('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') {
+        if (!cancelled) { setPushEnabled(false); if (saved) localStorage.setItem('eqsl_push_enabled', 'false'); }
+        return;
+      }
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!cancelled) {
+          const enabled = Boolean(subscription) && (saved || Notification.permission === 'granted');
+          setPushEnabled(enabled);
+          localStorage.setItem('eqsl_push_enabled', enabled ? 'true' : 'false');
+        }
+      } catch { if (!cancelled) setPushEnabled(false); }
+    };
+    void restorePushState();
     knownInboxIds.current = null;
     void refreshCount();
     void checkForNewIncoming();
@@ -225,6 +246,7 @@ export const EQSLMailbox: React.FC = () => {
       void checkForNewIncoming();
     }, 30_000);
     return () => {
+      cancelled = true;
       window.clearInterval(refreshTimer);
       window.removeEventListener('user-profile-updated', onIdentityUpdated);
       window.removeEventListener('eqsl-pending-count-updated', onIdentityUpdated);
@@ -251,7 +273,7 @@ export const EQSLMailbox: React.FC = () => {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-white">eQSL recibidas</h3>
         <div className="flex flex-wrap items-center gap-1">
-          <button type="button" onClick={() => void activateNotifications()} disabled={pushBusy} className="rounded-md border border-sky-500/50 px-2 py-1 text-[10px] font-semibold text-sky-200 hover:bg-sky-950 disabled:opacity-50">{pushBusy ? 'Activando…' : 'Activar alertas'}</button>
+          <button type="button" onClick={() => void activateNotifications()} disabled={pushBusy || pushEnabled} aria-pressed={pushEnabled} className={`rounded-md border px-2 py-1 text-[10px] font-semibold disabled:opacity-100 ${pushEnabled ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-sky-500/50 text-sky-200 hover:bg-sky-950 disabled:opacity-50'}`}>{pushBusy ? 'Activando…' : pushEnabled ? '✓ Alertas activadas' : 'Activar alertas'}</button>
           <button type="button" onClick={() => void loadInbox()} disabled={loading} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button>
         </div>
       </div>
