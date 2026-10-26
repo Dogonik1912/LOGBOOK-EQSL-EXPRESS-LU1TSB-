@@ -90,8 +90,6 @@ function isExcludedTextNode(node: Text): boolean {
   const value = node.nodeValue.trim();
   if (!/[a-zA-ZÀ-ž\u0400-\u04FF\u4e00-\u9fff]/.test(value)) return true;
   if (/^(LogBook eQSL EXPRESS|eQSL EXPRESS|LU1TSB\/4RC978)$/i.test(value)) return true;
-  // Preserve amateur-radio callsigns and identifiers wherever they appear in a text node.
-  if (/\b(?:[A-Z]{1,2}\d[A-Z0-9]{1,4}|\d[A-Z]{1,2}\d[A-Z0-9]{1,4})(?:\/[A-Z0-9]+)?\b/i.test(value)) return true;
   if (/^(https?:\/\/|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}$)/.test(value)) return true;
   return false;
 }
@@ -104,15 +102,31 @@ async function translateOne(source: string, language: AppLanguage): Promise<stri
   const cached = translationCache.get(key);
   if (cached) return cached;
 
+  // Protect callsigns/identifiers while translating the surrounding message text.
+  // This also lets community chat messages containing "CALLSIGN: message" be translated.
+  const protectedCalls: string[] = [];
+  const protectedSource = cleanSource.replace(
+    /\b(?:[A-Z]{1,2}\d[A-Z0-9]{1,4}|\d[A-Z]{1,2}\d[A-Z0-9]{1,4})(?:\/[A-Z0-9]+)?\b/gi,
+    (match) => {
+      const marker = 'QZXKEEP' + protectedCalls.length + 'XZQ';
+      protectedCalls.push(match);
+      return marker;
+    },
+  );
   const endpoint = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' +
-    encodeURIComponent(language) + '&dt=t&q=' + encodeURIComponent(cleanSource);
+    encodeURIComponent(language) + '&dt=t&q=' + encodeURIComponent(protectedSource);
   const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error('Translation unavailable');
   const data = await response.json();
-  const translated = Array.isArray(data?.[0])
+  let translated = Array.isArray(data?.[0])
     ? data[0].map((part: any) => part?.[0] || '').join('')
     : '';
   if (!translated) throw new Error('Empty translation');
+
+  // Restore exact original callsigns, even if the translation service changes marker casing.
+  protectedCalls.forEach((callsign, index) => {
+    translated = translated.replace(new RegExp('QZXKEEP' + index + 'XZQ', 'gi'), callsign);
+  });
 
   // Keep the cache bounded so a long-running app does not grow indefinitely.
   if (translationCache.size >= 1200) {
