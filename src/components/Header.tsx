@@ -126,17 +126,26 @@ export const Header: React.FC<HeaderProps> = ({
   }, [appIcon]);
 
   useEffect(() => {
-    const checkInstalled = () => setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true);
+    const checkInstalled = () => {
+      const runningStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+      const previouslyInstalled = localStorage.getItem('logbook_pwa_installed') === '1';
+      if (runningStandalone || previouslyInstalled) setIsInstalled(true);
+    };
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event);
     };
+    const onAppInstalled = () => {
+      localStorage.setItem('logbook_pwa_installed', '1');
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
     checkInstalled();
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    window.addEventListener('appinstalled', checkInstalled);
+    window.addEventListener('appinstalled', onAppInstalled);
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      window.removeEventListener('appinstalled', checkInstalled);
+      window.removeEventListener('appinstalled', onAppInstalled);
     };
   }, []);
 
@@ -183,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
+          {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
@@ -194,7 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{isInstalled ? 'App instalada' : 'Instalar app'}</span>
               <span className="text-[10px] font-medium opacity-90">Muy liviana: ocupa muy poco espacio</span>
             </span>
-          </button>
+          </button>}
 
           {/* Compartir la aplicación en redes y correo */}
           <div className="relative">
