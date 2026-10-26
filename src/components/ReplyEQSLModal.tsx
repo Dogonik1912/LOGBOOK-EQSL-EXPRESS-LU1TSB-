@@ -96,6 +96,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => { try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; } });
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [savedToLog, setSavedToLog] = useState(false);
+  const [eqslPostSending, setEqslPostSending] = useState(false);
+  const [eqslPostStatus, setEqslPostStatus] = useState('');
   const [imagePositionX, setImagePositionX] = useState(0);
   const [imagePositionY, setImagePositionY] = useState(0);
   const [imageZoom, setImageZoom] = useState(0);
@@ -410,7 +412,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
-  const createReplyCardLink = async (): Promise<string> => {
+  const createReplyCardLink = async (sendToInbox = false): Promise<string> => {
     const canvas = canvasRef.current;
     if (!canvas) throw new Error('La vista previa de la eQSL todavía no está lista.');
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
@@ -422,7 +424,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
     // Si la respuesta nace de una eQSL recibida en el casillero, entregarla automáticamente
     // al casillero del corresponsal. Las respuestas a eQSL externas no generan avisos de app.
-    if (initialData?.originalEqslId) {
+    if (sendToInbox || initialData?.originalEqslId) {
       const identityToken = localStorage.getItem('community_chat_identity_token') || '';
       const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
       if (identityToken && identityCallsign) {
@@ -446,6 +448,36 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     }
     return window.location.origin + '/?e=' + encodeURIComponent(result.id);
   };
+  const handleSendReplyByEQSLPost = async () => {
+    if (eqslPostSending) return;
+    const identityToken = localStorage.getItem('community_chat_identity_token') || '';
+    const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (!identityToken || !identityCallsign) {
+      setEqslPostStatus('Para enviar por eQSL POST, primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
+      return;
+    }
+    if (!replyToCall.trim()) {
+      setEqslPostStatus('Falta la señal distintiva del destinatario. Abrí la eQSL original desde su enlace para completar ese dato.');
+      return;
+    }
+    setEqslPostSending(true);
+    setEqslPostStatus('');
+    try {
+      const link = await createReplyCardLink(true);
+      const verify = await fetch('/api/eqsl-inbox?count=1', {
+        headers: { 'x-identity-token': identityToken },
+        cache: 'no-store',
+      });
+      if (!verify.ok) throw new Error('La respuesta se creó, pero no se pudo verificar el buzón. Compartí este enlace como alternativa: ' + link);
+      setEqslPostStatus('Respuesta enviada al eQSL POST de ' + replyToCall.trim().toUpperCase() + '.');
+      window.dispatchEvent(new Event('eqsl-pending-count-updated'));
+    } catch (error) {
+      setEqslPostStatus(error instanceof Error ? error.message : 'No se pudo enviar la respuesta por eQSL POST.');
+    } finally {
+      setEqslPostSending(false);
+    }
+  };
+
   // Intenta compartir siempre la misma tarjeta PNG mediante la hoja nativa del teléfono.
   // El navegador permite elegir WhatsApp, Telegram o correo si esas apps aceptan archivos.
   const shareReplyCardFile = async (text: string): Promise<boolean> => {
@@ -777,6 +809,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         </div>
 
         {/* Botones de acción */}
+        {eqslPostStatus && <p role="status" className="mt-2 rounded-lg border border-amber-400/30 bg-amber-950/40 p-3 text-xs text-amber-100">{eqslPostStatus}</p>}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800">
           <div>
             {onSaveQSO && (
@@ -792,6 +825,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={handleSendReplyByEQSLPost} disabled={eqslPostSending} className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold rounded-lg shadow-sm disabled:opacity-60"><Mail className="w-4 h-4" />{eqslPostSending ? 'ENVIANDO…' : 'ENVIAR RESPUESTA POR eQSL POST'}</button>
             <button
               type="button"
               onClick={handleDownloadReplyPNG}
