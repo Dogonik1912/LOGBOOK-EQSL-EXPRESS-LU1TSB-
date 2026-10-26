@@ -77,6 +77,13 @@ self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
   const title = data.title || 'LogBook eQSL EXPRESS';
+  // Actualizar el distintivo de la app cuando el navegador permita Badging API en el service worker.
+  try {
+    if (typeof self.navigator?.setAppBadge === 'function') {
+      if (Number(data.unreadCount) > 0) await self.navigator.setAppBadge(Number(data.unreadCount));
+      else await self.navigator.clearAppBadge?.();
+    }
+  } catch { /* La insignia depende del soporte del navegador y del sistema operativo. */ }
   const options = {
     body: data.body || 'Has recibido una nueva eQSL.',
     icon: '/icon.svg',
