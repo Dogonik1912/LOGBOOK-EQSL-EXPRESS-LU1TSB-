@@ -528,6 +528,18 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!response.ok || !result.id) {
       throw new Error(result.error || 'No se pudo crear el enlace corto de la eQSL.');
     }
+    // Si esta estación ya verificó su SD en el chat, registra la tarjeta en el buzón del destinatario.
+    const identityToken = localStorage.getItem('community_chat_identity_token') || '';
+    const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (identityToken && identityCallsign) {
+      try {
+        await fetch('/api/eqsl-inbox', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: cardData.from, to: cardData.to, isResponse: false, date: cardData.date, band: cardData.band, mode: cardData.mode }),
+        });
+      } catch { /* El enlace externo sigue disponible aunque el buzón no responda. */ }
+    }
     return `${window.location.origin}/?e=${encodeURIComponent(result.id)}`;
   };
 
