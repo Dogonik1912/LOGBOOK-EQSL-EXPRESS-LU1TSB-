@@ -20,6 +20,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
+  const [isVerifiedCallsign, setIsVerifiedCallsign] = useState(false);
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
@@ -29,7 +30,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setCallsign(localStorage.getItem('user_callsign') || '');
+      const verifiedCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      const identityToken = localStorage.getItem('community_chat_identity_token') || '';
+      const verifiedOnThisDevice = Boolean(verifiedCallsign && identityToken);
+      setIsVerifiedCallsign(verifiedOnThisDevice);
+      setCallsign(verifiedOnThisDevice ? verifiedCallsign : (localStorage.getItem('user_callsign') || ''));
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       let savedGallery: Array<{ id: string; name: string; dataUrl: string }> = [];
       try {
@@ -125,11 +130,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const finalCall = callsign.trim().toUpperCase();
-    if (!finalCall) {
+    if (!isVerifiedCallsign && !finalCall) {
       window.alert('Ingresá tu indicativo de radio antes de guardar.');
       return;
     }
-    localStorage.setItem('user_callsign', finalCall);
+    // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
+    if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
     window.dispatchEvent(new Event('user-profile-updated'));
@@ -211,23 +217,23 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </select>
             
           </div>
-          {/* Datos de mi Estación */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Mi Indicativo (Callsign) *
-              </label>
-              <input
-                type="text"
-                value={callsign}
-                onChange={(e) => setCallsign(e.target.value)}
-                placeholder="ej. LU1TSB"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm font-mono text-amber-300 font-bold focus:border-amber-400 focus:outline-hidden"
-              />
-              <span className="text-[10px] text-slate-400">Por defecto: LU1TSB</span>
+          {/* Los usuarios con SD verificada usan la identidad registrada automáticamente. */}
+          {!isVerifiedCallsign && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Mi Indicativo (Callsign) *
+                </label>
+                <input
+                  type="text"
+                  value={callsign}
+                  onChange={(e) => setCallsign(e.target.value)}
+                  placeholder="Ingresá tu señal distintiva"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm font-mono text-amber-300 font-bold focus:border-amber-400 focus:outline-hidden"
+                />
+              </div>
             </div>
-
-          </div>
+          )}
 
 
 
