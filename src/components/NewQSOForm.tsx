@@ -100,15 +100,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
-    // Mostrar el aviso una sola vez: si el usuario sale de 11 metros sin guardar
-    // una señal, no volver a interrumpirlo en futuras visitas a esa banda.
-    if (band === '11 metros' && newBand !== '11 metros' && !hasSavedCbStationCallsign) {
-      localStorage.setItem('cb_station_callsign_prompt_seen', 'true');
-      setShowCbStationCallsignPrompt(false);
-    }
-    if (newBand === '11 metros' && !hasSavedCbStationCallsign && localStorage.getItem('cb_station_callsign_prompt_seen') !== 'true') {
-      setShowCbStationCallsignPrompt(true);
-    }
+    // En 11 metros la señal propia es necesaria para guardar el QSO y emitir la eQSL.
+    // Mostrar siempre el campo en esa banda, incluso si el aviso se cerró anteriormente.
+    setShowCbStationCallsignPrompt(newBand === '11 metros');
     setBand(newBand);
     const found = HAM_BANDS.find((b) => b.name === newBand);
     if (found) setFrequency(found.defaultFreq);
@@ -421,10 +415,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           ))}
         </div>
 
-        {band === '11 metros' && showCbStationCallsignPrompt && !hasSavedCbStationCallsign && (
+        {band === '11 metros' && (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
             <label htmlFor="cb-station-callsign" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
-              Mi señal distintiva de 11 metros *
+              Mi señal distintiva de 11 metros (emisor) *
             </label>
             <input
               id="cb-station-callsign"
@@ -438,7 +432,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
             />
             <p className="mt-1 text-xs text-slate-400">
-              La primera vez la escribís vos. Quedará guardada en este dispositivo y aparecerá automáticamente en tus próximos QSO de 11 metros.
+              Esta es la señal que aparecerá como emisora en tus eQSL y en tus QSO de 11 metros. Se guarda en este dispositivo.
             </p>
           </div>
         )}
