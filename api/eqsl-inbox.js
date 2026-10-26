@@ -75,7 +75,7 @@ export default async function handler(req, res) {
       if (!items.some(item => item.id === id)) {
         items.unshift({
           id,
-          from: /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(clean(req.body?.band, 24))
+          from: /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(clean(req.body?.band, 24))
             ? (clean(req.body?.from, 40).toUpperCase() || sender)
             : sender,
           to: recipient,
