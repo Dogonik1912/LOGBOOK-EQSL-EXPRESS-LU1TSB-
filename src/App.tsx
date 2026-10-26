@@ -252,7 +252,7 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-white to-cyan-100 text-slate-900 flex flex-col font-sans selection:bg-amber-300 selection:text-slate-950">
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
         onOpenSettings={handleOpenSettings}
@@ -263,17 +263,17 @@ function MainApp() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
           <EQSLMailbox />
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
-            <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Acciones eQSL · sin datos verificados</div></div>
+          <div className="min-w-0 bg-white/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-sm flex items-center gap-2">
+            <div className="p-2 bg-purple-500/10 text-purple-700 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-slate-900">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-600">Acciones eQSL · sin datos verificados</div></div>
           </div>
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3">
-            <div className="text-[10px] sm:text-xs leading-tight text-slate-400 mb-2">Ranking mundial · pendiente</div>
-            <button type="button" onClick={() => setShowCountryRanking((open) => !open)} aria-expanded={showCountryRanking} className="w-full flex items-center justify-between gap-1 text-sm text-white">
+          <div className="min-w-0 bg-white/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-sm">
+            <div className="text-[10px] sm:text-xs leading-tight text-slate-600 mb-2">Ranking mundial · pendiente</div>
+            <button type="button" onClick={() => setShowCountryRanking((open) => !open)} aria-expanded={showCountryRanking} className="w-full flex items-center justify-between gap-1 text-sm text-slate-900">
               <span className="font-mono">—</span>
-              <span className="text-slate-400"><svg className={`w-4 h-4 transition-transform ${showCountryRanking ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg></span>
+              <span className="text-slate-600"><svg className={`w-4 h-4 transition-transform ${showCountryRanking ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg></span>
             </button>
-            {showCountryRanking && <div className="mt-2 border-t border-slate-700 pt-2 text-[10px] leading-snug text-slate-400 space-y-1"><p>Ranking mundial por señal distintiva, bandera y países contactados; requiere registro compartido.</p><p>Reglas previstas: +1 por el primer contacto puntuable con cada estación y +5 extra por la primera eQSL de contestación. Contactos y respuestas repetidos no suman.</p><p>El campeón anual podrá lucir un diamante junto a su señal en el chat. Los premios se acumularán mientras conserve la racha anual definida.</p><p>Estas reglas todavía no calculan puntos reales; deben implementarse y verificarse con el registro compartido.</p></div>}
+            {showCountryRanking && <div className="mt-2 border-t border-slate-200 pt-2 text-[10px] leading-snug text-slate-600 space-y-1"><p>Ranking mundial por señal distintiva, bandera y países contactados; requiere registro compartido.</p><p>Reglas previstas: +1 por el primer contacto puntuable con cada estación y +5 extra por la primera eQSL de contestación. Contactos y respuestas repetidos no suman.</p><p>El campeón anual podrá lucir un diamante junto a su señal en el chat. Los premios se acumularán mientras conserve la racha anual definida.</p><p>Estas reglas todavía no calculan puntos reales; deben implementarse y verificarse con el registro compartido.</p></div>}
           </div>
         </div>
 
