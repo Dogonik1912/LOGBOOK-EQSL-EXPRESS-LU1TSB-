@@ -34,6 +34,8 @@ export function detectBrowserLanguage(): AppLanguage {
   for (const candidate of [...(navigator.languages || []), navigator.language || '']) {
     const language = normalizeLanguage(candidate);
     if (language) return language;
+    const country = String(candidate || '').toUpperCase().split(/[-_]/)[1];
+    if (country && COUNTRY_LANGUAGE[country]) return COUNTRY_LANGUAGE[country];
   }
   return 'es';
 }
