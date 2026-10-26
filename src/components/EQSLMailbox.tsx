@@ -72,7 +72,81 @@ export const EQSLMailbox: React.FC = () => {
     const identityToken = token();
     if (!identityToken) return;
     try {
-      const response = await fetch('/api/eqsl-inbox', { headers: { 'x-identity-token': identityToken }, cache: 'no-store' });
+      const response = await import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Inbox, RefreshCw, MailOpen, ArrowUpRight, AlertCircle } from 'lucide-react';
+
+type InboxItem = {
+  id: string;
+  from: string;
+  to: string;
+  isResponse: boolean;
+  date: string;
+  band: string;
+  mode: string;
+  createdAt: string;
+  readAt: string | null;
+  answeredAt?: string | null;
+};
+
+export const EQSLMailbox: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [pendingReplies, setPendingReplies] = useState(0);
+  const [items, setItems] = useState<InboxItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [pushStatus, setPushStatus] = useState('');
+  const [pushBusy, setPushBusy] = useState(false);
+  const knownInboxIds = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const openInbox = () => setOpen(true);
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OPEN_EQSL_INBOX') openInbox();
+    };
+    if (new URLSearchParams(window.location.search).get('open_eqsl_inbox') === '1') setOpen(true);
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    window.addEventListener('open-eqsl-inbox', openInbox);
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', onMessage);
+      window.removeEventListener('open-eqsl-inbox', openInbox);
+    };
+  }, []);
+
+  const token = () => localStorage.getItem('community_chat_identity_token') || '';
+  const updateAppBadge = (count: number) => {
+    const badgeNavigator = navigator as Navigator & { setAppBadge?: (contents?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    try {
+      if (count > 0) void badgeNavigator.setAppBadge?.(count).catch(() => {});
+      else void badgeNavigator.clearAppBadge?.().catch(() => {});
+    } catch { /* El navegador o dispositivo puede no admitir insignias de app. */ }
+  };
+  const playIncomingAlert = () => {
+    if (localStorage.getItem('eqsl_sound_alerts') === 'false') return;
+    try {
+      const AudioContextClass = window.AudioContext;
+      if (!AudioContextClass) return;
+      const audio = new AudioContextClass();
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audio.currentTime);
+      oscillator.frequency.setValueAtTime(1175, audio.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, audio.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.32);
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      oscillator.start();
+      oscillator.stop(audio.currentTime + 0.34);
+      oscillator.onended = () => { void audio.close().catch(() => {}); };
+    } catch { /* El navegador puede bloquear el audio hasta que el usuario interactúe. */ }
+  };
+
+  const checkForNewIncoming = useCallback(async () => {
+    const identityToken = token();
+    if (!identityToken) return;
+    try {
+      const response = await 
       const result = await response.json();
       if (!response.ok || !Array.isArray(result.items)) return;
       const received = result.items as InboxItem[];
