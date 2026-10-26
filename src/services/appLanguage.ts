@@ -235,7 +235,7 @@ export function getLocalizedShareText(language: AppLanguage): string {
   return messages[language] || messages.en;
 }
 
-export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'received' | 'reply', callsign = '', cardUrl = ''): string {
+export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'received' | 'reply', cardUrl = ''): string {
   const messages: Record<AppLanguage, { received: string; reply: string; view: string }> = {
     es:{received:'📻 ¡Has recibido una eQSL!',reply:'📻 ¡Han respondido a tu eQSL!',view:'Ver y descargar la tarjeta'},
     en:{received:'📻 You received an eQSL!',reply:'📻 Someone replied to your eQSL!',view:'View and download the card'},
@@ -266,5 +266,5 @@ export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'recei
   const item = messages[language] || messages.en;
   return kind === 'received'
     ? item.received + '\\n' + item.view + ': ' + cardUrl
-    : item.reply + (callsign ? '\\nDari / From: ' + callsign : '') + '\\n' + item.view + ': ' + cardUrl;
+    : item.reply + '\\n' + item.view + ': ' + cardUrl;
 }
