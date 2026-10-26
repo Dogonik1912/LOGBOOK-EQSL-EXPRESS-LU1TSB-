@@ -25,6 +25,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState(() => getInitialAppLanguage());
+  const [eqslSoundAlerts, setEqslSoundAlerts] = useState(true);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
 
@@ -43,6 +44,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       } catch { setGalleryImages([]); }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || getInitialAppLanguage());
+      setEqslSoundAlerts(localStorage.getItem('eqsl_sound_alerts') !== 'false');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -138,6 +140,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('app_language', appLanguage);
+    localStorage.setItem('eqsl_sound_alerts', eqslSoundAlerts ? 'true' : 'false');
+    window.dispatchEvent(new Event('eqsl-sound-setting-updated'));
     window.dispatchEvent(new Event('user-profile-updated'));
 
     localStorage.removeItem('hamqth_user');
@@ -237,6 +241,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
 
 
+
+          <section className="rounded-xl border border-rose-500/30 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="eqsl-alert-settings">
+            <h3 id="eqsl-alert-settings" className="text-xs font-bold uppercase tracking-wider text-rose-300">Alertas de eQSL</h3>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={eqslSoundAlerts} onChange={(e) => setEqslSoundAlerts(e.target.checked)} className="h-5 w-5 accent-rose-500" />
+              <span className="flex-1">
+                <span className="block text-sm font-semibold text-white">Sonido al recibir una eQSL</span>
+                <span className="block text-[11px] text-slate-400">Reproduce una alerta sonora cuando se detecta una nueva eQSL. Podés desactivarla aquí.</span>
+              </span>
+            </label>
+          </section>
 
           <div className="pt-2 border-t border-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400">2. Galería de diseños eQSL predeterminados</h3>
