@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { get, put } from '@vercel/blob';
+import { sendEqslPush } from './push-subscription.js';
 
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
@@ -99,6 +100,8 @@ export default async function handler(req, res) {
           readAt: null,
         });
         await writeInbox(recipient, items, cfg);
+        // Push delivery is best-effort: a push provider outage must not prevent eQSL delivery.
+        void sendEqslPush(recipient, items[0]).catch(() => {});
       }
       return json(res, 201, { ok: true });
     }
