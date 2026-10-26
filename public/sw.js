@@ -74,26 +74,33 @@ self.addEventListener('fetch', (event) => {
 
 // Push notifications for incoming eQSL cards.
 self.addEventListener('push', (event) => {
-  let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
-  const title = data.title || 'LogBook eQSL EXPRESS';
-  // Actualizar el distintivo de la app cuando el navegador permita Badging API en el service worker.
-  try {
-    if (typeof self.navigator?.setAppBadge === 'function') {
-      if (Number(data.unreadCount) > 0) await self.navigator.setAppBadge(Number(data.unreadCount));
-      else await self.navigator.clearAppBadge?.();
-    }
-  } catch { /* La insignia depende del soporte del navegador y del sistema operativo. */ }
-  const options = {
-    body: data.body || 'Has recibido una nueva eQSL.',
-    icon: '/icon.svg',
-    badge: '/icon.svg',
-    tag: data.tag || 'eqsl-incoming',
-    renotify: false,
-    data: { url: data.url || '/?open_eqsl_inbox=1' },
-    silent: data.silent === true,
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async () => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+    const title = data.title || 'LogBook eQSL EXPRESS';
+
+    // The Badging API is optional; never let it prevent the notification itself.
+    try {
+      const count = Number(data.unreadCount) || 0;
+      if (count > 0 && typeof self.navigator?.setAppBadge === 'function') {
+        await self.navigator.setAppBadge(count);
+      } else if (count === 0 && typeof self.navigator?.clearAppBadge === 'function') {
+        await self.navigator.clearAppBadge();
+      }
+    } catch { /* Badge support varies by browser and operating system. */ }
+
+    const options = {
+      body: data.body || 'Has recibido una nueva eQSL.',
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      tag: data.tag || 'eqsl-incoming',
+      renotify: true,
+      data: { url: data.url || '/?open_eqsl_inbox=1' },
+      // Leave silent=false by default so the OS may play its notification sound.
+      silent: data.silent === true,
+    };
+    await self.registration.showNotification(title, options);
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {
