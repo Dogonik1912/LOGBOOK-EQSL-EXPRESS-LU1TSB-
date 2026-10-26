@@ -275,7 +275,7 @@ function MainApp() {
               <span className="font-mono">—</span>
               <span className="text-slate-400"><svg className={`w-4 h-4 transition-transform ${showCountryRanking ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg></span>
             </button>
-            {showCountryRanking && <div className="mt-2 border-t border-slate-700 pt-2 text-[10px] leading-snug text-slate-400">El ranking por banderas y cantidad estará disponible al conectar el registro compartido.</div>}
+            {showCountryRanking && <div className="mt-2 border-t border-slate-700 pt-2 text-[10px] leading-snug text-slate-400 space-y-1"><p>Ranking mundial por señal distintiva, bandera y países contactados; requiere registro compartido.</p><p>Reglas previstas: +1 por el primer contacto puntuable con cada estación y +5 extra por la primera eQSL de contestación. Contactos y respuestas repetidos no suman.</p><p>El campeón anual podrá lucir un diamante junto a su señal en el chat. Los premios se acumularán mientras conserve la racha anual definida.</p><p>Estas reglas todavía no calculan puntos reales; deben implementarse y verificarse con el registro compartido.</p></div>}
           </div>
         </div>
 
