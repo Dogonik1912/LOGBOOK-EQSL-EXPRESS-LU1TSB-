@@ -53,7 +53,7 @@ export default async function handler(req, res) {
   try {
     const cfg = config();
     if (req.method === 'GET') {
-      const identityToken = clean(req.query?.token, 64);
+      const identityToken = clean(req.headers['x-identity-token'], 64);
       const callsign = await resolveIdentity(identityToken, cfg);
       if (!callsign) return json(res, 401, { error: 'Verificá primero tu señal distintiva en este dispositivo.' });
       const items = await readInbox(callsign, cfg);
