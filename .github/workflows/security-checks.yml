@@ -1,0 +1,41 @@
+name: Security and build checks
+
+on:
+  push:
+    branches: [main, security-hardening-2026-10-26]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-and-build:
+    name: Dependency audit, TypeScript and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Audit dependencies (high severity and above)
+        run: npm audit --audit-level=high
+
+      - name: TypeScript check
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
