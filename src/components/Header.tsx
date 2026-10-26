@@ -111,6 +111,37 @@ export const Header: React.FC<HeaderProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  // Colores del indicativo inspirados en la bandera del país seleccionado.
+  // Se admiten nombres habituales y códigos de país guardados por la app.
+  const getCallsignCharacterClass = (character: string, countryValue: string) => {
+    const key = (countryValue || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const palettes: Record<string, { letters: string; digits: string }> = {
+      argentina: { letters: 'text-sky-500', digits: 'text-yellow-500' }, ar: { letters: 'text-sky-500', digits: 'text-yellow-500' }, arg: { letters: 'text-sky-500', digits: 'text-yellow-500' },
+      brasil: { letters: 'text-green-600', digits: 'text-yellow-500' }, brazil: { letters: 'text-green-600', digits: 'text-yellow-500' }, br: { letters: 'text-green-600', digits: 'text-yellow-500' },
+      espana: { letters: 'text-red-600', digits: 'text-yellow-500' }, spain: { letters: 'text-red-600', digits: 'text-yellow-500' }, es: { letters: 'text-red-600', digits: 'text-yellow-500' },
+      uruguay: { letters: 'text-sky-500', digits: 'text-yellow-500' }, uy: { letters: 'text-sky-500', digits: 'text-yellow-500' },
+      colombia: { letters: 'text-blue-600', digits: 'text-yellow-500' }, co: { letters: 'text-blue-600', digits: 'text-yellow-500' },
+      venezuela: { letters: 'text-blue-600', digits: 'text-yellow-500' }, ve: { letters: 'text-blue-600', digits: 'text-yellow-500' },
+      ecuador: { letters: 'text-blue-700', digits: 'text-yellow-500' }, ec: { letters: 'text-blue-700', digits: 'text-yellow-500' },
+      chile: { letters: 'text-red-600', digits: 'text-blue-600' }, cl: { letters: 'text-red-600', digits: 'text-blue-600' },
+      mexico: { letters: 'text-green-600', digits: 'text-red-600' }, mx: { letters: 'text-green-600', digits: 'text-red-600' },
+      portugal: { letters: 'text-green-600', digits: 'text-red-600' }, pt: { letters: 'text-green-600', digits: 'text-red-600' },
+      italia: { letters: 'text-green-600', digits: 'text-red-600' }, italy: { letters: 'text-green-600', digits: 'text-red-600' }, it: { letters: 'text-green-600', digits: 'text-red-600' },
+      francia: { letters: 'text-blue-700', digits: 'text-red-600' }, france: { letters: 'text-blue-700', digits: 'text-red-600' }, fr: { letters: 'text-blue-700', digits: 'text-red-600' },
+      alemania: { letters: 'text-red-600', digits: 'text-yellow-500' }, germany: { letters: 'text-red-600', digits: 'text-yellow-500' }, de: { letters: 'text-red-600', digits: 'text-yellow-500' },
+      'estados unidos': { letters: 'text-blue-700', digits: 'text-red-600' }, usa: { letters: 'text-blue-700', digits: 'text-red-600' }, us: { letters: 'text-blue-700', digits: 'text-red-600' },
+      'reino unido': { letters: 'text-blue-700', digits: 'text-red-600' }, uk: { letters: 'text-blue-700', digits: 'text-red-600' }, gb: { letters: 'text-blue-700', digits: 'text-red-600' },
+      canada: { letters: 'text-red-600', digits: 'text-red-600' }, ca: { letters: 'text-red-600', digits: 'text-red-600' },
+      japon: { letters: 'text-red-600', digits: 'text-slate-950' }, japan: { letters: 'text-red-600', digits: 'text-slate-950' }, jp: { letters: 'text-red-600', digits: 'text-slate-950' },
+      australia: { letters: 'text-blue-700', digits: 'text-red-600' }, au: { letters: 'text-blue-700', digits: 'text-red-600' },
+      'nueva zelanda': { letters: 'text-blue-700', digits: 'text-red-600' }, 'new zealand': { letters: 'text-blue-700', digits: 'text-red-600' }, nz: { letters: 'text-blue-700', digits: 'text-red-600' },
+      paraguay: { letters: 'text-red-600', digits: 'text-blue-700' }, py: { letters: 'text-red-600', digits: 'text-blue-700' },
+      bolivia: { letters: 'text-green-600', digits: 'text-red-600' }, bo: { letters: 'text-green-600', digits: 'text-red-600' },
+      peru: { letters: 'text-red-600', digits: 'text-red-600' }, pe: { letters: 'text-red-600', digits: 'text-red-600' }
+    };
+    const palette = palettes[key] || { letters: 'text-slate-950', digits: 'text-slate-950' };
+    return /\d/.test(character) ? palette.digits : palette.letters;
+  };
   const readCallsign = () => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
   const [callsign, setCallsign] = useState(() => readCallsign());
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
@@ -234,7 +265,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="min-w-0 max-w-[58%] sm:max-w-none shrink-0">
               <span className="inline-flex min-h-11 sm:min-h-14 min-w-[7rem] sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-3 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
-                  <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
+                  <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
               </span>
             </div>
