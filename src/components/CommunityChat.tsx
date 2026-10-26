@@ -210,7 +210,7 @@ export const CommunityChat: React.FC = () => {
     };
     void translateMessages();
     return () => { active = false; };
-  }, [messages, appLanguage, translatedBodies]);
+  }, [messages, appLanguage]);
 
   const saveCallsign = async () => {
     if (!supabase || busy) return;
