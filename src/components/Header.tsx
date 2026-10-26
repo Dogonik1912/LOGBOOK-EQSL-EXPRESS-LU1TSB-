@@ -94,7 +94,8 @@ export const Header: React.FC<HeaderProps> = ({
         const token = localStorage.getItem('community_chat_identity_token') || '';
         if (token) {
           const { data, error } = await supabase.rpc('resolve_community_callsign', { p_token: token });
-          const recovered = !error && typeof data === 'string' ? data.trim().toUpperCase() : '';
+          const value = typeof data === 'string' ? data : Array.isArray(data) ? (data[0]?.callsign ?? data[0]?.sd ?? data[0]?.resolve_community_callsign) : data && typeof data === 'object' ? ((data as any).callsign ?? (data as any).sd ?? (data as any).resolve_community_callsign) : '';
+          const recovered = !error && typeof value === 'string' ? value.trim().toUpperCase() : '';
           if (recovered) {
             localStorage.setItem('community_chat_sd', recovered);
             setCallsign(recovered);
