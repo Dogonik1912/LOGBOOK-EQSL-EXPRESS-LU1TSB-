@@ -41,9 +41,11 @@ export function detectBrowserLanguage(): AppLanguage {
 export function languageFromPhone(phone?: string | null): AppLanguage | null {
   const digits = String(phone || '').replace(/[^0-9]/g, '');
   if (!digits) return null;
-  const international = String(phone || '').trim().startsWith('+') ? digits : '';
+  const raw = String(phone || '').trim();
+  const international = raw.startsWith('+') || raw.startsWith('00') || digits.length >= 11;
   if (!international) return null;
-  const match = PHONE_LANGUAGE.sort((a, b) => b[0].length - a[0].length).find(([prefix]) => digits.startsWith(prefix));
+  const normalizedDigits = raw.startsWith('00') ? digits.slice(2) : digits;
+  const match = [...PHONE_LANGUAGE].sort((a, b) => b[0].length - a[0].length).find(([prefix]) => normalizedDigits.startsWith(prefix));
   return match?.[1] || null;
 }
 
@@ -155,8 +157,16 @@ export function startAutomaticUiTranslation(): () => void {
     const nodes: Text[] = [];
     let node: Node | null;
     while ((node = walker.nextNode())) if (node.nodeType === Node.TEXT_NODE) nodes.push(node as Text);
-    // Bound each pass to avoid flooding the translation endpoint on large screens.
-    nodes.slice(0, 120).forEach((textNode) => { void translateNode(textNode, currentLanguage); });
+    const eligible = nodes.filter((textNode) => {
+      if (isExcludedTextNode(textNode) || pending.has(textNode)) return false;
+      const prior = appliedText.get(textNode);
+      return !(prior && textNode.nodeValue === prior.translated && prior.language === currentLanguage);
+    });
+    // Work in small batches so large screens do not flood the translation service.
+    const batch = eligible.slice(0, 80);
+    void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage))).finally(() => {
+      if (eligible.length > batch.length) window.setTimeout(scan, 120);
+    });
     translateAttributes(document.body, currentLanguage);
     document.documentElement.lang = currentLanguage;
   };
@@ -166,7 +176,7 @@ export function startAutomaticUiTranslation(): () => void {
   };
   scan();
   observer = new MutationObserver(() => scan());
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  observer.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('user-profile-updated', changeLanguage);
   window.addEventListener('storage', changeLanguage);
   return () => {
