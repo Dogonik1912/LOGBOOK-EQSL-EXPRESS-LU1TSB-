@@ -354,7 +354,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar indicativo, email..."
+              placeholder="Señal distintiva del corresponsal"
               className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-400"
             />
           </div>
