@@ -62,7 +62,7 @@ export default async function handler(req, res) {
       if (String(req.query?.count || '') === '1') return json(res, 200, { callsign, pendingReplies });
       const marked = items.map(item => item.readAt ? item : { ...item, readAt: new Date().toISOString() });
       if (unread) await writeInbox(callsign, marked, cfg);
-      return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread });
+      return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread, pendingReplies });
     }
     if (req.method === 'POST') {
       const sender = await resolveIdentity(clean(req.body?.token, 64), cfg);
