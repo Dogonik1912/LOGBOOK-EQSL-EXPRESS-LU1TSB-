@@ -98,12 +98,16 @@ async function translateOne(source: string, language: AppLanguage): Promise<stri
   const key = language + '\\u0000' + source;
   const cached = translationCache.get(key);
   if (cached) return cached;
-  const endpoint = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' +
-    encodeURIComponent(language) + '&dt=t&q=' + encodeURIComponent(source);
-  const response = await fetch(endpoint);
+  // Use a same-origin endpoint so translation does not depend on browser CORS
+  // rules or expose the third-party request directly to every device.
+  const response = await fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: source, language }),
+  });
   if (!response.ok) throw new Error('Translation unavailable');
   const data = await response.json();
-  const translated = Array.isArray(data?.[0]) ? data[0].map((part: any) => part?.[0] || '').join('') : '';
+  const translated = typeof data?.translated === 'string' ? data.translated : '';
   if (!translated) throw new Error('Empty translation');
   translationCache.set(key, translated);
   return translated;
