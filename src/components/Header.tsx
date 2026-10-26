@@ -31,6 +31,13 @@ export const Header: React.FC<HeaderProps> = ({
         const locationResponse = await fetch('https://ipapi.co/json/');
         if (!locationResponse.ok) throw new Error('Location unavailable');
         const location = await locationResponse.json();
+        // Si el operador no configuró un país, usar el código aproximado por IP
+        // para elegir los colores de la bandera. No se solicita GPS ni permiso.
+        if (!localStorage.getItem('user_country') && typeof location?.country_code === 'string' && location.country_code.trim()) {
+          const detectedCountry = location.country_code.trim().toLowerCase();
+          localStorage.setItem('user_country', detectedCountry);
+          setCountry(detectedCountry);
+        }
         const latitude = Number(location?.latitude);
         const longitude = Number(location?.longitude);
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error('Location unavailable');
@@ -137,7 +144,77 @@ export const Header: React.FC<HeaderProps> = ({
       'nueva zelanda': { letters: 'text-blue-700', digits: 'text-red-600' }, 'new zealand': { letters: 'text-blue-700', digits: 'text-red-600' }, nz: { letters: 'text-blue-700', digits: 'text-red-600' },
       paraguay: { letters: 'text-red-600', digits: 'text-blue-700' }, py: { letters: 'text-red-600', digits: 'text-blue-700' },
       bolivia: { letters: 'text-green-600', digits: 'text-red-600' }, bo: { letters: 'text-green-600', digits: 'text-red-600' },
-      peru: { letters: 'text-red-600', digits: 'text-red-600' }, pe: { letters: 'text-red-600', digits: 'text-red-600' }
+      peru: { letters: 'text-red-600', digits: 'text-red-600' }, pe: { letters: 'text-red-600', digits: 'text-red-600' },
+      // Países adicionales (códigos ISO y nombres comunes); los tonos representan colores de sus banderas.
+      af: { letters: 'text-green-600', digits: 'text-red-600' }, al: { letters: 'text-red-600', digits: 'text-slate-950' },
+      dz: { letters: 'text-green-600', digits: 'text-red-600' }, ad: { letters: 'text-red-600', digits: 'text-yellow-500' },
+      ao: { letters: 'text-red-600', digits: 'text-yellow-500' }, ag: { letters: 'text-red-600', digits: 'text-blue-700' },
+      am: { letters: 'text-red-600', digits: 'text-blue-700' }, az: { letters: 'text-blue-700', digits: 'text-red-600' },
+      bs: { letters: 'text-blue-700', digits: 'text-yellow-500' }, bh: { letters: 'text-red-600', digits: 'text-slate-950' },
+      bd: { letters: 'text-green-600', digits: 'text-red-600' }, bb: { letters: 'text-blue-700', digits: 'text-yellow-500' },
+      by: { letters: 'text-red-600', digits: 'text-green-600' }, bz: { letters: 'text-blue-700', digits: 'text-red-600' },
+      bj: { letters: 'text-green-600', digits: 'text-yellow-500' }, bt: { letters: 'text-yellow-500', digits: 'text-orange-600' },
+      ba: { letters: 'text-blue-700', digits: 'text-yellow-500' }, bw: { letters: 'text-sky-500', digits: 'text-slate-950' },
+      bn: { letters: 'text-yellow-500', digits: 'text-slate-950' }, bg: { letters: 'text-red-600', digits: 'text-green-600' },
+      bf: { letters: 'text-red-600', digits: 'text-green-600' }, bi: { letters: 'text-red-600', digits: 'text-green-600' },
+      kh: { letters: 'text-blue-700', digits: 'text-red-600' }, cm: { letters: 'text-green-600', digits: 'text-red-600' },
+      cv: { letters: 'text-blue-700', digits: 'text-red-600' }, cf: { letters: 'text-blue-700', digits: 'text-green-600' },
+      td: { letters: 'text-blue-700', digits: 'text-red-600' }, cn: { letters: 'text-red-600', digits: 'text-yellow-500' },
+      km: { letters: 'text-green-600', digits: 'text-yellow-500' }, cg: { letters: 'text-green-600', digits: 'text-red-600' },
+      cd: { letters: 'text-blue-700', digits: 'text-red-600' }, ci: { letters: 'text-orange-600', digits: 'text-green-600' },
+      hr: { letters: 'text-red-600', digits: 'text-blue-700' }, cy: { letters: 'text-orange-500', digits: 'text-green-600' },
+      dj: { letters: 'text-sky-500', digits: 'text-green-600' }, dm: { letters: 'text-green-600', digits: 'text-yellow-500' },
+      eg: { letters: 'text-red-600', digits: 'text-slate-950' }, sv: { letters: 'text-blue-700', digits: 'text-yellow-500' },
+      er: { letters: 'text-red-600', digits: 'text-green-600' }, ee: { letters: 'text-blue-700', digits: 'text-slate-950' },
+      et: { letters: 'text-blue-700', digits: 'text-slate-950' }, fj: { letters: 'text-sky-500', digits: 'text-red-600' },
+      ga: { letters: 'text-green-600', digits: 'text-yellow-500' }, gm: { letters: 'text-red-600', digits: 'text-green-600' },
+      ge: { letters: 'text-red-600', digits: 'text-slate-950' }, gh: { letters: 'text-green-600', digits: 'text-yellow-500' },
+      gd: { letters: 'text-red-600', digits: 'text-yellow-500' }, gt: { letters: 'text-sky-500', digits: 'text-slate-950' },
+      gn: { letters: 'text-green-600', digits: 'text-yellow-500' }, gw: { letters: 'text-red-600', digits: 'text-green-600' },
+      gy: { letters: 'text-green-600', digits: 'text-yellow-500' }, ht: { letters: 'text-blue-700', digits: 'text-red-600' },
+      hn: { letters: 'text-sky-500', digits: 'text-slate-950' }, is: { letters: 'text-blue-700', digits: 'text-red-600' },
+      ir: { letters: 'text-green-600', digits: 'text-red-600' }, iq: { letters: 'text-red-600', digits: 'text-green-600' },
+      il: { letters: 'text-blue-700', digits: 'text-slate-950' }, jm: { letters: 'text-green-600', digits: 'text-yellow-500' },
+      jo: { letters: 'text-red-600', digits: 'text-green-600' }, kz: { letters: 'text-sky-500', digits: 'text-yellow-500' },
+      ke: { letters: 'text-red-600', digits: 'text-green-600' }, kw: { letters: 'text-green-600', digits: 'text-red-600' },
+      kg: { letters: 'text-red-600', digits: 'text-yellow-500' }, la: { letters: 'text-red-600', digits: 'text-blue-700' },
+      lv: { letters: 'text-red-600', digits: 'text-slate-950' }, lb: { letters: 'text-red-600', digits: 'text-green-600' },
+      ls: { letters: 'text-blue-700', digits: 'text-green-600' }, lr: { letters: 'text-red-600', digits: 'text-blue-700' },
+      ly: { letters: 'text-green-600', digits: 'text-red-600' }, li: { letters: 'text-red-600', digits: 'text-blue-700' },
+      lt: { letters: 'text-yellow-500', digits: 'text-green-600' }, lu: { letters: 'text-sky-500', digits: 'text-red-600' },
+      mg: { letters: 'text-red-600', digits: 'text-green-600' }, mw: { letters: 'text-red-600', digits: 'text-slate-950' },
+      my: { letters: 'text-blue-700', digits: 'text-red-600' }, mv: { letters: 'text-red-600', digits: 'text-green-600' },
+      ml: { letters: 'text-green-600', digits: 'text-yellow-500' }, mt: { letters: 'text-red-600', digits: 'text-slate-950' },
+      mr: { letters: 'text-green-600', digits: 'text-yellow-500' }, mu: { letters: 'text-red-600', digits: 'text-green-600' },
+      md: { letters: 'text-blue-700', digits: 'text-red-600' }, mc: { letters: 'text-red-600', digits: 'text-slate-950' },
+      mn: { letters: 'text-red-600', digits: 'text-blue-700' }, me: { letters: 'text-red-600', digits: 'text-yellow-500' },
+      ma: { letters: 'text-red-600', digits: 'text-green-600' }, mz: { letters: 'text-green-600', digits: 'text-red-600' },
+      mm: { letters: 'text-yellow-500', digits: 'text-green-600' }, na: { letters: 'text-blue-700', digits: 'text-red-600' },
+      np: { letters: 'text-red-600', digits: 'text-blue-700' }, ne: { letters: 'text-orange-600', digits: 'text-green-600' },
+      ng: { letters: 'text-green-600', digits: 'text-slate-950' }, kp: { letters: 'text-red-600', digits: 'text-blue-700' },
+      mk: { letters: 'text-red-600', digits: 'text-yellow-500' }, om: { letters: 'text-red-600', digits: 'text-green-600' },
+      pk: { letters: 'text-green-600', digits: 'text-slate-950' }, ps: { letters: 'text-red-600', digits: 'text-green-600' },
+      ph: { letters: 'text-blue-700', digits: 'text-red-600' }, qa: { letters: 'text-purple-800', digits: 'text-slate-950' },
+      rw: { letters: 'text-sky-500', digits: 'text-yellow-500' }, kn: { letters: 'text-green-600', digits: 'text-red-600' },
+      lc: { letters: 'text-sky-500', digits: 'text-yellow-500' }, vc: { letters: 'text-blue-700', digits: 'text-green-600' },
+      ws: { letters: 'text-red-600', digits: 'text-blue-700' }, sm: { letters: 'text-blue-700', digits: 'text-red-600' },
+      st: { letters: 'text-green-600', digits: 'text-yellow-500' }, sa: { letters: 'text-green-600', digits: 'text-slate-950' },
+      sn: { letters: 'text-green-600', digits: 'text-yellow-500' }, rs: { letters: 'text-red-600', digits: 'text-blue-700' },
+      sc: { letters: 'text-sky-500', digits: 'text-yellow-500' }, sl: { letters: 'text-green-600', digits: 'text-blue-700' },
+      sg: { letters: 'text-red-600', digits: 'text-slate-950' }, sk: { letters: 'text-blue-700', digits: 'text-red-600' },
+      si: { letters: 'text-blue-700', digits: 'text-red-600' }, so: { letters: 'text-sky-500', digits: 'text-slate-950' },
+      za: { letters: 'text-green-600', digits: 'text-yellow-500' }, ss: { letters: 'text-red-600', digits: 'text-green-600' },
+      lk: { letters: 'text-orange-600', digits: 'text-green-600' }, sd: { letters: 'text-red-600', digits: 'text-green-600' },
+      sr: { letters: 'text-green-600', digits: 'text-red-600' }, sz: { letters: 'text-blue-700', digits: 'text-red-600' },
+      sy: { letters: 'text-red-600', digits: 'text-green-600' }, tj: { letters: 'text-red-600', digits: 'text-green-600' },
+      tz: { letters: 'text-green-600', digits: 'text-yellow-500' }, th: { letters: 'text-red-600', digits: 'text-blue-700' },
+      tl: { letters: 'text-red-600', digits: 'text-yellow-500' }, tg: { letters: 'text-green-600', digits: 'text-yellow-500' },
+      to: { letters: 'text-red-600', digits: 'text-slate-950' }, tt: { letters: 'text-red-600', digits: 'text-slate-950' },
+      tn: { letters: 'text-red-600', digits: 'text-slate-950' }, tm: { letters: 'text-green-600', digits: 'text-slate-950' },
+      ug: { letters: 'text-yellow-500', digits: 'text-black' }, ae: { letters: 'text-green-600', digits: 'text-red-600' },
+      uz: { letters: 'text-sky-500', digits: 'text-green-600' }, vu: { letters: 'text-green-600', digits: 'text-red-600' },
+      ye: { letters: 'text-red-600', digits: 'text-slate-950' }, zm: { letters: 'text-green-600', digits: 'text-orange-600' },
+      zw: { letters: 'text-green-600', digits: 'text-yellow-500' }
     };
     const palette = palettes[key] || { letters: 'text-slate-950', digits: 'text-slate-950' };
     return /\d/.test(character) ? palette.digits : palette.letters;
