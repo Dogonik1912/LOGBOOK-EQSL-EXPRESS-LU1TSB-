@@ -150,7 +150,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl text-slate-100 my-8">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-4 sm:p-6 shadow-2xl text-slate-100 my-4 max-h-[88vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
@@ -175,13 +175,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <p className="text-[11px] text-slate-500 mt-1">Tu indicativo se usará como dato predeterminado en tus tarjetas eQSL.</p>
           </div>
           {/* Idioma predeterminado de la interfaz */}
-          <div className="rounded-xl border border-violet-500/25 bg-slate-950/60 p-3.5 space-y-2">
-            <label className="block text-xs font-bold text-violet-300" htmlFor="app-language">Idioma predeterminado de la aplicación</label>
+          <div className="rounded-xl border-2 border-sky-400/70 bg-slate-800 p-3.5 space-y-2">
+            <label className="block text-sm font-bold text-sky-200" htmlFor="app-language">🌐 Idioma de la aplicación</label>
             <select
               id="app-language"
               value={appLanguage}
               onChange={(e) => setAppLanguage(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:border-violet-400 focus:outline-hidden"
+              className="w-full min-h-11 px-3 py-2 bg-slate-950 border-2 border-sky-400 rounded-lg text-base font-semibold text-white focus:border-sky-300 focus:outline-hidden"
             >
               <option value="es">🇪🇸 Español</option>
               <option value="en">🇬🇧 English</option>
@@ -357,18 +357,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
           </section>
 
-          <section className="rounded-xl border border-sky-500/30 bg-sky-950/30 p-4 space-y-2" aria-labelledby="logbook-contact-title">
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-sky-300" />
-              <h3 id="logbook-contact-title" className="text-sm font-bold text-sky-200">Contacto con LogBook eQSL EXPRESS</h3>
-            </div>
-            <p className="text-xs leading-relaxed text-slate-300">Para denuncias, suplantaciones, pérdida de acceso, recuperación de clave, consultas o solicitudes relacionadas con tus datos, contactá al administrador. Esta opción está disponible sin registro.</p>
-            <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Contacto%20con%20LogBook%20eQSL%20EXPRESS" className="block break-all text-sm font-semibold text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
-            <div className="flex flex-wrap gap-2">
-              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Denuncia%20o%20suplantacion%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Enviar denuncia</a>
-              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Perdida%20de%20acceso%20-%20LogBook%20eQSL%20EXPRESS" className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">Recuperar acceso</a>
-              <button type="button" onClick={() => { void navigator.clipboard?.writeText('lu1tsb.4rc978@gmail.com').then(() => window.alert('Correo copiado.')).catch(() => window.alert('Correo de contacto: lu1tsb.4rc978@gmail.com')); }} className="inline-flex items-center gap-1 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800"><Copy className="h-3 w-3" /> Copiar correo</button>
-            </div>
+          <section className="px-1 py-2 border-t border-slate-700" aria-label="Contacto">
+            <p className="flex flex-wrap items-center gap-x-1 text-xs text-slate-400">
+              <span>Contacto:</span>
+              <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Contacto%20con%20LogBook%20eQSL%20EXPRESS" className="font-medium text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
+            </p>
           </section>
           {/* Footer del Modal */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
