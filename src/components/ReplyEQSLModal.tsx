@@ -419,6 +419,18 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
+    // Registrar la respuesta en el buzón privado del destinatario si el remitente está verificado.
+    const identityToken = localStorage.getItem('community_chat_identity_token') || '';
+    const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (identityToken && identityCallsign) {
+      try {
+        await fetch('/api/eqsl-inbox', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: activeMyCall, to: replyToCall.trim().toUpperCase(), isResponse: true, date, band, mode }),
+        });
+      } catch (error) { console.warn('No se pudo registrar la respuesta eQSL en el buzón:', error); }
+    }
     return window.location.origin + '/?e=' + encodeURIComponent(result.id);
   };
   // Intenta compartir siempre la misma tarjeta PNG mediante la hoja nativa del teléfono.
