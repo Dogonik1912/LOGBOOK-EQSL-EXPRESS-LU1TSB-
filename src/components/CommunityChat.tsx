@@ -345,7 +345,7 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <p className="mb-3 text-xs text-slate-600">Acceso gratuito y sin registro. Tu señal distintiva se registra una sola vez y queda fija en este dispositivo.</p>            {isModerator && sdLocked && (
+            {isModerator && sdLocked && (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
                 <span className="text-xs font-semibold text-red-800">Administrador: {callsign}</span>
                 <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar cuenta administradora (${callsign === "LU1TSB" ? "4RC978" : callsign === "4RC978" ? "LU1TSB/4RC978" : "LU1TSB"})`}</button>
@@ -368,7 +368,6 @@ export const CommunityChat: React.FC = () => {
         </>
       )}
       {(notice || error) && <div role={error ? 'alert' : 'status'} className={`border-t px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>{error || notice}</div>}
-      <p className="flex items-start gap-1.5 border-t border-slate-200 bg-slate-50 px-4 py-3 text-[11px] leading-relaxed text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Chat gratuito y sin registro. Evitá publicar información privada.</p>
     </section>
   );
 };
