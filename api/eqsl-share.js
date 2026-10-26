@@ -97,7 +97,8 @@ export default async function handler(req, res) {
             const inboxRecord = await new Response(inboxBlob.stream).json();
             if (!inboxRecord?.card || !inboxRecord?.expiresAt || Date.parse(inboxRecord.expiresAt) <= Date.now()) continue;
             if (String(inboxRecord.card.to || '').trim().toUpperCase() !== requestedInbox) continue;
-            const { imageDataUrl: _privateImage, ...cardPreview } = inboxRecord.card;
+            const cardPreview = { ...inboxRecord.card };
+            delete cardPreview.imageDataUrl;
             cards.push({ id: inboxRecord.id, card: cardPreview, receivedAt: inboxRecord.createdAt || inboxRecord.expiresAt, expiresAt: inboxRecord.expiresAt });
           } catch (readError) {
             console.warn('[eqsl-share] skipping unreadable inbox item');
