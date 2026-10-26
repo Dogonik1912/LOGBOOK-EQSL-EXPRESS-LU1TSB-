@@ -222,17 +222,24 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-      <div className="relative w-full px-2 sm:px-4 pt-12 pb-3.5 md:pt-3.5 flex flex-col gap-3">
-      <div className="absolute left-2 top-2 md:top-3 z-10 flex flex-col items-start gap-1" title="Hora UTC y fecha local de este dispositivo"><div className="flex items-center gap-2 rounded-md border border-black bg-black px-3 py-2 font-mono text-2xl sm:text-3xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div><div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>{localWeather && <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2 py-1 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad aproximadas según la ubicación por Internet"><span className="inline-flex items-center gap-1"><Thermometer className="h-4 w-4 text-red-400" aria-label="Temperatura" />{localWeather.temperature}°C</span><span className="inline-flex items-center gap-1"><Droplets className="h-4 w-4 text-sky-400" aria-label="Humedad" />{localWeather.humidity}%</span></div>}</div>
-      {callsign && (
-        <div className="absolute right-2 top-2 md:top-3 z-10">
-          <span className="inline-flex min-w-[5.5rem] justify-center rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-sm sm:text-base font-extrabold shadow-sm" title={`Señal distintiva: ${callsign}`}>
-            {callsign.split('').map((character, index) => (
-              <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
-            ))}
-          </span>
+      <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-3">
+        {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
+        <div className="w-full flex items-start justify-between gap-3">
+          <div className="min-w-0 flex flex-col items-start gap-1" title="Hora UTC y fecha local de este dispositivo">
+            <div className="flex items-center gap-2 rounded-md border border-black bg-black px-2 sm:px-3 py-1.5 sm:py-2 font-mono text-xl sm:text-3xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
+            <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
+            {localWeather && <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad aproximadas según la ubicación por Internet"><span className="inline-flex items-center gap-1"><Thermometer className="h-4 w-4 text-red-400" aria-label="Temperatura" />{localWeather.temperature}°C</span><span className="inline-flex items-center gap-1"><Droplets className="h-4 w-4 text-sky-400" aria-label="Humedad" />{localWeather.humidity}%</span></div>}
+          </div>
+          {callsign && (
+            <div className="min-w-0 max-w-[58%] sm:max-w-none shrink-0">
+              <span className="inline-flex min-h-11 sm:min-h-14 min-w-[7rem] sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-3 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
+                {callsign.split('').map((character, index) => (
+                  <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
+                ))}
+              </span>
+            </div>
+          )}
         </div>
-      )}
         {/* Encabezamiento panorámico LogBook eQSL EXPRESS */}
         <div className="w-full overflow-hidden">
           <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
