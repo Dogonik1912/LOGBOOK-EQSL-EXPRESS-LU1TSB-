@@ -58,7 +58,9 @@ export const EQSLMailbox: React.FC = () => {
     const onIdentityUpdated = () => { void refreshCount(); };
     window.addEventListener('user-profile-updated', onIdentityUpdated);
     window.addEventListener('storage', onIdentityUpdated);
+    const refreshTimer = window.setInterval(() => { void refreshCount(); }, 60_000);
     return () => {
+      window.clearInterval(refreshTimer);
       window.removeEventListener('user-profile-updated', onIdentityUpdated);
       window.removeEventListener('storage', onIdentityUpdated);
     };
