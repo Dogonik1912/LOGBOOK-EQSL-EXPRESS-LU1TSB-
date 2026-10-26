@@ -42,6 +42,7 @@ export const CommunityChat: React.FC = () => {
   const toggleChatTheme = () => setDarkChat((current) => { const next = !current; localStorage.setItem('community_chat_theme', next ? 'dark' : 'light'); return next; });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [adminNotice, setAdminNotice] = useState('');
   const [error, setError] = useState('');
   const [moderationBusy, setModerationBusy] = useState(false);
 
@@ -355,7 +356,7 @@ export const CommunityChat: React.FC = () => {
       if (!result) return;
       setModeratorCandidate('');
       setModeratorTargetSelected(null);
-      setNotice(`${target} ahora tiene rol de moderador.`);
+      setAdminNotice(`${target} ahora tiene rol de moderador.`);
     } finally {
       setModerationBusy(false);
     }
@@ -475,6 +476,7 @@ export const CommunityChat: React.FC = () => {
         </>
       )}
       {(notice || error) && <div role={error ? 'alert' : 'status'} className={`border-t px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>{error || notice}</div>}
+      {isAdmin && adminNotice && <div role="status" className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{adminNotice}</div>}
 
     </section>
   );
