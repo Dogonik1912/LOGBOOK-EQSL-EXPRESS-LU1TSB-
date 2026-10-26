@@ -91,7 +91,7 @@ function isExcludedTextNode(node: Text): boolean {
   if (!/[a-zA-ZÀ-ž\u0400-\u04FF\u4e00-\u9fff]/.test(value)) return true;
   if (/^(LogBook eQSL EXPRESS|eQSL EXPRESS|LU1TSB\/4RC978)$/i.test(value)) return true;
   // Preserve amateur-radio callsigns and identifiers wherever they appear in a text node.
-  if (/\\b(?:[A-Z]{1,2}\\d[A-Z0-9]{1,4}|\\d[A-Z]{1,2}\\d[A-Z0-9]{1,4})(?:\\/[A-Z0-9]+)?\\b/i.test(value)) return true;
+  if (/\b(?:[A-Z]{1,2}\d[A-Z0-9]{1,4}|\d[A-Z]{1,2}\d[A-Z0-9]{1,4})(?:\/[A-Z0-9]+)?\b/i.test(value)) return true;
   if (/^(https?:\/\/|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}$)/.test(value)) return true;
   return false;
 }
