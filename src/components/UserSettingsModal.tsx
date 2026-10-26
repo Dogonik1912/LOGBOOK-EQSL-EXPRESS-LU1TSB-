@@ -26,6 +26,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
   const [appLanguage, setAppLanguage] = useState(() => getInitialAppLanguage());
   const [eqslSoundAlerts, setEqslSoundAlerts] = useState(true);
+  const [pushStatus, setPushStatus] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
 
@@ -45,6 +46,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setAppLanguage(localStorage.getItem('app_language') || getInitialAppLanguage());
       setEqslSoundAlerts(localStorage.getItem('eqsl_sound_alerts') !== 'false');
+      setPushStatus('');
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -129,6 +131,44 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
   };
 
+  const activatePushNotifications = async () => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        setPushStatus('Este navegador no admite notificaciones push. Instalá la app desde Chrome y volvé a intentar.');
+        return;
+      }
+      const publicKey = (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY as string | undefined;
+      if (!publicKey) {
+        setPushStatus('Falta configurar la clave pública de notificaciones en Vercel.');
+        return;
+      }
+      const identityToken = localStorage.getItem('community_chat_identity_token') || '';
+      const verifiedCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (!identityToken || !verifiedCallsign) {
+        setPushStatus('Primero verificá tu señal distintiva en este dispositivo.');
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus('No se autorizaron las notificaciones. Revisá los permisos del navegador.');
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const applicationServerKey = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(publicKey.length / 4) * 4, '=')), ch => ch.charCodeAt(0));
+      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+      const response = await fetch('/api/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'subscribe', token: identityToken, callsign: verifiedCallsign, subscription: subscription.toJSON(), alertsEnabled: eqslSoundAlerts }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo registrar este dispositivo.');
+      setPushStatus('Notificaciones activadas. El teléfono podrá avisarte de nuevas eQSL aunque cierres la app.');
+    } catch (error) {
+      setPushStatus(error instanceof Error ? error.message : 'No se pudieron activar las notificaciones push.');
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const finalCall = callsign.trim().toUpperCase();
@@ -142,6 +182,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.setItem('app_language', appLanguage);
     localStorage.setItem('eqsl_sound_alerts', eqslSoundAlerts ? 'true' : 'false');
     window.dispatchEvent(new Event('eqsl-sound-setting-updated'));
+    const pushToken = localStorage.getItem('community_chat_identity_token') || '';
+    const pushCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (pushToken && pushCallsign) {
+      void fetch('/api/push-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'settings', token: pushToken, callsign: pushCallsign, alertsEnabled: eqslSoundAlerts }) }).catch(() => {});
+    }
     window.dispatchEvent(new Event('user-profile-updated'));
 
     localStorage.removeItem('hamqth_user');
@@ -251,6 +296,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 <span className="block text-[11px] text-slate-400">Reproduce una alerta sonora cuando se detecta una nueva eQSL. Podés desactivarla aquí.</span>
               </span>
             </label>
+            <div className="pt-2 space-y-2">
+              <button type="button" onClick={activatePushNotifications} className="w-full rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-2.5 text-sm font-bold text-white">
+                Activar avisos aunque la app esté cerrada
+              </button>
+              {pushStatus && <p role="status" className="text-xs text-sky-200 break-words">{pushStatus}</p>}
+              <p className="text-[11px] text-slate-400">Requiere permiso de notificaciones de Android/Chrome. El interruptor de sonido de arriba también controla estos avisos.</p>
+            </div>
           </section>
 
           <div className="pt-2 border-t border-slate-800">
