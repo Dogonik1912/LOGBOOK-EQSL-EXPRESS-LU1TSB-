@@ -168,7 +168,7 @@ export const EQSLMailbox: React.FC = () => {
         {items.map(item => <article key={item.id} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-3">
           <span className={`shrink-0 rounded-md p-2 ${item.isResponse ? 'bg-sky-500/15 text-sky-300' : 'bg-amber-500/15 text-amber-300'}`}><MailOpen className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-white">{item.isResponse ? 'eQSL respuesta' : 'eQSL recibida'} · {item.from}</strong><span className="block text-[10px] text-slate-400">{item.date} · {item.band} · {item.mode}</span></span>
-          <button type="button" onClick={() => { window.location.href = '/?e=' + encodeURIComponent(item.id); }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-400 px-2 py-1.5 text-[10px] font-bold text-slate-950">Abrir <ArrowUpRight className="h-3 w-3" /></button>
+          <button type="button" disabled={Boolean(item.answeredAt && !item.isResponse)} onClick={() => { window.location.href = '/?e=' + encodeURIComponent(item.id); }} className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-bold ${item.answeredAt && !item.isResponse ? 'bg-red-600 text-white cursor-not-allowed' : 'bg-amber-400 text-slate-950'}`}>{item.answeredAt && !item.isResponse ? 'eQSL RESPONDIDA' : 'Abrir'}{!(item.answeredAt && !item.isResponse) && <ArrowUpRight className="h-3 w-3" />}</button>
         </article>)}
       </div>
     </div>}
