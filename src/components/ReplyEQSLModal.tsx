@@ -434,6 +434,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: activeMyCall, to: replyToCall.trim().toUpperCase(), isResponse: true, date, band, mode }),
           });
+          if (!inboxResponse.ok) {
+            const deliveryError = await inboxResponse.json().catch(() => ({}));
+            if (sendToInbox) throw new Error(deliveryError.error || 'El servidor no pudo entregar la respuesta al buzón eQSL POST.');
+          }
           if (inboxResponse.ok && initialData?.originalEqslId) {
             await fetch('/api/eqsl-inbox', {
               method: 'POST',
@@ -442,7 +446,12 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
             });
             window.dispatchEvent(new Event('eqsl-pending-count-updated'));
           }
-        } catch { /* El enlace de respuesta se mantiene disponible si el buzón no responde. */ }
+        } catch (error) {
+          if (sendToInbox) throw error;
+          /* El enlace de respuesta se mantiene disponible si el buzón no responde. */
+        }
+      } else if (sendToInbox) {
+        throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
       }
   
     }
@@ -463,12 +472,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     setEqslPostSending(true);
     setEqslPostStatus('');
     try {
-      const link = await createReplyCardLink(true);
-      const verify = await fetch('/api/eqsl-inbox?count=1', {
-        headers: { 'x-identity-token': identityToken },
-        cache: 'no-store',
-      });
-      if (!verify.ok) throw new Error('La respuesta se creó, pero no se pudo verificar el buzón. Compartí este enlace como alternativa: ' + link);
+      await createReplyCardLink(true);
       setEqslPostStatus('Respuesta enviada al eQSL POST de ' + replyToCall.trim().toUpperCase() + '.');
       window.dispatchEvent(new Event('eqsl-pending-count-updated'));
     } catch (error) {
