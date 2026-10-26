@@ -234,7 +234,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="min-w-0 max-w-[58%] sm:max-w-none shrink-0">
               <span className="inline-flex min-h-11 sm:min-h-14 min-w-[7rem] sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-3 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
-                  <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
+                  <span key={index} className={/^(argentina|ar|arg)$/.test(country) ? (/\d/.test(character) ? 'text-yellow-500' : 'text-sky-500') : 'text-slate-950'}>{character}</span>
                 ))}
               </span>
             </div>
