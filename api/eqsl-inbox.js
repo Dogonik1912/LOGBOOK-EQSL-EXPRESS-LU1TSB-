@@ -58,7 +58,8 @@ export default async function handler(req, res) {
       if (!callsign) return json(res, 401, { error: 'Verificá primero tu señal distintiva en este dispositivo.' });
       const items = await readInbox(callsign, cfg);
       const unread = items.filter(item => !item.readAt).length;
-      if (String(req.query?.count || '') === '1') return json(res, 200, { callsign, unread });
+      const pendingReplies = items.filter(item => !item.isResponse && !item.answeredAt).length;
+      if (String(req.query?.count || '') === '1') return json(res, 200, { callsign, pendingReplies });
       const marked = items.map(item => item.readAt ? item : { ...item, readAt: new Date().toISOString() });
       if (unread) await writeInbox(callsign, marked, cfg);
       return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread });
@@ -67,6 +68,17 @@ export default async function handler(req, res) {
       const sender = await resolveIdentity(clean(req.body?.token, 64), cfg);
       if (!sender || sender !== clean(req.body?.callsign, 40).toUpperCase()) {
         return json(res, 401, { error: 'La identidad de este dispositivo no pudo verificarse.' });
+      }
+      if (clean(req.body?.action, 32) === 'mark-answered') {
+        const originalId = clean(req.body?.id, 24);
+        const ownItems = await readInbox(sender, cfg);
+        const original = ownItems.find(item => item.id === originalId && !item.isResponse);
+        if (!original) return json(res, 404, { error: 'No se encontró la eQSL original en tu buzón.' });
+        if (!original.answeredAt) {
+          original.answeredAt = new Date().toISOString();
+          await writeInbox(sender, ownItems, cfg);
+        }
+        return json(res, 200, { ok: true, pendingReplies: ownItems.filter(item => !item.isResponse && !item.answeredAt).length });
       }
       const recipient = clean(req.body?.to, 40).toUpperCase();
       const id = clean(req.body?.id, 24);
