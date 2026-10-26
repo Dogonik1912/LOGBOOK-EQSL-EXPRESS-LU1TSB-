@@ -44,7 +44,7 @@ export async function sendEqslPush(callsign, item = {}) {
   let cfg;
   try { cfg = config(); } catch { return; }
   const subscriptions = await readSubscriptions(callsign, cfg);
-  const active = subscriptions.filter(s => s && s.alertsEnabled !== false && s.subscription?.endpoint);
+  const active = subscriptions.filter(s => s && s.subscription?.endpoint);
   if (!active.length) return;
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || 'mailto:lu1tsb.4rc978@gmail.com',
@@ -56,12 +56,12 @@ export async function sendEqslPush(callsign, item = {}) {
     body: item.isResponse ? 'Has recibido una respuesta a tu eQSL.' : 'Has recibido una nueva eQSL.',
     tag: 'eqsl-' + clean(item.id, 24),
     url: '/?open_eqsl_inbox=1',
-    silent: false,
   });
   const failed = new Set();
   await Promise.all(active.map(async (entry) => {
     try {
-      await webpush.sendNotification(entry.subscription, payload, { TTL: 60 * 60 * 24 });
+      const notificationPayload = JSON.stringify({ title: 'LogBook eQSL EXPRESS', body: item.isResponse ? 'Has recibido una respuesta a tu eQSL.' : 'Has recibido una nueva eQSL.', tag: 'eqsl-' + clean(item.id, 24), url: '/?open_eqsl_inbox=1', silent: entry.alertsEnabled === false });
+      await webpush.sendNotification(entry.subscription, notificationPayload, { TTL: 60 * 60 * 24 });
     } catch (error) {
       if (error?.statusCode === 404 || error?.statusCode === 410) failed.add(entry.subscription.endpoint);
     }
