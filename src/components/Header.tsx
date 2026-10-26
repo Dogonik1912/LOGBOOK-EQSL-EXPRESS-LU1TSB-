@@ -4,16 +4,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, Mailbox } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
 
 interface HeaderProps {
   onOpenSettings: () => void;
+  onOpenPostbox: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
+  onOpenPostbox,
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [utcClock, setUtcClock] = useState(() => new Date().toISOString().slice(11, 19));
@@ -237,6 +239,51 @@ export const Header: React.FC<HeaderProps> = ({
     return localStorage.getItem('app_header_image_locked') || '';
   };
   const [headerImage, setHeaderImage] = useState(() => readHeaderImage());
+  const [postboxUnread, setPostboxUnread] = useState(0);
+  const [postboxEnabled, setPostboxEnabled] = useState(false);
+  const [profileCallsign, setProfileCallsign] = useState(() => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
+  const loadPostboxUnread = async () => {
+    const registeredCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const identityToken = localStorage.getItem('community_chat_identity_token') || '';
+    setProfileCallsign(registeredCallsign);
+    if (!registeredCallsign || !identityToken || !supabase) {
+      setPostboxEnabled(false);
+      setPostboxUnread(0);
+      return;
+    }
+    try {
+      const response = await fetch('/api/eqsl-share?inbox=' + encodeURIComponent(registeredCallsign) + '&token=' + encodeURIComponent(identityToken), { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || !Array.isArray(result.cards)) {
+        setPostboxEnabled(false);
+        setPostboxUnread(0);
+        return;
+      }
+      setPostboxEnabled(true);
+      const seenKey = 'logbook_post_seen_ids_' + registeredCallsign;
+      let seen: string[] = [];
+      try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { seen = []; }
+      const seenIds = new Set(seen);
+      setPostboxUnread(result.cards.filter((item: { id?: string }) => item.id && !seenIds.has(item.id)).length);
+    } catch {
+      setPostboxEnabled(false);
+      setPostboxUnread(0);
+    }
+  };
+  useEffect(() => {
+    void loadPostboxUnread();
+    const timer = window.setInterval(() => { void loadPostboxUnread(); }, 20000);
+    const refresh = () => { void loadPostboxUnread(); };
+    window.addEventListener('user-profile-updated', refresh);
+    window.addEventListener('storage', refresh);
+    window.addEventListener('logbook-postbox-read', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('user-profile-updated', refresh);
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('logbook-postbox-read', refresh);
+    };
+  }, []);
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
 
   useEffect(() => {
@@ -339,12 +386,18 @@ export const Header: React.FC<HeaderProps> = ({
             {localWeather && <div className="flex items-center gap-3 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 shadow-sm" title="Clima aproximado por Internet; ubicación estimada, no GPS"><span className="inline-flex items-center justify-center rounded-md bg-slate-900 p-1.5" title={`Temperatura: ${localWeather.temperature}°C`} aria-label={`Temperatura: ${localWeather.temperature} grados Celsius`}><Thermometer className="h-5 w-5 text-red-400" /></span><span className="inline-flex items-center justify-center rounded-md bg-slate-900 p-1.5" title={`Humedad: ${localWeather.humidity}%`} aria-label={`Humedad: ${localWeather.humidity} por ciento`}><Droplets className="h-5 w-5 text-sky-400" /></span></div>}
           </div>
           {callsign && (
-            <div className="min-w-0 max-w-[58%] sm:max-w-none shrink-0">
+            <div className="flex min-w-0 max-w-[68%] items-start gap-2 sm:gap-3 shrink-0">
               <span className="inline-flex min-h-11 sm:min-h-14 min-w-[7rem] sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-3 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
               </span>
+              {postboxEnabled && profileCallsign && (
+                <button type="button" onClick={onOpenPostbox} aria-label="Abrir buzón de eQSL recibidas" title="Buzón eQSL POST" className="relative mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/60 bg-slate-800 text-amber-300 shadow-sm hover:bg-slate-700 sm:h-12 sm:w-12">
+                  <Mailbox className="h-5 w-5 sm:h-6 sm:w-6" />
+                  {postboxUnread > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-slate-900 bg-red-600 px-1 text-[10px] font-black leading-none text-white">{postboxUnread > 99 ? '99+' : postboxUnread}</span>}
+                </button>
+              )}
             </div>
           )}
         </div>

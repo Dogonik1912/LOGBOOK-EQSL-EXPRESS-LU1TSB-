@@ -13,7 +13,8 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { EQSLCardModal } from './components/EQSLCardModal';
 import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
-import { Award, Send } from 'lucide-react';
+import { MessageCircle, Send } from 'lucide-react';
+import { EQSLPostbox } from './components/EQSLPostbox';
 import { CommunityChat } from './components/CommunityChat';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 
@@ -61,6 +62,7 @@ function MainApp() {
     }
   };
   const [showCountryRanking, setShowCountryRanking] = useState(false);
+  const [isPostboxOpen, setIsPostboxOpen] = useState(false);
   const [activeEQSLQSO, setActiveEQSLQSO] = useState<QSO | null>(null);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyData, setReplyData] = useState<{
@@ -235,6 +237,20 @@ function MainApp() {
     setIsReplyModalOpen(true);
   };
 
+  const handleOpenPostboxReply = (card: { from: string; to: string; date: string; time: string; band: string; frequency: string; mode: string; rstSent?: string; rstRcvd?: string }) => {
+    setReplyData({
+      replyToCall: String(card.from || ''),
+      myCall: String(card.to || localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN),
+      date: String(card.date || ''),
+      time: String(card.time || ''),
+      band: String(card.band || '40m'),
+      frequency: String(card.frequency || '7.120'),
+      mode: String(card.mode || 'SSB'),
+      rst: String(card.rstRcvd || '59'),
+    });
+    setIsReplyModalOpen(true);
+  };
+
   const handleOpenManualReply = () => {
     const myCurrentCall = localStorage.getItem('user_callsign') || DEFAULT_CALLSIGN;
     setReplyData({
@@ -255,15 +271,15 @@ function MainApp() {
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
         onOpenSettings={handleOpenSettings}
-        onOpenReplyModal={handleOpenManualReply}
+        onOpenPostbox={() => setIsPostboxOpen(true)}
       />
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
-            <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><Award className="w-4 h-4" /></div>
-            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Estaciones activas · sin datos verificados</div></div>
+<div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
+            <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg shrink-0"><MessageCircle className="w-4 h-4" /></div>
+            <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-white">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-400">Comunidad · chat compartido</div></div>
           </div>
           <div className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl p-2.5 sm:p-3 flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
@@ -315,6 +331,15 @@ function MainApp() {
         onClose={() => setActiveEQSLQSO(null)}
         onOpenReply={handleOpenReplyForQSO}
       />
+
+      {isPostboxOpen && (
+        <EQSLPostbox
+          callsigns={[localStorage.getItem('community_chat_sd') || ''].filter(Boolean)}
+          identityToken={localStorage.getItem('community_chat_identity_token') || ''}
+          onClose={() => setIsPostboxOpen(false)}
+          onReply={handleOpenPostboxReply}
+        />
+      )}
 
       {/* Modal de Responder con eQSL */}
       <ReplyEQSLModal

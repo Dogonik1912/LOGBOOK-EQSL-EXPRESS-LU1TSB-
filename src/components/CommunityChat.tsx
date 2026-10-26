@@ -248,6 +248,7 @@ export const CommunityChat: React.FC = () => {
       setCallsign(cleanCallsign);
       setSdLocked(true);
       window.dispatchEvent(new Event('user-profile-updated'));
+      window.dispatchEvent(new Event('user-profile-updated'));
       setNotice('Señal distintiva guardada en este dispositivo.');
     } finally {
       setBusy(false);
