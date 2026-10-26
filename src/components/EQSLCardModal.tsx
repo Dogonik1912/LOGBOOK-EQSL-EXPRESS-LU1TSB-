@@ -64,6 +64,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   onOpenReply,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inboxDeliveryStatus = useRef<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [customBgImage, setCustomBgImage] = useState<string | null>(() => localStorage.getItem('eqsl_custom_bg') || null);
@@ -529,18 +530,36 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       throw new Error(result.error || 'No se pudo crear el enlace corto de la eQSL.');
     }
     // Si esta estación ya verificó su SD en el chat, registra la tarjeta en el buzón del destinatario.
+    inboxDeliveryStatus.current = null;
     const identityToken = localStorage.getItem('community_chat_identity_token') || '';
     const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
     if (identityToken && identityCallsign) {
       try {
-        await fetch('/api/eqsl-inbox', {
+        const inboxResponse = await fetch('/api/eqsl-inbox', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: cardData.from, to: cardData.to, isResponse: false, date: cardData.date, band: cardData.band, mode: cardData.mode }),
         });
-      } catch { /* El enlace externo sigue disponible aunque el buzón no responda. */ }
+        inboxDeliveryStatus.current = inboxResponse.ok;
+      } catch { inboxDeliveryStatus.current = false; /* El enlace externo sigue disponible aunque el buzón no responda. */ }
     }
     return `${window.location.origin}/?e=${encodeURIComponent(result.id)}`;
+  };
+
+  const handleSendEQSLPost = async () => {
+    if (!isQsoValidForEQSL()) return;
+    try {
+      await getReceivedCardUrl();
+      if (inboxDeliveryStatus.current === true) {
+        window.alert('eQSL enviada al buzón eQSL POST del indicativo destinatario.');
+      } else if (inboxDeliveryStatus.current === false) {
+        window.alert('No se pudo entregar al buzón. Podés usar WhatsApp, Telegram o correo como alternativa.');
+      } else {
+        window.alert('Para usar eQSL POST, primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo enviar la eQSL al buzón.');
+    }
   };
 
   // Descargar archivo PNG
@@ -890,6 +909,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={handleSendEQSLPost} className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"><Mail className="w-4 h-4" /> eQSL POST</button>
             {/* Descargar PNG */}
             <button
               type="button"
