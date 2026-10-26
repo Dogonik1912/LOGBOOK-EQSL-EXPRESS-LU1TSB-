@@ -200,6 +200,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const previousLanguage = localStorage.getItem('app_language') || getInitialAppLanguage();
     const finalCall = callsign.trim().toUpperCase();
     if (!isVerifiedCallsign && !finalCall) {
       window.alert('Ingresá tu indicativo de radio antes de guardar.');
@@ -227,6 +228,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     setSavedSuccess(true);
     onUpdate();
+    // Cambiar de idioma requiere reconstruir la interfaz desde React sin los nodos
+    // que el traductor automático haya modificado directamente en el DOM.
+    if (previousLanguage !== appLanguage) {
+      window.setTimeout(() => window.location.reload(), 0);
+      return;
+    }
     setTimeout(() => {
       onClose();
     }, 600);
