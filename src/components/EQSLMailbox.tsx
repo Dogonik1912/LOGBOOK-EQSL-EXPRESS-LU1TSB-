@@ -22,6 +22,20 @@ export const EQSLMailbox: React.FC = () => {
   const [error, setError] = useState('');
   const knownInboxIds = useRef<Set<string> | null>(null);
 
+  useEffect(() => {
+    const openInbox = () => setOpen(true);
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OPEN_EQSL_INBOX') openInbox();
+    };
+    if (new URLSearchParams(window.location.search).get('open_eqsl_inbox') === '1') setOpen(true);
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    window.addEventListener('open-eqsl-inbox', openInbox);
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', onMessage);
+      window.removeEventListener('open-eqsl-inbox', openInbox);
+    };
+  }, []);
+
   const token = () => localStorage.getItem('community_chat_identity_token') || '';
   const updateAppBadge = (count: number) => {
     const badgeNavigator = navigator as Navigator & { setAppBadge?: (contents?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
