@@ -11,23 +11,31 @@ type InboxItem = {
   mode: string;
   createdAt: string;
   readAt: string | null;
+  answeredAt?: string | null;
 };
 
 export const EQSLMailbox: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [unread, setUnread] = useState(0);
+  const [pendingReplies, setPendingReplies] = useState(0);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const token = () => localStorage.getItem('community_chat_identity_token') || '';
+  const updateAppBadge = (count: number) => {
+    const badgeNavigator = navigator as Navigator & { setAppBadge?: (contents?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    try {
+      if (count > 0) void badgeNavigator.setAppBadge?.(count).catch(() => {});
+      else void badgeNavigator.clearAppBadge?.().catch(() => {});
+    } catch { /* El navegador o dispositivo puede no admitir insignias de app. */ }
+  };
   const refreshCount = useCallback(async () => {
     const identityToken = token();
-    if (!identityToken) { setUnread(0); return; }
+    if (!identityToken) { setPendingReplies(0); updateAppBadge(0); return; }
     try {
       const response = await fetch('/api/eqsl-inbox?count=1', { headers: { 'x-identity-token': identityToken }, cache: 'no-store' });
       const result = await response.json();
-      if (response.ok) setUnread(Number(result.unread) || 0);
+      if (response.ok) { const count = Number(result.pendingReplies) || 0; setPendingReplies(count); updateAppBadge(count); }
     } catch { /* Mantener el contador anterior si no hay conexión. */ }
   }, []);
 
@@ -45,7 +53,9 @@ export const EQSLMailbox: React.FC = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'No se pudo abrir el buzón.');
       setItems(Array.isArray(result.items) ? result.items : []);
-      setUnread(0);
+      const count = Number(result.pendingReplies) || 0;
+      setPendingReplies(count);
+      updateAppBadge(count);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo abrir el buzón eQSL.');
     } finally {
@@ -57,11 +67,13 @@ export const EQSLMailbox: React.FC = () => {
     void refreshCount();
     const onIdentityUpdated = () => { void refreshCount(); };
     window.addEventListener('user-profile-updated', onIdentityUpdated);
+    window.addEventListener('eqsl-pending-count-updated', onIdentityUpdated);
     window.addEventListener('storage', onIdentityUpdated);
     const refreshTimer = window.setInterval(() => { void refreshCount(); }, 60_000);
     return () => {
       window.clearInterval(refreshTimer);
       window.removeEventListener('user-profile-updated', onIdentityUpdated);
+      window.removeEventListener('eqsl-pending-count-updated', onIdentityUpdated);
       window.removeEventListener('storage', onIdentityUpdated);
     };
   }, [refreshCount]);
@@ -75,7 +87,7 @@ export const EQSLMailbox: React.FC = () => {
   return <section className="min-w-0 rounded-xl border border-amber-400/60 bg-slate-900 p-2.5 sm:p-3">
     <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
       <span className="relative shrink-0 rounded-lg bg-amber-400 p-2 text-slate-950"><Inbox className="h-5 w-5" />
-        {unread > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-slate-900 bg-red-600 px-1 text-[10px] font-black text-white">{unread > 99 ? '99+' : unread}</span>}
+        {pendingReplies > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-slate-900 bg-red-600 px-1 text-[10px] font-black text-white">{pendingReplies > 99 ? '99+' : pendingReplies}</span>}
       </span>
       <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-amber-300">eQSL POST</span><span className="block text-[10px] leading-tight text-slate-300">Buzón de recibidas y respuestas</span></span>
       <MailOpen className="h-4 w-4 shrink-0 text-amber-300" />
