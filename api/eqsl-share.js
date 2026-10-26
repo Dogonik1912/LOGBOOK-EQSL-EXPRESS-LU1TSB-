@@ -56,7 +56,7 @@ export default async function handler(req, res) {
       const card = validateCard(req.body || {});
       if (!card) return json(res, 400, { error: 'Datos de la eQSL incompletos o inválidos.' });
 
-      const id = randomBytes(9).toString('hex'); // Solo caracteres hexadecimales para evitar problemas en enlaces compartidos.
+      const id = randomBytes(16).toString('hex'); // Token portador de 128 bits para dificultar la adivinación de enlaces.
       const expiresAt = new Date(Date.now() + LIFETIME_MS).toISOString();
       const pathname = `eqsl-shares/${id}.json`;
       await put(pathname, JSON.stringify({ id, card, expiresAt }), {
@@ -69,8 +69,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const id = clean(req.query?.id, 24);
-      if (!/^[a-z0-9_-]{6,24}$/i.test(id)) {
+      const id = clean(req.query?.id, 32);
+      if (!/^[a-z0-9_-]{6,32}$/i.test(id)) {
         return json(res, 400, { error: 'Enlace eQSL inválido.' });
       }
       const stored = await get(`eqsl-shares/${id}.json`, { access: 'private', token });
