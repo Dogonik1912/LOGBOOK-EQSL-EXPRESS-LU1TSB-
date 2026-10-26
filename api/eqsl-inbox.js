@@ -101,7 +101,7 @@ export default async function handler(req, res) {
         });
         await writeInbox(recipient, items, cfg);
         // Push delivery is best-effort: a push provider outage must not prevent eQSL delivery.
-        void sendEqslPush(recipient, items[0]).catch(() => {});
+        try { await sendEqslPush(recipient, items[0]); } catch { /* No interrumpir la entrega de la eQSL si falla el push. */ }
       }
       return json(res, 201, { ok: true });
     }
