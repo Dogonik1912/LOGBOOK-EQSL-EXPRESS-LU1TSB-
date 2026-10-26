@@ -21,7 +21,6 @@ export const CommunityChat: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
-  const [showChangeCallsign, setShowChangeCallsign] = useState(false);
   const [identityToken] = useState(() => {
     const existing = localStorage.getItem('community_chat_identity_token');
     if (existing) return existing;
@@ -198,37 +197,6 @@ export const CommunityChat: React.FC = () => {
     }
   };
 
-  const switchAdminCallsign = async () => {
-    if (!supabase || busy || !isModerator) return;
-    const current = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
-    const target = current === 'LU1TSB' ? '4RC978' : current === '4RC978' ? 'LU1TSB/4RC978' : current === 'LU1TSB/4RC978' ? 'LU1TSB' : '';
-    if (!target) { setError('No se reconoce esta cuenta administradora. Las tres cuentas previstas son LU1TSB, 4RC978 y LU1TSB/4RC978.'); return; }
-    setBusy(true); setError(''); setNotice('');
-    try {
-      const { data, error: switchError } = await supabase.rpc('link_community_admin_alias', {
-        p_callsign: current, p_token: identityToken, p_target_callsign: target,
-      });
-      if (switchError) {
-        console.error('[CommunityChat] Error al cambiar indicativo administrador:', switchError);
-        setError('Supabase rechazó el cambio (' + (switchError.code || 'sin código') + '): ' + switchError.message);
-        return;
-      }
-      if (!data?.ok) {
-        const reason = data?.reason || 'sin motivo devuelto';
-        console.error('[CommunityChat] No se pudo cambiar indicativo administrador:', data);
-        setError(reason === 'forbidden'
-          ? 'No se pudo verificar el permiso de administrador para este indicativo.'
-          : reason === 'missing_target'
-            ? 'El otro indicativo todavía no está registrado en el chat.'
-            : 'La función respondió: ' + reason + '. Revisá la respuesta de Supabase.');
-        return;
-      }
-      localStorage.setItem('community_chat_sd', target);
-      setCallsign(target); setSdLocked(true); setShowChangeCallsign(false); window.dispatchEvent(new Event('user-profile-updated'));
-      setNotice('Indicativo cambiado a ' + target + '. Los permisos de administrador se mantienen.');
-    } finally { setBusy(false); }
-  };
-
   const sendMessage = async () => {
     if (!supabase || busy) return;
     const body = draft.trim();
@@ -345,12 +313,6 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
-            {isModerator && sdLocked && (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
-                <span className="text-xs font-semibold text-red-800">Administrador: {callsign}</span>
-                <button type="button" onClick={() => void switchAdminCallsign()} disabled={busy} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "Cambiando…" : `Cambiar cuenta administradora (${callsign === "LU1TSB" ? "4RC978" : callsign === "4RC978" ? "LU1TSB/4RC978" : "LU1TSB"})`}</button>
-              </div>
-            )}
             {!sdLocked && (
               <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
                 <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva para el chat</label>
