@@ -15,6 +15,7 @@ import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
 import { Award, Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
+import { EQSLInbox } from './components/EQSLInbox';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 
 
@@ -280,6 +281,8 @@ function MainApp() {
         </div>
 
         <CommunityChat />
+
+        <EQSLInbox />
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
