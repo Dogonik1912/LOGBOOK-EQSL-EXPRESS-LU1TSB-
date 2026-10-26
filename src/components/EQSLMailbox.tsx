@@ -20,6 +20,8 @@ export const EQSLMailbox: React.FC = () => {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pushStatus, setPushStatus] = useState('');
+  const [pushBusy, setPushBusy] = useState(false);
   const knownInboxIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
@@ -145,6 +147,55 @@ export const EQSLMailbox: React.FC = () => {
     };
   }, [refreshCount, checkForNewIncoming]);
 
+  const activateNotifications = async () => {
+    setPushStatus('');
+    const identityToken = token();
+    const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const publicKey = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env.VITE_VAPID_PUBLIC_KEY || '';
+    if (!identityToken || !callsign) {
+      setPushStatus('Primero guardá y verificá tu señal distintiva en el chat comunitario.');
+      return;
+    }
+    if (!publicKey) {
+      setPushStatus('Las notificaciones de fondo aún requieren configurar VITE_VAPID_PUBLIC_KEY en Vercel y las claves VAPID del servidor.');
+      return;
+    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setPushStatus('Este navegador no admite notificaciones push. Podés recibir avisos sonoros mientras la app esté abierta.');
+      return;
+    }
+    setPushBusy(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus('Permití las notificaciones de LogBook eQSL EXPRESS en los ajustes del navegador.');
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const decodeKey = (value: string) => {
+        const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+        return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+      };
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: decodeKey(publicKey),
+      });
+      const response = await fetch('/api/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'subscribe', token: identityToken, callsign, subscription: subscription.toJSON(), alertsEnabled: true }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No se pudo activar la notificación.');
+      setPushStatus('Notificaciones activadas. El sonido también depende de los ajustes del dispositivo.');
+    } catch (e) {
+      setPushStatus(e instanceof Error ? e.message : 'No se pudieron activar las notificaciones.');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const toggle = () => {
     const next = !open;
     setOpen(next);
@@ -160,7 +211,7 @@ export const EQSLMailbox: React.FC = () => {
       <MailOpen className="h-4 w-4 shrink-0 text-amber-300" />
     </button>
     {open && <div className="mt-3 border-t border-slate-700 pt-3">
-      <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-white">eQSL recibidas</h3><button type="button" onClick={() => void loadInbox()} disabled={loading} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button></div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold text-white">eQSL recibidas</h3><div className="flex flex-wrap items-center gap-1"><button type="button" onClick={() => void activateNotifications()} disabled={pushBusy} className="rounded-md border border-sky-500/50 px-2 py-1 text-[10px] font-semibold text-sky-200 hover:bg-sky-950 disabled:opacity-50">{pushBusy ? 'Activando…' : 'Activar alertas'}</button><button type="button" onClick={() => void loadInbox()} disabled={loading} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button></div></div>{pushStatus && <p role="status" className="mb-2 rounded-lg bg-slate-800 p-2 text-[10px] text-sky-200">{pushStatus}</p>}
       {error && <p role="alert" className="mb-2 flex gap-2 rounded-lg border border-amber-500/30 bg-amber-950/40 p-2 text-xs text-amber-200"><AlertCircle className="h-4 w-4 shrink-0" />{error}</p>}
       {loading && <p className="py-3 text-center text-xs text-slate-300">Consultando el buzón…</p>}
       {!loading && !error && items.length === 0 && <p className="rounded-lg bg-slate-800 p-3 text-xs text-slate-300">Todavía no tenés eQSL en el buzón. Las tarjetas enviadas a tu señal distintiva aparecerán aquí.</p>}
