@@ -493,6 +493,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       hr: ['PRIMILI STE eQSL! Odgovorite brzo i besplatno uz eQSL EXPRESS.', 'Otvorite karticu i pritisnite gumb za odgovor:'],
       sr: ['DOBILI STE eQSL! Odgovorite brzo i besplatno uz eQSL EXPRESS.', 'Otvorite karticu i pritisnite dugme za odgovor:'],
       ca: ['HAS REBUT UNA eQSL! Respon ràpidament i gratuïtament amb eQSL EXPRESS.', 'Obre la targeta i prem el botó per respondre:'],
+      ko: ['eQSL을 받았습니다! eQSL EXPRESS에서 빠르고 무료로 답장하세요.', '카드를 열고 답장 버튼을 누르세요:'],
+      ar: ['لقد تلقيت بطاقة eQSL! يمكنك الرد بسرعة ومجانًا عبر eQSL EXPRESS.', 'افتح البطاقة واضغط على زر الرد:'],
+      hi: ['आपको eQSL मिला है! eQSL EXPRESS से जल्दी और मुफ्त जवाब दें।', 'कार्ड खोलें और जवाब देने के लिए बटन दबाएँ:'],
+      id: ['ANDA MENERIMA eQSL! Balas dengan cepat dan gratis melalui eQSL EXPRESS.', 'Buka kartu dan tekan tombol balas:'],
     };
     return copy[lang] || copy.en;
   };
