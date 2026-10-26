@@ -154,7 +154,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
 
   useEffect(() => {
     if (isOpen && initialData) {
-      setReplyToCall(initialData.replyToCall || DEFAULT_CALLSIGN);
+      setReplyToCall(String(initialData.replyToCall || '').trim().toUpperCase());
       const defaultUser = getUserCallsign();
       // Si el usuario actual es el mismo que replyToCall, sugerimos dejar vacío o el otro
       setMyCall(initialData.myCall || (/11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(initialData.band || '')) ? (localStorage.getItem('cb_station_callsign') || '') : (defaultUser !== initialData.replyToCall ? defaultUser : '')));
