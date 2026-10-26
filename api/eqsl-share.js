@@ -1,11 +1,12 @@
 import { randomBytes } from 'node:crypto';
-import { get, put } from '@vercel/blob';
+import { get, list, put } from '@vercel/blob';
 
 // Shared eQSL cards live in private Vercel Blob storage.
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
 const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
+const inboxKey = (callsign) => clean(callsign, 40).toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
 
 function getToken() {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -60,15 +61,33 @@ export default async function handler(req, res) {
       const expiresAt = new Date(Date.now() + LIFETIME_MS).toISOString();
       const pathname = `eqsl-shares/${id}.json`;
       await put(pathname, JSON.stringify({ id, card, expiresAt }), {
-        access: 'private',
-        token,
-        contentType: 'application/json; charset=utf-8',
-        addRandomSuffix: false,
+        access: 'private', token, contentType: 'application/json; charset=utf-8', addRandomSuffix: false,
+      });
+      // Add a minimal inbox pointer for the recipient. The full card remains in private Blob storage.
+      await put(`eqsl-inbox/${inboxKey(card.to)}/${id}.json`, JSON.stringify({ id, from: card.from, to: card.to, isResponse: card.isResponse, createdAt: new Date().toISOString(), expiresAt }), {
+        access: 'private', token, contentType: 'application/json; charset=utf-8', addRandomSuffix: false,
       });
       return json(res, 201, { id, expiresAt });
     }
 
     if (req.method === 'GET') {
+      const requestedInbox = clean(req.query?.inbox, 40).toUpperCase();
+      if (requestedInbox) {
+        if (!/^[A-Z0-9][A-Z0-9 /_-]{0,39}$/.test(requestedInbox)) return json(res, 400, { error: 'Señal distintiva no válida.' });
+        const prefix = `eqsl-inbox/${inboxKey(requestedInbox)}/`;
+        const listed = await list({ prefix, limit: 100, token });
+        const entries = await Promise.all((listed.blobs || []).map(async (blob) => {
+          try {
+            const stored = await get(blob.pathname, { access: 'private', token });
+            if (!stored || stored.statusCode !== 200 || !stored.stream) return null;
+            const item = await new Response(stored.stream).json();
+            if (!item?.id || Date.parse(item.expiresAt || '') <= Date.now()) return null;
+            return { id: item.id, from: item.from, to: item.to, isResponse: Boolean(item.isResponse), createdAt: item.createdAt };
+          } catch { return null; }
+        }));
+        entries.sort((a, b) => String(b?.createdAt || '').localeCompare(String(a?.createdAt || '')));
+        return json(res, 200, { messages: entries.filter(Boolean) });
+      }
       const id = clean(req.query?.id, 24);
       if (!/^[a-z0-9_-]{6,24}$/i.test(id)) {
         return json(res, 400, { error: 'Enlace eQSL inválido.' });
