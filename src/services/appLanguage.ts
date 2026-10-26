@@ -169,7 +169,7 @@ export function startAutomaticUiTranslation(): () => void {
       return !(prior && textNode.nodeValue === prior.translated && prior.language === currentLanguage);
     });
     // Work in small batches so large screens do not flood the translation service.
-    const batch = eligible.slice(0, 80);
+    const batch = eligible.slice(0, 16);
     if (batch.length) {
       translationBatchRunning = true;
       void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage))).finally(() => {
