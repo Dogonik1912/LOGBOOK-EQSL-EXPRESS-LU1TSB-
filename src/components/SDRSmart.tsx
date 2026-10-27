@@ -252,7 +252,6 @@ export function SDRSmart() {
         <a href="https://receiverbook.de/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">ReceiverBook · OpenWebRX</a>
         <a href="https://www.websdr.org/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">Directorio WebSDR</a>
       </div>
-      <p className="text-[10px] leading-relaxed text-slate-500">El directorio público se consulta con una caché de 30 minutos. La ubicación solo se usa en este dispositivo para ordenar los receptores; no se guarda en el servidor de LogBook. El funcionamiento y las bandas disponibles dependen de cada operador remoto.</p>
     </div>}
   </section>;
 }
