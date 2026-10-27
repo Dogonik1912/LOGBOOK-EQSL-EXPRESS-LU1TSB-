@@ -523,7 +523,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:justify-end sm:gap-3">
           {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
@@ -544,7 +544,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShareMenuOpen((open) => !open)}
               aria-expanded={shareMenuOpen}
               aria-haspopup="menu"
-              className="inline-flex min-h-10 items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl border border-slate-500 shadow-sm transition-all cursor-pointer"
+              className="inline-flex min-h-10 max-w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
               title="Compartir LogBook eQSL Express en tus redes"
             >
               <Share2 className="w-4 h-4" />
@@ -552,7 +552,7 @@ export const Header: React.FC<HeaderProps> = ({
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
             {shareMenuOpen && (
-              <div role="menu" className="absolute right-0 top-full mt-2 z-50 w-60 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
+              <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-1.5rem))] rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
                 <p className="px-2 py-1.5 text-[11px] text-slate-400">Elegí dónde compartir</p>
                 <div className="grid grid-cols-2 gap-1">
                   {shareOptions.map((option) => (
