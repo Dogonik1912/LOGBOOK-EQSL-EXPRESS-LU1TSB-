@@ -57,7 +57,7 @@ AS $$
   SELECT p.callsign, p.photo_data_url
   FROM public.community_call_sign_profiles p
   WHERE upper(p.callsign) = ANY (
-    SELECT upper(btrim(x)) FROM unnest(coalesce(p_callsigns, ARRAY[]::text[])) AS x
+    SELECT upper(btrim(requested_callsigns.callsign)) FROM unnest(coalesce(p_callsigns, ARRAY[]::text[])) AS requested_callsigns(callsign)
   )
     AND p.photo_data_url IS NOT NULL
   LIMIT 100;
