@@ -495,9 +495,9 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-3">
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
         <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
-          <div className="min-w-0 flex-1 flex flex-col items-start gap-1.5">
+          <div className="min-w-0 flex-1 flex flex-row items-center gap-2">
             {callsign && (
-              <span data-no-translate="true" translate="no" className="inline-flex min-h-10 sm:min-h-12 min-w-0 max-w-full items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${callsign}`}>
+              <span data-no-translate="true" translate="no" className="inline-flex min-h-9 sm:min-h-12 min-w-0 shrink items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-1.5 sm:py-2 font-mono text-sm sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
@@ -505,7 +505,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <LanguageSelector
               value={shareLanguage}
-              className="w-full min-w-0 sm:min-w-[13rem]"
+              className="min-w-0 flex-1 sm:min-w-[13rem]"
               onChange={(nextLanguage) => {
                 localStorage.setItem('app_language', nextLanguage);
                 setShareLanguage(nextLanguage);
