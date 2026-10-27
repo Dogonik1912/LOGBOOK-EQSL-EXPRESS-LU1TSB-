@@ -27,18 +27,37 @@ async function resolveIdentity(identityToken, cfg) {
   return typeof value === 'string' ? value.trim().toUpperCase() : '';
 }
 
+// These three spellings are explicitly linked for the app owner only.
+function inboxAliases(callsign) {
+  const normalized = callsign.trim().toUpperCase();
+  return ['LU1TSB', 'LU1TSB/4RC978', '4RC978'].includes(normalized)
+    ? ['LU1TSB', 'LU1TSB/4RC978', '4RC978']
+    : [normalized];
+}
+
 function inboxPath(callsign) {
   const key = createHash('sha256').update(callsign.trim().toUpperCase()).digest('hex');
   return 'eqsl-inboxes/' + key + '.json';
 }
 
-async function readInbox(callsign, cfg) {
+async function readInboxExact(callsign, cfg) {
   try {
     const stored = await get(inboxPath(callsign), { access: 'private', token: cfg.token });
     if (!stored || stored.statusCode !== 200 || !stored.stream) return [];
     const data = await new Response(stored.stream).json();
     return Array.isArray(data?.items) ? data.items : [];
   } catch { return []; }
+}
+
+async function readInbox(callsign, cfg) {
+  const groups = await Promise.all(inboxAliases(callsign).map(alias => readInboxExact(alias, cfg)));
+  const seen = new Set();
+  return groups.flat().filter(item => {
+    const id = String(item?.id || '');
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
 async function writeInbox(callsign, items, cfg) {
@@ -57,13 +76,14 @@ export default async function handler(req, res) {
       const identityToken = clean(req.headers['x-identity-token'], 64);
       const callsign = await resolveIdentity(identityToken, cfg);
       if (!callsign) return json(res, 401, { error: 'Verificá primero tu señal distintiva en este dispositivo.' });
+      const mailbox = inboxAliases(callsign)[0];
       const items = await readInbox(callsign, cfg);
       const unread = items.filter(item => !item.readAt).length;
       const pendingReplies = unread;
       if (String(req.query?.count || '') === '1') return json(res, 200, { callsign, pendingReplies, unread });
       if (String(req.query?.peek || '') === '1') return json(res, 200, { callsign, items: items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread, pendingReplies });
       const marked = items.map(item => item.readAt ? item : { ...item, readAt: new Date().toISOString() });
-      if (unread) await writeInbox(callsign, marked, cfg);
+      if (unread) await writeInbox(mailbox, marked, cfg);
       return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread: 0, pendingReplies: 0 });
     }
     if (req.method === 'POST') {
@@ -78,13 +98,14 @@ export default async function handler(req, res) {
         if (!original) return json(res, 404, { error: 'No se encontró la eQSL original en tu buzón.' });
         if (!original.answeredAt) {
           original.answeredAt = new Date().toISOString();
-          await writeInbox(sender, ownItems, cfg);
+          await writeInbox(inboxAliases(sender)[0], ownItems, cfg);
         }
         return json(res, 200, { ok: true, pendingReplies: ownItems.filter(item => !item.isResponse && !item.answeredAt).length });
       }
       const recipient = clean(req.body?.to, 40).toUpperCase();
       const id = clean(req.body?.id, 24);
       if (!CALL_RE.test(recipient) || !/^[a-f0-9]{12,24}$/i.test(id)) return json(res, 400, { error: 'Destinatario o identificador eQSL inválido.' });
+      const mailbox = inboxAliases(recipient)[0];
       const items = await readInbox(recipient, cfg);
       if (!items.some(item => item.id === id)) {
         items.unshift({
@@ -100,9 +121,9 @@ export default async function handler(req, res) {
           createdAt: new Date().toISOString(),
           readAt: null,
         });
-        await writeInbox(recipient, items, cfg);
-        // Push delivery is best-effort: a push provider outage must not prevent eQSL delivery.
-        try { await sendEqslPush(recipient, { ...items[0], unreadCount: items.filter(item => !item.readAt).length }); } catch { /* No interrumpir la entrega de la eQSL si falla el push. */ }
+        await writeInbox(mailbox, items, cfg);
+        // Best-effort push to subscriptions under the explicitly linked identifiers.
+        try { await Promise.all(inboxAliases(recipient).map(alias => sendEqslPush(alias, { ...items[0], unreadCount: items.filter(item => !item.readAt).length }))); } catch { /* No interrumpir la entrega de la eQSL si falla el push. */ }
       }
       return json(res, 201, { ok: true });
     }
