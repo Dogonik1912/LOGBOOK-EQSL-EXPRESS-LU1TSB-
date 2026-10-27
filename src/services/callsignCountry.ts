@@ -48,7 +48,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   HK:'Colombia',YV:'Venezuela',HC:'Ecuador',XE:'México',XF:'México',XG:'México',
   W:'Estados Unidos',K:'Estados Unidos',N:'Estados Unidos',VE:'Canadá',VA:'Canadá',
   G:'Reino Unido',M:'Reino Unido',F:'Francia',DL:'Alemania',DA:'Alemania',I:'Italia',
-  JA:'Japón',VK:'Australia',ZL:'Nueva Zelanda',9A:'Croacia',ON:'Bélgica',OE:'Austria',
+  JA:'Japón',VK:'Australia',ZL:'Nueva Zelanda','9A':'Croacia',ON:'Bélgica',OE:'Austria',
   HB:'Suiza',SM:'Suecia',SP:'Polonia',YO:'Rumania',UR:'Ucrania',UA:'Rusia'
 };
 
