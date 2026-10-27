@@ -587,7 +587,7 @@ export const CommunityChat: React.FC = () => {
                 <strong className="font-mono font-extrabold uppercase text-red-600">LU1TSB/4RC978</strong>
                 <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">FIJADO</span>
               </div>
-              <p className="text-sm font-semibold">¡Bienvenidos a LogBook eQSL EXPRESS!</p>
+              <p className="text-sm font-semibold">Bienvenidos al chat</p>
               <p className="mt-1 text-sm">Respeto, cordialidad y buenas ondas para todos. 🤝</p>
             </article>
             {messages.map((message) => (
