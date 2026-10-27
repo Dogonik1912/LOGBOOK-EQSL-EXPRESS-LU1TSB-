@@ -49,6 +49,7 @@ export const CommunityChat: React.FC = () => {
   const isAdmin = moderationRole === 'admin';
   const isModerator = isAdmin || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [profilePhotos, setProfilePhotos] = useState<Record<string, string>>({});
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [appLanguage, setAppLanguage] = useState(() => (localStorage.getItem('app_language') || 'es').toLowerCase());
@@ -204,6 +205,13 @@ export const CommunityChat: React.FC = () => {
     };
   }, []);
 
+
+  // Keep the newest community message visible; older messages move upward in the scroll area.
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [messages]);
 
   // Publish presence only while the visitor has a saved callsign. Supabase Realtime
   // Presence provides a shared online roster without adding a registration flow.
@@ -572,7 +580,7 @@ export const CommunityChat: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className={`max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
+          <div ref={messagesContainerRef} className={`max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
             {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
