@@ -316,6 +316,11 @@ export const PrivateMessages: React.FC = () => {
             )}
           </div>
         </div>
+        <div className="mt-3 flex justify-end border-t border-violet-800 pt-3">
+          <button type="button" onClick={() => setIsOpen(false)} className="inline-flex items-center gap-2 rounded-lg border border-violet-500 bg-violet-900 px-4 py-2 text-sm font-bold text-white hover:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-300" aria-label="Cerrar mensajes privados">
+            Cerrar mensajes privados
+          </button>
+        </div>
       )}
       {(error || notice) && <div role={error ? 'alert' : 'status'} className={'border-t px-4 py-3 text-sm ' + (error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900')}>{error || notice}</div>}
     </section>
