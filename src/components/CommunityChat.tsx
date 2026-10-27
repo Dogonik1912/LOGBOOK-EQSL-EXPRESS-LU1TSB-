@@ -636,6 +636,11 @@ export const CommunityChat: React.FC = () => {
       {isAdmin && adminNotice && <div role="status" className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{adminNotice}</div>}
 
 
+      <div className={`flex justify-end border-t px-4 py-3 sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
+        <button type="button" onClick={() => setChatCollapsed(true)} className="inline-flex items-center gap-2 rounded-lg border border-sky-500 bg-slate-800 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-300" aria-label="Cerrar chat comunitario">
+          Cerrar chat
+        </button>
+      </div>
       {supabase && <div className={`border-t px-4 py-3 sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`} aria-label="Indicativos en línea">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className={`text-xs font-bold ${darkChat ? 'text-slate-100' : 'text-slate-700'}`}>Indicativos en línea</h3>
