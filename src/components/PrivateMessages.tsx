@@ -217,7 +217,7 @@ export const PrivateMessages: React.FC = () => {
   };
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border border-violet-300 bg-violet-950 p-2.5 text-white sm:p-3 shadow-sm" aria-label="Mensajes privados">
+    <section className={`min-w-0 overflow-hidden rounded-xl border border-violet-300 bg-violet-950 p-2.5 text-white sm:p-3 shadow-sm ${isOpen ? 'sm:col-span-3' : ''}`} aria-label="Mensajes privados">
       <button type="button" onClick={() => setIsOpen((value) => !value)} className="flex w-full items-center gap-2 text-left" aria-expanded={isOpen}>
         <span className="relative shrink-0 rounded-lg bg-violet-200 p-2 text-violet-950"><MessageCircle className="h-5 w-5" />
           {unreadTotal > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-violet-950 bg-red-600 px-1 text-[10px] font-black text-white">{unreadTotal > 99 ? '99+' : unreadTotal}</span>}
@@ -256,7 +256,7 @@ export const PrivateMessages: React.FC = () => {
               </>
             )}
           </aside>
-          <div className="flex min-h-[300px] min-w-0 flex-col">
+          <div className="flex min-h-[min(72vh,680px)] min-w-0 flex-col">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
               <div className="flex items-center gap-2">
                 {activeRecipient && <button type="button" onClick={() => setActiveRecipient('')} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Volver a conversaciones"><ArrowLeft className="h-4 w-4" /></button>}
@@ -264,7 +264,7 @@ export const PrivateMessages: React.FC = () => {
               </div>
               {activeRecipient && <button type="button" onClick={() => void refreshMessages(activeRecipient)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Actualizar mensajes"><RefreshCw className="h-4 w-4" /></button>}
             </div>
-            <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto bg-white p-3" style={{ maxHeight: 320, minHeight: 220 }} aria-live="polite">
+            <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto bg-white p-3" style={{ maxHeight: 'calc(72vh - 150px)', minHeight: 300 }} aria-live="polite">
               {!activeRecipient && <p className="py-10 text-center text-sm text-slate-500">Elegí una conversación o escribí un indicativo para comenzar.</p>}
               {activeRecipient && messages.length === 0 && <p className="py-10 text-center text-sm text-slate-500">Todavía no hay mensajes. Escribí el primero.</p>}
               {messages.map((message) => {
@@ -285,7 +285,7 @@ export const PrivateMessages: React.FC = () => {
             </div>
             {activeRecipient && (
               <form onSubmit={(event) => { event.preventDefault(); void sendMessage(); }} className="flex gap-2 border-t border-slate-200 bg-slate-50 p-3">
-                <input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} placeholder="Escribí un mensaje privado…" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-500" />
+                <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={3} placeholder="Escribí un mensaje privado…" aria-label="Escribí un mensaje privado" className="min-h-20 min-w-0 flex-1 resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-violet-500" />
                 <button type="submit" disabled={sending || !draft.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-violet-800 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">{sending ? 'Enviando…' : 'Enviar'}</span></button>
               </form>
             )}
