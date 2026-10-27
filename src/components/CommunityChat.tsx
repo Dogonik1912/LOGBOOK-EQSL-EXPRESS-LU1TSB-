@@ -73,7 +73,7 @@ export const CommunityChat: React.FC = () => {
     localStorage.setItem('community_chat_collapsed', next ? 'true' : 'false');
     return next;
   });
-  const [darkChat, setDarkChat] = useState(() => localStorage.getItem('community_chat_theme') === 'dark');
+  const [darkChat, setDarkChat] = useState(() => localStorage.getItem('community_chat_theme') !== 'light');
   const toggleChatTheme = () => setDarkChat((current) => { const next = !current; localStorage.setItem('community_chat_theme', next ? 'dark' : 'light'); return next; });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -538,7 +538,7 @@ export const CommunityChat: React.FC = () => {
   };
 
   return (
-    <section id="community-chat" className="mb-6 overflow-hidden rounded-2xl border border-sky-900/70 bg-white text-slate-900 shadow-xl" aria-label="Chat de la comunidad">
+    <section id="community-chat" className={`mb-6 overflow-hidden rounded-2xl border border-sky-900/70 shadow-xl ${darkChat ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`} aria-label="Chat de la comunidad">
       <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
@@ -548,10 +548,10 @@ export const CommunityChat: React.FC = () => {
             <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{onlineUsers.length} {onlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo blanco" : "Cambiar a fondo negro"} title={darkChat ? "Fondo blanco" : "Fondo negro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button><button type="button" onClick={toggleCommunityChat} className="rounded-lg p-2 text-slate-100 hover:bg-slate-800" aria-label={chatCollapsed ? "Desplegar chat comunitario" : "Replegar chat comunitario"} title={chatCollapsed ? "Desplegar chat" : "Replegar chat"} aria-expanded={!chatCollapsed}>{chatCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}</button></div>
+        <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo claro" : "Cambiar a fondo oscuro"} title={darkChat ? "Fondo claro" : "Fondo oscuro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button><button type="button" onClick={toggleCommunityChat} className="rounded-lg p-2 text-slate-100 hover:bg-slate-800" aria-label={chatCollapsed ? "Desplegar chat comunitario" : "Replegar chat comunitario"} title={chatCollapsed ? "Desplegar chat" : "Replegar chat"} aria-expanded={!chatCollapsed}>{chatCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}</button></div>
       </div>
       {!chatCollapsed && <>
-      {showInfo && <div className="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
+      {showInfo && <div className={`border-b px-4 py-3 text-sm ${darkChat ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-sky-200 bg-sky-50 text-sky-950'}`}><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
       {isAdmin && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:px-5">
         <button type="button" onClick={() => setAdminPanelOpen((open) => !open)} className="font-bold underline underline-offset-2">Herramientas del administrador LU1TSB {adminPanelOpen ? '−' : '+'}</button>
         {adminPanelOpen && <div className="mt-3 space-y-3">
@@ -567,8 +567,8 @@ export const CommunityChat: React.FC = () => {
           {adminAudit.length > 0 && <div className="space-y-1"><p className="font-bold">Auditoría reciente</p>{adminAudit.slice(0, 20).map((entry) => <p key={entry.id} className="rounded bg-white px-2 py-1 text-xs">{new Date(entry.created_at).toLocaleString()} · {entry.actor_callsign} · {entry.action}{entry.target_callsign ? ` · ${entry.target_callsign}` : ''}</p>)}</div>}
         </div>}
       </div>}
-      {moderationStatus && <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">{moderationStatus}</div>}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600 sm:px-5">
+      {moderationStatus && <div role="status" className={`border-b px-4 py-2 text-xs ${darkChat ? 'border-amber-800 bg-amber-950 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>{moderationStatus}</div>}
+      <div className={`flex items-center justify-between border-b px-4 py-2.5 text-xs sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
         <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> Acceso público · sin registro</span>
         {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
       </div>
@@ -583,7 +583,7 @@ export const CommunityChat: React.FC = () => {
           <div ref={messagesContainerRef} className={`max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
             {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
             {messages.map((message) => (
-              <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
+              <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
                 <div className="flex items-start gap-2.5">
                   <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-300 bg-slate-100 flex items-center justify-center" aria-label={`Foto de perfil de ${message.callsign}`}>
                     {profilePhotos[message.callsign.trim().toUpperCase()] ? <img src={profilePhotos[message.callsign.trim().toUpperCase()]} alt={`Foto de ${message.callsign}`} className="h-full w-full object-cover" /> : <span className="font-mono text-xs font-bold text-slate-500">{message.callsign.trim().slice(0, 3).toUpperCase()}</span>}
@@ -615,12 +615,12 @@ export const CommunityChat: React.FC = () => {
             ))}
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
-          <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <div className={`border-t p-3 sm:p-4 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
             {!sdLocked && (
-              <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-                <label htmlFor="community-current-callsign" className="mb-1 block text-xs font-semibold text-slate-600">Señal distintiva para el chat</label>
-                <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-sky-500" />
-                <p className="mt-1 text-[11px] text-slate-500">Este indicativo solo identifica tus mensajes en el chat. Los campos de indicativo de las eQSL se mantienen separados.</p>
+              <div className={`mb-3 rounded-xl border p-3 ${darkChat ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
+                <label htmlFor="community-current-callsign" className={`mb-1 block text-xs font-semibold ${darkChat ? 'text-slate-200' : 'text-slate-600'}`}>Señal distintiva para el chat</label>
+                <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className={`w-full rounded-lg border px-3 py-2 font-mono text-sm outline-none focus:border-sky-500 ${darkChat ? 'border-slate-600 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-900'}`} />
+                <p className={`mt-1 text-[11px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>Este indicativo solo identifica tus mensajes en el chat. Los campos de indicativo de las eQSL se mantienen separados.</p>
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => void saveCallsign()} disabled={busy || callsign.trim().length < 3} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? 'Guardando…' : 'Guardar indicativo'}</button>                </div>
               </div>
@@ -636,14 +636,14 @@ export const CommunityChat: React.FC = () => {
       {isAdmin && adminNotice && <div role="status" className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{adminNotice}</div>}
 
 
-      {supabase && <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-5" aria-label="Indicativos en línea">
+      {supabase && <div className={`border-t px-4 py-3 sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`} aria-label="Indicativos en línea">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-xs font-bold text-slate-700">Indicativos en línea</h3>
-          <span className="text-[10px] text-slate-500">{onlineUsers.length}</span>
+          <h3 className={`text-xs font-bold ${darkChat ? 'text-slate-100' : 'text-slate-700'}`}>Indicativos en línea</h3>
+          <span className={`text-[10px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>{onlineUsers.length}</span>
         </div>
         {onlineUsers.length > 0 ? <ul className="flex flex-wrap gap-2">
-          {onlineUsers.map((user) => <li key={user.identityToken || user.callsign} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 font-mono text-xs font-semibold text-slate-700"><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</li>)}
-        </ul> : <p className="text-xs text-slate-500">No hay indicativos conectados en este momento.</p>}
+          {onlineUsers.map((user) => <li key={user.identityToken || user.callsign} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</li>)}
+        </ul> : <p className={`text-xs ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>No hay indicativos conectados en este momento.</p>}
       </div>}
       </>}
     </section>
