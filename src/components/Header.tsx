@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
 import { LanguageSelector } from './LanguageSelector';
@@ -17,6 +17,36 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [compassHeading, setCompassHeading] = useState<number | null>(null);
+  const [compassStatus, setCompassStatus] = useState('Tocá para activar la brújula');
+
+  const activateCompass = async () => {
+    try {
+      const orientation = (DeviceOrientationEvent as any);
+      if (typeof orientation?.requestPermission === 'function') {
+        const permission = await orientation.requestPermission();
+        if (permission !== 'granted') {
+          setCompassStatus('Permiso de orientación denegado');
+          return;
+        }
+      }
+      const handleOrientation = (event: DeviceOrientationEvent) => {
+        const webkitHeading = (event as any).webkitCompassHeading;
+        const heading = typeof webkitHeading === 'number'
+          ? webkitHeading
+          : typeof event.alpha === 'number' ? (360 - event.alpha) % 360 : null;
+        if (heading !== null && Number.isFinite(heading)) {
+          setCompassHeading(heading);
+          setCompassStatus('Brújula activa');
+        }
+      };
+      window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
+      window.addEventListener('deviceorientation', handleOrientation as EventListener);
+      setCompassStatus('Buscando orientación…');
+    } catch {
+      setCompassStatus('Este dispositivo no permite activar la brújula');
+    }
+  };
   const [utcClock, setUtcClock] = useState(() => new Date().toISOString().slice(11, 19));
   const formatLocalDate = () => {
     const now = new Date();
@@ -455,9 +485,23 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </div>
         </div>
-        {/* Encabezamiento panorámico LogBook eQSL EXPRESS */}
-        <div className="w-full overflow-hidden">
-          <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
+        {/* Encabezamiento panorámico con brújula funcional a la izquierda */}
+        <div className="flex w-full min-w-0 items-center gap-2 sm:gap-4 overflow-hidden">
+          <button type="button" onClick={() => { void activateCompass(); }} aria-label="Activar brújula" title={compassStatus}
+            className="flex w-[68px] h-[68px] sm:w-[88px] sm:h-[88px] shrink-0 flex-col items-center justify-center rounded-full border border-amber-300 bg-white/95 shadow-sm"
+            style={{ touchAction: 'manipulation' }}>
+            <span className="relative flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full border-2 border-slate-700 bg-slate-50">
+              <span className="absolute top-0.5 text-[9px] sm:text-[10px] font-black text-red-600">N</span>
+              <span className="absolute bottom-0.5 text-[9px] sm:text-[10px] font-black text-slate-700">S</span>
+              <span className="absolute left-0.5 text-[8px] font-bold text-slate-600">O</span>
+              <span className="absolute right-0.5 text-[8px] font-bold text-slate-600">E</span>
+              <Compass className="h-7 w-7 sm:h-9 sm:w-9 text-slate-700" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }} />
+            </span>
+            <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-slate-700">{compassHeading === null ? 'BRÚJULA' : `${Math.round(compassHeading)}°`}</span>
+          </button>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
+          </div>
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
