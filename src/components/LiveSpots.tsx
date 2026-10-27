@@ -19,7 +19,7 @@ const prefixCountry = (call: string, savedCountry?: string) => {
     CB:'Chile',OA:'Perú',CP:'Bolivia',ZP:'Paraguay',HK:'Colombia',YV:'Venezuela',HC:'Ecuador',
     XE:'México',XE1:'México',W:'Estados Unidos',K:'Estados Unidos',N:'Estados Unidos',VE:'Canadá',
     VA:'Canadá',G:'Reino Unido',M:'Reino Unido',F:'Francia',DL:'Alemania',I:'Italia',JA:'Japón',
-    VK:'Australia',ZL:'Nueva Zelanda',CE0:'Chile',9A:'Croacia',CT:'Portugal',ON:'Bélgica',
+    VK:'Australia',ZL:'Nueva Zelanda',CE0:'Chile','9A':'Croacia',CT:'Portugal',ON:'Bélgica',
     OE:'Austria',HB:'Suiza',SM:'Suecia',SP:'Polonia',YO:'Rumania',UR:'Ucrania',UA:'Rusia'
   };
   return map[c.slice(0,2)] || map[c.slice(0,1)] || '';
