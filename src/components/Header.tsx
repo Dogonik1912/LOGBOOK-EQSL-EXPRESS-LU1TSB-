@@ -523,11 +523,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="grid w-full grid-cols-3 items-stretch gap-1.5 sm:gap-2">
           {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+            className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-amber-300 bg-amber-500 px-1.5 py-1.5 text-center text-[11px] font-bold leading-tight text-slate-950 shadow-sm transition-all cursor-pointer hover:bg-amber-400"
             title="Instalar LB EQSL EXPRESS en este equipo"
           >
             {isInstalled ? <Smartphone className="w-4 h-4" /> : <Download className="w-4 h-4" />}
@@ -544,7 +544,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShareMenuOpen((open) => !open)}
               aria-expanded={shareMenuOpen}
               aria-haspopup="menu"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+              className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-emerald-400 bg-emerald-600 px-1.5 py-1.5 text-center text-[11px] font-semibold leading-tight text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
               title="Compartir LogBook eQSL Express en tus redes"
             >
               <Share2 className="w-4 h-4" />
@@ -609,7 +609,7 @@ export const Header: React.FC<HeaderProps> = ({
               if (nextOpen && compassHeading === null) void activateCompass();
             }}
             aria-expanded={compassOpen}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500 bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
+            className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-amber-400 bg-amber-500 px-1.5 py-1.5 text-center text-[11px] font-bold leading-tight text-slate-950 shadow-sm hover:bg-amber-400"
             title="Abrir brújula del dispositivo"
           >
             <Compass className="h-4 w-4" /> Brújula
