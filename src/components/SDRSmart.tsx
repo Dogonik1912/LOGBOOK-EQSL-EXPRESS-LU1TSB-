@@ -62,7 +62,10 @@ function distanceKm(a: [number, number], b: [number, number]) {
 function receiverIsUsable(receiver: KiwiReceiver) {
   const offline = receiver.offline === true || receiver.offline === 'yes' || receiver.offline === 'true';
   const flagged = receiver.flagged === true || receiver.flagged === 'yes' || receiver.flagged === 'true';
+  let secureUrl = false;
+  try { secureUrl = new URL(receiver.url).protocol === 'https:'; } catch { secureUrl = false; }
   return Boolean(receiver.url)
+    && secureUrl
     && !offline
     && !flagged
     && Array.isArray(receiver.gps)
@@ -145,7 +148,8 @@ export function SDRSmart() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation([position.coords.latitude, position.coords.longitude]);
-        setLocationStatus('Ubicación autorizada para ordenar los receptores cercanos primero.');
+        setSelectedId('');
+        setLocationStatus('Ubicación autorizada: seleccionando el receptor más cercano.');
       },
       () => setLocationStatus('No se autorizó la ubicación. Podés elegir un receptor manualmente.'),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 30 * 60 * 1000 },
