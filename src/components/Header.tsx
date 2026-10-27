@@ -544,11 +544,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShareMenuOpen((open) => !open)}
               aria-expanded={shareMenuOpen}
               aria-haspopup="menu"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl border border-slate-500 shadow-sm transition-all cursor-pointer"
               title="Compartir LogBook eQSL Express en tus redes"
             >
               <Share2 className="w-4 h-4" />
-              <span>Comparte esta app en tus redes</span>
+              <span>Compartir app</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
             {shareMenuOpen && (
@@ -609,7 +609,7 @@ export const Header: React.FC<HeaderProps> = ({
               if (nextOpen && compassHeading === null) void activateCompass();
             }}
             aria-expanded={compassOpen}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500 bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-500 bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
             title="Abrir brújula del dispositivo"
           >
             <Compass className="h-4 w-4" /> Brújula
@@ -619,7 +619,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors cursor-pointer"
+            className="inline-flex min-h-10 min-w-10 items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-500 transition-colors cursor-pointer"
             title="Ajustes de estación"
           >
             <Settings className="w-4 h-4" />
