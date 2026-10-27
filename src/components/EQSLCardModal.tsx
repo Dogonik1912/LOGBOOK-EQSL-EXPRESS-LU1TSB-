@@ -442,7 +442,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   useEffect(() => {
     if (isOpen && qso) {
       // La firma predeterminada siempre usa la SD del usuario actual, no una firma antigua guardada.
-      const currentSignature = getFirma().slice(0, 30);
+      const currentSignature = `73 cordiales de ${cardSenderCallsign}`.slice(0, 30);
       setSignatureText(currentSignature);
       localStorage.setItem('eqsl_signature_text', currentSignature);
       // Restaurar el diseño anclado: no cambiarlo automáticamente al abrir otro QSO.
