@@ -44,8 +44,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       try {
         const parsed = JSON.parse(stored);
         return {
-          date: parsed.date || now.date,
-          time: parsed.time || now.time,
+          date: now.date,
+          time: now.time,
           band: parsed.band || '40m',
           frequency: parsed.frequency || '7.120',
           mode: parsed.mode || 'SSB',
