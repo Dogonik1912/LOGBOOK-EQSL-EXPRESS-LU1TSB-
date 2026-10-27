@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Inbox, RefreshCw, MailOpen, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { Inbox, RefreshCw, MailOpen, ArrowUpRight, AlertCircle, Trash2, CheckSquare, Square } from 'lucide-react';
 
 type InboxItem = {
   id: string;
@@ -18,6 +18,8 @@ export const EQSLMailbox: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [pendingReplies, setPendingReplies] = useState(0);
   const [items, setItems] = useState<InboxItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pushStatus, setPushStatus] = useState('');
@@ -155,6 +157,56 @@ export const EQSLMailbox: React.FC = () => {
     }
   };
 
+  const deleteMailboxItems = async (ids?: string[]) => {
+    const identityToken = token();
+    const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (!identityToken || !callsign) {
+      setError('No se pudo verificar la identidad de este dispositivo para borrar eQSL.');
+      return;
+    }
+    const deleteAll = !ids;
+    const count = deleteAll ? items.length : ids.length;
+    if (!count) return;
+    const confirmed = window.confirm(deleteAll
+      ? `¿Vaciar el buzón eQSL POST y eliminar sus ${count} tarjetas? Esta acción no se puede deshacer.`
+      : `¿Eliminar ${count === 1 ? 'esta eQSL' : 'las ' + count + ' eQSL seleccionadas'}? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+    setDeleting(true);
+    setError('');
+    try {
+      if (deleteAll) {
+        const response = await fetch('/api/eqsl-inbox', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete-all', token: identityToken, callsign }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'No se pudo vaciar el buzón.');
+      } else {
+        for (const id of ids) {
+          const response = await fetch('/api/eqsl-inbox', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', token: identityToken, callsign, id }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'No se pudo eliminar una eQSL seleccionada.');
+        }
+      }
+      setSelectedIds([]);
+      await loadInbox();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudieron eliminar las eQSL.');
+      await loadInbox();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
+  };
+
   const activateNotifications = async () => {
     setPushStatus('');
     const identityToken = token();
@@ -278,6 +330,9 @@ export const EQSLMailbox: React.FC = () => {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-white">eQSL recibidas</h3>
         <div className="flex flex-wrap items-center gap-1">
+          <button type="button" onClick={() => setSelectedIds(selectedIds.length === items.length ? [] : items.map(item => item.id))} disabled={items.length === 0 || deleting} className="inline-flex items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-40">{selectedIds.length === items.length && items.length > 0 ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />} Seleccionar todas</button>
+          <button type="button" onClick={() => void deleteMailboxItems(selectedIds)} disabled={selectedIds.length === 0 || deleting} className="inline-flex items-center gap-1 rounded-md border border-red-500/50 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-950/60 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /> Eliminar seleccionadas</button>
+          <button type="button" onClick={() => void deleteMailboxItems()} disabled={items.length === 0 || deleting} className="inline-flex items-center gap-1 rounded-md bg-red-700 px-2 py-1 text-[10px] font-bold text-white hover:bg-red-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /> Vaciar buzón</button>
           <button type="button" onClick={() => void activateNotifications()} disabled={pushBusy || pushEnabled} aria-pressed={pushEnabled} className={`rounded-md border px-2 py-1 text-[10px] font-semibold disabled:opacity-100 ${pushEnabled ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-sky-500/50 text-sky-200 hover:bg-sky-950 disabled:opacity-50'}`}>{pushBusy ? 'Activando…' : pushEnabled ? '✓ Alertas activadas' : 'Activar alertas'}</button>
           <button type="button" onClick={() => void loadInbox()} disabled={loading} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button>
         </div>
@@ -287,10 +342,12 @@ export const EQSLMailbox: React.FC = () => {
       {loading && <p className="py-3 text-center text-xs text-slate-300">Consultando el buzón…</p>}
       {!loading && !error && items.length === 0 && <p className="rounded-lg bg-slate-800 p-3 text-xs text-slate-300">Todavía no tenés eQSL en el buzón. Las tarjetas enviadas a tu señal distintiva aparecerán aquí.</p>}
       <div className="max-h-72 space-y-2 overflow-y-auto">
-        {items.map(item => <article key={item.id} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 p-3">
+        {items.map(item => <article key={item.id} className={`flex items-center gap-2 rounded-lg border p-3 ${selectedIds.includes(item.id) ? 'border-red-400/70 bg-red-950/20' : 'border-slate-700 bg-slate-800'}`}>
+          <input type="checkbox" aria-label={`Seleccionar eQSL de ${item.from}`} checked={selectedIds.includes(item.id)} onChange={() => toggleSelected(item.id)} disabled={deleting} className="h-4 w-4 shrink-0 accent-red-500" />
           <span className={`shrink-0 rounded-md p-2 ${item.isResponse ? 'bg-sky-500/15 text-sky-300' : 'bg-amber-500/15 text-amber-300'}`}><MailOpen className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-white">{item.isResponse ? 'eQSL respuesta' : 'eQSL recibida'} · {item.from}</strong><span className="block text-[10px] text-slate-400">{item.date} · {item.band} · {item.mode}</span></span>
           <button type="button" disabled={Boolean(item.answeredAt && !item.isResponse)} onClick={() => { window.location.href = '/?e=' + encodeURIComponent(item.id); }} className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-bold ${item.answeredAt && !item.isResponse ? 'bg-red-600 text-white cursor-not-allowed' : 'bg-amber-400 text-slate-950'}`}>{item.answeredAt && !item.isResponse ? 'eQSL RESPONDIDA' : 'Abrir'}{!(item.answeredAt && !item.isResponse) && <ArrowUpRight className="h-3 w-3" />}</button>
+          <button type="button" onClick={() => void deleteMailboxItems([item.id])} disabled={deleting} aria-label={`Eliminar eQSL de ${item.from}`} title="Eliminar esta eQSL" className="shrink-0 rounded-md p-2 text-red-300 hover:bg-red-950/60 disabled:opacity-40"><Trash2 className="h-4 w-4" /></button>
         </article>)}
       </div>
     </div>}
