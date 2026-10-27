@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
 import { LanguageSelector } from './LanguageSelector';
@@ -25,6 +25,79 @@ export const Header: React.FC<HeaderProps> = ({
   const [localDate, setLocalDate] = useState(() => formatLocalDate());
   const [localWeather, setLocalWeather] = useState<{ temperature: number; humidity: number } | null>(null);
   const [weatherStatus, setWeatherStatus] = useState('Cargando clima...');
+  const [ipCoordinates, setIpCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [forecastOpen, setForecastOpen] = useState(false);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastStatus, setForecastStatus] = useState('');
+  const [weeklyForecast, setWeeklyForecast] = useState<Array<{ date: string; code: number; max: number; min: number; rain: number; wind: number }>>([]);
+  const describeWeatherCode = (code: number) => {
+    if (code === 0) return 'Despejado';
+    if ([1, 2].includes(code)) return 'Poco nuboso';
+    if (code === 3) return 'Nublado';
+    if ([45, 48].includes(code)) return 'Niebla';
+    if ([51, 53, 55, 56, 57].includes(code)) return 'Llovizna';
+    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'Lluvia';
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return 'Nieve';
+    if ([95, 96, 99].includes(code)) return 'Tormentas';
+    return 'Variable';
+  };
+  const WeatherIcon = ({ code }: { code: number }) => {
+    if (code === 0) return <Sun className="h-5 w-5 text-amber-400" />;
+    if ([1, 2, 3, 45, 48].includes(code)) return <Cloud className="h-5 w-5 text-slate-300" />;
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return <CloudRain className="h-5 w-5 text-sky-400" />;
+    if ([95, 96, 99].includes(code)) return <CloudLightning className="h-5 w-5 text-yellow-300" />;
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return <Snowflake className="h-5 w-5 text-cyan-200" />;
+    return <CloudSun className="h-5 w-5 text-slate-300" />;
+  };
+  const loadWeeklyForecast = async (latitude: number, longitude: number) => {
+    setForecastLoading(true);
+    setForecastStatus('Consultando pronóstico semanal…');
+    try {
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + encodeURIComponent(String(latitude)) +
+        '&longitude=' + encodeURIComponent(String(longitude)) +
+        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&forecast_days=7&timezone=auto';
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Forecast unavailable');
+      const data = await response.json();
+      const daily = data?.daily;
+      if (!Array.isArray(daily?.time) || !Array.isArray(daily?.weather_code)) throw new Error('Forecast data missing');
+      const entries = daily.time.map((date: string, index: number) => ({
+        date,
+        code: Number(daily.weather_code[index]),
+        max: Number(daily.temperature_2m_max[index]),
+        min: Number(daily.temperature_2m_min[index]),
+        rain: Number(daily.precipitation_probability_max[index]),
+        wind: Number(daily.wind_speed_10m_max[index]),
+      })).filter((day: { date: string; code: number; max: number; min: number; rain: number; wind: number }) =>
+        day.date && Number.isFinite(day.code) && Number.isFinite(day.max) && Number.isFinite(day.min));
+      setWeeklyForecast(entries);
+      setForecastStatus(entries.length ? 'Pronóstico actualizado · fuente: Open-Meteo' : 'No hay datos semanales disponibles.');
+    } catch {
+      setForecastStatus('No se pudo obtener el pronóstico. Intentá nuevamente.');
+    } finally {
+      setForecastLoading(false);
+    }
+  };
+  const toggleForecast = () => {
+    const willOpen = !forecastOpen;
+    setForecastOpen(willOpen);
+    if (!willOpen || weeklyForecast.length || forecastLoading) return;
+    setForecastStatus('Buscando la ubicación de este dispositivo…');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => { void loadWeeklyForecast(position.coords.latitude, position.coords.longitude); },
+        () => {
+          if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude);
+          else setForecastStatus('No se pudo obtener la ubicación. Revisá el permiso de ubicación e intentá nuevamente.');
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 30 * 60 * 1000 },
+      );
+    } else if (ipCoordinates) {
+      void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude);
+    } else {
+      setForecastStatus('Ubicación no disponible en este dispositivo.');
+    }
+  };
   useEffect(() => {
     let cancelled = false;
     const loadWeather = async () => {
@@ -43,6 +116,7 @@ export const Header: React.FC<HeaderProps> = ({
         const latitude = Number(location?.latitude);
         const longitude = Number(location?.longitude);
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error('Location unavailable');
+        if (!cancelled) setIpCoordinates({ latitude, longitude });
         const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + encodeURIComponent(String(latitude)) +
           '&longitude=' + encodeURIComponent(String(longitude)) +
           '&current=temperature_2m,relative_humidity_2m&timezone=auto';
@@ -340,6 +414,26 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2 rounded-md border border-black bg-black px-2 sm:px-3 py-1.5 sm:py-2 font-mono text-xl sm:text-3xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
             <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
             <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
+            <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex items-center justify-between gap-2 rounded border border-cyan-500 bg-cyan-950 px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
+              <span className="inline-flex items-center gap-1.5"><CloudSun className="h-4 w-4" /> Clima</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {forecastOpen && <div className="w-full max-w-[22rem] rounded-lg border border-slate-600 bg-slate-900 p-2.5 text-white shadow-lg">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <strong className="text-xs">Pronóstico para 7 días</strong>
+                <button type="button" onClick={() => { setWeeklyForecast([]); setForecastStatus(''); setForecastOpen(false); window.setTimeout(() => { setForecastOpen(true); if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { void loadWeeklyForecast(p.coords.latitude, p.coords.longitude); }, () => { if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); else setForecastStatus('No se pudo obtener la ubicación.'); }, { timeout: 8000, maximumAge: 1800000 }); else if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); }, 0); }} className="text-[10px] text-cyan-300 underline">Actualizar</button>
+              </div>
+              {forecastLoading && <p className="flex items-center gap-2 py-2 text-xs text-slate-300"><LoaderCircle className="h-4 w-4 animate-spin" /> Cargando pronóstico…</p>}
+              {!forecastLoading && weeklyForecast.length > 0 && <div className="space-y-1.5">
+                {weeklyForecast.map((day) => <div key={day.date} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-t border-slate-700 py-1.5 text-xs">
+                  <div className="flex min-w-0 items-center gap-2"><WeatherIcon code={day.code} /><span className="truncate">{new Date(day.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: '2-digit' })}<span className="block text-[10px] text-slate-400">{describeWeatherCode(day.code)}</span></span></div>
+                  <span className="whitespace-nowrap font-mono"><span className="text-red-300">{Math.round(day.max)}°</span> / <span className="text-sky-300">{Math.round(day.min)}°</span></span>
+                  <span className="whitespace-nowrap text-sky-200" title="Probabilidad máxima de precipitación">{Number.isFinite(day.rain) ? Math.round(day.rain) + '%' : '—'}</span>
+                </div>)}
+              </div>}
+              {!forecastLoading && forecastStatus && <p className="mt-2 text-[10px] text-slate-300">{forecastStatus}</p>}
+              <p className="mt-2 border-t border-slate-700 pt-2 text-[10px] text-slate-400">Datos meteorológicos por ubicación del dispositivo. Si no autorizás la ubicación, se intentará usar la ubicación aproximada por Internet. Fuente: Open-Meteo.</p>
+            </div>}
           </div>
           <div className="min-w-0 w-[44%] sm:w-auto sm:max-w-none shrink-0 flex flex-col items-stretch gap-1.5">
             {callsign && (
