@@ -51,22 +51,31 @@ export const Header: React.FC<HeaderProps> = ({
         const sensorEvent = event as DeviceOrientationEvent & { webkitCompassHeading?: number; absolute?: boolean };
         let heading: number | null = null;
 
+        let isAbsoluteHeading = false;
         // Safari/iOS entrega directamente el rumbo magnético.
         if (typeof sensorEvent.webkitCompassHeading === 'number' && Number.isFinite(sensorEvent.webkitCompassHeading)) {
           heading = sensorEvent.webkitCompassHeading;
-        // Android: aceptar alpha únicamente si el evento es absoluto o procede del evento absoluto.
+          isAbsoluteHeading = true;
         } else if (
           (sensorEvent.absolute === true || event.type === 'deviceorientationabsolute') &&
           typeof event.alpha === 'number' &&
           Number.isFinite(event.alpha)
         ) {
+          // Los eventos absolutos permiten orientar respecto al norte.
+          heading = (360 - event.alpha + 360) % 360;
+          isAbsoluteHeading = true;
+        } else if (typeof event.alpha === 'number' && Number.isFinite(event.alpha)) {
+          // Algunos navegadores solo exponen orientación relativa. Mostrarla como aproximada
+          // y no afirmar que representa el norte magnético.
           heading = (360 - event.alpha + 360) % 360;
         }
 
         if (heading !== null) {
           receivedHeading = true;
           setCompassHeading(((heading % 360) + 360) % 360);
-          setCompassStatus('Brújula activa · rumbo del sensor');
+          setCompassStatus(isAbsoluteHeading
+            ? 'Brújula activa · rumbo respecto al norte'
+            : 'Orientación aproximada · este navegador no confirma el norte magnético');
         }
       };
       compassHandlerRef.current = handleOrientation;
@@ -75,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
       setCompassStatus('Buscando el norte magnético… mantené el teléfono horizontal y giralo lentamente');
       window.setTimeout(() => {
         if (!receivedHeading) {
-          setCompassStatus('El teléfono no entrega rumbo absoluto. Revisá permisos, calibrá en forma de ocho y probá de nuevo.');
+          setCompassStatus('Este navegador no entregó datos de orientación. Comprobá que el sitio use HTTPS, revisá los permisos de sensores y volvé a intentarlo. Si el dispositivo no tiene sensor, no se puede obtener el rumbo.');
         }
       }, 7000);
     } catch (error) {
