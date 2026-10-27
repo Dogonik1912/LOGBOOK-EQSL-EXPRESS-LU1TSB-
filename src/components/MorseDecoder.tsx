@@ -40,9 +40,18 @@ export function MorseDecoder() {
   const lang=language === 'es' ? 'es' : 'en';
   const t=words[lang] || words.en;
   const stop = () => {
+    const r=refs.current;
+    if(r.current){
+      const finalChar=MORSE[r.current]||'';
+      r.text+=finalChar;
+      setDecoded(r.text);
+      if(!r.code.endsWith(' ')) r.code+=' ';
+      setCode(r.code);
+      r.current='';
+    }
     const a=audioRef.current;
     if(a){cancelAnimationFrame(a.raf);a.source.disconnect();a.stream.getTracks().forEach(track=>track.stop());void a.context.close();audioRef.current=null;}
-    refs.current.on=false;setActive(false);
+    r.on=false;setActive(false);
   };
   useEffect(()=>()=>{const a=audioRef.current;if(a){cancelAnimationFrame(a.raf);a.stream.getTracks().forEach(track=>track.stop());void a.context.close();}},[]);
   useEffect(()=>{
