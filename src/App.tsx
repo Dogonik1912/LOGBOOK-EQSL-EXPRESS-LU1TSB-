@@ -267,7 +267,10 @@ function MainApp() {
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <EQSLMailbox />
+          <div className="grid grid-cols-2 gap-2 min-w-0">
+            <EQSLMailbox />
+            <PrivateMessages />
+          </div>
           <div className="min-w-0 bg-white/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-sm flex items-center gap-2">
             <div className="p-2 bg-purple-500/10 text-purple-700 rounded-lg shrink-0"><Send className="w-4 h-4" /></div>
             <div className="min-w-0"><div className="text-lg sm:text-xl font-bold font-mono text-slate-900">—</div><div className="text-[10px] sm:text-xs leading-tight text-slate-600">Acciones eQSL · sin datos verificados</div></div>
@@ -283,7 +286,6 @@ function MainApp() {
         </div>
 
         <CommunityChat />
-        <PrivateMessages />
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
