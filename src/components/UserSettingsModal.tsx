@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../services/supabaseClient';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
 
 interface UserSettingsModalProps {
@@ -145,6 +146,24 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           localStorage.setItem('user_profile_photo', dataUrl);
           setProfilePhoto(dataUrl);
           window.dispatchEvent(new Event('user-profile-updated'));
+          void (async () => {
+            const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+            const token = localStorage.getItem('community_chat_identity_token') || '';
+            if (!supabase || !callsign || !token) {
+              window.alert('La foto quedó guardada en este dispositivo, pero para que aparezca a los demás primero tenés que registrar tu SD en el chat.');
+              return;
+            }
+            const { data, error } = await supabase.rpc('save_community_profile_photo', {
+              p_callsign: callsign,
+              p_token: token,
+              p_photo_data_url: dataUrl,
+            });
+            if (error || !data?.ok) {
+              window.alert('La foto quedó guardada en este dispositivo, pero no se pudo publicar para los demás. Hay que aplicar la migración de fotos de perfil en Supabase.');
+            } else {
+              window.alert('Foto de perfil guardada. Ya puede mostrarse junto a tu SD en el chat comunitario.');
+            }
+          })();
         } catch {
           window.alert('No hay espacio suficiente para guardar esta foto. Elegí una imagen más pequeña.');
         }
@@ -158,6 +177,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     localStorage.removeItem('user_profile_photo');
     setProfilePhoto(null);
     window.dispatchEvent(new Event('user-profile-updated'));
+    const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const token = localStorage.getItem('community_chat_identity_token') || '';
+    if (supabase && callsign && token) {
+      void supabase.rpc('save_community_profile_photo', {
+        p_callsign: callsign,
+        p_token: token,
+        p_photo_data_url: null,
+      }).then(({ data, error }) => {
+        if (error || !data?.ok) window.alert('Se quitó la foto de este dispositivo, pero no se pudo quitar la foto compartida del chat.');
+      });
+    }
   };
 
   const handleAnchorImage = (dataUrl: string) => {
