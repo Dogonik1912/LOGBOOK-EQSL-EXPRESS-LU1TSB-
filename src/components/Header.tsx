@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
@@ -19,34 +19,57 @@ export const Header: React.FC<HeaderProps> = ({
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [compassStatus, setCompassStatus] = useState('Tocá para activar la brújula');
+  const compassHandlerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
 
   const activateCompass = async () => {
     try {
-      const orientation = (DeviceOrientationEvent as any);
-      if (typeof orientation?.requestPermission === 'function') {
+      if (!('DeviceOrientationEvent' in window)) {
+        setCompassStatus('Este navegador no ofrece sensor de orientación');
+        return;
+      }
+      const orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> };
+      if (typeof orientation.requestPermission === 'function') {
         const permission = await orientation.requestPermission();
         if (permission !== 'granted') {
           setCompassStatus('Permiso de orientación denegado');
           return;
         }
       }
+
+      // Evitar registrar listeners duplicados cada vez que se pulsa el botón.
+      if (compassHandlerRef.current) {
+        window.removeEventListener('deviceorientation', compassHandlerRef.current as EventListener);
+        window.removeEventListener('deviceorientationabsolute', compassHandlerRef.current as EventListener);
+      }
       const handleOrientation = (event: DeviceOrientationEvent) => {
-        const webkitHeading = (event as any).webkitCompassHeading;
-        const heading = typeof webkitHeading === 'number'
-          ? webkitHeading
-          : typeof event.alpha === 'number' ? (360 - event.alpha) % 360 : null;
-        if (heading !== null && Number.isFinite(heading)) {
+        const webkitHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+        let heading: number | null = null;
+        if (typeof webkitHeading === 'number' && Number.isFinite(webkitHeading)) {
+          heading = webkitHeading;
+        } else if (typeof event.alpha === 'number' && Number.isFinite(event.alpha)) {
+          heading = (360 - event.alpha + 360) % 360;
+        }
+        if (heading !== null) {
           setCompassHeading(heading);
           setCompassStatus('Brújula activa');
         }
       };
-      window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
+      compassHandlerRef.current = handleOrientation;
       window.addEventListener('deviceorientation', handleOrientation as EventListener);
-      setCompassStatus('Buscando orientación…');
-    } catch {
-      setCompassStatus('Este dispositivo no permite activar la brújula');
+      // Algunos navegadores Android envían orientación absoluta solo en este evento.
+      window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
+      setCompassStatus('Buscando sensor… mové el teléfono en forma de ocho');
+    } catch (error) {
+      setCompassStatus(error instanceof Error ? error.message : 'No se pudo activar el sensor');
     }
   };
+
+  useEffect(() => () => {
+    if (compassHandlerRef.current) {
+      window.removeEventListener('deviceorientation', compassHandlerRef.current as EventListener);
+      window.removeEventListener('deviceorientationabsolute', compassHandlerRef.current as EventListener);
+    }
+  }, []);
   const [utcClock, setUtcClock] = useState(() => new Date().toISOString().slice(11, 19));
   const formatLocalDate = () => {
     const now = new Date();
@@ -498,6 +521,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Compass className="h-7 w-7 sm:h-9 sm:w-9 text-slate-700" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }} />
             </span>
             <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-slate-700">{compassHeading === null ? 'BRÚJULA' : `${Math.round(compassHeading)}°`}</span>
+            <span className="max-w-[68px] sm:max-w-[88px] text-center text-[8px] leading-tight text-slate-500">{compassStatus}</span>
           </button>
           <div className="min-w-0 flex-1 overflow-hidden">
             <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
