@@ -523,7 +523,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
-        <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:justify-end sm:gap-3">
+        <div className="flex w-full flex-nowrap items-center justify-center gap-1 sm:gap-3">
           {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
@@ -544,7 +544,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShareMenuOpen((open) => !open)}
               aria-expanded={shareMenuOpen}
               aria-haspopup="menu"
-              className="inline-flex min-h-10 max-w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
+              className="inline-flex min-h-10 min-w-0 shrink items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
               title="Compartir LogBook eQSL Express en tus redes"
             >
               <Share2 className="w-4 h-4" />
@@ -571,11 +571,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
             <div className="mt-2 flex flex-col items-start gap-2">
-          <div className="min-w-0 flex flex-col items-start gap-1" title="Hora UTC y fecha local de este dispositivo">
-            <div className="flex items-center gap-2 rounded-md border border-black bg-black px-2 sm:px-3 py-1.5 sm:py-2 font-mono text-xl sm:text-3xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
-            <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
-
-          </div>
               <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
               <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex items-center justify-between gap-2 rounded border border-cyan-500 bg-cyan-950 px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
                 <span className="inline-flex items-center gap-1.5"><CloudSun className="h-4 w-4" /> Clima</span>
@@ -600,6 +595,11 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
+          <div className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
+            <span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span>
+            <span className="whitespace-nowrap text-white">{utcClock}</span>
+          </div>
+
           {/* Botón para desplegar la brújula */}
           <button
             type="button"
@@ -609,7 +609,7 @@ export const Header: React.FC<HeaderProps> = ({
               if (nextOpen && compassHeading === null) void activateCompass();
             }}
             aria-expanded={compassOpen}
-            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-500 bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
+            className="inline-flex min-h-10 min-w-0 shrink items-center justify-center gap-1 rounded-xl border border-slate-500 bg-amber-500 px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
             title="Abrir brújula del dispositivo"
           >
             <Compass className="h-4 w-4" /> Brújula
