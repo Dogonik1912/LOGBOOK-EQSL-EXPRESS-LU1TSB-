@@ -3,6 +3,29 @@ import type { Session } from '@supabase/supabase-js';
 import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Trash2, Sun, Moon } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
+type OnlineUser = { callsign: string; identityToken?: string };
+
+// Country flags are inferred from amateur-radio callsign prefixes. Unknown/non-amateur
+// identifiers remain visible with a neutral globe rather than an incorrect flag.
+const callsignCountryFlag = (rawCallsign: string): string => {
+  const call = rawCallsign.trim().toUpperCase().replace(/\\s+/g, '');
+  const prefix = call.split('/').filter(Boolean).sort((a, b) => b.length - a.length)[0] || call;
+  const rules: Array<[RegExp, string]> = [
+    [/^(LU|LV|LW|AY|AZ)/, '🇦🇷'], [/^(CX)/, '🇺🇾'], [/^(CE|CA|CB|CC|CD)/, '🇨🇱'],
+    [/^(PP|PR|PS|PT|PU|PV|PY|PZ)/, '🇧🇷'], [/^(EA|EB|EC|ED|EE|EF|EG|EH)/, '🇪🇸'],
+    [/^(F|TM|TO|TP)/, '🇫🇷'], [/^(G|M|2E)/, '🇬🇧'], [/^(K|N|W|AA|AB|AC|AD|AE|AF|AG|AI)/, '🇺🇸'],
+    [/^(VE|VA|VO|VY|CF|CG|CH|CI)/, '🇨🇦'], [/^(DL|DA|DB|DC|DD|DE|DF|DG|DH|DJ|DK|DM|DN|DO)/, '🇩🇪'],
+    [/^(I|IK|IZ)/, '🇮🇹'], [/^(ON|OO|OP|OQ|OR|OS|OT)/, '🇧🇪'], [/^(PA|PB|PC|PD|PE|PF|PG|PH|PI|PJ)/, '🇳🇱'],
+    [/^(CT|CS|CR)/, '🇵🇹'], [/^(OE|OO)/, '🇦🇹'], [/^(HB|HE)/, '🇨🇭'], [/^(SM|SA|SB|SC|SD|SE|SF|SG|SH|SI|SJ|SK|SL|7S)/, '🇸🇪'],
+    [/^(OH|OF|OG|OI|OJ|OL)/, '🇫🇮'], [/^(SP|SQ|SR|SN|SO|3Z)/, '🇵🇱'], [/^(YO|YP|YQ)/, '🇷🇴'],
+    [/^(JA|JE|JF|JG|JH|JI|JJ|JK|JL|JM|JN|JO|JP|JR|JS)/, '🇯🇵'], [/^(HL|DS|DT)/, '🇰🇷'],
+    [/^(VK|VI|VJ|VL|VM|VN|VO|VP|VQ|VR|VS|VT|VU|VV|VW|VX|VY|VZ)/, '🇦🇺'],
+    [/^(ZL|ZM)/, '🇳🇿'], [/^(ZS|ZT|ZU)/, '🇿🇦'], [/^(XE|XF|4A)/, '🇲🇽'],
+  ];
+  return rules.find(([pattern]) => pattern.test(prefix))?.[1] || '🌐';
+};
+
+
 type ChatMessage = {
   id: string;
   user_id: string | null;
@@ -26,6 +49,7 @@ export const CommunityChat: React.FC = () => {
   const isAdmin = moderationRole === 'admin';
   const isModerator = isAdmin || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [appLanguage, setAppLanguage] = useState(() => (localStorage.getItem('app_language') || 'es').toLowerCase());
   const [translatedBodies, setTranslatedBodies] = useState<Record<string, string>>({});
   const translationPending = useRef<Set<string>>(new Set());
@@ -172,6 +196,44 @@ export const CommunityChat: React.FC = () => {
       void supabase?.removeChannel(channel);
     };
   }, []);
+
+
+  // Publish presence only while the visitor has a saved callsign. Supabase Realtime
+  // Presence provides a shared online roster without adding a registration flow.
+  useEffect(() => {
+    if (!supabase || !callsign.trim() || !identityToken) {
+      setOnlineUsers([]);
+      return;
+    }
+    let active = true;
+    const presenceChannel = supabase.channel('logbook-community-presence', {
+      config: { presence: { key: identityToken } },
+    });
+    const refreshOnlineUsers = () => {
+      if (!active) return;
+      const state = presenceChannel.presenceState() as Record<string, Array<{ callsign?: string; identityToken?: string }>>;
+      const unique = new Map<string, OnlineUser>();
+      Object.values(state).flat().forEach((entry) => {
+        const clean = String(entry?.callsign || '').trim().toUpperCase();
+        if (clean) unique.set(clean, { callsign: clean, identityToken: entry.identityToken });
+      });
+      setOnlineUsers(Array.from(unique.values()).sort((a, b) => a.callsign.localeCompare(b.callsign)));
+    };
+    presenceChannel.on('presence', { event: 'sync' }, refreshOnlineUsers);
+    presenceChannel.on('presence', { event: 'join' }, refreshOnlineUsers);
+    presenceChannel.on('presence', { event: 'leave' }, refreshOnlineUsers);
+    presenceChannel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED' && active) {
+        await presenceChannel.track({ callsign: callsign.trim().toUpperCase(), identityToken });
+        refreshOnlineUsers();
+      }
+    });
+    return () => {
+      active = false;
+      void presenceChannel.untrack();
+      void supabase?.removeChannel(presenceChannel);
+    };
+  }, [callsign, identityToken]);
 
   // Translate messages only for display; the original text remains stored in Supabase.
   // The selected app language is per-device, so each visitor sees their own translation.
@@ -439,6 +501,7 @@ export const CommunityChat: React.FC = () => {
           <div className="min-w-0">
             <h2 className="font-bold leading-tight">Comunidad LogBook eQSL EXPRESS</h2>
             <p className="mt-1 text-xs text-slate-300">Chat comunitario en tiempo real · gratuito y sin registro</p>
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{onlineUsers.length} {onlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
           </div>
         </div>
         <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo blanco" : "Cambiar a fondo negro"} title={darkChat ? "Fondo blanco" : "Fondo negro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button></div>
