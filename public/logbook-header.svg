@@ -1,16 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 360" role="img" aria-labelledby="title desc">
   <title id="title">LogBook eQSL EXPRESS</title>
-  <desc id="desc">Logotipo de radio con letras góticas L y B negras, micrófono central y detalles dorados sobre fondo claro.</desc>
-  <defs><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#f1f7fb"/></linearGradient><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6df9a"/><stop offset=".5" stop-color="#b8862b"/><stop offset="1" stop-color="#f5d985"/></linearGradient></defs>
-  <rect width="1600" height="420" rx="18" fill="url(#paper)"/>
-  <path d="M70 28 H1530 M70 392 H1530" stroke="url(#gold)" stroke-width="5" stroke-linecap="round"/>
-  <path d="M100 42 H430 M1170 42 H1500 M100 378 H430 M1170 378 H1500" stroke="#d5b15c" stroke-width="2"/>
-  <g text-anchor="middle" fill="#111"><text x="585" y="270" font-family="UnifrakturCook, Old English Text MT, Georgia, serif" font-size="250" font-weight="900">𝔏</text><text x="1015" y="270" font-family="UnifrakturCook, Old English Text MT, Georgia, serif" font-size="250" font-weight="900">𝔅</text></g>
-  <g transform="translate(800 174)" fill="none" stroke="#151515" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="-43" y="-104" width="86" height="154" rx="43" fill="#f7fbff"/>
-    <path d="M-22 -72 H22 M-22 -43 H22 M-22 -14 H22" stroke="#49b4e8" stroke-width="8"/>
-    <path d="M-83 -43 V-18 A83 83 0 0 0 83 -18 V-43 M0 65 V103 M-45 103 H45"/>
-    <path d="M-61 -57 Q-105 -22 -61 13 M61 -57 Q105 -22 61 13" stroke="url(#gold)" stroke-width="8"/>
+  <desc id="desc">Encabezado panorámico de radioafición con mar al atardecer, antena y acentos luminosos azules.</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#020817"/><stop offset=".48" stop-color="#061a35"/><stop offset=".75" stop-color="#082a4a"/><stop offset="1" stop-color="#020817"/></linearGradient>
+    <linearGradient id="sunset" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f04b35"/><stop offset=".45" stop-color="#ff9b35"/><stop offset="1" stop-color="#10345b"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#00d8ff"/><stop offset="1" stop-color="#0875ff"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#ffdc26"/><stop offset="1" stop-color="#ff8b00"/></linearGradient>
+    <clipPath id="round"><rect width="2000" height="360" rx="22"/></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="2000" height="360" fill="url(#night)"/>
+    <path d="M1190 0H2000V260L1900 242 1810 258 1720 230 1640 245 1550 210 1460 236 1360 204 1280 220Z" fill="url(#sunset)" opacity=".95"/>
+    <circle cx="1730" cy="125" r="32" fill="#fff3b0"/><circle cx="1730" cy="125" r="56" fill="#ffb34d" opacity=".2"/>
+    <path d="M1180 240L1320 190 1410 213 1515 150 1600 202 1680 184 1785 230 1870 210 2000 245V360H1180Z" fill="#06152a"/>
+    <path d="M1170 286Q1350 268 1510 294T1810 288T2000 300V360H1170Z" fill="#041125"/>
+    <path d="M1190 310Q1380 296 1550 318T1880 310T2000 320" fill="none" stroke="#0b8fd4" stroke-width="3" opacity=".65"/>
+    <g stroke="#00baff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".9">
+      <path d="M65 92Q18 180 65 268"/><path d="M93 112Q60 180 93 248"/><path d="M120 132Q99 180 120 228"/>
+      <path d="M345 92Q392 180 345 268"/><path d="M317 112Q350 180 317 248"/><path d="M290 132Q311 180 290 228"/>
+    </g>
+    <g transform="translate(205 177)" fill="#f5f8ff" stroke="#f5f8ff">
+      <text x="-72" y="73" font-family="Georgia,serif" font-size="224" font-weight="900">𝔏</text>
+      <text x="35" y="73" font-family="Georgia,serif" font-size="224" font-weight="900">𝔅</text>
+      <g transform="translate(0 2)" fill="none" stroke="#00baff" stroke-width="8" stroke-linecap="round"><rect x="-14" y="-64" width="28" height="104" rx="14"/><path d="M-8 -40H8M-8 -20H8M-8 0H8M-36 4Q-36 38 0 38T36 4M0 38V62M-20 62H20"/></g>
+    </g>
+    <text x="455" y="166" font-family="Arial,sans-serif" font-size="102" font-weight="900" letter-spacing="-3" fill="#ffffff">LogBook</text>
+    <text x="865" y="166" font-family="Arial,sans-serif" font-size="102" font-weight="900" letter-spacing="-4" fill="url(#blue)">eQSL</text>
+    <text x="1165" y="166" font-family="Arial,sans-serif" font-size="98" font-style="italic" font-weight="900" letter-spacing="-3" fill="url(#gold)">EXPRESS</text>
+    <text x="465" y="224" font-family="Arial,sans-serif" font-size="31" font-weight="700" letter-spacing="3" fill="#f1f7ff">TU LOGBOOK DIGITAL  •  eQSL  •  COMUNIDAD  •  RADIOAFICIÓN</text>
+    <g transform="translate(1900 0)" stroke="#06101f" stroke-width="7" fill="none" stroke-linecap="round">
+      <path d="M0 110V310M-110 145H110M-75 145L0 110 75 145M-55 145L0 175 55 145M-80 310H80M-35 310L0 270 35 310"/>
+      <path d="M-55 115Q-85 85 -55 55M55 115Q85 85 55 55" stroke="#00baff" stroke-width="5"/>
+    </g>
+    <path d="M0 350H2000" stroke="url(#blue)" stroke-width="8"/>
+    <path d="M0 0H2000" stroke="#00baff" stroke-width="3" opacity=".7"/>
   </g>
-  <text x="800" y="333" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="900" letter-spacing="5" fill="#111">LOGBOOK eQSL EXPRESS</text>
 </svg>
