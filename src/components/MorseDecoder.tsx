@@ -103,7 +103,7 @@ export function MorseDecoder() {
   const clear=()=>{setCode('');setDecoded('');setTranslated('');Object.assign(refs.current,{current:'',text:'',code:''});};
   return <section className="my-4" data-no-translate>
     <button type="button" aria-expanded={open} onClick={()=>{if(open&&active)stop();setOpen(value=>!value);setStatus(t.idle);}} className="mb-2 w-full rounded-xl border border-blue-700 bg-blue-500 px-4 py-3 text-left font-bold text-black shadow-sm hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-700">
-      Traductor Morse
+      Decodificador Morse (CW)
     </button>
     {open && <div className="rounded-2xl border border-cyan-300 bg-white/95 p-4 shadow-sm">
     <div className="flex items-center gap-3 mb-3"><div className="rounded-xl bg-cyan-100 p-2 text-cyan-800"><AudioLines className="h-5 w-5"/></div><div className="min-w-0 flex-1"><h2 className="font-bold text-lg text-slate-900">{label[language]||label.es}</h2><p className="text-xs text-slate-600">Solo micrófono del teléfono · decodificación en directo</p></div></div>
