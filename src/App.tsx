@@ -20,6 +20,7 @@ import { CommunityChat } from './components/CommunityChat';
 import { MorseDecoder } from './components/MorseDecoder';
 import { SDRSmart } from './components/SDRSmart';
 import { PrivateMessages } from './components/PrivateMessages';
+import { LiveSpots, publishQsoSpot } from './components/LiveSpots';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 import { getUserCallsign } from './services/qrzService';
 
@@ -179,6 +180,9 @@ function MainApp() {
       ? qsos.map((item) => item.id === existing.id ? trackedQSO : item)
       : [trackedQSO, ...qsos];
     handleSaveQsos(updated);
+    // Publicar el QSO como spot compartido, independientemente de que se envíe eQSL.
+    // La clave única en Supabase evita spots duplicados al actualizar un contacto existente.
+    void publishQsoSpot(trackedQSO);
     // Cargar QSO y abrir la tarjeta son acciones distintas; la respuesta usa openEQSL=false.
     if (openEQSL) setActiveEQSLQSO(trackedQSO);
   };
@@ -277,6 +281,8 @@ function MainApp() {
         </div>
 
         <CommunityChat />
+
+        <LiveSpots />
 
         <MorseDecoder />
 
