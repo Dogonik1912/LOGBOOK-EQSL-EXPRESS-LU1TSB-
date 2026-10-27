@@ -18,7 +18,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   onUpdate,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isVerifiedCallsign, setIsVerifiedCallsign] = useState(false);
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
@@ -36,6 +38,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       const identityToken = localStorage.getItem('community_chat_identity_token') || '';
       const verifiedOnThisDevice = Boolean(verifiedCallsign && identityToken);
       setIsVerifiedCallsign(verifiedOnThisDevice);
+      setProfilePhoto(localStorage.getItem('user_profile_photo') || null);
       setCallsign(verifiedOnThisDevice ? verifiedCallsign : (localStorage.getItem('user_callsign') || ''));
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
       let savedGallery: Array<{ id: string; name: string; dataUrl: string }> = [];
@@ -115,6 +118,46 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     } catch {
       window.alert('No hay espacio suficiente para guardar todas las fotos. Elegí menos imágenes o archivos más pequeños. Las fotos anteriores no se han reemplazado.');
     }
+  };
+
+  const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = Array.from(e.target.files || []).find((item) => item.type.startsWith('image/'));
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = () => window.alert('No se pudo leer la foto seleccionada.');
+    reader.onload = (event) => {
+      const source = event.target?.result as string;
+      if (!source) return;
+      const image = new Image();
+      image.onerror = () => window.alert('No se pudo abrir la imagen seleccionada.');
+      image.onload = () => {
+        const size = 640;
+        const scale = Math.min(1, size / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+        try {
+          localStorage.setItem('user_profile_photo', dataUrl);
+          setProfilePhoto(dataUrl);
+          window.dispatchEvent(new Event('user-profile-updated'));
+        } catch {
+          window.alert('No hay espacio suficiente para guardar esta foto. Elegí una imagen más pequeña.');
+        }
+      };
+      image.src = source;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveProfilePhoto = () => {
+    localStorage.removeItem('user_profile_photo');
+    setProfilePhoto(null);
+    window.dispatchEvent(new Event('user-profile-updated'));
   };
 
   const handleAnchorImage = (dataUrl: string) => {
@@ -270,6 +313,25 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
 
 
+
+          <section className="rounded-xl border border-sky-500/25 bg-slate-950/70 p-3.5 space-y-3" aria-labelledby="profile-photo-title">
+            <div>
+              <h3 id="profile-photo-title" className="text-xs font-bold uppercase tracking-wider text-sky-300">Foto de perfil</h3>
+              <p className="mt-1 text-[11px] text-slate-400">Elegí una imagen de la galería de tu dispositivo. La foto se guarda en este dispositivo.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-sky-500/40 bg-slate-800 flex items-center justify-center">
+                {profilePhoto ? <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" /> : <Camera className="h-8 w-8 text-slate-500" />}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input ref={profilePhotoInputRef} type="file" accept="image/*" onChange={handleProfilePhotoUpload} className="hidden" />
+                <button type="button" onClick={() => profilePhotoInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-300 hover:bg-sky-500/20">
+                  <ImageIcon className="h-3.5 w-3.5" /> {profilePhoto ? 'Cambiar foto' : 'Subir foto de galería'}
+                </button>
+                {profilePhoto && <button type="button" onClick={handleRemoveProfilePhoto} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/25 px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40"><Trash2 className="h-3.5 w-3.5" /> Quitar</button>}
+              </div>
+            </div>
+          </section>
 
           <section className="py-2 border-y border-slate-800" aria-labelledby="eqsl-alert-settings">
             <div className="flex items-center justify-between gap-3 min-h-10">
