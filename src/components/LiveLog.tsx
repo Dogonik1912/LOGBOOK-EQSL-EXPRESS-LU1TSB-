@@ -484,7 +484,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                     {/* Indicativo */}
                     <td className="py-2.5 px-3">
                       <div className="font-mono font-bold text-amber-300 text-sm tracking-wide">
-                        {q.callsign}
+                        {flagForCallsign(q.callsign, q.country, isCitizenBand(q))} {q.callsign}
                       </div>
                       {q.name && (
                         <div className="text-[11px] text-slate-400 truncate max-w-[120px]">
