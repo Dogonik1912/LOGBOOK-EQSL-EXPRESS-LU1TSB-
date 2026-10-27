@@ -19,3 +19,13 @@ create policy "Public can read live QSO spots" on public.live_qso_spots for sele
 drop policy if exists "Public can add live QSO spots" on public.live_qso_spots;
 create policy "Public can add live QSO spots" on public.live_qso_spots for insert to anon, authenticated with check (true);
 alter table public.live_qso_spots replica identity full;
+
+-- Habilitar eventos realtime para esta tabla si la publicación existe.
+do $$
+begin
+  alter publication supabase_realtime add table public.live_qso_spots;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'La publicación supabase_realtime no existe; habilitar Realtime desde Supabase Dashboard.';
+end $$;
