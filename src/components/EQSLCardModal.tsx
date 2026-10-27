@@ -132,7 +132,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [eqslPostSending, setEqslPostSending] = useState(false);
   const [themeNotice, setThemeNotice] = useState('');
   const [signatureEnabled, setSignatureEnabled] = useState(() => localStorage.getItem('eqsl_signature_enabled') !== 'false');
-  const [signatureText, setSignatureText] = useState(() => (localStorage.getItem('eqsl_signature_text') || getFirma()).slice(0, 30));
+  const [signatureText, setSignatureText] = useState(() => getFirma().slice(0, 30));
 
   const myCallsign = getUserCallsign();
   // Distinguir los QSOs de banda ciudadana para mostrar la señal de estación CB.
@@ -441,6 +441,10 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   useEffect(() => {
     if (isOpen && qso) {
+      // La firma predeterminada siempre usa la SD del usuario actual, no una firma antigua guardada.
+      const currentSignature = getFirma().slice(0, 30);
+      setSignatureText(currentSignature);
+      localStorage.setItem('eqsl_signature_text', currentSignature);
       // Restaurar el diseño anclado: no cambiarlo automáticamente al abrir otro QSO.
       setTheme(localStorage.getItem('eqsl_theme') || 'navy');
       setCustomBgImage(localStorage.getItem('eqsl_custom_bg') || null);
@@ -453,7 +457,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const timer = window.setTimeout(renderCard, 50);
       return () => window.clearTimeout(timer);
     }
-  }, [isOpen, qso, theme, customBgImage, imagePositionX, imagePositionY, imageZoom]);
+  }, [isOpen, qso, theme, customBgImage, imagePositionX, imagePositionY, imageZoom, signatureText, signatureEnabled]);
 
   if (!isOpen || !qso) return null;
 
