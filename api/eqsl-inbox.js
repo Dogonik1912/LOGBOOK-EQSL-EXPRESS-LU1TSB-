@@ -91,7 +91,29 @@ export default async function handler(req, res) {
       if (!sender || sender !== clean(req.body?.callsign, 40).toUpperCase()) {
         return json(res, 401, { error: 'La identidad de este dispositivo no pudo verificarse.' });
       }
-      if (clean(req.body?.action, 32) === 'mark-answered') {
+      const action = clean(req.body?.action, 32);
+      if (action === 'delete' || action === 'delete-all') {
+        const aliases = inboxAliases(sender);
+        const targetId = clean(req.body?.id, 24);
+        if (action === 'delete' && !/^[a-f0-9]{12,24}$/i.test(targetId)) {
+          return json(res, 400, { error: 'Identificador eQSL inválido.' });
+        }
+        let removed = 0;
+        // Limpiar cada alias vinculado evita que una tarjeta reaparezca desde otro buzón equivalente.
+        for (const alias of aliases) {
+          const aliasItems = await readInboxExact(alias, cfg);
+          const remaining = action === 'delete-all'
+            ? []
+            : aliasItems.filter(item => {
+                if (item.id === targetId) { removed += 1; return false; }
+                return true;
+              });
+          if (action === 'delete-all') removed += aliasItems.length;
+          if (remaining.length !== aliasItems.length) await writeInbox(alias, remaining, cfg);
+        }
+        return json(res, 200, { ok: true, removed, unread: (await readInbox(sender, cfg)).filter(item => !item.readAt).length });
+      }
+      if (action === 'mark-answered') {
         const originalId = clean(req.body?.id, 24);
         const ownItems = await readInbox(sender, cfg);
         const original = ownItems.find(item => item.id === originalId && !item.isResponse);
