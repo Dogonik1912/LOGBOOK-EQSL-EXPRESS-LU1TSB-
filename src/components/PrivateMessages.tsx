@@ -36,6 +36,7 @@ export const PrivateMessages: React.FC = () => {
   const [unreadTotal, setUnreadTotal] = useState(0);
   const previousUnreadRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
+  const [profilePhotos, setProfilePhotos] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +103,41 @@ export const PrivateMessages: React.FC = () => {
     setMessages(Array.isArray(data) ? data as PrivateMessage[] : []);
     setError('');
   }, [callsign, identityToken]);
+
+  const photoCallsigns = Array.from(new Set([
+    callsign,
+    activeRecipient,
+    ...conversations.map((conversation) => conversation.other_callsign),
+    ...messages.flatMap((message) => [message.sender_callsign, message.recipient_callsign]),
+  ].map((value) => (value || '').trim().toUpperCase()).filter(Boolean))).sort().join('|');
+
+  useEffect(() => {
+    if (!supabase || !photoCallsigns) {
+      setProfilePhotos({});
+      return;
+    }
+    let active = true;
+    const loadPhotos = async () => {
+      const { data, error: photoError } = await supabase.rpc('community_profile_photos', {
+        p_callsigns: photoCallsigns.split('|'),
+      });
+      if (!active || photoError) return;
+      const next: Record<string, string> = {};
+      (data || []).forEach((row: { callsign: string; photo_data_url: string }) => {
+        if (row?.callsign && row?.photo_data_url) next[String(row.callsign).trim().toUpperCase()] = row.photo_data_url;
+      });
+      setProfilePhotos(next);
+    };
+    void loadPhotos();
+    const poll = window.setInterval(() => { void loadPhotos(); }, 30000);
+    const refresh = () => { void loadPhotos(); };
+    window.addEventListener('user-profile-updated', refresh);
+    return () => {
+      active = false;
+      window.clearInterval(poll);
+      window.removeEventListener('user-profile-updated', refresh);
+    };
+  }, [photoCallsigns]);
 
   useEffect(() => {
     const syncCallsign = () => setCallsign((localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
@@ -233,9 +269,17 @@ export const PrivateMessages: React.FC = () => {
               {activeRecipient && messages.length === 0 && <p className="py-10 text-center text-sm text-slate-500">Todavía no hay mensajes. Escribí el primero.</p>}
               {messages.map((message) => {
                 const mine = message.sender_callsign === callsign;
-                return <article key={message.id} className={'max-w-[90%] rounded-xl px-3 py-2 ' + (mine ? 'ml-auto bg-violet-100 text-violet-950' : 'mr-auto bg-slate-100 text-slate-900')}>
-                  <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
-                  <p className="mt-1 text-right text-[10px] text-slate-500">{new Date(message.created_at).toLocaleString()}</p>
+                const sender = message.sender_callsign.trim().toUpperCase();
+                const photo = profilePhotos[sender];
+                return <article key={message.id} className={'flex max-w-[100%] items-start gap-2 ' + (mine ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row')}>
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-slate-100">
+                    {photo ? <img src={photo} alt={`Foto de ${sender}`} className="h-full w-full object-cover" /> : <span className="font-mono text-[10px] font-bold text-slate-500">{sender.slice(0, 3)}</span>}
+                  </div>
+                  <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-100 text-violet-950' : 'bg-slate-100 text-slate-900')}>
+                    <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wide">{sender}</p>
+                    <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
+                    <p className="mt-1 text-right text-[10px] text-slate-500">{new Date(message.created_at).toLocaleString()}</p>
+                  </div>
                 </article>;
               })}
             </div>
