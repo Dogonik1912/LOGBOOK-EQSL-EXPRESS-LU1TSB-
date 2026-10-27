@@ -36,29 +36,41 @@ export const Header: React.FC<HeaderProps> = ({
         }
       }
 
-      // Evitar registrar listeners duplicados cada vez que se pulsa el botón.
+      // Evitar listeners duplicados si se vuelve a tocar el botón.
       if (compassHandlerRef.current) {
         window.removeEventListener('deviceorientation', compassHandlerRef.current as EventListener);
         window.removeEventListener('deviceorientationabsolute', compassHandlerRef.current as EventListener);
       }
+      setCompassHeading(null);
+      let receivedHeading = false;
       const handleOrientation = (event: DeviceOrientationEvent) => {
-        const webkitHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+        const sensorEvent = event as DeviceOrientationEvent & { webkitCompassHeading?: number; absolute?: boolean };
         let heading: number | null = null;
-        if (typeof webkitHeading === 'number' && Number.isFinite(webkitHeading)) {
-          heading = webkitHeading;
-        } else if (typeof event.alpha === 'number' && Number.isFinite(event.alpha)) {
+
+        // iOS entrega el rumbo magnético directamente.
+        if (typeof sensorEvent.webkitCompassHeading === 'number' && Number.isFinite(sensorEvent.webkitCompassHeading)) {
+          heading = sensorEvent.webkitCompassHeading;
+        // En Android, alpha solo representa el norte cuando el evento es absoluto.
+        } else if (sensorEvent.absolute === true && typeof event.alpha === 'number' && Number.isFinite(event.alpha)) {
           heading = (360 - event.alpha + 360) % 360;
         }
+
         if (heading !== null) {
+          receivedHeading = true;
           setCompassHeading(heading);
-          setCompassStatus('Brújula activa');
+          setCompassStatus('Brújula activa · rumbo magnético aproximado');
         }
       };
       compassHandlerRef.current = handleOrientation;
-      window.addEventListener('deviceorientation', handleOrientation as EventListener);
-      // Algunos navegadores Android envían orientación absoluta solo en este evento.
+      // Android puede enviar rumbo absoluto por este evento o por deviceorientation.
       window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
-      setCompassStatus('Buscando sensor… mové el teléfono en forma de ocho');
+      window.addEventListener('deviceorientation', handleOrientation as EventListener);
+      setCompassStatus('Buscando el sensor magnético… girá el teléfono lentamente');
+      window.setTimeout(() => {
+        if (!receivedHeading) {
+          setCompassStatus('Sin rumbo del sensor. Revisá permisos y calibrá el teléfono en forma de ocho.');
+        }
+      }, 5000);
     } catch (error) {
       setCompassStatus(error instanceof Error ? error.message : 'No se pudo activar el sensor');
     }
