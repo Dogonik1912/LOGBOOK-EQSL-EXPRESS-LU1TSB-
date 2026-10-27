@@ -42,12 +42,14 @@ export const EQSLMailbox: React.FC = () => {
   const token = () => localStorage.getItem('community_chat_identity_token') || '';
 
   const updateAppBadge = (count: number) => {
+    localStorage.setItem('eqsl_unread_count', String(count));
     const badgeNavigator = navigator as Navigator & {
       setAppBadge?: (contents?: number) => Promise<void>;
       clearAppBadge?: () => Promise<void>;
     };
+    const combined = count + (Number(localStorage.getItem('community_private_unread_count')) || 0);
     try {
-      if (count > 0) void badgeNavigator.setAppBadge?.(count).catch(() => {});
+      if (combined > 0) void badgeNavigator.setAppBadge?.(combined).catch(() => {});
       else void badgeNavigator.clearAppBadge?.().catch(() => {});
     } catch { /* No todos los navegadores admiten insignias de app. */ }
   };
@@ -241,6 +243,8 @@ export const EQSLMailbox: React.FC = () => {
     window.addEventListener('eqsl-pending-count-updated', onIdentityUpdated);
     window.addEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
     window.addEventListener('storage', onIdentityUpdated);
+    const onPrivateCountUpdated = () => updateAppBadge(Number(localStorage.getItem('eqsl_unread_count')) || 0);
+    window.addEventListener('community-private-unread-count-updated', onPrivateCountUpdated);
     const refreshTimer = window.setInterval(() => {
       void refreshCount();
       void checkForNewIncoming();
@@ -252,6 +256,7 @@ export const EQSLMailbox: React.FC = () => {
       window.removeEventListener('eqsl-pending-count-updated', onIdentityUpdated);
       window.removeEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
       window.removeEventListener('storage', onIdentityUpdated);
+      window.removeEventListener('community-private-unread-count-updated', onPrivateCountUpdated);
     };
   }, [refreshCount, checkForNewIncoming]);
 
