@@ -19,6 +19,7 @@ import { Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
 import { MorseDecoder } from './components/MorseDecoder';
 import { SDRSmart } from './components/SDRSmart';
+import { PardinhoSDRTest } from './components/PardinhoSDRTest';
 import { PrivateMessages } from './components/PrivateMessages';
 import { LiveSpots, publishQsoSpot } from './components/LiveSpots';
 import { startAutomaticUiTranslation } from './services/appLanguage';
@@ -283,6 +284,9 @@ function MainApp() {
         <MorseDecoder />
 
         <SDRSmart />
+
+        {/* Prueba aislada de Pardinho: no altera el SDR existente. */}
+        <PardinhoSDRTest />
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
