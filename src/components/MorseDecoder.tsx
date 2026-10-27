@@ -28,6 +28,7 @@ function morseText(code:string) {
   return code.trim().split(' / ').map(word=>word.split(' ').map(symbol=>MORSE[symbol] || '').join('')).join(' ').replace(/\s+/g,' ').trim();
 }
 export function MorseDecoder() {
+  const [open,setOpen]=useState(false);
   const [active,setActive]=useState(false);
   const [status,setStatus]=useState('');
   const [code,setCode]=useState('');
@@ -101,10 +102,10 @@ export function MorseDecoder() {
   };
   const clear=()=>{setCode('');setDecoded('');setTranslated('');Object.assign(refs.current,{current:'',text:'',code:''});};
   return <section className="my-4" data-no-translate>
-    <button type="button" onClick={()=>setStatus(status ? '' : t.idle)} className="mb-2 w-full rounded-xl border border-blue-700 bg-blue-500 px-4 py-3 text-left font-bold text-black shadow-sm hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-700">
+    <button type="button" aria-expanded={open} onClick={()=>{if(open&&active)stop();setOpen(value=>!value);setStatus(t.idle);}} className="mb-2 w-full rounded-xl border border-blue-700 bg-blue-500 px-4 py-3 text-left font-bold text-black shadow-sm hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-700">
       Traductor Morse
     </button>
-    <div className="rounded-2xl border border-cyan-300 bg-white/95 p-4 shadow-sm">
+    {open && <div className="rounded-2xl border border-cyan-300 bg-white/95 p-4 shadow-sm">
     <div className="flex items-center gap-3 mb-3"><div className="rounded-xl bg-cyan-100 p-2 text-cyan-800"><AudioLines className="h-5 w-5"/></div><div className="min-w-0 flex-1"><h2 className="font-bold text-lg text-slate-900">{label[language]||label.es}</h2><p className="text-xs text-slate-600">Solo micrófono del teléfono · decodificación en directo</p></div></div>
     <div className="flex flex-wrap items-center gap-2 mb-3">
       {!active?<button onClick={start} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2 font-semibold text-white"><Mic className="h-4 w-4"/>{t.start}</button>:<button onClick={stop} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-semibold text-white"><MicOff className="h-4 w-4"/>{t.stop}</button>}
@@ -116,6 +117,6 @@ export function MorseDecoder() {
     <label className="mb-1 mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">{t.decoded}</label><div aria-live="polite" className="min-h-12 whitespace-pre-wrap break-words rounded-lg border border-slate-200 p-3 text-lg text-slate-900">{decoded||'…'}</div>
     {language!=='es'&&<><label className="mb-1 mt-3 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500"><Languages className="h-3 w-3"/>{t.translation}</label><div aria-live="polite" className="min-h-10 whitespace-pre-wrap break-words rounded-lg bg-cyan-50 p-3 text-slate-900">{translated||t.translate}</div></>}
     <p className="mt-3 text-xs leading-relaxed text-slate-500">El resultado depende de la claridad del tono, la velocidad y el ruido ambiental. Ajusta la frecuencia y mantén el teléfono cerca del altavoz; comprueba el texto antes de usarlo.</p>
-    </div>
+    </div>}
   </section>;
 }
