@@ -251,7 +251,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
         <form onSubmit={handleSave} className="space-y-4 pt-4">
           <div className="pt-1">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-violet-300">1. Idioma y datos de estación</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-violet-300">1. Datos de estación</h3>
             <p className="text-[11px] text-slate-500 mt-1">Tu indicativo se usará como dato predeterminado en tus tarjetas eQSL.</p>
           </div>
           {/* Los usuarios con SD verificada usan la identidad registrada automáticamente. */}
