@@ -494,10 +494,10 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
       <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-3">
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
-        <div className="w-full flex items-start justify-between gap-3">
-          <div className="min-w-0 w-[44%] sm:w-auto sm:max-w-none shrink-0 flex flex-col items-stretch gap-1.5">
+        <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
+          <div className="min-w-0 flex-1 flex flex-col items-start gap-1.5">
             {callsign && (
-              <span data-no-translate="true" translate="no" className="inline-flex min-h-11 sm:min-h-14 min-w-0 sm:min-w-[10rem] max-w-full items-center justify-center rounded-lg border-2 border-slate-300 bg-white px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-md break-all" title={`Señal distintiva: ${callsign}`}>
+              <span data-no-translate="true" translate="no" className="inline-flex min-h-10 sm:min-h-12 min-w-0 max-w-full items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
@@ -505,7 +505,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <LanguageSelector
               value={shareLanguage}
-              className="w-full min-w-0"
+              className="w-full min-w-0 sm:min-w-[13rem]"
               onChange={(nextLanguage) => {
                 localStorage.setItem('app_language', nextLanguage);
                 setShareLanguage(nextLanguage);
@@ -516,9 +516,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
         {/* Encabezamiento panorámico; la brújula se abre en un panel independiente */}
-        <div className="flex w-full min-w-0 items-center overflow-hidden">
+        <div className="flex w-full min-w-0 items-center overflow-hidden rounded-b-xl border-b border-sky-500/60 bg-black">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
+            <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-56 sm:max-h-64 object-cover object-center mx-auto" />
           </div>
         </div>
 
