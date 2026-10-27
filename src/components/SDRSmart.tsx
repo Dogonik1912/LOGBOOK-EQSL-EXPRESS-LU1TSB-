@@ -60,9 +60,11 @@ function distanceKm(a: [number, number], b: [number, number]) {
 }
 
 function receiverIsUsable(receiver: KiwiReceiver) {
+  const offline = receiver.offline === true || receiver.offline === 'yes' || receiver.offline === 'true';
+  const flagged = receiver.flagged === true || receiver.flagged === 'yes' || receiver.flagged === 'true';
   return Boolean(receiver.url)
-    && !receiver.offline
-    && !receiver.flagged
+    && !offline
+    && !flagged
     && Array.isArray(receiver.gps)
     && receiver.gps.length === 2
     && receiver.gps.every(Number.isFinite)
@@ -239,6 +241,7 @@ export function SDRSmart() {
       </div> : <p className="rounded-xl bg-slate-900 p-4 text-sm text-slate-300">Cargando receptores. Si el directorio no responde, podés consultar los directorios manuales de KiwiSDR, OpenWebRX+ y WebSDR.</p>}
       <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 pt-3 text-xs">
         <a href="https://rx.kiwisdr.com/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">Directorio KiwiSDR</a>
+        <a href="https://openwebrx.nl/map" target="_blank" rel="noreferrer" className="text-cyan-200 underline">Mapa OpenWebRX+</a>
         <a href="https://receiverbook.de/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">ReceiverBook · OpenWebRX</a>
         <a href="https://www.websdr.org/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">Directorio WebSDR</a>
       </div>
