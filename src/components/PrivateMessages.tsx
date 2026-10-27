@@ -129,10 +129,10 @@ export const PrivateMessages: React.FC = () => {
 
   useEffect(() => {
     if (activeRecipient && isOpen) {
-      void refreshMessages(activeRecipient);
+      void refreshMessages(activeRecipient).then(() => refreshConversations());
       setNotice('');
     }
-  }, [activeRecipient, isOpen, refreshMessages]);
+  }, [activeRecipient, isOpen, refreshMessages, refreshConversations]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
