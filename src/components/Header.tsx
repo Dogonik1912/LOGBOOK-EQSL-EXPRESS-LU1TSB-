@@ -19,13 +19,17 @@ export const Header: React.FC<HeaderProps> = ({
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [compassOpen, setCompassOpen] = useState(false);
-  const [compassStatus, setCompassStatus] = useState('Tocá para activar la brújula');
+  const isFixedDevice = typeof navigator !== 'undefined' && !/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+  const [compassStatus, setCompassStatus] = useState(() => isFixedDevice
+    ? 'Norte de referencia fijo: N arriba. Este equipo no informa su orientación física.'
+    : 'Tocá para activar la brújula');
   const compassHandlerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
 
   const activateCompass = async () => {
     try {
       if (!('DeviceOrientationEvent' in window)) {
-        setCompassStatus('Este navegador no ofrece sensor de orientación');
+        setCompassHeading(null);
+        setCompassStatus('Norte de referencia fijo: N arriba. Este equipo no dispone de sensor para conocer hacia dónde está orientada físicamente la pantalla.');
         return;
       }
       const orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> };
@@ -634,9 +638,9 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="absolute inset-7 rounded-full border border-slate-300" />
               <Compass className="h-24 w-24 text-slate-800 transition-transform duration-150" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }} />
             </button>
-            <p className="text-2xl font-black tabular-nums">{compassHeading === null ? '—°' : `${Math.round(compassHeading)}°`}</p>
+            <p className="text-2xl font-black tabular-nums">{compassHeading === null ? (isFixedDevice ? 'N ↑' : '—°') : `${Math.round(compassHeading)}°`}</p>
             <p role="status" className="text-center text-xs text-slate-300">{compassStatus}</p>
-            {compassHeading === null && (
+            {compassHeading === null && !isFixedDevice && (
               <button type="button" onClick={() => { void activateCompass(); }}
                 className="w-full rounded-xl border border-cyan-400 bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-600">
                 Activar / conceder permiso de brújula
