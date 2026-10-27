@@ -49,6 +49,7 @@ export const CommunityChat: React.FC = () => {
   const isAdmin = moderationRole === 'admin';
   const isModerator = isAdmin || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [profilePhotos, setProfilePhotos] = useState<Record<string, string>>({});
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [appLanguage, setAppLanguage] = useState(() => (localStorage.getItem('app_language') || 'es').toLowerCase());
   const [translatedBodies, setTranslatedBodies] = useState<Record<string, string>>({});
@@ -240,6 +241,35 @@ export const CommunityChat: React.FC = () => {
       void supabase?.removeChannel(presenceChannel);
     };
   }, [callsign, identityToken]);
+
+  // Load shared profile photos for the callsigns visible in the community chat.
+  const profileCallsignKey = Array.from(new Set(messages.map((message) => message.callsign.trim().toUpperCase()).filter(Boolean))).join('|');
+  useEffect(() => {
+    if (!supabase || !profileCallsignKey) {
+      setProfilePhotos({});
+      return;
+    }
+    let active = true;
+    const loadProfilePhotos = async () => {
+      const requested = profileCallsignKey.split('|');
+      const { data, error: photoError } = await supabase.rpc('community_profile_photos', { p_callsigns: requested });
+      if (!active || photoError) return;
+      const next: Record<string, string> = {};
+      (data || []).forEach((row: { callsign: string; photo_data_url: string }) => {
+        if (row?.callsign && row?.photo_data_url) next[String(row.callsign).trim().toUpperCase()] = row.photo_data_url;
+      });
+      setProfilePhotos(next);
+    };
+    void loadProfilePhotos();
+    const refreshId = window.setInterval(() => { void loadProfilePhotos(); }, 30000);
+    const refreshOnProfileChange = () => { void loadProfilePhotos(); };
+    window.addEventListener('user-profile-updated', refreshOnProfileChange);
+    return () => {
+      active = false;
+      window.clearInterval(refreshId);
+      window.removeEventListener('user-profile-updated', refreshOnProfileChange);
+    };
+  }, [profileCallsignKey]);
 
   // Translate messages only for display; the original text remains stored in Supabase.
   // The selected app language is per-device, so each visitor sees their own translation.
@@ -546,6 +576,11 @@ export const CommunityChat: React.FC = () => {
             {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-black text-white" : "border-slate-100 bg-white text-slate-950"}`}>
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-300 bg-slate-100 flex items-center justify-center" aria-label={`Foto de perfil de ${message.callsign}`}>
+                    {profilePhotos[message.callsign.trim().toUpperCase()] ? <img src={profilePhotos[message.callsign.trim().toUpperCase()]} alt={`Foto de ${message.callsign}`} className="h-full w-full object-cover" /> : <span className="font-mono text-xs font-bold text-slate-500">{message.callsign.trim().slice(0, 3).toUpperCase()}</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
                 <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="underline decoration-dotted underline-offset-2 hover:text-amber-700" title="Opciones de administrador para este usuario">{message.callsign}</button> : message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
                 {isAdmin && moderatorTargetSelected === message.callsign.trim().toUpperCase() && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
@@ -564,6 +599,8 @@ export const CommunityChat: React.FC = () => {
                       <button type="button" disabled={moderationBusy} onClick={() => void applySanction(message.callsign, 'silence', 10080)} className="rounded-md px-2 py-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50" title="Silenciar 7 días">7d</button>
                       <button type="button" disabled={moderationBusy || moderationTarget === message.callsign} onClick={() => void applySanction(message.callsign, 'block')} className="rounded-md px-2 py-1 text-[10px] font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50" title="Bloquear el envío de mensajes">Bloquear</button>
                     </div>}
+                  </div>
+                </div>
                   </div>
                 </div>
               </article>
