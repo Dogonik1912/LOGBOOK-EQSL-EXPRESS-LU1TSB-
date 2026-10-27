@@ -53,7 +53,22 @@ export const PrivateMessages: React.FC = () => {
       setError('Los mensajes privados aún no están activados en el servidor. Hay que aplicar la migración de Mensajes Privados en Supabase.');
       return;
     }
-    const nextConversations = Array.isArray(data) ? data as PrivateConversation[] : [];
+    // Normalize the JSON returned by the Supabase RPC before rendering the inbox.
+    const rawConversations = Array.isArray(data)
+      ? data
+      : Array.isArray((data as { conversations?: unknown[] } | null)?.conversations)
+        ? (data as { conversations: unknown[] }).conversations
+        : [];
+    const nextConversations = rawConversations
+      .filter((item): item is PrivateConversation => Boolean(item && typeof item === 'object' && (item as PrivateConversation).other_callsign))
+      .map((item) => ({
+        ...item,
+        other_callsign: String(item.other_callsign).trim().toUpperCase(),
+        last_body: String(item.last_body || ''),
+        last_at: String(item.last_at || ''),
+        unread_count: Number(item.unread_count) || 0,
+      }))
+      .sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime());
     const nextUnread = nextConversations.reduce((total, item) => total + (Number(item.unread_count) || 0), 0);
     setConversations(nextConversations);
     setUnreadTotal(nextUnread);
@@ -234,14 +249,14 @@ export const PrivateMessages: React.FC = () => {
               <>
                 <p className="mb-2 text-xs text-slate-500">Tu indicativo: <strong className="font-mono text-slate-900">{callsign}</strong></p>
                 <form onSubmit={(event) => { event.preventDefault(); openConversation(recipientDraft); }} className="mb-3 flex gap-1.5">
-                  <input value={recipientDraft} onChange={(event) => setRecipientDraft(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo destino" aria-label="Indicativo destinatario" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-2 font-mono text-xs outline-none focus:border-violet-500" />
+                  <input value={recipientDraft} onChange={(event) => setRecipientDraft(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo destino" aria-label="Indicativo destinatario" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-2 font-mono text-xs text-slate-950 placeholder:text-slate-500 outline-none focus:border-violet-500" />
                   <button type="submit" className="rounded-lg bg-violet-800 px-3 py-2 text-xs font-bold text-white">Abrir</button>
                 </form>
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-bold text-slate-700">Conversaciones</h3>
                   <button type="button" onClick={() => void refreshConversations()} className="rounded p-1 text-slate-500 hover:bg-slate-200" aria-label="Actualizar conversaciones"><RefreshCw className="h-3.5 w-3.5" /></button>
                 </div>
-                {conversations.length === 0 ? <p className="py-3 text-xs text-slate-500">Todavía no tenés conversaciones privadas.</p> : (
+                {conversations.length === 0 ? <div className="py-3 text-xs text-slate-500"><p>Todavía no aparecen conversaciones privadas.</p><button type="button" onClick={() => void refreshConversations()} className="mt-2 font-bold text-violet-800 underline">Volver a cargar</button></div> : (
                   <ul className="space-y-1.5">
                     {conversations.map((conversation) => (
                       <li key={conversation.other_callsign}>
