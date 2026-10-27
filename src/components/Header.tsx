@@ -27,11 +27,12 @@ export const Header: React.FC<HeaderProps> = ({
         setCompassStatus('Este navegador no ofrece sensor de orientación');
         return;
       }
-      const orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> };
+      const orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: (absolute?: boolean) => Promise<string> };
+      // En navegadores que lo exigen, solicitar permiso explícito para rumbo absoluto/magnético.
       if (typeof orientation.requestPermission === 'function') {
-        const permission = await orientation.requestPermission();
+        const permission = await orientation.requestPermission(true);
         if (permission !== 'granted') {
-          setCompassStatus('Permiso de orientación denegado');
+          setCompassStatus('Permiso de brújula denegado. Permití el acceso al sensor.');
           return;
         }
       }
@@ -47,32 +48,35 @@ export const Header: React.FC<HeaderProps> = ({
         const sensorEvent = event as DeviceOrientationEvent & { webkitCompassHeading?: number; absolute?: boolean };
         let heading: number | null = null;
 
-        // iOS entrega el rumbo magnético directamente.
+        // Safari/iOS entrega directamente el rumbo magnético.
         if (typeof sensorEvent.webkitCompassHeading === 'number' && Number.isFinite(sensorEvent.webkitCompassHeading)) {
           heading = sensorEvent.webkitCompassHeading;
-        // En Android, alpha solo representa el norte cuando el evento es absoluto.
-        } else if (sensorEvent.absolute === true && typeof event.alpha === 'number' && Number.isFinite(event.alpha)) {
+        // Android: aceptar alpha únicamente si el evento es absoluto o procede del evento absoluto.
+        } else if (
+          (sensorEvent.absolute === true || event.type === 'deviceorientationabsolute') &&
+          typeof event.alpha === 'number' &&
+          Number.isFinite(event.alpha)
+        ) {
           heading = (360 - event.alpha + 360) % 360;
         }
 
         if (heading !== null) {
           receivedHeading = true;
-          setCompassHeading(heading);
-          setCompassStatus('Brújula activa · rumbo magnético aproximado');
+          setCompassHeading(((heading % 360) + 360) % 360);
+          setCompassStatus('Brújula activa · rumbo del sensor');
         }
       };
       compassHandlerRef.current = handleOrientation;
-      // Android puede enviar rumbo absoluto por este evento o por deviceorientation.
       window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener);
       window.addEventListener('deviceorientation', handleOrientation as EventListener);
-      setCompassStatus('Buscando el sensor magnético… girá el teléfono lentamente');
+      setCompassStatus('Buscando el norte magnético… mantené el teléfono horizontal y giralo lentamente');
       window.setTimeout(() => {
         if (!receivedHeading) {
-          setCompassStatus('Sin rumbo del sensor. Revisá permisos y calibrá el teléfono en forma de ocho.');
+          setCompassStatus('El teléfono no entrega rumbo absoluto. Revisá permisos, calibrá en forma de ocho y probá de nuevo.');
         }
-      }, 5000);
+      }, 7000);
     } catch (error) {
-      setCompassStatus(error instanceof Error ? error.message : 'No se pudo activar el sensor');
+      setCompassStatus(error instanceof Error ? error.message : 'No se pudo activar el sensor de brújula');
     }
   };
 
