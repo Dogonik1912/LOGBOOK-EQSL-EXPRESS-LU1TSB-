@@ -87,3 +87,61 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   html { scroll-behavior:auto; }
   *,*::before,*::after { transition:none !important; animation:none !important; }
 }
+
+
+/* Compactación del encabezado: prioriza el espacio útil en móviles y escritorio. */
+header.sticky.top-0.z-40 > div {
+  padding: 6px 10px !important;
+  gap: 7px !important;
+}
+header.sticky.top-0.z-40 > div > div:first-child {
+  padding: 5px 9px !important;
+  gap: 6px !important;
+  border-radius: 10px !important;
+}
+header.sticky.top-0.z-40 > div > div:first-child [data-no-translate="true"] {
+  min-height: 30px !important;
+  padding: 4px 8px !important;
+  font-size: 1rem !important;
+}
+header.sticky.top-0.z-40 img[alt="LogBook eQSL EXPRESS"] {
+  display: block;
+  width: 100%;
+  height: 74px !important;
+  max-height: 74px !important;
+  object-fit: contain !important;
+  object-position: center;
+}
+header.sticky.top-0.z-40 > div > div:nth-child(3) {
+  gap: 6px !important;
+}
+header.sticky.top-0.z-40 > div > div:nth-child(3) button {
+  padding: 7px 9px !important;
+}
+@media (max-width: 700px) {
+  header.sticky.top-0.z-40 > div {
+    padding: 4px 7px !important;
+    gap: 5px !important;
+  }
+  header.sticky.top-0.z-40 > div > div:first-child {
+    padding: 4px 6px !important;
+  }
+  header.sticky.top-0.z-40 img[alt="LogBook eQSL EXPRESS"] {
+    height: 48px !important;
+    max-height: 48px !important;
+  }
+  header.sticky.top-0.z-40 > div > div:nth-child(3) {
+    gap: 5px !important;
+  }
+  header.sticky.top-0.z-40 > div > div:nth-child(3) button {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+  header.sticky.top-0.z-40 > div > div:nth-child(3) button span {
+    line-height: 1.15 !important;
+  }
+  .logbook-dashboard { padding-top: 9px; }
+  .dashboard-welcome { padding: 17px 14px; gap: 8px; }
+  .welcome-copy h1 { font-size: 1.45rem; }
+  .welcome-mark { display: none; }
+}
