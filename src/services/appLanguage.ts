@@ -4,7 +4,7 @@
  * eQSL artwork is rendered to canvas/images and is intentionally not translated.
  */
 export const APP_LANGUAGES = [
-  'es','en','pt','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi',
+  'es','en','pt','pt-br','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi',
   'tr','sv','no','da','fi','cs','el','ro','hu','id',
 ] as const;
 export type AppLanguage = typeof APP_LANGUAGES[number];
@@ -13,20 +13,22 @@ const COUNTRY_LANGUAGE: Record<string, AppLanguage> = {
   AR:'es', BO:'es', CL:'es', CO:'es', CR:'es', CU:'es', DO:'es', EC:'es', ES:'es',
   GT:'es', HN:'es', MX:'es', NI:'es', PA:'es', PE:'es', PR:'es', PY:'es', SV:'es',
   UY:'es', VE:'es', US:'en', CA:'en', GB:'en', AU:'en', NZ:'en', IE:'en', IT:'it',
-  BR:'pt', PT:'pt', FR:'fr', BE:'fr', DE:'de', AT:'de', CH:'de', NL:'nl', PL:'pl',
+  BR:'pt-br', PT:'pt', FR:'fr', BE:'fr', DE:'de', AT:'de', CH:'de', NL:'nl', PL:'pl',
   RU:'ru', UA:'uk', CN:'zh', TW:'zh', JP:'ja', KR:'ko', IN:'hi', TR:'tr', SE:'sv',
   NO:'no', DK:'da', FI:'fi', CZ:'cs', GR:'el', RO:'ro', HU:'hu', ID:'id',
 };
 
 const PHONE_LANGUAGE: Array<[string, AppLanguage]> = [
-  ['39','it'],['54','es'],['55','pt'],['351','pt'],['34','es'],['33','fr'],['49','de'],
+  ['39','it'],['54','es'],['55','pt-br'],['351','pt'],['34','es'],['33','fr'],['49','de'],
   ['31','nl'],['32','fr'],['44','en'],['1','en'],['48','pl'],['7','ru'],['380','uk'],
   ['86','zh'],['81','ja'],['82','ko'],['91','hi'],['90','tr'],['46','sv'],['47','no'],
   ['45','da'],['358','fi'],['420','cs'],['30','el'],['40','ro'],['36','hu'],['62','id'],
 ];
 
 export function normalizeLanguage(value?: string | null): AppLanguage | null {
-  const code = String(value || '').toLowerCase().split(/[-_]/)[0];
+  const raw = String(value || '').toLowerCase().replace('_', '-');
+  if (raw === 'pt-br') return 'pt-br';
+  const code = raw.split(/[-_]/)[0];
   return (APP_LANGUAGES as readonly string[]).includes(code) ? code as AppLanguage : null;
 }
 
@@ -261,7 +263,8 @@ export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'recei
   const messages: Record<AppLanguage, { received: string; reply: string; view: string }> = {
     es:{received:'📻 ¡Has recibido una eQSL!',reply:'📻 ¡Han respondido a tu eQSL!',view:'Ver y descargar la tarjeta'},
     en:{received:'📻 You received an eQSL!',reply:'📻 Someone replied to your eQSL!',view:'View and download the card'},
-    pt:{received:'📻 Você recebeu uma eQSL!',reply:'📻 Responderam à sua eQSL!',view:'Ver e baixar o cartão'},
+    pt:{received:'📻 Recebeu uma eQSL!',reply:'📻 Recebeu uma resposta à sua eQSL!',view:'Ver e descarregar o cartão'},
+    'pt-br':{received:'📻 Você recebeu uma eQSL!',reply:'📻 Responderam à sua eQSL!',view:'Ver e baixar o cartão'},
     fr:{received:'📻 Vous avez reçu une eQSL !',reply:'📻 Une réponse à votre eQSL est arrivée !',view:'Voir et télécharger la carte'},
     de:{received:'📻 Du hast eine eQSL erhalten!',reply:'📻 Deine eQSL wurde beantwortet!',view:'Karte ansehen und herunterladen'},
     it:{received:'📻 Hai ricevuto una eQSL!',reply:'📻 Hai ricevuto una risposta alla tua eQSL!',view:'Visualizza e scarica la cartolina'},
