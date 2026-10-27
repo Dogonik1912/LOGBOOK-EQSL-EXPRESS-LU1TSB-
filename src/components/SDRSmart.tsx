@@ -37,7 +37,7 @@ const bands = [
   { label: '17 m', frequency: 18.1, low: 18.068e6, high: 18.168e6 },
   { label: '15 m', frequency: 21.2, low: 21e6, high: 21.45e6 },
   { label: '12 m', frequency: 24.94, low: 24.89e6, high: 24.99e6 },
-  { label: '11 m · CB', frequency: 27.555, low: 26.965e6, high: 27.405e6 },
+  { label: '11 m · CB', frequency: 27.555, low: 26.965e6, high: 27.855e6 },
   { label: '10 m', frequency: 28.4, low: 28e6, high: 29.7e6 },
   { label: '6 m', frequency: 50.2, low: 50e6, high: 54e6 },
   { label: '2 m', frequency: 145.5, low: 144e6, high: 148e6 },
