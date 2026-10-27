@@ -5,6 +5,13 @@ import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign } from '../services/callsignCountry';
 
+const isElevenMeterSpot = (band: string, frequency: string): boolean => {
+  const normalizedBand = String(band || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const mhz = Number(String(frequency || '').replace(',', '.'));
+  return /11\s*metros|11\s*m|27\s*mhz|banda ciudadana|\bcb\b/.test(normalizedBand)
+    || (Number.isFinite(mhz) && mhz >= 26 && mhz <= 28);
+};
+
 type Spot = {
   spot_key: string; callsign: string; station_callsign: string; qso_date: string;
   qso_time: string; band: string; frequency: string; mode: string; country: string | null;
@@ -26,7 +33,7 @@ export async function publishQsoSpot(qso: QSO) {
     band: qso.band,
     frequency: String(qso.frequency).replace(',', '.'),
     mode: qso.mode || '',
-    country: countryForCallsign(remoteCall, qso.country, /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(String(qso.band || ''))),
+    country: countryForCallsign(remoteCall, qso.country, isElevenMeterSpot(String(qso.band || ''), String(qso.frequency || ''))),
   }, { onConflict: 'spot_key', ignoreDuplicates: true });
   if (error) console.warn('No se pudo publicar el spot en vivo:', error.message);
 }
@@ -64,7 +71,7 @@ export const LiveSpots: React.FC = () => {
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
     {!loading && !errorMessage && spots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos. Al registrar un QSO aparecerá aquí.</p>}
     {spots.length > 0 && <div className="divide-y divide-slate-100">{spots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3">
-      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm font-bold text-slate-900"><span>{flagForCallsign(spot.callsign, spot.country, /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(spot.band))} {spot.callsign}</span><span className="text-slate-400">↔</span><span>{flagForCallsign(spot.station_callsign, undefined, /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(spot.band))} {spot.station_callsign}</span></div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600"><span className="inline-flex items-center gap-1"><Signal className="h-3.5 w-3.5" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
+      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm font-bold text-slate-900"><span>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</span><span className="text-slate-400">↔</span><span>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</span></div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600"><span className="inline-flex items-center gap-1"><Signal className="h-3.5 w-3.5" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
       <div className="text-right text-xs text-slate-600"><div className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{spot.qso_time} UTC</div><div className="mt-1">{spot.qso_date}</div></div>
     </article>)}</div>}
     <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2"><span className="text-[10px] text-slate-400">Solo contactos guardados; hora UTC registrada.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
