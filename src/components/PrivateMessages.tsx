@@ -249,7 +249,6 @@ export const PrivateMessages: React.FC = () => {
         </div>
       )}
       {(error || notice) && <div role={error ? 'alert' : 'status'} className={'border-t px-4 py-3 text-sm ' + (error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900')}>{error || notice}</div>}
-      <div className="border-t border-violet-800 px-2 pt-2 mt-2 text-[10px] text-violet-200">Privacidad: los mensajes se consultan mediante funciones del servidor que validan el indicativo y su token. No se leen desde la tabla pública.</div>
     </section>
   );
 };
