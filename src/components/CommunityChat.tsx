@@ -582,6 +582,14 @@ export const CommunityChat: React.FC = () => {
         <>
           <div ref={messagesContainerRef} className={`max-h-[360px] min-h-[230px] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
             {messages.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
+            <article className={`rounded-xl border-2 border-sky-500 px-3 py-2.5 ${darkChat ? "bg-slate-900 text-slate-100" : "bg-sky-50 text-slate-950"}`} aria-label="Mensaje de bienvenida fijado">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <strong className="font-mono font-extrabold uppercase text-red-600">LU1TSB/4RC978</strong>
+                <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">FIJADO</span>
+              </div>
+              <p className="text-sm font-semibold">¡Bienvenidos a LogBook eQSL EXPRESS!</p>
+              <p className="mt-1 text-sm">Respeto, cordialidad y buenas ondas para todos. 🤝</p>
+            </article>
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
                 <div className="flex items-start gap-2.5">
