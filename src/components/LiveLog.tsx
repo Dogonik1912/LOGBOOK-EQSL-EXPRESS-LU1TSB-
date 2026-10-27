@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
+import { flagForCallsign } from '../services/callsignCountry';
 import {
   Mail,
   Share2,
