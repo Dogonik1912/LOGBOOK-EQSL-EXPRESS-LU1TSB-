@@ -250,22 +250,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         </div>
 
         <form onSubmit={handleSave} className="space-y-4 pt-4">
-          <section className="pt-1 space-y-2" aria-labelledby="user-profile-title">
-            <h3 id="user-profile-title" className="text-xs font-bold uppercase tracking-wider text-violet-300">Perfil de radio</h3>
-            <div className="rounded-xl border border-violet-500/25 bg-slate-950/70 p-3.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/15 text-violet-200">
-                  <Settings className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] text-slate-400">Señal distintiva del perfil</p>
-                  <p className="truncate font-mono text-base font-bold text-white">{callsign.trim().toUpperCase() || 'Sin indicativo configurado'}</p>
-                  <p className={`text-[11px] mt-0.5 ${isVerifiedCallsign ? 'text-emerald-300' : 'text-amber-300'}`}>{isVerifiedCallsign ? 'Identidad verificada en este dispositivo' : 'Perfil local: indicativo editable'}</p>
-                </div>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Este perfil conserva tus preferencias de la aplicación y de tus tarjetas. La identidad verificada no se puede cambiar desde Ajustes.</p>
-            </div>
-          </section>
           {/* Los usuarios con SD verificada usan la identidad registrada automáticamente. */}
           {!isVerifiedCallsign && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
