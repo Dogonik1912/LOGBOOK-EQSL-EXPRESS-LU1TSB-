@@ -241,6 +241,7 @@ export const PrivateMessages: React.FC = () => {
         <Inbox className="h-4 w-4 shrink-0 text-violet-200" />
       </button>
       {!isOpen ? null : (
+        <>
         <div className="mt-3 border-t border-violet-800 pt-3 grid grid-cols-1 md:grid-cols-[minmax(180px,0.75fr)_minmax(0,1.5fr)]">
           <aside className="border-b border-slate-200 bg-slate-50 p-3 md:border-b-0 md:border-r">
             {!callsign ? (
@@ -321,6 +322,7 @@ export const PrivateMessages: React.FC = () => {
             Cerrar mensajes privados
           </button>
         </div>
+        </>
       )}
       {(error || notice) && <div role={error ? 'alert' : 'status'} className={'border-t px-4 py-3 text-sm ' + (error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900')}>{error || notice}</div>}
     </section>
