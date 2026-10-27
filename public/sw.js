@@ -1,5 +1,5 @@
-const CACHE_NAME = 'lb-eqsl-express-shell-v5';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
+const CACHE_NAME = 'lb-eqsl-express-shell-v6';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/logbook-header.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -58,15 +58,18 @@ self.addEventListener('fetch', (event) => {
   // Serve built app assets from cache when offline, refreshing them when online.
   if (/\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\?)/i.test(url.pathname)) {
     event.respondWith((async () => {
-      const cached = await caches.match(request);
-      const network = fetch(request).then(async (response) => {
+      // Network-first while online: do not let an old cached asset mask a newer release.
+      // The cached copy is only the offline fallback.
+      try {
+        const response = await fetch(request, { cache: 'no-cache' });
         if (response.ok) {
           const cache = await caches.open(CACHE_NAME);
           await cache.put(request, response.clone());
+          return response;
         }
-        return response;
-      }).catch(() => null);
-      return cached || await network || new Response('', { status: 504, statusText: 'Offline asset unavailable' });
+      } catch { /* Offline: use the last cached copy below. */ }
+      const cached = await caches.match(request);
+      return cached || new Response('', { status: 504, statusText: 'Offline asset unavailable' });
     })());
   }
 });
