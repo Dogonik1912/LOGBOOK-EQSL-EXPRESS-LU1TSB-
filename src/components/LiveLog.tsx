@@ -41,6 +41,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onImportADIF,
   onOpenReply,
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.9 && f <= 27.5; })();
@@ -316,7 +317,22 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   });
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-expanded={isExpanded}
+        className="w-full flex items-center justify-between gap-3 p-4 sm:px-6 text-left hover:bg-slate-800/70 transition-colors"
+      >
+        <span className="flex items-center gap-3">
+          <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
+          <span className="text-base font-bold text-white tracking-wide">QSO GUARDADOS</span>
+          <span className="text-xs text-slate-400">({qsos.length})</span>
+        </span>
+        <span className="text-slate-300 text-xl leading-none" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
+      </button>
+      {isExpanded && (
+      <div className="p-5 sm:p-6 pt-0">
       {/* Barra superior de Live Log */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-4 mb-4 border-b border-slate-800 gap-4">
         <div>
@@ -681,6 +697,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           <div className="text-xl font-bold text-sky-400">{categoryQSOs.filter((q) => q.qslRcvd).length}</div>
         </div>
       </div>
+      </div>
+      )}
     </div>
   );
 };
