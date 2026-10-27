@@ -133,7 +133,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       const image = new Image();
       image.onerror = () => window.alert('No se pudo abrir la imagen seleccionada.');
       image.onload = () => {
-        const size = 640;
+        const size = 512;
         const scale = Math.min(1, size / Math.max(image.width, image.height));
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -141,7 +141,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
         try {
           localStorage.setItem('user_profile_photo', dataUrl);
           setProfilePhoto(dataUrl);
