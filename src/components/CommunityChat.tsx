@@ -583,6 +583,16 @@ export const CommunityChat: React.FC = () => {
       {(notice || error) && <div role={error ? 'alert' : 'status'} className={`border-t px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>{error || notice}</div>}
       {isAdmin && adminNotice && <div role="status" className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{adminNotice}</div>}
 
+
+      {supabase && <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-5" aria-label="Indicativos en línea">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold text-slate-700">Indicativos en línea</h3>
+          <span className="text-[10px] text-slate-500">{onlineUsers.length}</span>
+        </div>
+        {onlineUsers.length > 0 ? <ul className="flex flex-wrap gap-2">
+          {onlineUsers.map((user) => <li key={user.identityToken || user.callsign} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 font-mono text-xs font-semibold text-slate-700"><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</li>)}
+        </ul> : <p className="text-xs text-slate-500">No hay indicativos conectados en este momento.</p>}
+      </div>}
     </section>
   );
 };
