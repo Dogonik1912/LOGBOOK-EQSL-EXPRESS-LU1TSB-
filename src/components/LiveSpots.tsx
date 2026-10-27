@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { QSO } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { getUserCallsign } from '../services/qrzService';
 
 type Spot = {
   spot_key: string; callsign: string; station_callsign: string; qso_date: string;
@@ -39,7 +40,7 @@ const flagFor = (country: string) => {
 
 export async function publishQsoSpot(qso: QSO) {
   if (!supabase) return;
-  const ownCall = (qso.stationCallsign || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+  const ownCall = (qso.stationCallsign || getUserCallsign() || '').trim().toUpperCase();
   const remoteCall = String(qso.callsign || '').trim().toUpperCase();
   if (!ownCall || !remoteCall || !qso.date || !qso.time || !qso.frequency || !qso.band) return;
   const spotKey = [ownCall, remoteCall, qso.date, qso.time, qso.band, String(qso.frequency).replace(',', '.'), qso.mode].join('|');
