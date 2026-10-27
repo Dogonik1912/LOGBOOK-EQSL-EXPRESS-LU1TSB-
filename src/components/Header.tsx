@@ -28,10 +28,10 @@ export const Header: React.FC<HeaderProps> = ({
         setCompassStatus('Este navegador no ofrece sensor de orientación');
         return;
       }
-      const orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: (absolute?: boolean) => Promise<string> };
-      // En navegadores que lo exigen, solicitar permiso explícito para rumbo absoluto/magnético.
+      const orientation = window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> };
+      // Safari/iOS exige que requestPermission se invoque directamente desde una acción del usuario.
       if (typeof orientation.requestPermission === 'function') {
-        const permission = await orientation.requestPermission(true);
+        const permission = await orientation.requestPermission();
         if (permission !== 'granted') {
           setCompassStatus('Permiso de brújula denegado. Permití el acceso al sensor.');
           return;
@@ -625,6 +625,12 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <p className="text-2xl font-black tabular-nums">{compassHeading === null ? '—°' : `${Math.round(compassHeading)}°`}</p>
             <p role="status" className="text-center text-xs text-slate-300">{compassStatus}</p>
+            {typeof (window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> }).requestPermission === 'function' && compassHeading === null && (
+              <button type="button" onClick={() => { void activateCompass(); }}
+                className="w-full rounded-xl border border-cyan-400 bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-600">
+                Conceder permiso de brújula
+              </button>
+            )}
             <button type="button" onClick={() => setCompassOpen(false)}
               className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
               Cerrar brújula
