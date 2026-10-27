@@ -261,8 +261,18 @@ export const PrivateMessages: React.FC = () => {
                     {conversations.map((conversation) => (
                       <li key={conversation.other_callsign}>
                         <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'w-full rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white hover:bg-slate-100')}>
-                          <span className="flex items-center justify-between gap-2 font-mono text-xs font-bold">{conversation.other_callsign}{conversation.unread_count > 0 && <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">{conversation.unread_count}</span>}</span>
-                          <span className="mt-1 block truncate text-[11px] text-slate-500">{conversation.last_body}</span>
+                          <span className="flex items-center gap-2 text-slate-900">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-violet-100">
+                              {profilePhotos[conversation.other_callsign]
+                                ? <img src={profilePhotos[conversation.other_callsign]} alt={`Foto de ${conversation.other_callsign}`} className="h-full w-full object-cover" />
+                                : <span className="font-mono text-[10px] font-bold text-violet-900">{conversation.other_callsign.slice(0, 3)}</span>}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center justify-between gap-2 font-mono text-xs font-bold text-slate-900">{conversation.other_callsign}{conversation.unread_count > 0 && <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">{conversation.unread_count}</span>}</span>
+                              <span className="mt-1 block truncate text-[11px] font-normal text-slate-500">{conversation.last_body}</span>
+                            </span>
+                          </span>
+                          
                         </button>
                       </li>
                     ))}
