@@ -18,6 +18,7 @@ import { EQSLMailbox } from './components/EQSLMailbox';
 import { Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
 import { MorseDecoder } from './components/MorseDecoder';
+import { SDRSmart } from './components/SDRSmart';
 import { PrivateMessages } from './components/PrivateMessages';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 import { getUserCallsign } from './services/qrzService';
@@ -287,6 +288,8 @@ function MainApp() {
         <CommunityChat />
 
         <MorseDecoder />
+
+        <SDRSmart />
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
