@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, LockKeyhole, MessageCircle, RefreshCw, Send, Inbox } from 'lucide-react';
+import { ArrowLeft, MessageCircle, RefreshCw, Send, Inbox, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type PrivateMessage = {
@@ -39,6 +39,7 @@ export const PrivateMessages: React.FC = () => {
   const [profilePhotos, setProfilePhotos] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [deletingConversation, setDeletingConversation] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -204,6 +205,33 @@ export const PrivateMessages: React.FC = () => {
     setActiveRecipient(recipient);
   };
 
+  const deleteConversation = async (otherCallsign: string) => {
+    if (!supabase || !callsign || !identityToken || deletingConversation) return;
+    const confirmed = window.confirm(`¿Eliminar toda la conversación con ${otherCallsign}? Se borrarán los mensajes de ambos lados de esta conversación y no se puede deshacer.`);
+    if (!confirmed) return;
+    setDeletingConversation(otherCallsign);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('delete_community_private_conversation', {
+        p_callsign: callsign,
+        p_token: identityToken,
+        p_other_callsign: otherCallsign,
+      });
+      if (rpcError || !data?.ok) {
+        setError('No se pudo eliminar la conversación. Puede faltar aplicar la migración de eliminación de mensajes privados en Supabase.');
+        return;
+      }
+      setConversations((current) => current.filter((item) => item.other_callsign !== otherCallsign));
+      if (activeRecipient === otherCallsign) {
+        setActiveRecipient('');
+        setMessages([]);
+      }
+      await refreshConversations();
+    } finally {
+      setDeletingConversation('');
+    }
+  };
+
   const sendMessage = async () => {
     const body = draft.trim();
     if (!supabase || !callsign || !activeRecipient || !body || sending) return;
@@ -260,8 +288,8 @@ export const PrivateMessages: React.FC = () => {
                 {conversations.length === 0 ? <div className="py-3 text-xs text-slate-300"><p>Todavía no aparecen conversaciones privadas.</p><button type="button" onClick={() => void refreshConversations()} className="mt-2 font-bold text-violet-800 underline">Volver a cargar</button></div> : (
                   <ul className="space-y-1.5">
                     {conversations.map((conversation) => (
-                      <li key={conversation.other_callsign}>
-                        <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'w-full rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-500 bg-violet-900' : 'border-slate-700 bg-slate-800 hover:bg-slate-700')}>
+                      <li key={conversation.other_callsign} className="flex items-stretch gap-1.5">
+                        <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'min-w-0 flex-1 rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-500 bg-violet-900' : 'border-slate-700 bg-slate-800 hover:bg-slate-700')}>
                           <span className="flex items-center gap-2 text-slate-900">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-violet-100">
                               {profilePhotos[conversation.other_callsign]
@@ -273,8 +301,8 @@ export const PrivateMessages: React.FC = () => {
                               <span className="mt-1 block truncate text-[11px] font-normal text-slate-500">{conversation.last_body}</span>
                             </span>
                           </span>
-                          
                         </button>
+                        <button type="button" onClick={() => void deleteConversation(conversation.other_callsign)} disabled={Boolean(deletingConversation)} aria-label={`Eliminar conversación con ${conversation.other_callsign}`} title="Eliminar conversación" className="flex w-10 shrink-0 items-center justify-center rounded-lg border border-red-500/60 bg-red-950 text-red-200 hover:bg-red-900 disabled:opacity-50"><Trash2 className="h-4 w-4" />{deletingConversation === conversation.other_callsign && <span className="sr-only">Eliminando…</span>}</button>
                       </li>
                     ))}
                   </ul>
