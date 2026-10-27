@@ -491,13 +491,13 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-      <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-3">
+    <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+      <div className="relative w-full px-2 sm:px-4 py-2 flex flex-col gap-2">
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
-        <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
-          <div className="min-w-0 flex-1 flex flex-col items-start gap-1.5">
+        <div className="w-full flex items-center justify-between gap-2 rounded-xl border border-sky-500/50 bg-black px-2.5 py-1.5 sm:px-4 sm:py-2 shadow-sm">
+          <div className="min-w-0 flex-1 flex flex-row flex-wrap items-center justify-between gap-2">
             {callsign && (
-              <span data-no-translate="true" translate="no" className="inline-flex min-h-10 sm:min-h-12 min-w-0 max-w-full items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-2 font-mono text-lg sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${callsign}`}>
+              <span data-no-translate="true" translate="no" className="inline-flex min-h-8 min-w-0 max-w-full items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2.5 py-1 font-mono text-base sm:text-lg font-black shadow-sm break-all" title={`Señal distintiva: ${callsign}`}>
                 {callsign.split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
@@ -505,7 +505,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <LanguageSelector
               value={shareLanguage}
-              className="w-full min-w-0 sm:min-w-[13rem]"
+              className="w-auto min-w-0 max-w-[9rem] sm:max-w-[13rem] text-xs"
               onChange={(nextLanguage) => {
                 localStorage.setItem('app_language', nextLanguage);
                 setShareLanguage(nextLanguage);
@@ -516,18 +516,18 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
         {/* Encabezamiento panorámico; la brújula se abre en un panel independiente */}
-        <div className="flex w-full min-w-0 items-center overflow-hidden rounded-b-xl border-b border-sky-500/60 bg-black">
+        <div className="flex w-full min-w-0 items-center overflow-hidden rounded-lg border border-sky-500/40 bg-black">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-56 sm:max-h-64 object-cover object-center mx-auto" />
+            <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-12 sm:h-16 object-contain object-center mx-auto" />
           </div>
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
             title="Instalar LB EQSL EXPRESS en este equipo"
           >
             {isInstalled ? <Smartphone className="w-4 h-4" /> : <Download className="w-4 h-4" />}
@@ -544,11 +544,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShareMenuOpen((open) => !open)}
               aria-expanded={shareMenuOpen}
               aria-haspopup="menu"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
               title="Compartir LogBook eQSL Express en tus redes"
             >
               <Share2 className="w-4 h-4" />
-              <span>Comparte esta app en tus redes</span>
+              <span>Compartir app</span>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
             {shareMenuOpen && (
@@ -572,8 +572,8 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <div className="mt-2 flex flex-col items-start gap-2">
           <div className="min-w-0 flex flex-col items-start gap-1" title="Hora UTC y fecha local de este dispositivo">
-            <div className="flex items-center gap-2 rounded-md border border-black bg-black px-2 sm:px-3 py-1.5 sm:py-2 font-mono text-xl sm:text-3xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
-            <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-xs sm:text-sm font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
+            <div className="flex items-center gap-1.5 rounded-md border border-black bg-black px-2 py-1 font-mono text-base sm:text-xl font-extrabold shadow-sm"><span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span><span className="text-white">{utcClock}</span></div>
+            <div className="rounded border border-slate-300 bg-white px-2 py-0.5 font-mono text-[10px] sm:text-xs font-extrabold shadow-sm"><span className="text-black">{localDate.split("/").slice(0, 2).join("/")}/</span><span className="text-red-600">{localDate.split("/")[2]}</span></div>
 
           </div>
               <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
