@@ -33,9 +33,11 @@ export const Header: React.FC<HeaderProps> = ({
       if (typeof orientation.requestPermission === 'function') {
         const permission = await orientation.requestPermission();
         if (permission !== 'granted') {
-          setCompassStatus('Permiso de brújula denegado. Permití el acceso al sensor.');
+          setCompassStatus('Permiso denegado. Revisá los permisos de movimiento y orientación del navegador.');
           return;
         }
+      } else {
+        setCompassStatus('Activando sensor… Si no aparece el rumbo, habilitá sensores de movimiento para este sitio en los ajustes de Chrome.');
       }
 
       // Evitar listeners duplicados si se vuelve a tocar el botón.
@@ -625,10 +627,10 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <p className="text-2xl font-black tabular-nums">{compassHeading === null ? '—°' : `${Math.round(compassHeading)}°`}</p>
             <p role="status" className="text-center text-xs text-slate-300">{compassStatus}</p>
-            {typeof (window.DeviceOrientationEvent as typeof DeviceOrientationEvent & { requestPermission?: () => Promise<string> }).requestPermission === 'function' && compassHeading === null && (
+            {compassHeading === null && (
               <button type="button" onClick={() => { void activateCompass(); }}
                 className="w-full rounded-xl border border-cyan-400 bg-cyan-700 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-600">
-                Conceder permiso de brújula
+                Activar / conceder permiso de brújula
               </button>
             )}
             <button type="button" onClick={() => setCompassOpen(false)}
