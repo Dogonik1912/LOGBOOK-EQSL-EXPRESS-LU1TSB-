@@ -260,7 +260,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] text-slate-400">Señal distintiva del perfil</p>
                   <p className="truncate font-mono text-base font-bold text-white">{callsign.trim().toUpperCase() || 'Sin indicativo configurado'}</p>
-                  <p className="text-[11px] mt-0.5 ${isVerifiedCallsign ? 'text-emerald-300' : 'text-amber-300'}">{isVerifiedCallsign ? 'Identidad verificada en este dispositivo' : 'Perfil local: indicativo editable'}</p>
+                  <p className={`text-[11px] mt-0.5 ${isVerifiedCallsign ? 'text-emerald-300' : 'text-amber-300'}`}>{isVerifiedCallsign ? 'Identidad verificada en este dispositivo' : 'Perfil local: indicativo editable'}</p>
                 </div>
               </div>
               <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Este perfil conserva tus preferencias de la aplicación y de tus tarjetas. La identidad verificada no se puede cambiar desde Ajustes.</p>
