@@ -35,7 +35,6 @@ export const PrivateMessages: React.FC = () => {
   const [conversations, setConversations] = useState<PrivateConversation[]>([]);
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
