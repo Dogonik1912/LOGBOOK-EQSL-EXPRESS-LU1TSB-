@@ -5,8 +5,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
-import { getInitialAppLanguage } from '../services/appLanguage';
-import { LanguageSelector } from './LanguageSelector';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -25,7 +23,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>([]);
   const [defaultEQSLTheme, setDefaultEQSLTheme] = useState('navy');
-  const [appLanguage, setAppLanguage] = useState(() => getInitialAppLanguage());
   const [eqslSoundAlerts, setEqslSoundAlerts] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -47,7 +44,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         setGalleryImages(savedGallery);
       } catch { setGalleryImages([]); }
       setDefaultEQSLTheme(localStorage.getItem('eqsl_theme') || 'navy');
-      setAppLanguage(localStorage.getItem('app_language') || getInitialAppLanguage());
       setEqslSoundAlerts(localStorage.getItem('eqsl_sound_alerts') !== 'false');
       setPushEnabled(false);
       setPushBusy(false);
@@ -201,7 +197,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const previousLanguage = localStorage.getItem('app_language') || getInitialAppLanguage();
     const finalCall = callsign.trim().toUpperCase();
     if (!isVerifiedCallsign && !finalCall) {
       window.alert('Ingresá tu indicativo de radio antes de guardar.');
@@ -210,7 +205,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
     if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
-    localStorage.setItem('app_language', appLanguage);
     localStorage.setItem('eqsl_sound_alerts', eqslSoundAlerts ? 'true' : 'false');
     window.dispatchEvent(new Event('eqsl-sound-setting-updated'));
     const pushToken = localStorage.getItem('community_chat_identity_token') || '';
@@ -229,12 +223,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
     setSavedSuccess(true);
     onUpdate();
-    // Cambiar de idioma requiere reconstruir la interfaz desde React sin los nodos
-    // que el traductor automático haya modificado directamente en el DOM.
-    if (previousLanguage !== appLanguage) {
-      window.setTimeout(() => window.location.reload(), 0);
-      return;
-    }
     setTimeout(() => {
       onClose();
     }, 600);
@@ -265,17 +253,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           <div className="pt-1">
             <h3 className="text-xs font-bold uppercase tracking-wider text-violet-300">1. Idioma y datos de estación</h3>
             <p className="text-[11px] text-slate-500 mt-1">Tu indicativo se usará como dato predeterminado en tus tarjetas eQSL.</p>
-          </div>
-          {/* Idioma predeterminado de la interfaz */}
-          <div className="rounded-xl border-2 border-sky-400/70 bg-slate-800 p-3.5 space-y-2">
-            <label className="block text-sm font-bold text-sky-200" htmlFor="app-language">🌐 Idioma de la aplicación</label>
-            <LanguageSelector
-              value={appLanguage}
-              className="w-full"
-              onChange={setAppLanguage}
-              label="Idioma de la aplicación"
-            />
-            
           </div>
           {/* Los usuarios con SD verificada usan la identidad registrada automáticamente. */}
           {!isVerifiedCallsign && (
