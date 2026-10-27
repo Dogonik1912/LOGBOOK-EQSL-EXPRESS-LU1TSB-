@@ -382,6 +382,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
           </section>
 
+          <section className="py-3 border-y border-slate-800" aria-labelledby="eqsl-actions-settings">
+            <h3 id="eqsl-actions-settings" className="text-xs font-bold uppercase tracking-wider text-purple-300">Acciones eQSL</h3>
+            <div className="mt-2 rounded-lg border border-purple-500/25 bg-slate-950/60 p-3 flex items-center gap-3">
+              <div className="p-2 bg-purple-500/10 text-purple-300 rounded-lg"><MessageCircle className="w-4 h-4" /></div>
+              <div><p className="text-sm font-semibold text-slate-200">Acciones eQSL</p><p className="text-xs text-slate-400">Sin datos verificados disponibles por el momento.</p></div>
+            </div>
+          </section>
           <section className="py-2 border-y border-slate-800" aria-labelledby="eqsl-alert-settings">
             <div className="flex items-center justify-between gap-3 min-h-10">
               <label htmlFor="eqsl-push-toggle" className="text-sm font-semibold text-white">Notificaciones push de eQSL</label>
