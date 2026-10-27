@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, LockKeyhole, MessageCircle, RefreshCw, Send } from 'lucide-react';
+import { ArrowLeft, LockKeyhole, MessageCircle, RefreshCw, Send, Inbox } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type PrivateMessage = {
@@ -33,6 +33,8 @@ export const PrivateMessages: React.FC = () => {
   const [recipientDraft, setRecipientDraft] = useState('');
   const [activeRecipient, setActiveRecipient] = useState('');
   const [conversations, setConversations] = useState<PrivateConversation[]>([]);
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  const previousUnreadRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -50,7 +52,40 @@ export const PrivateMessages: React.FC = () => {
       setError('Los mensajes privados aún no están activados en el servidor. Hay que aplicar la migración de Mensajes Privados en Supabase.');
       return;
     }
-    setConversations(Array.isArray(data) ? data as PrivateConversation[] : []);
+    const nextConversations = Array.isArray(data) ? data as PrivateConversation[] : [];
+    const nextUnread = nextConversations.reduce((total, item) => total + (Number(item.unread_count) || 0), 0);
+    setConversations(nextConversations);
+    setUnreadTotal(nextUnread);
+    localStorage.setItem('community_private_unread_count', String(nextUnread));
+    window.dispatchEvent(new CustomEvent('community-private-unread-count-updated', { detail: { count: nextUnread } }));
+    if (previousUnreadRef.current !== null && nextUnread > previousUnreadRef.current && localStorage.getItem('eqsl_sound_alerts') !== 'false') {
+      try {
+        const AudioContextClass = window.AudioContext;
+        if (AudioContextClass) {
+          const audio = new AudioContextClass();
+          const oscillator = audio.createOscillator();
+          const gain = audio.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(880, audio.currentTime);
+          oscillator.frequency.setValueAtTime(1175, audio.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.0001, audio.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + 0.025);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.32);
+          oscillator.connect(gain);
+          gain.connect(audio.destination);
+          oscillator.start();
+          oscillator.stop(audio.currentTime + 0.34);
+          oscillator.onended = () => { void audio.close().catch(() => {}); };
+        }
+      } catch { /* El navegador puede bloquear audio hasta que el usuario interactúe. */ }
+    }
+    previousUnreadRef.current = nextUnread;
+    const badgeNavigator = navigator as Navigator & { setAppBadge?: (contents?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    const combined = (Number(localStorage.getItem('eqsl_unread_count')) || 0) + nextUnread;
+    try {
+      if (combined > 0) void badgeNavigator.setAppBadge?.(combined).catch(() => {});
+      else void badgeNavigator.clearAppBadge?.().catch(() => {});
+    } catch { /* Insignia no admitida por todos los navegadores. */ }
   }, [callsign, identityToken]);
 
   const refreshMessages = useCallback(async (otherCallsign: string) => {
@@ -79,12 +114,16 @@ export const PrivateMessages: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isOpen || !callsign || !supabase) return;
+    if (!callsign || !supabase) {
+      setUnreadTotal(0);
+      localStorage.setItem('community_private_unread_count', '0');
+      return;
+    }
     void refreshConversations();
     const poll = window.setInterval(() => {
       void refreshConversations();
-      if (activeRecipient) void refreshMessages(activeRecipient);
-    }, 5000);
+      if (isOpen && activeRecipient) void refreshMessages(activeRecipient);
+    }, 15000);
     return () => window.clearInterval(poll);
   }, [isOpen, callsign, activeRecipient, refreshConversations, refreshMessages]);
 
@@ -142,26 +181,16 @@ export const PrivateMessages: React.FC = () => {
   };
 
   return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-violet-200 bg-white text-slate-900 shadow-lg" aria-label="Mensajes privados">
-      <div className="flex items-center justify-between gap-3 bg-violet-950 px-4 py-3 text-white sm:px-5">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-white/10 p-2 text-violet-200"><LockKeyhole className="h-5 w-5" /></div>
-          <div>
-            <h2 className="font-bold leading-tight">Mensajes privados</h2>
-            <p className="mt-1 text-xs text-violet-200">Conversaciones entre dos indicativos</p>
-          </div>
-        </div>
-        <button type="button" onClick={() => setIsOpen((value) => !value)} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-bold hover:bg-white/20" aria-expanded={isOpen}>
-          {isOpen ? 'Cerrar' : 'Abrir'}
-        </button>
-      </div>
-      {!isOpen ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-600 sm:px-5">
-          <MessageCircle className="h-4 w-4 shrink-0 text-violet-700" />
-          <span>Iniciá una conversación privada sin publicar el mensaje en el chat comunitario.</span>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(180px,0.75fr)_minmax(0,1.5fr)]">
+    <section className="min-w-0 overflow-hidden rounded-xl border border-violet-300 bg-violet-950 p-2.5 text-white sm:p-3 shadow-sm" aria-label="Mensajes privados">
+      <button type="button" onClick={() => setIsOpen((value) => !value)} className="flex w-full items-center gap-2 text-left" aria-expanded={isOpen}>
+        <span className="relative shrink-0 rounded-lg bg-violet-200 p-2 text-violet-950"><MessageCircle className="h-5 w-5" />
+          {unreadTotal > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-violet-950 bg-red-600 px-1 text-[10px] font-black text-white">{unreadTotal > 99 ? '99+' : unreadTotal}</span>}
+        </span>
+        <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-violet-100">Mensajes</span><span className="block text-[10px] leading-tight text-violet-200">Bandeja privada y respuestas</span></span>
+        <Inbox className="h-4 w-4 shrink-0 text-violet-200" />
+      </button>
+      {!isOpen ? null : (
+        <div className="mt-3 border-t border-violet-800 pt-3 grid grid-cols-1 md:grid-cols-[minmax(180px,0.75fr)_minmax(0,1.5fr)]">
           <aside className="border-b border-slate-200 bg-slate-50 p-3 md:border-b-0 md:border-r">
             {!callsign ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Primero guardá tu señal distintiva en el chat comunitario. Se usará la identidad registrada en este dispositivo.</p>
@@ -220,7 +249,7 @@ export const PrivateMessages: React.FC = () => {
         </div>
       )}
       {(error || notice) && <div role={error ? 'alert' : 'status'} className={'border-t px-4 py-3 text-sm ' + (error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900')}>{error || notice}</div>}
-      <div className="border-t border-slate-100 px-4 py-2 text-[10px] text-slate-500">Privacidad: los mensajes se consultan mediante funciones del servidor que validan el indicativo y su token. No se leen desde la tabla pública.</div>
+      <div className="border-t border-violet-800 px-2 pt-2 mt-2 text-[10px] text-violet-200">Privacidad: los mensajes se consultan mediante funciones del servidor que validan el indicativo y su token. No se leen desde la tabla pública.</div>
     </section>
   );
 };
