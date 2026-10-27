@@ -269,35 +269,84 @@ function MainApp() {
         onOpenReplyModal={handleOpenManualReply}
       />
 
-      {/* Contenido Principal */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
-          <EQSLMailbox />
-          <PrivateMessages />
-        </div>
+      {/* Panel principal rediseñado: navegación clara y módulos enmarcados */}
+      <main className="logbook-dashboard flex-1 w-full mx-auto px-3 sm:px-6 lg:px-8 pb-10">
+        <section className="dashboard-welcome" aria-label="Bienvenida">
+          <div className="welcome-copy">
+            <span className="welcome-eyebrow"><span className="status-light" /> ESTACIÓN DIGITAL · LOGBOOK eQSL EXPRESS</span>
+            <h1>Todo tu mundo de radio, <em>en un solo lugar.</em></h1>
+            <p>Registra contactos, comparte tus eQSL y mantente conectado con la comunidad.</p>
+          </div>
+          <div className="welcome-mark" aria-hidden="true">
+            <span className="mark-orbit orbit-one" /><span className="mark-orbit orbit-two" />
+            <span className="mark-core">LB</span><span className="mark-signal">)))</span>
+          </div>
+        </section>
 
-        <CommunityChat />
+        <nav className="dashboard-nav" aria-label="Accesos rápidos">
+          <a href="#bandeja"><span>✉</span> eQSL y mensajes</a>
+          <a href="#comunidad"><span>◉</span> Comunidad</a>
+          <a href="#spots"><span>⌁</span> Actividad de radio</a>
+          <a href="#herramientas"><span>⌘</span> Herramientas</a>
+          <a href="#nuevo-qso"><span>＋</span> Cargar QSO</a>
+          <a href="#logbook"><span>▤</span> Libro de guardia</a>
+        </nav>
 
-        <LiveSpots />
+        <section id="bandeja" className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="section-kicker">TU ESTACIÓN</span><h2>Mensajes y eQSL</h2><p>Ten a mano tus tarjetas recibidas y conversaciones privadas.</p></div>
+            <span className="section-index">01</span>
+          </div>
+          <div className="dashboard-module-grid">
+            <div className="dashboard-module"><EQSLMailbox /></div>
+            <div className="dashboard-module"><PrivateMessages /></div>
+          </div>
+        </section>
 
-        <MorseDecoder />
+        <section id="comunidad" className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="section-kicker">EN CONTACTO</span><h2>Comunidad de radio</h2><p>Conversá con otros operadores y compartí la actividad.</p></div>
+            <span className="section-index">02</span>
+          </div>
+          <div className="dashboard-module dashboard-module-wide"><CommunityChat /></div>
+        </section>
 
-        <SDRSmart />
+        <section id="spots" className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="section-kicker">AL AIRE</span><h2>Actividad de radio</h2><p>Consultá la actividad disponible desde los módulos de la aplicación.</p></div>
+            <span className="section-index">03</span>
+          </div>
+          <div className="dashboard-module dashboard-module-wide"><LiveSpots /></div>
+        </section>
 
-        {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
-        <NewQSOForm
-          onAddQSO={handleAddQSO}
-        />
+        <section id="herramientas" className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="section-kicker">EXPLORAR</span><h2>Herramientas del operador</h2><p>Utilidades prácticas, reunidas en un espacio ordenado.</p></div>
+            <span className="section-index">04</span>
+          </div>
+          <div className="dashboard-tools-grid">
+            <div className="dashboard-module"><MorseDecoder /></div>
+            <div className="dashboard-module"><SDRSmart /></div>
+          </div>
+        </section>
 
-        {/* Tabla Live Log (con columna Email editable, filtros y acciones) */}
-        <LiveLog
-          qsos={qsos}
-          onUpdateQSO={handleUpdateQSO}
-          onDeleteQSO={handleDeleteQSO}
-          onOpenEQSL={(qso) => setActiveEQSLQSO(qso)}
-          onImportADIF={handleImportADIF}
-          onOpenReply={handleOpenReplyForQSO}
-        />
+        <section id="nuevo-qso" className="dashboard-section dashboard-section-featured">
+          <div className="section-heading">
+            <div><span className="section-kicker">REGISTRO DE CONTACTOS</span><h2>Nuevo QSO</h2><p>Cargá los datos del contacto y continuá con el envío de tu eQSL.</p></div>
+            <span className="section-index">05</span>
+          </div>
+          <div className="dashboard-module dashboard-module-wide"><NewQSOForm onAddQSO={handleAddQSO} /></div>
+        </section>
+
+        <section id="logbook" className="dashboard-section">
+          <div className="section-heading">
+            <div><span className="section-kicker">TU HISTORIAL</span><h2>Libro de guardia</h2><p>Revisá, editá y gestioná tus contactos registrados.</p></div>
+            <span className="section-index">06</span>
+          </div>
+          <div className="dashboard-module dashboard-module-wide">
+            <LiveLog qsos={qsos} onUpdateQSO={handleUpdateQSO} onDeleteQSO={handleDeleteQSO} onOpenEQSL={(qso) => setActiveEQSLQSO(qso)} onImportADIF={handleImportADIF} onOpenReply={handleOpenReplyForQSO} />
+          </div>
+        </section>
       </main>
 
       {/* PRIORIDAD 1: Footer con crédito discreto */}
