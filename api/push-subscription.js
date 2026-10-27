@@ -43,7 +43,18 @@ export async function sendEqslPush(callsign, item = {}) {
   try { webpush = (await import('web-push')).default; } catch { return; }
   let cfg;
   try { cfg = config(); } catch { return; }
-  const subscriptions = await readSubscriptions(callsign, cfg);
+  // Merge subscriptions for the owner's linked identifiers, deduplicated by endpoint.
+  const aliases = ['LU1TSB', 'LU1TSB/4RC978', '4RC978'].includes(callsign.trim().toUpperCase())
+    ? ['LU1TSB', 'LU1TSB/4RC978', '4RC978']
+    : [callsign.trim().toUpperCase()];
+  const groups = await Promise.all(aliases.map(alias => readSubscriptions(alias, cfg)));
+  const seenEndpoints = new Set();
+  const subscriptions = groups.flat().filter(entry => {
+    const endpoint = entry?.subscription?.endpoint;
+    if (!endpoint || seenEndpoints.has(endpoint)) return false;
+    seenEndpoints.add(endpoint);
+    return true;
+  });
   const active = subscriptions.filter(s => s && s.subscription?.endpoint);
   if (!active.length) return;
   webpush.setVapidDetails(
