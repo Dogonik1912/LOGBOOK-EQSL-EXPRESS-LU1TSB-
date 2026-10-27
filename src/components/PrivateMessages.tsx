@@ -241,26 +241,27 @@ export const PrivateMessages: React.FC = () => {
         <Inbox className="h-4 w-4 shrink-0 text-violet-200" />
       </button>
       {!isOpen ? null : (
+        <>
         <div className="mt-3 border-t border-violet-800 pt-3 grid grid-cols-1 md:grid-cols-[minmax(180px,0.75fr)_minmax(0,1.5fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50 p-3 md:border-b-0 md:border-r">
+          <aside className="border-b border-violet-800 bg-slate-900 p-3 text-slate-100 md:border-b-0 md:border-r">
             {!callsign ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Primero guardá tu señal distintiva en el chat comunitario. Se usará la identidad registrada en este dispositivo.</p>
             ) : (
               <>
-                <p className="mb-2 text-xs text-slate-500">Tu indicativo: <strong className="font-mono text-slate-900">{callsign}</strong></p>
+                <p className="mb-2 text-xs text-slate-300">Tu indicativo: <strong className="font-mono text-slate-100">{callsign}</strong></p>
                 <form onSubmit={(event) => { event.preventDefault(); openConversation(recipientDraft); }} className="mb-3 flex gap-1.5">
                   <input value={recipientDraft} onChange={(event) => setRecipientDraft(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo destino" aria-label="Indicativo destinatario" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-2 font-mono text-xs text-slate-950 placeholder:text-slate-500 outline-none focus:border-violet-500" />
                   <button type="submit" className="rounded-lg bg-violet-800 px-3 py-2 text-xs font-bold text-white">Abrir</button>
                 </form>
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-700">Conversaciones</h3>
+                  <h3 className="text-xs font-bold text-slate-100">Conversaciones</h3>
                   <button type="button" onClick={() => void refreshConversations()} className="rounded p-1 text-slate-500 hover:bg-slate-200" aria-label="Actualizar conversaciones"><RefreshCw className="h-3.5 w-3.5" /></button>
                 </div>
-                {conversations.length === 0 ? <div className="py-3 text-xs text-slate-500"><p>Todavía no aparecen conversaciones privadas.</p><button type="button" onClick={() => void refreshConversations()} className="mt-2 font-bold text-violet-800 underline">Volver a cargar</button></div> : (
+                {conversations.length === 0 ? <div className="py-3 text-xs text-slate-300"><p>Todavía no aparecen conversaciones privadas.</p><button type="button" onClick={() => void refreshConversations()} className="mt-2 font-bold text-violet-800 underline">Volver a cargar</button></div> : (
                   <ul className="space-y-1.5">
                     {conversations.map((conversation) => (
                       <li key={conversation.other_callsign}>
-                        <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'w-full rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white hover:bg-slate-100')}>
+                        <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'w-full rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-500 bg-violet-900' : 'border-slate-700 bg-slate-800 hover:bg-slate-700')}>
                           <span className="flex items-center gap-2 text-slate-900">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-violet-100">
                               {profilePhotos[conversation.other_callsign]
@@ -281,15 +282,15 @@ export const PrivateMessages: React.FC = () => {
               </>
             )}
           </aside>
-          <div className="flex min-h-[min(72vh,680px)] min-w-0 flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
+          <div className="flex min-h-[min(72vh,680px)] min-w-0 flex-col bg-slate-950">
+            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2.5">
               <div className="flex items-center gap-2">
                 {activeRecipient && <button type="button" onClick={() => setActiveRecipient('')} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Volver a conversaciones"><ArrowLeft className="h-4 w-4" /></button>}
                 <h3 className="text-sm font-bold">{activeRecipient ? 'Conversación con ' + activeRecipient : 'Elegí una conversación'}</h3>
               </div>
               {activeRecipient && <button type="button" onClick={() => void refreshMessages(activeRecipient)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Actualizar mensajes"><RefreshCw className="h-4 w-4" /></button>}
             </div>
-            <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto bg-white p-3" style={{ maxHeight: 'calc(72vh - 150px)', minHeight: 300 }} aria-live="polite">
+            <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto bg-slate-950 p-3" style={{ maxHeight: 'calc(72vh - 150px)', minHeight: 300 }} aria-live="polite">
               {!activeRecipient && <p className="py-10 text-center text-sm text-slate-500">Elegí una conversación o escribí un indicativo para comenzar.</p>}
               {activeRecipient && messages.length === 0 && <p className="py-10 text-center text-sm text-slate-500">Todavía no hay mensajes. Escribí el primero.</p>}
               {messages.map((message) => {
@@ -300,7 +301,7 @@ export const PrivateMessages: React.FC = () => {
                   <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-slate-100">
                     {photo ? <img src={photo} alt={`Foto de ${sender}`} className="h-full w-full object-cover" /> : <span className="font-mono text-[10px] font-bold text-slate-500">{sender.slice(0, 3)}</span>}
                   </div>
-                  <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-100 text-violet-950' : 'bg-slate-100 text-slate-900')}>
+                  <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
                     <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wide">{sender}</p>
                     <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
                     <p className="mt-1 text-right text-[10px] text-slate-500">{new Date(message.created_at).toLocaleString()}</p>
@@ -309,8 +310,8 @@ export const PrivateMessages: React.FC = () => {
               })}
             </div>
             {activeRecipient && (
-              <form onSubmit={(event) => { event.preventDefault(); void sendMessage(); }} className="flex gap-2 border-t border-slate-200 bg-slate-50 p-3">
-                <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={3} placeholder="Escribí un mensaje privado…" aria-label="Escribí un mensaje privado" className="min-h-20 min-w-0 flex-1 resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 outline-none focus:border-violet-500" />
+              <form onSubmit={(event) => { event.preventDefault(); void sendMessage(); }} className="flex gap-2 border-t border-slate-800 bg-slate-900 p-3">
+                <textarea value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} rows={3} placeholder="Escribí un mensaje privado…" aria-label="Escribí un mensaje privado" className="min-h-20 min-w-0 flex-1 resize-y rounded-xl border border-slate-600 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 outline-none focus:border-violet-500" />
                 <button type="submit" disabled={sending || !draft.trim()} className="inline-flex items-center gap-1.5 rounded-xl bg-violet-800 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">{sending ? 'Enviando…' : 'Enviar'}</span></button>
               </form>
             )}
@@ -321,6 +322,7 @@ export const PrivateMessages: React.FC = () => {
             Cerrar mensajes privados
           </button>
         </div>
+        </>
       )}
       {(error || notice) && <div role={error ? 'alert' : 'status'} className={'border-t px-4 py-3 text-sm ' + (error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900')}>{error || notice}</div>}
     </section>
