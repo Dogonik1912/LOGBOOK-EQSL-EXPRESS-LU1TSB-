@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { APP_LANGUAGES, AppLanguage } from '../services/appLanguage';
 
-const NAMES: Record<AppLanguage, string> = { es:'Español', en:'English', pt:'Português', fr:'Français', de:'Deutsch', it:'Italiano', nl:'Nederlands', pl:'Polski', ru:'Русский', uk:'Українська', zh:'中文', ja:'日本語', ko:'한국어', ar:'العربية', hi:'हिन्दी', tr:'Türkçe', sv:'Svenska', no:'Norsk', da:'Dansk', fi:'Suomi', cs:'Čeština', el:'Ελληνικά', ro:'Română', hu:'Magyar', id:'Bahasa Indonesia' };
-const FLAGS: Record<AppLanguage, string> = { es:'es', en:'gb', pt:'pt', fr:'fr', de:'de', it:'it', nl:'nl', pl:'pl', ru:'ru', uk:'ua', zh:'cn', ja:'jp', ko:'kr', ar:'sa', hi:'in', tr:'tr', sv:'se', no:'no', da:'dk', fi:'fi', cs:'cz', el:'gr', ro:'ro', hu:'hu', id:'id' };
+const NAMES: Record<AppLanguage, string> = { es:'Español', en:'English', pt:'Português (Portugal)', 'pt-br':'Português (Brasil)', fr:'Français', de:'Deutsch', it:'Italiano', nl:'Nederlands', pl:'Polski', ru:'Русский', uk:'Українська', zh:'中文', ja:'日本語', ko:'한국어', ar:'العربية', hi:'हिन्दी', tr:'Türkçe', sv:'Svenska', no:'Norsk', da:'Dansk', fi:'Suomi', cs:'Čeština', el:'Ελληνικά', ro:'Română', hu:'Magyar', id:'Bahasa Indonesia' };
+const FLAGS: Record<AppLanguage, string> = { es:'es', en:'gb', pt:'pt', 'pt-br':'br', fr:'fr', de:'de', it:'it', nl:'nl', pl:'pl', ru:'ru', uk:'ua', zh:'cn', ja:'jp', ko:'kr', ar:'sa', hi:'in', tr:'tr', sv:'se', no:'no', da:'dk', fi:'fi', cs:'cz', el:'gr', ro:'ro', hu:'hu', id:'id' };
 interface Props { value: AppLanguage; onChange: (value: AppLanguage) => void; className?: string; label?: string; }
 
 export const LanguageSelector: React.FC<Props> = ({ value, onChange, className = '', label = 'Idioma de la aplicación' }) => {
