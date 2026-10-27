@@ -136,20 +136,24 @@ export function SDRSmart() {
     }
   }, []);
 
-  useEffect(() => {
-    void loadDirectory();
+  const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationStatus('Este navegador no ofrece ubicación automática. La selección manual sigue disponible.');
       return;
     }
+    setLocationStatus('Solicitando autorización de ubicación para el buen funcionamiento del SDR…');
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation([position.coords.latitude, position.coords.longitude]);
-        setLocationStatus('Ubicación obtenida en este dispositivo; los receptores cercanos se ordenan primero.');
+        setLocationStatus('Ubicación autorizada para ordenar los receptores cercanos primero.');
       },
-      () => setLocationStatus('No se concedió la ubicación. Podés elegir un receptor manualmente.'),
+      () => setLocationStatus('No se autorizó la ubicación. Podés elegir un receptor manualmente.'),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 30 * 60 * 1000 },
     );
+  }, []);
+
+  useEffect(() => {
+    void loadDirectory();
   }, [loadDirectory]);
 
   const sortedReceivers = useMemo(() => {
@@ -211,7 +215,10 @@ export function SDRSmart() {
           <button type="button" onClick={() => void loadDirectory(true)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button>
         </div>
       </div>
-      <p className="flex items-start gap-2 text-xs text-slate-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />{locationStatus}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="flex min-w-0 flex-1 items-start gap-2 text-xs text-slate-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />{locationStatus}</p>
+        {!location && <button type="button" onClick={requestLocation} className="rounded-lg border border-cyan-500 px-3 py-2 text-xs font-semibold text-cyan-100">Autoriza para el buen funcionamiento del SDR</button>}
+      </div>
       <p role="status" className="text-xs text-slate-400">{directoryStatus}</p>
       {manualList && <div className="space-y-2 rounded-xl border border-slate-700 bg-slate-900 p-3">
         <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por receptor, ubicación o dirección…" className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" aria-label="Buscar receptores SDR" />
