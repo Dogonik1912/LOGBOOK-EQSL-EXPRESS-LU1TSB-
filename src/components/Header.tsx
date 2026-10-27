@@ -18,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
+  const [compassOpen, setCompassOpen] = useState(false);
   const [compassStatus, setCompassStatus] = useState('Tocá para activar la brújula');
   const compassHandlerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
 
@@ -524,21 +525,8 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </div>
         </div>
-        {/* Encabezamiento panorámico con brújula funcional a la izquierda */}
-        <div className="flex w-full min-w-0 items-center gap-2 sm:gap-4 overflow-hidden">
-          <button type="button" onClick={() => { void activateCompass(); }} aria-label="Activar brújula" title={compassStatus}
-            className="flex w-[68px] h-[68px] sm:w-[88px] sm:h-[88px] shrink-0 flex-col items-center justify-center rounded-full border border-amber-300 bg-white/95 shadow-sm"
-            style={{ touchAction: 'manipulation' }}>
-            <span className="relative flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full border-2 border-slate-700 bg-slate-50">
-              <span className="absolute top-0.5 text-[9px] sm:text-[10px] font-black text-red-600">N</span>
-              <span className="absolute bottom-0.5 text-[9px] sm:text-[10px] font-black text-slate-700">S</span>
-              <span className="absolute left-0.5 text-[8px] font-bold text-slate-600">O</span>
-              <span className="absolute right-0.5 text-[8px] font-bold text-slate-600">E</span>
-              <Compass className="h-7 w-7 sm:h-9 sm:w-9 text-slate-700" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }} />
-            </span>
-            <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-slate-700">{compassHeading === null ? 'BRÚJULA' : `${Math.round(compassHeading)}°`}</span>
-            <span className="max-w-[68px] sm:max-w-[88px] text-center text-[8px] leading-tight text-slate-500">{compassStatus}</span>
-          </button>
+        {/* Encabezamiento panorámico; la brújula se abre en un panel independiente */}
+        <div className="flex w-full min-w-0 items-center overflow-hidden">
           <div className="min-w-0 flex-1 overflow-hidden">
             <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-44 sm:max-h-52 object-contain object-center mx-auto" />
           </div>
@@ -594,7 +582,22 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Botón Ajustes */}
+          {/* Botón para desplegar la brújula */}
+          <button
+            type="button"
+            onClick={() => {
+              const nextOpen = !compassOpen;
+              setCompassOpen(nextOpen);
+              if (nextOpen && compassHeading === null) void activateCompass();
+            }}
+            aria-expanded={compassOpen}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500 bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
+            title="Abrir brújula del dispositivo"
+          >
+            <Compass className="h-4 w-4" /> Brújula
+          </button>
+
+        {/* Botón Ajustes */}
           <button
             type="button"
             onClick={onOpenSettings}
@@ -605,6 +608,30 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
+
+      {compassOpen && (
+        <section aria-label="Brújula del dispositivo" className="mx-auto mt-3 w-full max-w-sm rounded-2xl border border-amber-400 bg-slate-950 p-4 text-white shadow-xl">
+          <div className="flex flex-col items-center gap-3">
+            <h2 className="text-sm font-bold">Brújula del dispositivo</h2>
+            <button type="button" onClick={() => { void activateCompass(); }} title="Activar o reintentar el sensor"
+              className="relative flex h-48 w-48 items-center justify-center rounded-full border-4 border-slate-300 bg-white text-slate-900 shadow-inner"
+              style={{ touchAction: 'manipulation' }}>
+              <span className="absolute top-3 text-lg font-black text-red-600">N</span>
+              <span className="absolute bottom-3 text-lg font-black">S</span>
+              <span className="absolute left-3 text-lg font-black">O</span>
+              <span className="absolute right-3 text-lg font-black">E</span>
+              <span className="absolute inset-7 rounded-full border border-slate-300" />
+              <Compass className="h-24 w-24 text-slate-800 transition-transform duration-150" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }} />
+            </button>
+            <p className="text-2xl font-black tabular-nums">{compassHeading === null ? '—°' : `${Math.round(compassHeading)}°`}</p>
+            <p role="status" className="text-center text-xs text-slate-300">{compassStatus}</p>
+            <button type="button" onClick={() => setCompassOpen(false)}
+              className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+              Cerrar brújula
+            </button>
+          </div>
+        </section>
+      )}
     </header>
   );
 };
