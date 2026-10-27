@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
       window.removeEventListener('deviceorientationabsolute', compassHandlerRef.current as EventListener);
     }
   }, []);
-  const [utcClock, setUtcClock] = useState(() => new Date().toISOString().slice(11, 19));
+  const [utcClock, setUtcClock] = useState(() => new Date().toISOString().slice(11, 16));
   const formatLocalDate = () => {
     const now = new Date();
     return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -198,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     const updateClocks = () => {
       const now = new Date();
-      setUtcClock(now.toISOString().slice(11, 19));
+      setUtcClock(now.toISOString().slice(11, 16));
       setLocalDate(formatLocalDate());
     };
     updateClocks();
