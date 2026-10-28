@@ -48,6 +48,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const [selectedQsoIds, setSelectedQsoIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
+  const [filterBand, setFilterBand] = useState('ALL');
+  const [filterMode, setFilterMode] = useState('ALL');
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.9 && f <= 27.5; })();
   const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
   const cbQSOs = qsos.filter(isCitizenBand);
@@ -73,8 +75,6 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     else selectedInCurrentLog.forEach((q) => onDeleteQSO(q.id));
     setSelectedQsoIds((current) => current.filter((id) => !selectedInCurrentLog.some((q) => q.id === id)));
   };
-  const [filterBand, setFilterBand] = useState('ALL');
-  const [filterMode, setFilterMode] = useState('ALL');
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   const [tempEmailValue, setTempEmailValue] = useState('');
   const [editingWhatsappId, setEditingWhatsappId] = useState<string | null>(null);
