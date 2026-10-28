@@ -20,9 +20,10 @@ import {
 
 interface NewQSOFormProps {
   onAddQSO: (qso: QSO, openEQSL?: boolean) => void;
+  onFinishContest: (log: { id: string; name: string; type: string; finishedAt: string }) => void;
 }
 
-export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
+export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContest }) => {
   const getNowUTC = () => {
     const now = new Date();
     const y = now.getUTCFullYear();
@@ -96,6 +97,45 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const [rstRcvd, setRstRcvd] = useState('59');
   const [exchangeSent, setExchangeSent] = useState('');
   const [exchangeReceived, setExchangeReceived] = useState('');
+  const [contestMode, setContestMode] = useState(() => localStorage.getItem('logbook_contest_active') === 'true');
+  const [contestLogId, setContestLogId] = useState(() => localStorage.getItem('logbook_contest_id') || '');
+  const [contestLogName, setContestLogName] = useState(() => localStorage.getItem('logbook_contest_name') || '');
+  const [contestType, setContestType] = useState(() => localStorage.getItem('logbook_contest_type') || 'GENERIC');
+  const beginContest = () => {
+    if (contestMode) {
+      if (!window.confirm('¿Desactivar el modo concurso? Si el concurso terminó, usa «Finalizar concurso y guardar log».')) return;
+      setContestMode(false);
+      localStorage.setItem('logbook_contest_active', 'false');
+      return;
+    }
+    const name = contestLogName.trim();
+    if (!name) { setValidationError('Escribe un nombre para el log antes de activar el modo concurso.'); return; }
+    const id = contestLogId || `contest-${Date.now()}`;
+    setContestLogId(id);
+    setContestLogName(name);
+    setContestMode(true);
+    localStorage.setItem('logbook_contest_active', 'true');
+    localStorage.setItem('logbook_contest_id', id);
+    localStorage.setItem('logbook_contest_name', name);
+    localStorage.setItem('logbook_contest_type', contestType);
+    setValidationError('');
+  };
+  const finishContest = () => {
+    if (!contestMode || !contestLogName.trim()) return;
+    const log = { id: contestLogId || `contest-${Date.now()}`, name: contestLogName.trim(), type: contestType, finishedAt: new Date().toISOString() };
+    onFinishContest(log);
+    setContestMode(false);
+    setContestLogId('');
+    setContestLogName('');
+    setContestType('GENERIC');
+    setExchangeSent('');
+    setExchangeReceived('');
+    localStorage.setItem('logbook_contest_active', 'false');
+    localStorage.removeItem('logbook_contest_id');
+    localStorage.removeItem('logbook_contest_name');
+    localStorage.removeItem('logbook_contest_type');
+    window.alert(`Concurso «${log.name}» finalizado. Encontrarás el log en QSO GUARDADOS para exportarlo.`);
+  };
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [whatsappUsername, setWhatsappUsername] = useState('');
@@ -306,6 +346,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
       rstRcvd: rstRcvd.trim() || '59',
       exchangeSent: exchangeSent.trim(),
       exchangeReceived: exchangeReceived.trim(),
+      ...(contestMode ? { contestLogId, contestLogName: contestLogName.trim(), contestType } : {}),
       email: email.trim(),
       whatsapp: whatsapp.trim(),
       whatsappRaw: whatsapp.trim(),
@@ -401,7 +442,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
           <div>
             <h2 className="text-base font-bold text-white tracking-wide">
-              Nuevo QSO Express
+              LIBRO DE GUARDIA
             </h2>
             <p className="text-xs text-slate-400">
               Registro separado de radioafición y banda ciudadana
@@ -422,6 +463,35 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
         </div>
       </div>
 
+      <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3">
+        <label className="flex items-center gap-2 text-sm font-semibold text-white">
+          <input type="checkbox" checked={contestMode} onChange={(e) => {
+            if (e.target.checked) beginContest();
+            else { setContestMode(false); localStorage.setItem('logbook_contest_active', 'false'); }
+          }} className="h-4 w-4 accent-amber-500" />
+          Activar modo concurso
+        </label>
+        {(!contestMode || contestLogName) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-300 mb-1">Nombre del log</label>
+            <input value={contestLogName} onChange={(e) => { setContestLogName(e.target.value); if (!contestMode) localStorage.setItem('logbook_contest_name', e.target.value); }} disabled={contestMode} placeholder="Ej. CQ WW SSB 2026" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-80" />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-300 mb-1">Tipo / plantilla Cabrillo</label>
+            <select value={contestType} onChange={(e) => { setContestType(e.target.value); localStorage.setItem('logbook_contest_type', e.target.value); }} disabled={contestMode} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-80">
+              <option value="GENERIC">Cabrillo genérico 3.0</option>
+              <option value="CQ-WW">CQ World Wide DX</option>
+              <option value="CQ-WPX">CQ WPX</option>
+              <option value="ARRL-FIELD-DAY">ARRL Field Day</option>
+              <option value="ARRL-SS">ARRL Sweepstakes</option>
+            </select>
+          </div>
+        </div>}
+        {contestMode ? <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs text-amber-300">Concurso activo: {contestLogName}. Los próximos QSO se vincularán a este log.</p>
+          <button type="button" onClick={finishContest} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-bold text-white">Finalizar concurso y guardar log</button>
+        </div> : <p className="text-xs text-slate-400">Activa el modo para registrar progresivos y guardar contactos en un log independiente.</p>}
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Banda rápida selector */}
         <div className="flex flex-wrap items-center gap-1.5 pb-1">
@@ -611,8 +681,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           </div>
         </div>
 
-        {/* Intercambios opcionales para concursos; no forman parte de la tarjeta eQSL. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+        {/* Los progresivos solo se muestran al activar el modo concurso. */}
+        {contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">Progresivo / intercambio enviado (opcional)</label>
             <input
@@ -633,7 +703,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-600 focus:border-amber-400 focus:outline-hidden"
             />
           </div>
-        </div>
+        </div>}
 
         {/* El QSO se puede guardar solo o preparar la eQSL tras guardarlo. */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 pt-2">
