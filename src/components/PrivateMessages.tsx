@@ -247,10 +247,33 @@ export const PrivateMessages: React.FC = () => {
         p_recipient_callsign: activeRecipient,
         p_body: body,
       });
-      if (rpcError || !data?.ok) {
-        setError(data?.reason === 'recipient_not_found'
-          ? 'Ese indicativo todavía no está registrado en la comunidad.'
-          : 'No se pudo enviar el mensaje privado. Verificá la conexión e intentá nuevamente.');
+      if (rpcError) {
+        console.error('[Mensajes privados] Falló send_community_private_message', {
+          code: rpcError.code,
+          message: rpcError.message,
+          details: rpcError.details,
+          hint: rpcError.hint,
+          callsign,
+          recipient: activeRecipient,
+        });
+        setError(`Error del servidor al enviar el mensaje (${rpcError.code || 'sin código'}): ${rpcError.message || 'respuesta sin detalle'}`);
+        return;
+      }
+      if (!data?.ok) {
+        const reason = String(data?.reason || 'unknown');
+        const reasons: Record<string, string> = {
+          forbidden: 'El servidor no pudo validar la identidad de tu indicativo en los mensajes privados.',
+          recipient_not_found: 'El servidor no encuentra registrado el indicativo destinatario para mensajes privados.',
+          invalid_recipient: 'El indicativo destinatario no es válido para una conversación privada.',
+          invalid_body: 'El mensaje está vacío o supera el límite permitido.',
+          unknown: 'El servidor rechazó el envío sin indicar el motivo.',
+        };
+        console.warn('[Mensajes privados] El servidor rechazó el envío', {
+          reason,
+          callsign,
+          recipient: activeRecipient,
+        });
+        setError(reasons[reason] || `El servidor rechazó el envío. Motivo informado: ${reason}`);
         return;
       }
       setDraft('');
