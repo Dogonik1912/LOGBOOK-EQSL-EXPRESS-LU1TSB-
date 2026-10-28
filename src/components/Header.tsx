@@ -553,7 +553,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
               {shareMenuOpen && (
-                <div role="menu" className="absolute left-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-1.5rem))] rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
+                <div role="menu" className="fixed left-1/2 top-auto z-[100] mt-2 w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl sm:absolute sm:left-1/2 sm:top-full sm:w-60 sm:-translate-x-1/2">
                   <p className="px-2 py-1.5 text-[11px] text-slate-400">Elegí dónde compartir</p>
                   <div className="grid grid-cols-2 gap-1">
                     {shareOptions.map((option) => (
