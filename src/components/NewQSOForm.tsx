@@ -95,7 +95,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [showCbStationCallsignPrompt, setShowCbStationCallsignPrompt] = useState(false);
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
-  const [exchangeSent, setExchangeSent] = useState('');
+  // El intercambio enviado es un valor preestablecido del operador: persiste entre QSOs y sesiones hasta cambiarlo manualmente.
+  const [exchangeSent, setExchangeSent] = useState(() => localStorage.getItem('logbook_exchange_sent_default') || '');
   const [exchangeReceived, setExchangeReceived] = useState('');
   const [contestMode, setContestMode] = useState(() => localStorage.getItem('logbook_contest_active') === 'true');
   const [contestLogId, setContestLogId] = useState(() => localStorage.getItem('logbook_contest_id') || '');
@@ -128,7 +129,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setContestLogId('');
     setContestLogName('');
     setContestType('GENERIC');
-    setExchangeSent('');
+    // Conservar el progresivo/intercambio enviado preestablecido para el próximo concurso.
     setExchangeReceived('');
     localStorage.setItem('logbook_contest_active', 'false');
     localStorage.removeItem('logbook_contest_id');
@@ -401,7 +402,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setCallsign('');
     setRstSent('59');
     setRstRcvd('59');
-    setExchangeSent('');
+    // El enviado queda preestablecido hasta que el operador lo cambie manualmente.
+    // El recibido corresponde a cada corresponsal y se limpia después de guardar.
     setExchangeReceived('');
     setEmail('');
     setWhatsapp('');
@@ -658,8 +660,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           </div>
         </div>
 
-        {/* Fila 3: Opcionales (País y notas) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+        {/* Los datos adicionales se ocultan durante el concurso: quedan los datos esenciales y los dos intercambios. */}
+        {!contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">País / Entidad DXCC</label>
             <input
@@ -681,7 +683,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
               className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:border-amber-400 focus:outline-hidden"
             />
           </div>
-        </div>
+        </div>}
 
         {/* Los progresivos solo se muestran al activar el modo concurso. */}
         {contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
@@ -690,7 +692,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
             <input
               type="text"
               value={exchangeSent}
-              onChange={(e) => setExchangeSent(e.target.value)}
+              onChange={(e) => {
+                setExchangeSent(e.target.value);
+                localStorage.setItem('logbook_exchange_sent_default', e.target.value);
+              }}
               placeholder="Ej. 001, GF05, JUJUY"
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder:text-slate-600 focus:border-amber-400 focus:outline-hidden"
             />
