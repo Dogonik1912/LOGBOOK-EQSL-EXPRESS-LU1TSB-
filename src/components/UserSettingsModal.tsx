@@ -466,14 +466,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                       ))}
                     </div>
                   )}
-                  {/* Se conserva el apartado original de Acciones eQSL dentro del desplegable para no perder su contenido. */}
-                  <div className="rounded-lg border border-purple-500/25 bg-slate-950/60 p-3 flex items-center gap-3" aria-labelledby="eqsl-actions-settings">
-                    <div className="p-2 bg-purple-500/10 text-purple-300 rounded-lg"><MessageCircle className="w-4 h-4" /></div>
-                    <div>
-                      <p id="eqsl-actions-settings" className="text-sm font-semibold text-slate-200">Acciones eQSL</p>
-                      <p className="text-xs text-slate-400">Sin datos verificados disponibles por el momento.</p>
-                    </div>
-                  </div>
                   <button
                     type="button"
                     onClick={() => setWeeklyHistoryOpen(false)}
