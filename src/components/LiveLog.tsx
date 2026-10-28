@@ -62,7 +62,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
   const selectedContestLog = contestLogs.find((log) => log.id === selectedContestLogId);
   const exportQSOs = selectedContestLog
-    ? categoryQSOs.filter((q) => q.contestLogId === selectedContestLog.id)
+    ? qsos.filter((q) => q.contestLogId === selectedContestLog.id)
     : categoryQSOs;
   const visibleQSOs = categoryQSOs.filter((q) => {
     const term = searchTerm.trim().toLowerCase();
@@ -302,10 +302,10 @@ export const LiveLog: React.FC<LiveLogProps> = ({
         const date = /^\\d{8}$/.test(rawDate) ? `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}` : '';
         const time = /^\\d{4}$/.test(rawTime) ? `${rawTime.slice(0,2)}:${rawTime.slice(2,4)}` : '';
         const callIndex = rest.findIndex((value) => /^[A-Z0-9/]{3,}$/i.test(value));
-        if (!date || !time || callIndex < 1) return;
+        if (!date || !time || callIndex < 0) return;
         const callsign = rest[callIndex].toUpperCase();
         const rstRcvd = rest[callIndex + 1] || '59';
-        const exchangeSent = rest.length > 1 ? rest[0] : '';
+        const exchangeSent = callIndex > 0 ? rest[0] : '';
         const exchangeReceived = rest[callIndex + 2] || '';
         const mhz = Number(freq) / 1000;
         const mode = /^CW$/i.test(rawMode) ? 'CW' : (/^(RY|DG)$/i.test(rawMode) ? 'FT8' : 'SSB');
@@ -487,6 +487,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             <option value="">Registro completo (por categoría)</option>
             {contestLogs.map((log) => <option key={log.id} value={log.id}>{log.name} — {log.type}</option>)}
           </select>
+          {selectedContestLog && <span className="text-xs text-amber-300">Exportando solo «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
 
           <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Exportar Excel (.xls)</button>
 
