@@ -80,7 +80,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
   const getRegisteredStationIdentity = () =>
     (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
   const isAmateurRadioCallsign = (value: string) =>
-    /^[A-Z]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(value.trim().toUpperCase());
+    /^[A-Z]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,8})?$/.test(value.trim().toUpperCase());
   const getSavedCbStationCallsign = () => {
     const saved = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
     if (saved) return saved;
