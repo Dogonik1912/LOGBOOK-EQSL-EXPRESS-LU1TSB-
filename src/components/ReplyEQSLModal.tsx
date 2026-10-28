@@ -222,58 +222,13 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeTarget = replyToCall.trim().toUpperCase() || 'CORRESPONSAL';
 
     const drawCard = () => {
-      ctx.textAlign = 'center';
+      // Franja inferior compacta: la imagen queda libre de leyendas.
+      const footerH = 112;
+      const footerY = height - footerH;
 
-      // Etiqueta de eQSL de Respuesta
-      ctx.font = 'bold 22px monospace';
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillText('CONFIRMING TWO-WAY RADIO CONTACT · eQSL DE RESPUESTA', width / 2, 80);
-
-      // Indicativo enorme de quien responde
-      ctx.font = '900 96px sans-serif';
+      ctx.save();
       ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur = 12;
-      ctx.fillText(activeMyCall, width / 2, 190);
-      ctx.shadowBlur = 0;
-
-      // Subtítulo
-      ctx.font = '22px sans-serif';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`Estación de radio · Confirmación Recíproca de Contacto`, width / 2, 230);
-
-      // Línea
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(100, 260);
-      ctx.lineTo(width - 100, 260);
-      ctx.stroke();
-
-      // En respuesta a:
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillText('EN RESPUESTA Y CONFIRMACIÓN A LA eQSL DE:', width / 2, 310);
-
-      // Indicativo del destinatario
-      ctx.font = '900 70px monospace';
-      ctx.fillStyle = '#fbbf24';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 10;
-      ctx.fillText(activeTarget, width / 2, 385);
-      ctx.shadowBlur = 0;
-
-      // Tabla de datos
-      const boxX = 90;
-      const boxY = 425;
-      const boxW = width - 180;
-      const boxH = 160;
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-      ctx.fillRect(boxX, boxY, boxW, boxH);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(boxX, boxY, boxW, boxH);
+      ctx.fillRect(0, footerY, width, footerH);
 
       const cols = [
         { label: 'FECHA (UTC)', val: date },
@@ -283,46 +238,34 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         { label: 'RST ENVIADA / REC.', val: `${rstSent} / ${rstRcvd}` },
       ];
 
-      const colW = boxW / cols.length;
+      const colW = width / cols.length;
       cols.forEach((col, idx) => {
-        const cx = boxX + idx * colW + colW / 2;
+        const cx = idx * colW + colW / 2;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 15px sans-serif';
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillText(col.label, cx, boxY + 45);
-
-        ctx.font = 'bold 24px monospace';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(col.val, cx, boxY + 95);
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#111111';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(col.label, cx, footerY + 29, colW - 12);
+        ctx.font = 'bold 19px monospace';
+        ctx.fillText(col.val, cx, footerY + 62, colW - 12);
 
         if (idx < cols.length - 1) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.strokeStyle = '#d1d5db';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(boxX + (idx + 1) * colW, boxY + 15);
-          ctx.lineTo(boxX + (idx + 1) * colW, boxY + boxH - 15);
+          ctx.moveTo((idx + 1) * colW, footerY + 12);
+          ctx.lineTo((idx + 1) * colW, footerY + 78);
           ctx.stroke();
         }
       });
 
-      // PRIORIDAD 1: Firma dinámica
-      const firma = `73 cordiales de ${activeMyCall || DEFAULT_CALLSIGN}`;
-      ctx.textAlign = 'center';
-      ctx.font = 'italic bold 24px serif';
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillText(firma, width / 2, 635);
-
-      // Marca de agua obligatoria, negra e integrada en la imagen final.
-      ctx.save();
+      // Marca de agua obligatoria, discreta y dentro de la franja blanca.
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.font = 'bold 18px sans-serif';
+      ctx.font = 'bold 12px sans-serif';
       ctx.fillStyle = '#000000';
-      ctx.shadowColor = 'rgba(255,255,255,0.85)';
-      ctx.shadowBlur = 2;
-      ctx.fillText('LogBook eQSL EXPRESS', width - 24, height - 18);
+      ctx.fillText('LogBook eQSL EXPRESS', width - 12, height - 5);
       ctx.restore();
-
     };
 
     if (customBgImage) {
@@ -337,16 +280,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         const y = (height - img.height * scale) / 2 - (imagePositionY / 100) * overflowY / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
-        ctx.fillStyle = 'rgba(10, 15, 30, 0.75)';
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 6;
-        ctx.strokeRect(30, 30, width - 60, height - 60);
-
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(42, 42, width - 84, height - 84);
+        // Conservar la imagen elegida sin oscurecerla ni añadir marcos.
 
         drawCard();
       };
