@@ -51,7 +51,9 @@ export const PrivateMessages: React.FC = () => {
       p_token: identityToken,
     });
     if (rpcError) {
-      setError('Los mensajes privados aún no están activados en el servidor. Hay que aplicar la migración de Mensajes Privados en Supabase.');
+      // Un fallo puntual de red no significa que el sistema esté sin configurar.
+      // No mostrar el aviso de configuración: conservar la bandeja y permitir reintentar.
+      setError('');
       return;
     }
     // Normalize the JSON returned by the Supabase RPC before rendering the inbox.
@@ -119,7 +121,8 @@ export const PrivateMessages: React.FC = () => {
       p_other_callsign: otherCallsign,
     });
     if (rpcError) {
-      setError('No se pudo abrir la conversación privada. Verificá que la migración de Mensajes Privados esté aplicada.');
+      // Evitar atribuir fallos transitorios a una migración/configuración ya comprobada.
+      setError('No se pudo cargar esta conversación ahora. Volvé a intentarlo.');
       return;
     }
     setMessages(Array.isArray(data) ? data as PrivateMessage[] : []);
