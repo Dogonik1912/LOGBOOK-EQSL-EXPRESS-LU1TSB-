@@ -63,9 +63,9 @@ export const LiveSpots: React.FC = () => {
   }, []);
 
   return <section className="mb-5 overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-md">
-    <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white">
-      <div className="flex items-center gap-2"><Radio className="h-5 w-5 text-cyan-300" /><div><h2 className="font-bold">Spot en vivo</h2><p className="text-[11px] text-slate-300">QSOs registrados en LogBook · no requiere envío de eQSL</p></div></div>
-      <div className="flex items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</div>
+    <div className="flex min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-white">
+      <div className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><h2 className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</h2></div>
+      <div className="flex shrink-0 items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</div>
     </div>
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-800">{errorMessage}</p>}
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
