@@ -21,6 +21,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
+  const [gridLocator, setGridLocator] = useState('');
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isVerifiedCallsign, setIsVerifiedCallsign] = useState(false);
   const [customBg, setCustomBg] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       const identityToken = localStorage.getItem('community_chat_identity_token') || '';
       const verifiedOnThisDevice = Boolean(verifiedCallsign && identityToken);
       setIsVerifiedCallsign(verifiedOnThisDevice);
+      setGridLocator((localStorage.getItem('user_grid_locator') || '').trim().toUpperCase());
       setProfilePhoto(localStorage.getItem('user_profile_photo') || null);
       setCallsign(verifiedOnThisDevice ? verifiedCallsign : (localStorage.getItem('user_callsign') || ''));
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
@@ -146,6 +148,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           localStorage.setItem('user_profile_photo', dataUrl);
           setProfilePhoto(dataUrl);
           window.dispatchEvent(new Event('user-profile-updated'));
+    const gridToken = localStorage.getItem('community_chat_identity_token') || '';
+    const gridCallsign = (localStorage.getItem('community_chat_sd') || finalCall || '').trim().toUpperCase();
+    if (supabase && gridToken && gridCallsign) {
+      void supabase.rpc('save_live_spot_grid_locator', { p_callsign: gridCallsign, p_token: gridToken, p_grid_locator: normalizedGrid || null }).then(({ data, error }) => {
+        if (error || !data?.ok) console.warn('[LogBook] No se pudo compartir el Grid Locator:', error?.message || data?.reason);
+      });
+    }
           void (async () => {
             const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
             const token = localStorage.getItem('community_chat_identity_token') || '';
@@ -277,6 +286,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
     // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
     if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
+    const normalizedGrid = gridLocator.trim().toUpperCase();
+    if (normalizedGrid && !/^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(normalizedGrid)) {
+      window.alert('El Grid Locator no parece válido. Usá, por ejemplo, IN83, IN83ka o IN83ka12.');
+      return;
+    }
+    if (normalizedGrid) localStorage.setItem('user_grid_locator', normalizedGrid);
+    else localStorage.removeItem('user_grid_locator');
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('eqsl_sound_alerts', eqslSoundAlerts ? 'true' : 'false');
     window.dispatchEvent(new Event('eqsl-sound-setting-updated'));
@@ -345,6 +361,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
 
           
+
+          <section className="rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="grid-locator-title">
+            <h3 id="grid-locator-title" className="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Locator para distancia DX</h3>
+            <label htmlFor="user-grid-locator" className="block text-xs text-slate-300">Tu locator Maidenhead</label>
+            <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
+          </section>
 
           <section className="rounded-xl border border-sky-500/25 bg-slate-950/70 p-3.5 space-y-3" aria-labelledby="profile-photo-title">
             <div>
