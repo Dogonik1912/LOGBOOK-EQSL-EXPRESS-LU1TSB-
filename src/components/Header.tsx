@@ -630,7 +630,7 @@ export const Header: React.FC<HeaderProps> = ({
           <p className="mt-2 border-t border-slate-700 pt-2 text-[10px] text-slate-400">Datos meteorológicos por ubicación del dispositivo. Si no autorizás la ubicación, se intentará usar la ubicación aproximada por Internet. Fuente: Open-Meteo.</p>
         </div>}
             </div>
-      
+      </div>
 
       {compassOpen && (
         <section aria-label="Brújula del dispositivo" className="mx-auto mt-3 w-full max-w-sm rounded-2xl border border-amber-400 bg-slate-950 p-4 text-white shadow-xl">
