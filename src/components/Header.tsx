@@ -491,7 +491,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+    <header className="bg-slate-900/90 border-b border-slate-800">
       <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-0">
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
         <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
@@ -522,18 +522,22 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Zona derecha: instalación, compartir app y ajustes */}
-        <div className="-mt-3 flex w-full flex-nowrap items-center justify-center gap-1 sm:gap-3">
+      </div>
+      {/* Controles esenciales: permanecen accesibles al desplazarse por la página. */}
+      <div className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/95 shadow-md backdrop-blur-md">
+        <div className="relative w-full px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col gap-1">
+        {/* Zona de instalación, compartir app, brújula y ajustes */}
+        <div className="flex w-full flex-wrap sm:flex-nowrap items-center justify-center gap-1 sm:gap-2">
           {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            className="inline-flex min-h-9 items-center gap-1.5 px-2 sm:px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] sm:text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
             title="Instalar LB EQSL EXPRESS en este equipo"
           >
             {isInstalled ? <Smartphone className="w-4 h-4" /> : <Download className="w-4 h-4" />}
             <span className="flex flex-col items-start leading-tight">
               <span>{isInstalled ? 'App instalada' : 'Instalar app'}</span>
-              <span className="text-[10px] font-medium opacity-90">Muy liviana: ocupa muy poco espacio</span>
+              <span className="hidden sm:inline text-[10px] font-medium opacity-90">Muy liviana: ocupa muy poco espacio</span>
             </span>
           </button>}
 
@@ -545,7 +549,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => setShareMenuOpen((open) => !open)}
                 aria-expanded={shareMenuOpen}
                 aria-haspopup="menu"
-                className="inline-flex min-h-10 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
+                className="inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
                 title="Compartir LogBook eQSL Express en tus redes"
               >
                 <Share2 className="w-4 h-4" />
@@ -584,7 +588,7 @@ export const Header: React.FC<HeaderProps> = ({
               if (nextOpen && compassHeading === null) void activateCompass();
             }}
             aria-expanded={compassOpen}
-            className="inline-flex min-h-10 min-w-0 shrink items-center justify-center gap-1 rounded-xl border border-slate-500 bg-amber-500 px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
+            className="inline-flex min-h-9 min-w-0 shrink items-center justify-center gap-1 rounded-lg border border-slate-500 bg-amber-500 px-2 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-bold text-slate-950 shadow-sm hover:bg-amber-400"
             title="Abrir brújula del dispositivo"
           >
             <Compass className="h-4 w-4" /> Brújula
@@ -594,22 +598,21 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="inline-flex min-h-10 min-w-10 items-center justify-center p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-500 transition-colors cursor-pointer"
+            className="inline-flex min-h-9 min-w-9 items-center justify-center p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-500 transition-colors cursor-pointer"
             title="Ajustes de estación"
           >
             <Settings className="w-4 h-4" />
           </button>
         </div>
-      </div>
-      <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-1 sm:gap-3">
+      <div className="mt-1 flex w-full flex-wrap items-center justify-center gap-1 sm:gap-2">
         {/* Información UTC y meteorológica debajo de la fila principal de accesos */}
             <div className="flex flex-row items-center justify-start gap-0 whitespace-nowrap">
-        <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-b-none rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
+        <div className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-slate-500 bg-black px-2 sm:px-3 py-1.5 font-mono text-[11px] sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
           <span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span>
           <span className="whitespace-nowrap text-white">{utcClock}</span>
         </div>
-        <div className="flex min-h-10 shrink-0 flex-nowrap items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/95 px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
-        <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-cyan-500 bg-cyan-950 px-2 sm:px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
+        <div className="flex min-h-9 shrink-0 flex-nowrap items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/95 px-2 sm:px-2.5 py-1 text-[11px] sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
+        <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-cyan-500 bg-cyan-950 px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
           <span className="inline-flex items-center gap-1"><CloudSun className="h-4 w-4" /> Clima</span>
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
         </button>
@@ -630,6 +633,7 @@ export const Header: React.FC<HeaderProps> = ({
           <p className="mt-2 border-t border-slate-700 pt-2 text-[10px] text-slate-400">Datos meteorológicos por ubicación del dispositivo. Si no autorizás la ubicación, se intentará usar la ubicación aproximada por Internet. Fuente: Open-Meteo.</p>
         </div>}
             </div>
+        </div>
       </div>
 
       {compassOpen && (
