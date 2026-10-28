@@ -137,23 +137,23 @@ export const LiveSpots: React.FC = () => {
     setAdminStatus(`Se eliminaron ${Number(data) || 0} spot(s).`);
   };
 
-  return <section className="mb-5 overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-md">
+  return <section className="mb-5 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
     <div className="flex min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-white">
       <div className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><h2 className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</h2></div>
       <div className="flex shrink-0 items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</div>
     </div>
-    {errorMessage && <p className="px-4 py-3 text-sm text-amber-800">{errorMessage}</p>}
-    {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-700">{adminStatus}</p>}
-    {isAdmin && <div className="flex items-center justify-between gap-2 border-b border-rose-100 bg-rose-50 px-3 py-2">
-      <span className="text-xs font-semibold text-rose-900">Administración de spots</span>
+    {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
+    {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-200">{adminStatus}</p>}
+    {isAdmin && <div className="flex items-center justify-between gap-2 border-b border-rose-900 bg-slate-900 px-3 py-2">
+      <span className="text-xs font-semibold text-rose-200">Administración de spots</span>
       <button type="button" disabled={spots.length === 0 || deletingAll || Boolean(deletingKey)} onClick={() => void deleteAllSpots()} className="inline-flex items-center gap-1 rounded-lg bg-rose-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" />{deletingAll ? 'Borrando…' : 'Borrar todos'}</button>
     </div>}
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
     {!loading && !errorMessage && spots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos. Al registrar un QSO aparecerá aquí.</p>}
-    {spots.length > 0 && <div className="divide-y divide-slate-100">{spots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3">
-      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm font-bold text-slate-900"><span>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</span><span className="text-slate-400">↔</span><span>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</span></div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600"><span className="inline-flex items-center gap-1"><Signal className="h-3.5 w-3.5" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
-      <div className="flex items-center gap-2 text-right text-xs text-slate-600"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{spot.qso_time} UTC</div><div className="mt-1">{spot.qso_date}</div></div>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-lg p-2 text-rose-700 hover:bg-rose-50 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>}</div>
+    {spots.length > 0 && <div className="divide-y divide-slate-800">{spots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3">
+      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm font-bold text-slate-100"><span>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</span><span className="text-slate-500">↔</span><span>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</span></div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3.5 w-3.5" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
+      <div className="flex items-center gap-2 text-right text-xs text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{spot.qso_time} UTC</div><div className="mt-1">{spot.qso_date}</div></div>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-lg p-2 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>}</div>
     </article>)}</div>}
-    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2"><span className="text-[10px] text-slate-400">Solo contactos guardados; hora UTC registrada.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
+    <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">Solo contactos guardados; hora UTC registrada.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
   </section>;
 };
