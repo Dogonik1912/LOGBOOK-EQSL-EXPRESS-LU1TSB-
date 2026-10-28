@@ -1,7 +1,7 @@
 -- LogBook eQSL EXPRESS — DX DE LA SEMANA
 -- Safe additive migration. Does not delete or modify existing spots, chat messages, or eQSL data.
 -- Voting rule: one vote per registered identity per spot per UTC week.
--- DX DE LA SEMANA starts immediately; no minimum user count is required.
+-- DX DE LA SEMANA starts automatically when 100 registered identities exist in community_call_signs.
 
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_votes (
   week_start date NOT NULL,
@@ -31,16 +31,20 @@ CREATE TABLE IF NOT EXISTS public.live_qso_spot_weekly_winners (
 
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_contest_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
-  contest_started_at timestamptz NOT NULL DEFAULT now(),
-  required_users integer NOT NULL DEFAULT 1 CHECK (required_users > 0),
+  contest_started_at timestamptz,
+  required_users integer NOT NULL DEFAULT 100 CHECK (required_users > 0),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 INSERT INTO public.live_qso_spot_contest_settings (singleton, contest_started_at, required_users)
-VALUES (true, now(), 1)
+VALUES (true, NULL, 100)
 ON CONFLICT (singleton) DO UPDATE
-SET contest_started_at = COALESCE(public.live_qso_spot_contest_settings.contest_started_at, now()),
-    required_users = 1,
+SET contest_started_at = CASE
+      WHEN (SELECT count(*) FROM public.community_call_signs) >= 100
+      THEN COALESCE(public.live_qso_spot_contest_settings.contest_started_at, now())
+      ELSE NULL
+    END,
+    required_users = 100,
     updated_at = now();
 
 ALTER TABLE public.live_qso_spot_votes ENABLE ROW LEVEL SECURITY;
@@ -77,10 +81,14 @@ BEGIN
     RETURN v_started_at;
   END IF;
 
-  -- DX semanal comienza inmediatamente; no depende de alcanzar 100 usuarios.
+  -- El concurso solo arranca al llegar a 100 identidades registradas.
+  IF (SELECT count(*) FROM public.community_call_signs) < 100 THEN
+    RETURN NULL;
+  END IF;
+
   UPDATE public.live_qso_spot_contest_settings
-     SET contest_started_at = now(), required_users = 1, updated_at = now()
-   WHERE singleton = true
+     SET contest_started_at = now(), required_users = 100, updated_at = now()
+   WHERE singleton = true AND contest_started_at IS NULL
    RETURNING contest_started_at INTO v_started_at;
 
   RETURN v_started_at;
