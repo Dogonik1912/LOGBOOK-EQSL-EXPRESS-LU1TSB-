@@ -537,47 +537,50 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>}
 
-          {/* Compartir la aplicación en redes y correo */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShareMenuOpen((open) => !open)}
-              aria-expanded={shareMenuOpen}
-              aria-haspopup="menu"
-              className="inline-flex min-h-10 min-w-0 shrink items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
-              title="Compartir LogBook eQSL Express en tus redes"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>Compartir app</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-            {shareMenuOpen && (
-              <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-1.5rem))] rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
-                <p className="px-2 py-1.5 text-[11px] text-slate-400">Elegí dónde compartir</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {shareOptions.map((option) => (
-                    <button key={option.name} type="button" role="menuitem"
-                      onClick={() => handleShareChoice(option.name, option.url())}
-                      className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-xs text-slate-100 hover:bg-slate-800">
-                      <span className={option.color + " flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"}>{option.mark}</span>
-                      <span>{option.name}</span>
-                    </button>
-                  ))}
+          {/* Compartir app y sus accesos meteorológicos en una columna alineada */}
+          <div className="flex min-w-0 flex-col items-stretch gap-0">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShareMenuOpen((open) => !open)}
+                aria-expanded={shareMenuOpen}
+                aria-haspopup="menu"
+                className="inline-flex min-h-10 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
+                title="Compartir LogBook eQSL Express en tus redes"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Compartir app</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+              {shareMenuOpen && (
+                <div role="menu" className="absolute left-0 top-full z-50 mt-2 w-[min(15rem,calc(100vw-1.5rem))] rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
+                  <p className="px-2 py-1.5 text-[11px] text-slate-400">Elegí dónde compartir</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {shareOptions.map((option) => (
+                      <button key={option.name} type="button" role="menuitem"
+                        onClick={() => handleShareChoice(option.name, option.url())}
+                        className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-xs text-slate-100 hover:bg-slate-800">
+                        <span className={option.color + " flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"}>{option.mark}</span>
+                        <span>{option.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(shareText + ' ' + shareUrl); window.alert('Enlace copiado.'); } catch { window.prompt('Copiá el enlace de la app:', shareUrl); } setShareMenuOpen(false); }}
+                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-300 hover:bg-slate-800">
+                    <Copy className="h-4 w-4" /> Copiar enlace de la app
+                  </button>
                 </div>
-                <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(shareText + ' ' + shareUrl); window.alert('Enlace copiado.'); } catch { window.prompt('Copiá el enlace de la app:', shareUrl); } setShareMenuOpen(false); }}
-                  className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs text-slate-300 hover:bg-slate-800">
-                  <Copy className="h-4 w-4" /> Copiar enlace de la app
-                </button>
-              </div>
-            )}
-            <div className="absolute right-0 top-full z-40 mt-2 flex flex-row items-center gap-1 whitespace-nowrap">
-              <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
+              )}
+            </div>
+            {/* UTC, temperatura/humedad y Clima quedan pegados debajo de Compartir app */}
+            <div className="flex flex-row items-center justify-start gap-0 whitespace-nowrap">
+              <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-b-none rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
                 <span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span>
                 <span className="whitespace-nowrap text-white">{utcClock}</span>
               </div>
-              <div className="flex flex-nowrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
-              <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex shrink-0 items-center justify-between gap-2 rounded border border-cyan-500 bg-cyan-950 px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
-                <span className="inline-flex items-center gap-1.5"><CloudSun className="h-4 w-4" /> Clima</span>
+              <div className="flex min-h-10 shrink-0 flex-nowrap items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/95 px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
+              <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-cyan-500 bg-cyan-950 px-2 sm:px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
+                <span className="inline-flex items-center gap-1"><CloudSun className="h-4 w-4" /> Clima</span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
               </button>
               {forecastOpen && <div className="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] rounded-lg border border-slate-600 bg-slate-900 p-2.5 text-white shadow-lg">
