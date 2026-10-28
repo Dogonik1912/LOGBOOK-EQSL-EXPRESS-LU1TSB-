@@ -113,9 +113,7 @@ export const LiveSpots: React.FC = () => {
     setVotingKey(null);
     if (error || !data?.ok) {
       const reason = data?.reason;
-      if (reason === 'contest_waiting_for_100_users') {
-        setVoteMessage(`El concurso se activará cuando haya 100 usuarios registrados. Actualmente: ${data?.registered_users ?? '—'}/100.`);
-      } else if (reason === 'already_voted') {
+      if (reason === 'already_voted') {
         setVotedSpotKeys(current => new Set(current).add(spot.spot_key));
         setVoteMessage('Ya habías votado este spot esta semana.');
       } else if (reason === 'identity_not_verified') {
