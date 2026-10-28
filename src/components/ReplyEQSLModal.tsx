@@ -451,6 +451,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       if (typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) return false;
       await navigator.share({ files: [file], title: 'Respuesta eQSL', text });
       requestChatInvitation('reply');
+      returnToHome();
       return true;
     } catch (error: any) {
       if (error?.name === 'AbortError') return true;
