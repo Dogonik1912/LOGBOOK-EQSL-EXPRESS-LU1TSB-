@@ -301,7 +301,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
         const [freq, rawMode, rawDate, rawTime, , rstSent, ...rest] = parts;
         const date = /^\d{8}$/.test(rawDate) ? `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}` : '';
         const time = /^\d{4}$/.test(rawTime) ? `${rawTime.slice(0,2)}:${rawTime.slice(2,4)}` : '';
-        const callIndex = rest.findIndex((value) => /^[A-Z0-9/]{3,}$/i.test(value));
+        const callIndex = rest.findIndex((value) => /^(?:[A-Z]{1,3}[0-9][A-Z0-9/]{1,7}|[0-9][A-Z]{1,3}[0-9][A-Z0-9/]{1,7})$/i.test(value));
         if (!date || !time || callIndex < 0) return;
         const callsign = rest[callIndex].toUpperCase();
         const rstRcvd = rest[callIndex + 1] || '59';
