@@ -29,6 +29,7 @@ interface LiveLogProps {
   qsos: QSO[];
   onUpdateQSO: (qso: QSO) => void;
   onDeleteQSO: (id: string) => void;
+  onDeleteQSOs?: (ids: string[]) => void;
   onOpenEQSL: (qso: QSO) => void;
   onImportADIF: (newQsos: QSO[]) => void;
   onOpenReply?: (qso: QSO) => void;
@@ -38,6 +39,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   qsos,
   onUpdateQSO,
   onDeleteQSO,
+  onDeleteQSOs,
   onOpenEQSL,
   onImportADIF,
   onOpenReply,
@@ -67,7 +69,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const selectedInCurrentLog = categoryQSOs.filter((q) => selectedQsoIds.includes(q.id));
     if (!selectedInCurrentLog.length) return;
     if (!window.confirm(`¿Eliminar ${selectedInCurrentLog.length} QSO seleccionados de ${activeLog === 'cb' ? '11 metros' : 'radioafición'}? Esta acción no se puede deshacer.`)) return;
-    selectedInCurrentLog.forEach((q) => onDeleteQSO(q.id));
+    if (onDeleteQSOs) onDeleteQSOs(selectedInCurrentLog.map((q) => q.id));
+    else selectedInCurrentLog.forEach((q) => onDeleteQSO(q.id));
     setSelectedQsoIds((current) => current.filter((id) => !selectedInCurrentLog.some((q) => q.id === id)));
   };
   const [filterBand, setFilterBand] = useState('ALL');
