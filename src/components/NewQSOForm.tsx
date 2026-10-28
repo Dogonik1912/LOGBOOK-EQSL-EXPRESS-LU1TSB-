@@ -477,9 +477,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
             <input value={contestLogName} onChange={(e) => { setContestLogName(e.target.value); if (!contestMode) localStorage.setItem('logbook_contest_name', e.target.value); }} disabled={contestMode} placeholder="Ej. CQ WW SSB 2026" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-80" />
           </div>
           <div>
-            <label className="block text-xs text-slate-300 mb-1">Tipo / plantilla Cabrillo</label>
+            <label className="block text-xs text-slate-300 mb-1">Tipo / plantilla de concurso</label>
             <select value={contestType} onChange={(e) => { setContestType(e.target.value); localStorage.setItem('logbook_contest_type', e.target.value); }} disabled={contestMode} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-80">
               <option value="GENERIC">Cabrillo genérico 3.0</option>
+              <option value="ADIF">ADIF</option>
+              <option value="EDI">EDI ( concursos VHF/UHF )</option>
               <option value="CQ-WW">CQ World Wide DX</option>
               <option value="CQ-WPX">CQ WPX</option>
               <option value="ARRL-FIELD-DAY">ARRL Field Day</option>
