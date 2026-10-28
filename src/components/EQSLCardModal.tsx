@@ -258,13 +258,29 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     canvas.height = height;
 
     const drawCardContent = () => {
-      // Franja inferior compacta: los datos no deben tapar la imagen.
-      const footerH = 112;
+      // Franja inferior blanca: primero identifica ambos corresponsales y luego los datos técnicos.
+      const footerH = 150;
       const footerY = height - footerH;
 
       ctx.save();
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, footerY, width, footerH);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('ESTACIÓN QUE ENVÍA', width * 0.25, footerY + 17, width * 0.48);
+      ctx.fillText('ESTACIÓN QUE RECIBE', width * 0.75, footerY + 17, width * 0.48);
+      ctx.font = 'bold 21px monospace';
+      ctx.fillText(cardSenderCallsign || 'NO INDICADA', width * 0.25, footerY + 40, width * 0.48);
+      ctx.fillText(qso.callsign || 'NO INDICADA', width * 0.75, footerY + 40, width * 0.48);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(width / 2, footerY + 7);
+      ctx.lineTo(width / 2, footerY + 48);
+      ctx.stroke();
 
       const cols = [
         { label: 'FECHA (UTC)', val: qso.date },
@@ -280,17 +296,17 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#111111';
-        ctx.font = 'bold 13px sans-serif';
-        ctx.fillText(col.label, cx, footerY + 29, colWidth - 12);
-        ctx.font = 'bold 19px monospace';
-        ctx.fillText(col.val, cx, footerY + 62, colWidth - 12);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(col.label, cx, footerY + 72, colWidth - 12);
+        ctx.font = 'bold 17px monospace';
+        ctx.fillText(col.val, cx, footerY + 101, colWidth - 12);
 
         if (idx < cols.length - 1) {
           ctx.strokeStyle = '#d1d5db';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo((idx + 1) * colWidth, footerY + 12);
-          ctx.lineTo((idx + 1) * colWidth, footerY + 78);
+          ctx.moveTo((idx + 1) * colWidth, footerY + 58);
+          ctx.lineTo((idx + 1) * colWidth, footerY + 119);
           ctx.stroke();
         }
       });
