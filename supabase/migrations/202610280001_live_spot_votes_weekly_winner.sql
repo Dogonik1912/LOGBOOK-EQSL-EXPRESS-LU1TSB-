@@ -157,3 +157,21 @@ revoke all on function public.finalize_previous_live_spot_week() from public;
 grant execute on function public.vote_live_qso_spot(text, uuid, text) to anon, authenticated;
 grant execute on function public.get_my_live_spot_votes(text, uuid) to anon, authenticated;
 grant execute on function public.finalize_previous_live_spot_week() to anon, authenticated;
+
+-- Si pg_cron está habilitado en Supabase, publicar el ganador automáticamente
+-- cada lunes a las 00:05 UTC. La llamada al abrir Live Spot queda como respaldo.
+do $schedule$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    if not exists (select 1 from cron.job where jobname = 'finalize-live-spot-weekly-winner') then
+      perform cron.schedule(
+        'finalize-live-spot-weekly-winner',
+        '5 0 * * 1',
+        'select public.finalize_previous_live_spot_week();'
+      );
+    end if;
+  end if;
+exception when undefined_table or insufficient_privilege then
+  raise notice 'pg_cron no está disponible para programar la publicación automática; se finalizará al abrir Live Spot en la semana siguiente.';
+end;
+$schedule$;
