@@ -67,12 +67,10 @@ export const CommunityChat: React.FC = () => {
   });
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
-  const [chatCollapsed, setChatCollapsed] = useState(false);
-  const toggleCommunityChat = () => setChatCollapsed((current) => {
-    const next = !current;
-    localStorage.setItem('community_chat_collapsed', next ? 'true' : 'false');
-    return next;
-  });
+  // Por privacidad y para no ocupar espacio al entrar, el chat siempre inicia cerrado.
+  // Al desplegarlo, los usuarios nuevos verán aquí mismo la validación de su señal distintiva.
+  const [chatCollapsed, setChatCollapsed] = useState(true);
+  const toggleCommunityChat = () => setChatCollapsed((current) => !current);
   const [darkChat, setDarkChat] = useState(() => localStorage.getItem('community_chat_theme') !== 'light');
   const toggleChatTheme = () => setDarkChat((current) => { const next = !current; localStorage.setItem('community_chat_theme', next ? 'dark' : 'light'); return next; });
   const [busy, setBusy] = useState(false);
