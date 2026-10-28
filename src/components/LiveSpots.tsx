@@ -207,14 +207,11 @@ export const LiveSpots: React.FC = () => {
       <div className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><h2 className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</h2></div>
       <div className="flex shrink-0 items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</div>
     </div>
-    {weeklyWinner && <div className="border-b border-amber-700/60 bg-amber-950/50 px-3 py-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-4 w-4" /> DX DE LA SEMANA</div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0"><div className="font-mono text-sm font-bold text-white">{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign} <span className="text-slate-400">↔</span> {weeklyWinner.station_callsign}</div>
-        <div className="mt-1 text-xs text-amber-100">{weeklyWinner.frequency} MHz · {weeklyWinner.band} · {weeklyWinner.mode}</div>
-        <div className="mt-1 text-[10px] text-amber-200/80">{weeklyWinner.qso_date} · {weeklyWinner.qso_time} UTC</div><div className="mt-1 text-xs font-bold text-cyan-200">{distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\d/.test(adminCallsign))))}</div></div>
-        <div className="shrink-0 text-right text-xs font-bold text-amber-300"><Heart className="mr-1 inline h-4 w-4 fill-rose-500 text-rose-500" />{weeklyWinner.votes}</div>
-      </div>
+    {weeklyWinner && <div className="flex min-w-0 items-center gap-2 overflow-hidden border-b border-amber-700/60 bg-amber-950/50 px-2 py-1.5 text-xs">
+      <span className="flex shrink-0 items-center gap-1 font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-3.5 w-3.5" /> DX DE LA SEMANA</span>
+      <span className="min-w-0 flex-1 truncate font-mono font-bold text-white" title={`${weeklyWinner.callsign} ↔ ${weeklyWinner.station_callsign} · ${weeklyWinner.frequency} MHz · ${weeklyWinner.band} · ${weeklyWinner.mode}`}>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign} ↔ {weeklyWinner.station_callsign} · {weeklyWinner.frequency} MHz</span>
+      <span className="shrink-0 font-bold text-cyan-200">{distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\d/.test(adminCallsign)))}</span>
+      <span className="flex shrink-0 items-center gap-1 font-bold text-amber-300"><Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />{weeklyWinner.votes}</span>
     </div>}
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
     {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-200">{adminStatus}</p>}
