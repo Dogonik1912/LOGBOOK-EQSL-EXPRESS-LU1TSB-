@@ -698,6 +698,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           <div className="text-xl font-bold text-sky-400">{categoryQSOs.filter((q) => q.qslRcvd).length}</div>
         </div>
       </div>
+      <div className="flex justify-end mt-4">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(false)}
+          className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-700 transition-colors"
+        >
+          Cerrar
+        </button>
+      </div>
       </div>
       )}
     </div>
