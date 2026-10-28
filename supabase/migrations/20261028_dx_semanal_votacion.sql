@@ -1,7 +1,7 @@
 -- LogBook eQSL EXPRESS — DX DE LA SEMANA
 -- Safe additive migration. Does not delete or modify existing spots, chat messages, or eQSL data.
 -- Voting rule: one vote per registered identity per spot per UTC week.
--- DX DE LA SEMANA starts automatically when 100 registered identities exist in community_call_signs.
+-- DX DE LA SEMANA is enabled immediately; no user-count threshold.
 
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_votes (
   week_start date NOT NULL,
@@ -32,19 +32,15 @@ CREATE TABLE IF NOT EXISTS public.live_qso_spot_weekly_winners (
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_contest_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
   contest_started_at timestamptz,
-  required_users integer NOT NULL DEFAULT 100 CHECK (required_users > 0),
+  required_users integer NOT NULL DEFAULT 0 CHECK (required_users >= 0),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 INSERT INTO public.live_qso_spot_contest_settings (singleton, contest_started_at, required_users)
-VALUES (true, NULL, 100)
+VALUES (true, now(), 0)
 ON CONFLICT (singleton) DO UPDATE
-SET contest_started_at = CASE
-      WHEN (SELECT count(*) FROM public.community_call_signs) >= 100
-      THEN COALESCE(public.live_qso_spot_contest_settings.contest_started_at, now())
-      ELSE NULL
-    END,
-    required_users = 100,
+SET contest_started_at = COALESCE(public.live_qso_spot_contest_settings.contest_started_at, now()),
+    required_users = 0,
     updated_at = now();
 
 ALTER TABLE public.live_qso_spot_votes ENABLE ROW LEVEL SECURITY;
@@ -81,13 +77,9 @@ BEGIN
     RETURN v_started_at;
   END IF;
 
-  -- El concurso solo arranca al llegar a 100 identidades registradas.
-  IF (SELECT count(*) FROM public.community_call_signs) < 100 THEN
-    RETURN NULL;
-  END IF;
-
+  -- El concurso queda habilitado inmediatamente, sin umbral de usuarios.
   UPDATE public.live_qso_spot_contest_settings
-     SET contest_started_at = now(), required_users = 100, updated_at = now()
+     SET contest_started_at = now(), required_users = 0, updated_at = now()
    WHERE singleton = true AND contest_started_at IS NULL
    RETURNING contest_started_at INTO v_started_at;
 
@@ -197,8 +189,8 @@ DECLARE
   v_inserted integer;
 BEGIN
   v_started_at := public._ensure_live_qso_spot_contest_started();
-  IF v_started_at IS NULL OR v_previous_week < date_trunc('week', v_started_at AT TIME ZONE 'UTC')::date THEN
-    RETURN jsonb_build_object('ok', true, 'status', 'contest_started');
+  IF v_started_at IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'contest_not_started');
   END IF;
 
   INSERT INTO public.live_qso_spot_weekly_winners (
@@ -250,5 +242,23 @@ BEGIN
   END IF;
 EXCEPTION
   WHEN undefined_object THEN NULL;
+END;
+$$;
+
+-- Automatiza el cierre semanal y la publicación del ganador/premio en la tabla
+-- live_qso_spot_weekly_winners (lunes 00:05 UTC). Si pg_cron no está instalado,
+-- la migración no falla; la función puede ejecutarse manualmente.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule(
+      'dx-semanal-finalize-previous-week',
+      '5 0 * * 1',
+      $job$SELECT public.finalize_previous_live_spot_week();$job$
+    );
+  END IF;
+EXCEPTION
+  WHEN undefined_table OR undefined_function OR invalid_schema_name THEN
+    RAISE NOTICE 'pg_cron no está disponible; cierre automático semanal no programado.';
 END;
 $$;
