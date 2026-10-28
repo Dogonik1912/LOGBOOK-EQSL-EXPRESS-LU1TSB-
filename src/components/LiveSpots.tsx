@@ -4,6 +4,7 @@ import { QSO } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign } from '../services/callsignCountry';
+import { countryUsesMiles, distanceForSpot } from '../services/dxDistance';
 
 const isElevenMeterSpot = (band: string, frequency: string): boolean => {
   const normalizedBand = String(band || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -59,6 +60,18 @@ export const LiveSpots: React.FC = () => {
   const [votedSpotKeys, setVotedSpotKeys] = useState<Set<string>>(() => new Set());
   const [votingKey, setVotingKey] = useState<string | null>(null);
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
+  const [gridLocators, setGridLocators] = useState<Record<string, string>>({});
+
+  const loadGridLocators = async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase.from('live_spot_grid_locators').select('callsign,grid_locator');
+    if (error) { console.warn('[LogBook spots] No se pudieron cargar los Grid Locator:', error.message); return; }
+    const locators: Record<string, string> = {};
+    (data || []).forEach((item: { callsign: string; grid_locator: string | null }) => {
+      if (item.grid_locator) locators[String(item.callsign).trim().toUpperCase()] = item.grid_locator;
+    });
+    setGridLocators(locators);
+  };
 
   const loadSpots = async () => {
     if (!supabase) { setErrorMessage('La conexión compartida no está configurada.'); setLoading(false); return; }
@@ -139,9 +152,11 @@ export const LiveSpots: React.FC = () => {
 
   useEffect(() => {
     void loadSpots();
+    void loadGridLocators();
     if (!supabase) return;
     const channel = supabase.channel('live-qso-spots-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_qso_spots' }, () => { void loadSpots(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_spot_grid_locators' }, () => { void loadGridLocators(); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_qso_spot_weekly_winners' }, () => { void loadWeeklyWinnerAndVotes(); })
       .subscribe((status) => setConnected(status === 'SUBSCRIBED'));
     return () => { void supabase.removeChannel(channel); };
@@ -193,11 +208,11 @@ export const LiveSpots: React.FC = () => {
       <div className="flex shrink-0 items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</div>
     </div>
     {weeklyWinner && <div className="border-b border-amber-700/60 bg-amber-950/50 px-3 py-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-4 w-4" /> Spot ganador de la semana</div>
+      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-4 w-4" /> DX DE LA SEMANA</div>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0"><div className="font-mono text-sm font-bold text-white">{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign} <span className="text-slate-400">↔</span> {weeklyWinner.station_callsign}</div>
         <div className="mt-1 text-xs text-amber-100">{weeklyWinner.frequency} MHz · {weeklyWinner.band} · {weeklyWinner.mode}</div>
-        <div className="mt-1 text-[10px] text-amber-200/80">{weeklyWinner.qso_date} · {weeklyWinner.qso_time} UTC</div></div>
+        <div className="mt-1 text-[10px] text-amber-200/80">{weeklyWinner.qso_date} · {weeklyWinner.qso_time} UTC</div><div className="mt-1 text-xs font-bold text-cyan-200">{distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country, weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign), countryUsesMiles(countryForCallsign(adminCallsign)))}</div></div>
         <div className="shrink-0 text-right text-xs font-bold text-amber-300"><Heart className="mr-1 inline h-4 w-4 fill-rose-500 text-rose-500" />{weeklyWinner.votes}</div>
       </div>
     </div>}
@@ -209,7 +224,8 @@ export const LiveSpots: React.FC = () => {
     </div>}
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
     {!loading && !errorMessage && spots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos. Al registrar un QSO aparecerá aquí.</p>}
-    {spots.length > 0 && <div className="divide-y divide-slate-800">{spots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3">
+    {spots.length > 0 && <div className="divide-y divide-slate-800">{spots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3">
+      <div className="min-w-[3.5rem] text-center"><div className="text-sm font-bold text-cyan-200">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country, spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign), countryUsesMiles(countryForCallsign(adminCallsign)))}</div></div>
       <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm font-bold text-slate-100"><span>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</span><span className="text-slate-500">↔</span><span>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</span></div><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3.5 w-3.5" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
       <div className="flex items-center gap-2 text-right text-xs text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{spot.qso_time} UTC</div><div className="mt-1">{spot.qso_date}</div></div><button type="button" aria-label={votedSpotKeys.has(spot.spot_key) ? 'Spot votado' : 'Votar por este spot'} disabled={!adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey === spot.spot_key || Boolean(votingKey)} onClick={() => void voteForSpot(spot)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:cursor-default" style={{ color: votedSpotKeys.has(spot.spot_key) ? '#ff3040' : '#ffffff' }}><Heart className={`h-5 w-5 ${votedSpotKeys.has(spot.spot_key) ? 'fill-current' : ''}`} strokeWidth={2.2} /></button>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-lg p-2 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>}</div>
     </article>)}</div>}
