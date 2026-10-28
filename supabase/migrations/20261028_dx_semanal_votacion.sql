@@ -1,7 +1,7 @@
 -- LogBook eQSL EXPRESS — DX DE LA SEMANA
 -- Safe additive migration. Does not delete or modify existing spots, chat messages, or eQSL data.
 -- Voting rule: one vote per registered identity per spot per UTC week.
--- Contest voting activates when community_call_signs reaches 100 registered identities.
+-- DX DE LA SEMANA starts immediately; no minimum user count is required.
 
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_votes (
   week_start date NOT NULL,
@@ -66,11 +66,9 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_started_at timestamptz;
-  v_required integer;
-  v_users bigint;
 BEGIN
-  SELECT contest_started_at, required_users
-    INTO v_started_at, v_required
+  SELECT contest_started_at
+    INTO v_started_at
   FROM public.live_qso_spot_contest_settings
   WHERE singleton = true
   FOR UPDATE;
@@ -78,9 +76,6 @@ BEGIN
   IF v_started_at IS NOT NULL THEN
     RETURN v_started_at;
   END IF;
-
-  SELECT count(*) INTO v_users
-  FROM public.community_call_signs;
 
   -- DX semanal comienza inmediatamente; no depende de alcanzar 100 usuarios.
   UPDATE public.live_qso_spot_contest_settings
