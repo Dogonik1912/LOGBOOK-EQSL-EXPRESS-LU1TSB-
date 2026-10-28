@@ -117,7 +117,6 @@ export const LiveSpots: React.FC = () => {
         setVoteMessage(`El concurso se activará cuando haya 100 usuarios registrados. Actualmente: ${data?.registered_users ?? '—'}/100.`);
       } else if (reason === 'already_voted') {
         setVotedSpotKeys(current => new Set(current).add(spot.spot_key));
-    setVoteMessage('Voto registrado. El corazón quedará rojo para este spot durante esta semana.');
         setVoteMessage('Ya habías votado este spot esta semana.');
       } else if (reason === 'identity_not_verified') {
         setVoteMessage('No se pudo validar tu indicativo. Revisá tu registro compartido e ingresá nuevamente.');
@@ -128,6 +127,7 @@ export const LiveSpots: React.FC = () => {
       return;
     }
     setVotedSpotKeys(current => new Set(current).add(spot.spot_key));
+    setVoteMessage('Voto registrado. El corazón quedará rojo para este spot durante esta semana.');
     if (data.winner) setWeeklyWinner(data.winner as WeeklyWinner);
   };
 
