@@ -199,6 +199,14 @@ function MainApp() {
     }
   };
 
+  const handleDeleteQSOs = (ids: string[]) => {
+    if (!ids.length) return;
+    if (window.confirm(`¿Eliminar definitivamente ${ids.length} QSO seleccionados? Esta acción no se puede deshacer.`)) {
+      const idSet = new Set(ids);
+      handleSaveQsos(qsos.filter((q) => !idSet.has(q.id)));
+    }
+  };
+
   const handleImportADIF = (importedQsos: QSO[]) => {
     // Evitar duplicados tanto frente al log actual como dentro del propio archivo ADIF.
     const makeQsoKey = (q: QSO) => [
@@ -294,6 +302,7 @@ function MainApp() {
           qsos={qsos}
           onUpdateQSO={handleUpdateQSO}
           onDeleteQSO={handleDeleteQSO}
+          onDeleteQSOs={handleDeleteQSOs}
           onOpenEQSL={(qso) => setActiveEQSLQSO(qso)}
           onImportADIF={handleImportADIF}
           onOpenReply={handleOpenReplyForQSO}
