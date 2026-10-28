@@ -27,6 +27,9 @@ export interface QSO {
   qslRcvd?: boolean;     // eQSL recibida
   exchangeSent?: string;   // Progresivo/intercambio enviado en concursos
   exchangeReceived?: string; // Progresivo/intercambio recibido en concursos
+  contestLogId?: string; // Identificador del log de concurso
+  contestLogName?: string; // Nombre del log de concurso
+  contestType?: string; // Tipo/código del concurso para exportación Cabrillo
   mapActivityAt?: number; // Marca temporal local para mostrar actividad en el mapamundi durante 30 minutos
 }
 
