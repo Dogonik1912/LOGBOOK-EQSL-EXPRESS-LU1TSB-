@@ -500,6 +500,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return `${window.location.origin}/?e=${encodeURIComponent(result.id)}`;
   };
 
+  const returnToHome = () => {
+    window.history.replaceState({}, '', '/');
+    onClose();
+  };
+
   const handleSendEQSLPost = async () => {
     if (eqslPostSent || eqslPostSending || !isQsoValidForEQSL()) return;
     setEqslPostSending(true);
@@ -508,6 +513,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       if (inboxDeliveryStatus.current === true) {
         // Confirmación visual en el propio botón: sin cartel y sin segundo envío del mismo QSO.
         setEqslPostSent(true);
+        returnToHome();
       } else if (inboxDeliveryStatus.current === false) {
         window.alert('No se pudo entregar al buzón. Podés usar WhatsApp, Telegram o correo como alternativa.');
       } else {
@@ -562,6 +568,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [imageFile] })) {
             await navigator.share({ files: [imageFile], title: 'Tarjeta eQSL', text: message });
             requestChatInvitation('send');
+            returnToHome();
             return;
           }
         }
@@ -571,6 +578,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     }
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     requestChatInvitation('send');
+    returnToHome();
   };
 
   const handleShareTelegram = async () => {
@@ -587,6 +595,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(receivedCardLink) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
     requestChatInvitation('send');
+    returnToHome();
   };
 
   const handleSendEmail = async () => {
@@ -611,7 +620,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`
     );
     requestChatInvitation('send');
-    window.location.href = `mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`;
+    window.open(`mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`, '_blank');
+    returnToHome();
   };
 
   const isQsoValidForEQSL = () => {
