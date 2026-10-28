@@ -23,6 +23,7 @@ import { PrivateMessages } from './components/PrivateMessages';
 import { LiveSpots, publishQsoSpot } from './components/LiveSpots';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 import { getUserCallsign } from './services/qrzService';
+import { InitialSdValidation } from './components/InitialSdValidation';
 
 
 function MainApp() {
@@ -377,5 +378,5 @@ export default function App() {
 
   const sharedParams = new URLSearchParams(window.location.search);
   if (!returningAfterReply && (sharedParams.has('e') || sharedParams.has('view_eqsl'))) return <EQSLViewErrorBoundary><ReceivedEQSLPage /></EQSLViewErrorBoundary>;
-  return <MainApp />;
+  return <InitialSdValidation><MainApp /></InitialSdValidation>;
 }
