@@ -25,8 +25,11 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 
+interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; }
+
 interface LiveLogProps {
   qsos: QSO[];
+  contestLogs: ContestLogRecord[];
   onUpdateQSO: (qso: QSO) => void;
   onDeleteQSO: (id: string) => void;
   onDeleteQSOs?: (ids: string[]) => void;
@@ -37,6 +40,7 @@ interface LiveLogProps {
 
 export const LiveLog: React.FC<LiveLogProps> = ({
   qsos,
+  contestLogs,
   onUpdateQSO,
   onDeleteQSO,
   onDeleteQSOs,
@@ -50,10 +54,16 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
   const [filterBand, setFilterBand] = useState('ALL');
   const [filterMode, setFilterMode] = useState('ALL');
+  const [selectedContestLogId, setSelectedContestLogId] = useState('');
+  const [importCabrilloInputKey, setImportCabrilloInputKey] = useState(0);
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.965 && f <= 27.999; })();
   const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
   const cbQSOs = qsos.filter(isCitizenBand);
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
+  const selectedContestLog = contestLogs.find((log) => log.id === selectedContestLogId);
+  const exportQSOs = selectedContestLog
+    ? categoryQSOs.filter((q) => q.contestLogId === selectedContestLog.id)
+    : categoryQSOs;
   const visibleQSOs = categoryQSOs.filter((q) => {
     const term = searchTerm.trim().toLowerCase();
     return (!term || [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.country, q.grid].some((v) => String(v || '').toLowerCase().includes(term))) &&
@@ -182,7 +192,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     adif += `<PROGRAMID:20>LogBook eQSL Express\n`;
     adif += `<EOH>\n\n`;
 
-    categoryQSOs.forEach((q) => {
+    exportQSOs.forEach((q) => {
       const qDate = q.date.replace(/-/g, '');
       const qTime = q.time.replace(/:/g, '') + '00';
       adif += `<CALL:${q.callsign.length}>${q.callsign}`;
@@ -210,17 +220,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `LogBook_${myCallsign}_${activeLog === 'cb' ? '11metros' : 'radioaficion'}_${new Date().toISOString().slice(0, 10)}.adi`;
+    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}_${myCallsign}.adi`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   // Exportar Cabrillo para concursos. El formato es genérico; algunos concursos exigen categorías/cabeceras específicas.
   const handleExportCabrillo = () => {
-    if (!categoryQSOs.length) return;
-    const contestInput = window.prompt('Código oficial del concurso para la cabecera Cabrillo:', 'GENERIC');
-    if (contestInput === null) return;
-    const contestCode = contestInput.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'GENERIC';
+    if (!exportQSOs.length) return;
+    const contestCode = (selectedContestLog?.type || 'GENERIC').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'GENERIC';
     const myCall = getUserCallsign();
     const lines = [
       'START-OF-LOG: 3.0',
@@ -236,7 +244,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       `OPERATORS: ${myCall}`,
       'CREATED-BY: LogBook eQSL Express',
     ];
-    [...categoryQSOs].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).forEach((q) => {
+    [...exportQSOs].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).forEach((q) => {
       const date = q.date || '';
       const time = (q.time || '').replace(/:/g, '').slice(0, 4).padEnd(4, '0');
       const frequencyMHz = Number.parseFloat((q.frequency || '').trim());
@@ -257,9 +265,60 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `LogBook_${myCall}_${activeLog === 'cb' ? '11metros' : 'radioaficion'}_${new Date().toISOString().slice(0, 10)}.log`;
+    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}_${myCall}.log`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Exportar el log seleccionado como libro compatible con Excel (HTML Spreadsheet .xls).
+  const handleExportExcel = () => {
+    if (!exportQSOs.length) return;
+    const escapeCell = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas'];
+    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent, q.rstRcvd, q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes]);
+    const html = '<html><head><meta charset="utf-8"></head><body><table><thead><tr>' + columns.map((c) => '<th>' + escapeCell(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.map((row) => '<tr>' + row.map((v) => '<td>' + escapeCell(v) + '</td>').join('') + '</tr>').join('') + '</tbody></table></body></html>';
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Importar Cabrillo 3.x: conserva los datos de QSO e intercambios cuando están presentes.
+  const handleCabrilloImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = String(event.target?.result || '');
+      const parsed: QSO[] = [];
+      content.split(/\\r?\\n/).forEach((line) => {
+        if (!/^QSO:/i.test(line.trim())) return;
+        const parts = line.trim().replace(/^QSO:\\s*/i, '').split(/\\s+/);
+        if (parts.length < 8) return;
+        const [freq, rawMode, rawDate, rawTime, , rstSent, ...rest] = parts;
+        const date = /^\\d{8}$/.test(rawDate) ? `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}` : '';
+        const time = /^\\d{4}$/.test(rawTime) ? `${rawTime.slice(0,2)}:${rawTime.slice(2,4)}` : '';
+        const callIndex = rest.findIndex((value) => /^[A-Z0-9/]{3,}$/i.test(value));
+        if (!date || !time || callIndex < 1) return;
+        const callsign = rest[callIndex].toUpperCase();
+        const rstRcvd = rest[callIndex + 1] || '59';
+        const exchangeSent = rest.length > 1 ? rest[0] : '';
+        const exchangeReceived = rest[callIndex + 2] || '';
+        const mhz = Number(freq) / 1000;
+        const mode = /^CW$/i.test(rawMode) ? 'CW' : (/^(RY|DG)$/i.test(rawMode) ? 'FT8' : 'SSB');
+        const numericMHz = Number.isFinite(mhz) ? mhz.toFixed(3).replace(/0+$/, '').replace(/\\.$/, '') : '';
+        const band = numericMHz && Number(numericMHz) >= 26.9 && Number(numericMHz) <= 28 ? '11 metros' : ({ '1.8':'160m','3.5':'80m','7':'40m','10':'30m','14':'20m','18':'17m','21':'15m','24':'12m','28':'10m','50':'6m','144':'2m','432':'70cm' }[String(Math.floor(Number(numericMHz)))] || '40m');
+        parsed.push({ id: `cabrillo-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, callsign, date, time, band, frequency: numericMHz || '7.120', mode, rstSent: rstSent || '59', rstRcvd, email: '', exchangeSent, exchangeReceived, qslSent: false, qslRcvd: false });
+      });
+      if (parsed.length) onImportADIF(parsed);
+      else window.alert('No se encontraron líneas QSO válidas. El archivo debe usar líneas Cabrillo «QSO:».');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+    setImportCabrilloInputKey((k) => k + 1);
   };
 
   // Importar archivo ADIF
@@ -424,6 +483,18 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             ))}
           </select>
 
+          <select value={selectedContestLogId} onChange={(e) => setSelectedContestLogId(e.target.value)} className="max-w-full rounded-lg border border-amber-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200" aria-label="Seleccionar log de concurso">
+            <option value="">Registro completo (por categoría)</option>
+            {contestLogs.map((log) => <option key={log.id} value={log.id}>{log.name} — {log.type}</option>)}
+          </select>
+
+          <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Exportar Excel (.xls)</button>
+
+          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 cursor-pointer">
+            <Upload className="w-3.5 h-3.5" /> Importar Cabrillo
+            <input key={importCabrilloInputKey} type="file" accept=".log,.cbr,.txt" onChange={handleCabrilloImport} className="hidden" />
+          </label>
+
           {/* Importar ADIF */}
           <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer">
             <Upload className="w-3.5 h-3.5" />
@@ -439,7 +510,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           <button
             type="button"
             onClick={handleExportCabrillo}
-            disabled={categoryQSOs.length === 0}
+            disabled={exportQSOs.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
             title="Exportar Cabrillo base; los intercambios y categorías específicos dependen del concurso"
           >
@@ -451,7 +522,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           <button
             type="button"
             onClick={handleExportADIF}
-            disabled={qsos.length === 0}
+            disabled={exportQSOs.length === 0}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition-colors cursor-pointer"
             title="Exportar a formato ADIF estándar (.adi)"
           >
