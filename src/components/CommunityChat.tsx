@@ -544,7 +544,6 @@ export const CommunityChat: React.FC = () => {
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
           <div className="min-w-0">
             <h2 className="font-bold leading-tight">Comunidad LogBook eQSL EXPRESS</h2>
-            <p className="mt-1 text-xs text-slate-300">Chat comunitario en tiempo real · gratuito y sin registro</p>
             <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{onlineUsers.length} {onlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
           </div>
         </div>
@@ -587,8 +586,7 @@ export const CommunityChat: React.FC = () => {
                 <strong className="font-mono font-extrabold uppercase text-red-600">LU1TSB</strong>
                 <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">FIJADO</span>
               </div>
-              <p className="text-sm font-semibold">Bienvenidos al chat</p>
-              <p className="mt-1 text-sm">Respeto, cordialidad y buenas ondas para todos. 🤝</p>
+              <p className="text-sm font-semibold">Bienvenidos al espacio de la comunidad LogBook eQSL EXPRESS.</p>
             </article>
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
