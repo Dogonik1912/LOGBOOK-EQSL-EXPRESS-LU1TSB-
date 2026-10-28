@@ -491,6 +491,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
+    <>
     <header className="bg-slate-900/90 border-b border-slate-800">
       <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-0">
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
@@ -523,6 +524,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
       </div>
+    </header>
       {/* Controles esenciales: permanecen accesibles al desplazarse por la página. */}
       <div className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/95 shadow-md backdrop-blur-md">
         <div className="relative w-full px-2 sm:px-4 py-1 sm:py-1.5 flex flex-col gap-1">
@@ -670,6 +672,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </section>
       )}
-    </header>
+    </>
   );
 };
