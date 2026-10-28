@@ -258,113 +258,50 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     canvas.height = height;
 
     const drawCardContent = () => {
-      // Cabecera: Título eQSL Express & Indicativo Principal
-      ctx.textAlign = 'center';
+      // Franja inferior compacta: los datos no deben tapar la imagen.
+      const footerH = 112;
+      const footerY = height - footerH;
 
-      // Subtítulo
-      ctx.font = 'bold 24px monospace';
-      ctx.fillStyle = theme === 'cyber' ? '#38bdf8' : '#fbbf24';
-      ctx.fillText('CONFIRMING QSO · OFFICIAL eQSL CARD', width / 2, 85);
-
-      // Indicativo emisor enorme
-      ctx.font = '900 96px sans-serif';
+      ctx.save();
       ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.shadowBlur = 12;
-      ctx.fillText(cardSenderCallsign, width / 2, 190);
-      ctx.shadowBlur = 0;
+      ctx.fillRect(0, footerY, width, footerH);
 
-      // Información del emisor (Nombre, QTH, Grid)
-      ctx.font = '22px sans-serif';
-      ctx.fillStyle = '#cbd5e1';
-      const stationDetails = [myName, myQth, myGrid ? `Grid: ${myGrid}` : ''].filter(Boolean).join(' · ');
-      if (stationDetails) ctx.fillText(stationDetails, width / 2, 230);
-
-      // Línea separadora
-      ctx.strokeStyle = theme === 'cyber' ? 'rgba(56, 189, 248, 0.6)' : 'rgba(245, 158, 11, 0.6)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(100, 260);
-      ctx.lineTo(width - 100, 260);
-      ctx.stroke();
-
-      // Bloque central para el corresponsal
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillText('CONFIRMING TWO-WAY RADIO CONTACT WITH', width / 2, 310);
-
-      // Indicativo corresponsal destacado
-      ctx.font = '900 70px monospace';
-      ctx.fillStyle = theme === 'cyber' ? '#38bdf8' : '#f59e0b';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-      ctx.shadowBlur = 10;
-      ctx.fillText(qso.callsign, width / 2, 385);
-      ctx.shadowBlur = 0;
-
-      // Tabla de datos del QSO
-      const boxX = 90;
-      const boxY = 425;
-      const boxW = width - 180;
-      const boxH = 160;
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-      ctx.fillRect(boxX, boxY, boxW, boxH);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-      // Columnas de datos: FECHA | HORA UTC | BANDA / FREQ | MODO | RST ENVIADA | RST RECIBIDA
       const cols = [
         { label: 'FECHA (UTC)', val: qso.date },
         { label: 'HORA (UTC)', val: `${qso.time} UTC` },
         { label: 'BANDA / FREQ', val: `${qso.band} (${qso.frequency} MHz)` },
         { label: 'MODO', val: qso.mode },
-        { label: 'RST 2-WAY', val: `${qso.rstSent || '59'} / ${qso.rstRcvd || '59'}` },
+        { label: 'RST ENVIADA / REC.', val: `${qso.rstSent || '59'} / ${qso.rstRcvd || '59'}` },
       ];
 
-      const colWidth = boxW / cols.length;
+      const colWidth = width / cols.length;
       cols.forEach((col, idx) => {
-        const cx = boxX + idx * colWidth + colWidth / 2;
-
+        const cx = idx * colWidth + colWidth / 2;
         ctx.textAlign = 'center';
-        ctx.font = 'bold 15px sans-serif';
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillText(col.label, cx, boxY + 45);
-
-        ctx.font = 'bold 24px monospace';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(col.val, cx, boxY + 95);
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#111111';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(col.label, cx, footerY + 29, colWidth - 12);
+        ctx.font = 'bold 19px monospace';
+        ctx.fillText(col.val, cx, footerY + 62, colWidth - 12);
 
         if (idx < cols.length - 1) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.strokeStyle = '#d1d5db';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(boxX + (idx + 1) * colWidth, boxY + 15);
-          ctx.lineTo(boxX + (idx + 1) * colWidth, boxY + boxH - 15);
+          ctx.moveTo((idx + 1) * colWidth, footerY + 12);
+          ctx.lineTo((idx + 1) * colWidth, footerY + 78);
           ctx.stroke();
         }
       });
 
-      // PRIORIDAD 1: Firma dinámica del operador en la tarjeta
-      const firma = signatureText.trim().slice(0, 30);
-      if (signatureEnabled && firma) {
-        ctx.textAlign = 'center';
-        ctx.font = 'italic bold 24px serif';
-        ctx.fillStyle = theme === 'cyber' ? '#7dd3fc' : '#fde047';
-        ctx.fillText(firma, width / 2, 635, width - 120);
-      }
-
-      // Marca de agua obligatoria, negra e integrada en la imagen final.
-      ctx.save();
+      // Marca de agua obligatoria, discreta, en la esquina inferior derecha.
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.font = 'bold 18px sans-serif';
+      ctx.font = 'bold 12px sans-serif';
       ctx.fillStyle = '#000000';
-      ctx.shadowColor = 'rgba(255,255,255,0.85)';
-      ctx.shadowBlur = 2;
-      ctx.fillText('LogBook eQSL EXPRESS', width - 24, height - 18);
+      ctx.fillText('LogBook eQSL EXPRESS', width - 12, height - 5);
       ctx.restore();
-
     };
 
     if (customBgImage) {
@@ -379,18 +316,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         const y = (height - scaledHeight) / 2 + ((height - scaledHeight) / 2) * (imagePositionY / 100);
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
-        // Capa oscura translúcida para legibilidad profesional
-        ctx.fillStyle = 'rgba(10, 15, 30, 0.48)';
-        ctx.fillRect(0, 0, width, height);
-
-        // Marco
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 6;
-        ctx.strokeRect(30, 30, width - 60, height - 60);
-
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(42, 42, width - 84, height - 84);
+        // La imagen elegida se conserva limpia, sin oscurecerla ni añadir marcos.
 
         drawCardContent();
       };
