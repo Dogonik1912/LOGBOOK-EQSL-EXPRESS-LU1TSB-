@@ -517,7 +517,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button type="button" onClick={() => {
               // Cerrar la ventana de la app instalada cuando el entorno lo permita.
               // No navegar a otra página ni mostrar avisos sobre el navegador.
-              window.close();
+              const nativeApp = (window as Window & { LogBookApp?: { closeApp?: () => void } }).LogBookApp;
+              if (nativeApp?.closeApp) nativeApp.closeApp();
+              else window.close();
             }} aria-label="Cerrar app" title="Cerrar" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-700 bg-red-600 px-2.5 text-black hover:bg-red-500">
               <X className="h-4 w-4 stroke-[3]" />
               <span className="text-xs font-bold">Cerrar</span>
