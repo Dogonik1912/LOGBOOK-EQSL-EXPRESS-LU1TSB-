@@ -59,6 +59,7 @@ export const LiveSpots: React.FC = () => {
   const [deletingAll, setDeletingAll] = useState(false);
   const [votedSpotKeys, setVotedSpotKeys] = useState<Set<string>>(() => new Set());
   const [votingKey, setVotingKey] = useState<string | null>(null);
+  const [voteMessage, setVoteMessage] = useState('');
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
   const [gridLocators, setGridLocators] = useState<Record<string, string>>({});
 
@@ -105,12 +106,25 @@ export const LiveSpots: React.FC = () => {
   const voteForSpot = async (spot: Spot) => {
     if (!supabase || !adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey) return;
     setVotingKey(spot.spot_key);
+    setVoteMessage('');
     const { data, error } = await supabase.rpc('vote_live_qso_spot', {
       p_callsign: adminCallsign, p_token: identityToken, p_spot_key: spot.spot_key,
     });
     setVotingKey(null);
     if (error || !data?.ok) {
-      console.warn('[LogBook spots] No se pudo registrar el voto:', error?.message || data?.reason);
+      const reason = data?.reason;
+      if (reason === 'contest_waiting_for_100_users') {
+        setVoteMessage(`El concurso se activará cuando haya 100 usuarios registrados. Actualmente: ${data?.registered_users ?? '—'}/100.`);
+      } else if (reason === 'already_voted') {
+        setVotedSpotKeys(current => new Set(current).add(spot.spot_key));
+    setVoteMessage('Voto registrado. El corazón quedará rojo para este spot durante esta semana.');
+        setVoteMessage('Ya habías votado este spot esta semana.');
+      } else if (reason === 'identity_not_verified') {
+        setVoteMessage('No se pudo validar tu indicativo. Revisá tu registro compartido e ingresá nuevamente.');
+      } else {
+        setVoteMessage('No se pudo registrar el voto. Comprobá la conexión e intentá de nuevo.');
+      }
+      console.warn('[LogBook spots] No se pudo registrar el voto:', error?.message || reason);
       return;
     }
     setVotedSpotKeys(current => new Set(current).add(spot.spot_key));
@@ -215,6 +229,7 @@ export const LiveSpots: React.FC = () => {
     </div>}
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
     {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-200">{adminStatus}</p>}
+    {voteMessage && <p role="status" className="px-4 py-2 text-sm text-cyan-200">{voteMessage}</p>}
     {isAdmin && <div className="flex items-center justify-between gap-2 border-b border-rose-900 bg-slate-900 px-3 py-2">
       <span className="text-xs font-semibold text-rose-200">Administración de spots</span>
       <button type="button" disabled={spots.length === 0 || deletingAll || Boolean(deletingKey)} onClick={() => void deleteAllSpots()} className="inline-flex items-center gap-1 rounded-lg bg-rose-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" />{deletingAll ? 'Borrando…' : 'Borrar todos'}</button>
