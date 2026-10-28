@@ -144,3 +144,28 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.finalize_previous_live_spot_week() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.finalize_previous_live_spot_week() TO anon, authenticated;
+
+-- Prefer a real weekly server-side schedule when Supabase pg_cron is enabled.
+-- The app-load RPC remains an idempotent fallback if pg_cron is unavailable.
+DO $cron$
+DECLARE
+  v_jobid bigint;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    FOR v_jobid IN
+      SELECT jobid FROM cron.job WHERE jobname = 'logbook-weekly-spot-cleanup'
+    LOOP
+      PERFORM cron.unschedule(v_jobid);
+    END LOOP;
+
+    PERFORM cron.schedule(
+      'logbook-weekly-spot-cleanup',
+      '5 0 * * 1',
+      'SELECT public.finalize_previous_live_spot_week();'
+    );
+  END IF;
+EXCEPTION
+  WHEN undefined_table OR undefined_function OR insufficient_privilege THEN
+    RAISE NOTICE 'pg_cron unavailable; weekly cleanup will run on first app open after UTC week rollover';
+END;
+$cron$;
