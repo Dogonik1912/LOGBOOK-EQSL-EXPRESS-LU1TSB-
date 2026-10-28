@@ -83,7 +83,7 @@ $$;
 DROP TRIGGER IF EXISTS activate_dx_weekly_at_100_users ON public.community_call_signs;
 CREATE TRIGGER activate_dx_weekly_at_100_users
 AFTER INSERT OR UPDATE OF callsign ON public.community_call_signs
-FOR EACH STATEMENT
+FOR EACH ROW
 EXECUTE FUNCTION public._activate_dx_weekly_when_100_users();
 
 REVOKE ALL ON FUNCTION public._activate_dx_weekly_when_100_users() FROM PUBLIC, anon, authenticated;
