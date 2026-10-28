@@ -294,13 +294,13 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     reader.onload = (event) => {
       const content = String(event.target?.result || '');
       const parsed: QSO[] = [];
-      content.split(/\\r?\\n/).forEach((line) => {
+      content.split(/\r?\n/).forEach((line) => {
         if (!/^QSO:/i.test(line.trim())) return;
-        const parts = line.trim().replace(/^QSO:\\s*/i, '').split(/\\s+/);
+        const parts = line.trim().replace(/^QSO:\s*/i, '').split(/\s+/);
         if (parts.length < 8) return;
         const [freq, rawMode, rawDate, rawTime, , rstSent, ...rest] = parts;
-        const date = /^\\d{8}$/.test(rawDate) ? `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}` : '';
-        const time = /^\\d{4}$/.test(rawTime) ? `${rawTime.slice(0,2)}:${rawTime.slice(2,4)}` : '';
+        const date = /^\d{8}$/.test(rawDate) ? `${rawDate.slice(0,4)}-${rawDate.slice(4,6)}-${rawDate.slice(6,8)}` : '';
+        const time = /^\d{4}$/.test(rawTime) ? `${rawTime.slice(0,2)}:${rawTime.slice(2,4)}` : '';
         const callIndex = rest.findIndex((value) => /^[A-Z0-9/]{3,}$/i.test(value));
         if (!date || !time || callIndex < 0) return;
         const callsign = rest[callIndex].toUpperCase();
@@ -309,7 +309,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
         const exchangeReceived = rest[callIndex + 2] || '';
         const mhz = Number(freq) / 1000;
         const mode = /^CW$/i.test(rawMode) ? 'CW' : (/^(RY|DG)$/i.test(rawMode) ? 'FT8' : 'SSB');
-        const numericMHz = Number.isFinite(mhz) ? mhz.toFixed(3).replace(/0+$/, '').replace(/\\.$/, '') : '';
+        const numericMHz = Number.isFinite(mhz) ? mhz.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') : '';
         const band = numericMHz && Number(numericMHz) >= 26.9 && Number(numericMHz) <= 28 ? '11 metros' : ({ '1.8':'160m','3.5':'80m','7':'40m','10':'30m','14':'20m','18':'17m','21':'15m','24':'12m','28':'10m','50':'6m','144':'2m','432':'70cm' }[String(Math.floor(Number(numericMHz)))] || '40m');
         parsed.push({ id: `cabrillo-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, callsign, date, time, band, frequency: numericMHz || '7.120', mode, rstSent: rstSent || '59', rstRcvd, email: '', exchangeSent, exchangeReceived, qslSent: false, qslRcvd: false });
       });
