@@ -355,6 +355,16 @@ function MainApp() {
 
 export default function App() {
   useEffect(() => startAutomaticUiTranslation(), []);
+  // Las páginas de eQSL compartidas también conservan al usuario dentro de LogBook
+  // cuando pulsa Atrás: se vuelve a Inicio en lugar de abandonar el sitio.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('e') && !params.has('view_eqsl')) return;
+    window.history.pushState({ logbookSharedEqsl: true }, '', window.location.href);
+    const returnHomeOnBack = () => window.location.replace('/');
+    window.addEventListener('popstate', returnHomeOnBack);
+    return () => window.removeEventListener('popstate', returnHomeOnBack);
+  }, []);
   // Si la última operación fue responder una eQSL, la próxima entrada debe empezar
   // en Inicio, incluso si el navegador vuelve a abrir un enlace antiguo.
   const returningAfterReply = localStorage.getItem('logbook_return_home_after_reply') === '1';
