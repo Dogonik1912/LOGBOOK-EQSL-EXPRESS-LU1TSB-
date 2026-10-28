@@ -492,7 +492,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
-      <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-3">
+      <div className="relative w-full px-2 sm:px-4 pt-3.5 pb-3.5 flex flex-col gap-0">
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
         <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
           <div className="min-w-0 flex-1 flex flex-row items-center gap-2">
