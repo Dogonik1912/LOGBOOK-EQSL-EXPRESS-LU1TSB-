@@ -69,7 +69,13 @@ export const PrivateMessages: React.FC = () => {
         last_at: String(item.last_at || ''),
         unread_count: Number(item.unread_count) || 0,
       }))
-      .sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime());
+      .sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime())
+      .filter((item) => {
+        try {
+          const hidden = JSON.parse(localStorage.getItem(`community_private_hidden_${callsign.trim().toUpperCase()}`) || '[]');
+          return !Array.isArray(hidden) || !hidden.includes(item.other_callsign);
+        } catch { return true; }
+      });
     const nextUnread = nextConversations.reduce((total, item) => total + (Number(item.unread_count) || 0), 0);
     setConversations(nextConversations);
     setUnreadTotal(nextUnread);
@@ -207,20 +213,16 @@ export const PrivateMessages: React.FC = () => {
 
   const deleteConversation = async (otherCallsign: string) => {
     if (!supabase || !callsign || !identityToken || deletingConversation) return;
-    const confirmed = window.confirm(`¿Eliminar toda la conversación con ${otherCallsign}? Se borrarán los mensajes de ambos lados de esta conversación y no se puede deshacer.`);
+    const confirmed = window.confirm(`¿Ocultar la conversación con ${otherCallsign} de tu bandeja? Los mensajes no se borrarán y la otra persona conservará su conversación.`);
     if (!confirmed) return;
     setDeletingConversation(otherCallsign);
     setError('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('delete_community_private_conversation', {
-        p_callsign: callsign,
-        p_token: identityToken,
-        p_other_callsign: otherCallsign,
-      });
-      if (rpcError || !data?.ok) {
-        setError('No se pudo eliminar la conversación. Puede faltar aplicar la migración de eliminación de mensajes privados en Supabase.');
-        return;
-      }
+      // La eliminación es solo para este usuario/dispositivo: no borrar mensajes compartidos del servidor.
+      const hiddenKey = `community_private_hidden_${callsign.trim().toUpperCase()}`;
+      const hidden = new Set<string>(JSON.parse(localStorage.getItem(hiddenKey) || '[]'));
+      hidden.add(otherCallsign.trim().toUpperCase());
+      localStorage.setItem(hiddenKey, JSON.stringify(Array.from(hidden)));
       setConversations((current) => current.filter((item) => item.other_callsign !== otherCallsign));
       if (activeRecipient === otherCallsign) {
         setActiveRecipient('');
@@ -265,7 +267,7 @@ export const PrivateMessages: React.FC = () => {
         <span className="relative shrink-0 rounded-lg bg-violet-200 p-2 text-violet-950"><MessageCircle className="h-5 w-5" />
           {unreadTotal > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-violet-950 bg-red-600 px-1 text-[10px] font-black text-white">{unreadTotal > 99 ? '99+' : unreadTotal}</span>}
         </span>
-        <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-violet-100">Mensajes</span><span className="block text-[10px] leading-tight text-violet-200">Bandeja privada y respuestas</span></span>
+        <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-violet-100">Mensajes privados</span></span>
         <Inbox className="h-4 w-4 shrink-0 text-violet-200" />
       </button>
       {!isOpen ? null : (
@@ -319,7 +321,7 @@ export const PrivateMessages: React.FC = () => {
               {activeRecipient && <button type="button" onClick={() => void refreshMessages(activeRecipient)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Actualizar mensajes"><RefreshCw className="h-4 w-4" /></button>}
             </div>
             <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto bg-slate-950 p-3" style={{ maxHeight: 'calc(72vh - 150px)', minHeight: 300 }} aria-live="polite">
-              {!activeRecipient && <p className="py-10 text-center text-sm text-slate-500">Elegí una conversación o escribí un indicativo para comenzar.</p>}
+              
               {activeRecipient && messages.length === 0 && <p className="py-10 text-center text-sm text-slate-500">Todavía no hay mensajes. Escribí el primero.</p>}
               {messages.map((message) => {
                 const mine = message.sender_callsign === callsign;
