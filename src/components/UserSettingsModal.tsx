@@ -148,13 +148,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           localStorage.setItem('user_profile_photo', dataUrl);
           setProfilePhoto(dataUrl);
           window.dispatchEvent(new Event('user-profile-updated'));
-    const gridToken = localStorage.getItem('community_chat_identity_token') || '';
-    const gridCallsign = (localStorage.getItem('community_chat_sd') || finalCall || '').trim().toUpperCase();
-    if (supabase && gridToken && gridCallsign) {
-      void supabase.rpc('save_live_spot_grid_locator', { p_callsign: gridCallsign, p_token: gridToken, p_grid_locator: normalizedGrid || null }).then(({ data, error }) => {
-        if (error || !data?.ok) console.warn('[LogBook] No se pudo compartir el Grid Locator:', error?.message || data?.reason);
-      });
-    }
           void (async () => {
             const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
             const token = localStorage.getItem('community_chat_identity_token') || '';
@@ -293,6 +286,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
     if (normalizedGrid) localStorage.setItem('user_grid_locator', normalizedGrid);
     else localStorage.removeItem('user_grid_locator');
+    const gridToken = localStorage.getItem('community_chat_identity_token') || '';
+    const gridCallsign = (localStorage.getItem('community_chat_sd') || finalCall || '').trim().toUpperCase();
+    if (supabase && gridToken && gridCallsign) {
+      void supabase.rpc('save_live_spot_grid_locator', { p_callsign: gridCallsign, p_token: gridToken, p_grid_locator: normalizedGrid || null }).then(({ data, error }) => {
+        if (error || !data?.ok) console.warn('[LogBook] No se pudo compartir el Grid Locator:', error?.message || data?.reason);
+      });
+    }
     localStorage.setItem('eqsl_theme', defaultEQSLTheme);
     localStorage.setItem('eqsl_sound_alerts', eqslSoundAlerts ? 'true' : 'false');
     window.dispatchEvent(new Event('eqsl-sound-setting-updated'));
