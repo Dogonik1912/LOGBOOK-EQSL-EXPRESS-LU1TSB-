@@ -228,7 +228,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   // Exportar Cabrillo para concursos. El formato es genérico; algunos concursos exigen categorías/cabeceras específicas.
   const handleExportCabrillo = () => {
     if (!exportQSOs.length) return;
-    const contestCode = (selectedContestLog?.type || 'GENERIC').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '') || 'GENERIC';
+    const contestType = selectedContestLog?.type || 'GENERIC';
+    const contestNames: Record<string, string> = {
+      'CQ-WW': 'CQ WW DX CONTEST',
+      'CQ-WPX': 'CQ WPX CONTEST',
+      'ARRL-FIELD-DAY': 'ARRL FIELD DAY',
+      'ARRL-SS': 'ARRL Sweepstakes Contest',
+      'GENERIC': 'GENERIC',
+    };
+    const contestCode = contestNames[contestType] || contestType;
     const myCall = getUserCallsign();
     const lines = [
       'START-OF-LOG: 3.0',
@@ -249,7 +257,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       const time = (q.time || '').replace(/:/g, '').slice(0, 4).padEnd(4, '0');
       const frequencyMHz = Number.parseFloat((q.frequency || '').trim());
       const freqKHz = Number.isFinite(frequencyMHz) ? String(Math.round(frequencyMHz * 1000)) : '14000';
-      const mode = /^CW$/i.test(q.mode) ? 'CW' : (/^(RTTY|FT8|FT4|PSK31|JS8|D-STAR|DMR)$/i.test(q.mode) ? 'RY' : 'PH');
+      const mode = /^CW$/i.test(q.mode) ? 'CW' : (/^RTTY$/i.test(q.mode) ? 'RY' : (/^(FT8|FT4|PSK31|JS8|D-STAR|DMR)$/i.test(q.mode) ? 'DG' : 'PH'));
       const sentExchange = (q.exchangeSent || '').trim();
       const receivedExchange = (q.exchangeReceived || '').trim();
       const exchangeFields = sentExchange || receivedExchange
