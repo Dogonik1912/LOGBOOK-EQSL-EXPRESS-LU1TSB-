@@ -12,6 +12,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
+  const [welcome, setWelcome] = useState<{ callsign: string; name: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -78,6 +79,10 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       localStorage.setItem('logbook_sd_validated', '1');
       localStorage.setItem('user_callsign', clean);
       window.dispatchEvent(new Event('user-profile-updated'));
+      // The official Argentine license-holder lookup is not connected yet.
+      // Use a saved verified holder name only when one is already available; never invent it.
+      const holderName = (localStorage.getItem('radio_license_holder_name') || '').trim();
+      setWelcome({ callsign: clean, name: holderName });
       setRequired(false);
     } finally {
       setBusy(false);
@@ -85,7 +90,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   if (!ready) return null;
-  if (!required) return <>{children}</>;
+  if (!required) return <>{welcome && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title"><section className="w-full max-w-md rounded-2xl border border-sky-300 bg-white p-6 text-center text-slate-900 shadow-2xl"><p className="text-xl font-black text-sky-800">{welcome.callsign}{welcome.name ? ` · ${welcome.name}` : ''}</p><h2 id="welcome-title" className="mt-3 text-xl font-bold">¡Bienvenido/a a <strong>LogBook eQSL EXPRESS</strong>!</h2><p className="mt-4 text-base leading-relaxed">Aquí encontrarás<br />las herramientas<br />para hacer radio<br />de forma más fácil.</p><button type="button" onClick={() => setWelcome(null)} className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 font-bold text-white">Continuar</button></section></div>} {children}</>;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="sd-validation-title">
