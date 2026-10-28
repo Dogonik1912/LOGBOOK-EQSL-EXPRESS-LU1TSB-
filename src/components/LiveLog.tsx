@@ -43,12 +43,33 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onOpenReply,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedQsoIds, setSelectedQsoIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.9 && f <= 27.5; })();
   const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
   const cbQSOs = qsos.filter(isCitizenBand);
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
+  const visibleQSOs = categoryQSOs.filter((q) => {
+    const term = searchTerm.trim().toLowerCase();
+    return (!term || [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.country, q.grid].some((v) => String(v || '').toLowerCase().includes(term))) &&
+      (filterBand === 'ALL' || q.band === filterBand) &&
+      (filterMode === 'ALL' || q.mode === filterMode);
+  });
+  const selectedVisibleCount = visibleQSOs.filter((q) => selectedQsoIds.includes(q.id)).length;
+  const toggleSelectAllVisible = () => {
+    const allVisibleSelected = visibleQSOs.length > 0 && visibleQSOs.every((q) => selectedQsoIds.includes(q.id));
+    setSelectedQsoIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleQSOs.some((q) => q.id === id))
+      : [...new Set([...current, ...visibleQSOs.map((q) => q.id)])]);
+  };
+  const handleDeleteSelected = () => {
+    const selectedInCurrentLog = categoryQSOs.filter((q) => selectedQsoIds.includes(q.id));
+    if (!selectedInCurrentLog.length) return;
+    if (!window.confirm(`¿Eliminar ${selectedInCurrentLog.length} QSO seleccionados de ${activeLog === 'cb' ? '11 metros' : 'radioafición'}? Esta acción no se puede deshacer.`)) return;
+    selectedInCurrentLog.forEach((q) => onDeleteQSO(q.id));
+    setSelectedQsoIds((current) => current.filter((id) => !selectedInCurrentLog.some((q) => q.id === id)));
+  };
   const [filterBand, setFilterBand] = useState('ALL');
   const [filterMode, setFilterMode] = useState('ALL');
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
@@ -438,6 +459,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       </div>
 
       {/* Tabla Live Log */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 rounded-xl border border-slate-800 bg-slate-950 p-3">
+        <label className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
+          <input type="checkbox" checked={visibleQSOs.length > 0 && visibleQSOs.every((q) => selectedQsoIds.includes(q.id))} onChange={toggleSelectAllVisible} disabled={!visibleQSOs.length} className="h-4 w-4 accent-sky-500" />
+          Seleccionar todos ({visibleQSOs.length})
+        </label>
+        <button type="button" onClick={handleDeleteSelected} disabled={!categoryQSOs.some((q) => selectedQsoIds.includes(q.id))} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+          <Trash2 className="h-4 w-4" /> Eliminar seleccionados ({categoryQSOs.filter((q) => selectedQsoIds.includes(q.id)).length})
+        </button>
+      </div>
       <div className="overflow-x-auto rounded-xl border border-slate-800">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
@@ -476,7 +506,10 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                     className="hover:bg-slate-800/40 transition-colors group"
                   >
                     {/* Fecha / Hora UTC */}
-                    <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
+                    <td className="py-2 px-2 text-center">
+                    <input aria-label={`Seleccionar QSO de ${q.callsign}`} type="checkbox" checked={selectedQsoIds.includes(q.id)} onChange={(e) => setSelectedQsoIds((current) => e.target.checked ? [...new Set([...current, q.id])] : current.filter((id) => id !== q.id))} className="h-4 w-4 accent-sky-500" />
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
                       <div>{q.date}</div>
                       <div className="text-[11px] text-amber-400/90">{q.time} UTC</div>
                     </td>
