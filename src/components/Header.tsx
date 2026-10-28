@@ -570,13 +570,13 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
             )}
-            <div className="mt-2 flex flex-col items-start gap-2">
+            <div className="absolute left-0 top-full z-40 mt-2 flex flex-col items-start gap-2">
               <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
               <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex items-center justify-between gap-2 rounded border border-cyan-500 bg-cyan-950 px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
                 <span className="inline-flex items-center gap-1.5"><CloudSun className="h-4 w-4" /> Clima</span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
               </button>
-              {forecastOpen && <div className="w-full max-w-[22rem] rounded-lg border border-slate-600 bg-slate-900 p-2.5 text-white shadow-lg">
+              {forecastOpen && <div className="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] rounded-lg border border-slate-600 bg-slate-900 p-2.5 text-white shadow-lg">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <strong className="text-xs">Pronóstico para 7 días</strong>
                   <button type="button" onClick={() => { setWeeklyForecast([]); setForecastStatus(''); setForecastOpen(false); window.setTimeout(() => { setForecastOpen(true); if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { void loadWeeklyForecast(p.coords.latitude, p.coords.longitude); }, () => { if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); else setForecastStatus('No se pudo obtener la ubicación.'); }, { timeout: 8000, maximumAge: 1800000 }); else if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); }, 0); }} className="text-[10px] text-cyan-300 underline">Actualizar</button>
