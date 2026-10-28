@@ -222,13 +222,29 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeTarget = replyToCall.trim().toUpperCase() || 'CORRESPONSAL';
 
     const drawCard = () => {
-      // Franja inferior compacta: la imagen queda libre de leyendas.
-      const footerH = 112;
+      // Franja inferior blanca: identifica ambos corresponsales y conserva los datos del QSO.
+      const footerH = 150;
       const footerY = height - footerH;
 
       ctx.save();
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, footerY, width, footerH);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('ESTACIÓN QUE ENVÍA', width * 0.25, footerY + 17, width * 0.48);
+      ctx.fillText('ESTACIÓN QUE RECIBE', width * 0.75, footerY + 17, width * 0.48);
+      ctx.font = 'bold 21px monospace';
+      ctx.fillText(activeMyCall || 'NO INDICADA', width * 0.25, footerY + 40, width * 0.48);
+      ctx.fillText(activeTarget || 'NO INDICADA', width * 0.75, footerY + 40, width * 0.48);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(width / 2, footerY + 7);
+      ctx.lineTo(width / 2, footerY + 48);
+      ctx.stroke();
 
       const cols = [
         { label: 'FECHA (UTC)', val: date },
@@ -244,17 +260,17 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#111111';
-        ctx.font = 'bold 13px sans-serif';
-        ctx.fillText(col.label, cx, footerY + 29, colW - 12);
-        ctx.font = 'bold 19px monospace';
-        ctx.fillText(col.val, cx, footerY + 62, colW - 12);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(col.label, cx, footerY + 72, colW - 12);
+        ctx.font = 'bold 17px monospace';
+        ctx.fillText(col.val, cx, footerY + 101, colW - 12);
 
         if (idx < cols.length - 1) {
           ctx.strokeStyle = '#d1d5db';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo((idx + 1) * colW, footerY + 12);
-          ctx.lineTo((idx + 1) * colW, footerY + 78);
+          ctx.moveTo((idx + 1) * colW, footerY + 58);
+          ctx.lineTo((idx + 1) * colW, footerY + 119);
           ctx.stroke();
         }
       });
