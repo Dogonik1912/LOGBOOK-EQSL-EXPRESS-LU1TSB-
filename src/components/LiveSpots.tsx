@@ -22,7 +22,8 @@ export async function publishQsoSpot(qso: QSO) {
   if (!supabase) return;
   const ownCall = (qso.stationCallsign || getUserCallsign() || '').trim().toUpperCase();
   const remoteCall = String(qso.callsign || '').trim().toUpperCase();
-  if (!ownCall || !remoteCall || !qso.date || !qso.time || !qso.frequency || !qso.band) return;
+  // Nunca publicar un contacto consigo mismo; también protege contra indicativos mal asignados.
+  if (!ownCall || !remoteCall || ownCall === remoteCall || !qso.date || !qso.time || !qso.frequency || !qso.band) return;
   const spotKey = [ownCall, remoteCall, qso.date, qso.time, qso.band, String(qso.frequency).replace(',', '.'), qso.mode].join('|');
   const { error } = await supabase.from('live_qso_spots').upsert({
     spot_key: spotKey,
@@ -54,7 +55,12 @@ export const LiveSpots: React.FC = () => {
     if (!supabase) { setErrorMessage('La conexión compartida no está configurada.'); setLoading(false); return; }
     const { data, error } = await supabase.from('live_qso_spots').select('*').order('created_at', { ascending: false }).limit(50);
     if (error) { setErrorMessage('Falta configurar la tabla compartida de spots en Supabase.'); setLoading(false); return; }
-    setSpots((data || []) as Spot[]);
+    // Ocultar registros históricos inválidos que muestran una estación contactándose a sí misma.
+    setSpots(((data || []) as Spot[]).filter((spot) => {
+      const remote = String(spot.callsign || '').trim().toUpperCase();
+      const own = String(spot.station_callsign || '').trim().toUpperCase();
+      return Boolean(remote && own && remote !== own);
+    }));
     setErrorMessage('');
     setLoading(false);
   };
