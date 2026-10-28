@@ -26,6 +26,7 @@ import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
 
 
+interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; }
 function MainApp() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
     const saved = localStorage.getItem('logbook_qsos');
@@ -38,6 +39,16 @@ function MainApp() {
     }
     return [];
   });
+
+  const [contestLogs, setContestLogs] = useState<ContestLogRecord[]>(() => {
+    try { return JSON.parse(localStorage.getItem('logbook_contest_logs') || '[]') as ContestLogRecord[]; }
+    catch { return []; }
+  });
+  const handleFinishContest = (log: ContestLogRecord) => {
+    const updated = [log, ...contestLogs.filter((item) => item.id !== log.id)];
+    setContestLogs(updated);
+    localStorage.setItem('logbook_contest_logs', JSON.stringify(updated));
+  };
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const settingsHistoryEntry = useRef(false);
@@ -305,11 +316,13 @@ function MainApp() {
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
         <NewQSOForm
           onAddQSO={handleAddQSO}
+          onFinishContest={handleFinishContest}
         />
 
         {/* Tabla Live Log (con columna Email editable, filtros y acciones) */}
         <LiveLog
           qsos={qsos}
+          contestLogs={contestLogs}
           onUpdateQSO={handleUpdateQSO}
           onDeleteQSO={handleDeleteQSO}
           onDeleteQSOs={handleDeleteQSOs}
