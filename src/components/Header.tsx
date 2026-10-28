@@ -515,14 +515,12 @@ export const Header: React.FC<HeaderProps> = ({
               }}
             />
             <button type="button" onClick={() => {
-              // Los navegadores suelen bloquear window.close() si la pestaña no fue abierta por un script.
-              // En ese caso, se informa cómo cerrar la ventana sin navegar fuera de LogBook.
+              // Cerrar la ventana de la app instalada cuando el entorno lo permita.
+              // No navegar a otra página ni mostrar avisos sobre el navegador.
               window.close();
-              window.setTimeout(() => {
-                if (!window.closed) window.alert('LogBook sigue abierto porque el navegador no permite cerrar esta pestaña desde una página web. Podés cerrar la pestaña o la ventana del navegador; al volver a abrir LogBook ingresarás en Inicio.');
-              }, 100);
-            }} aria-label="Cerrar LogBook eQSL EXPRESS" title="Cerrar app" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-400 bg-red-700 text-white hover:bg-red-600">
-              <X className="h-4 w-4" />
+            }} aria-label="Cerrar app" title="Cerrar" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-700 bg-red-600 px-2.5 text-black hover:bg-red-500">
+              <X className="h-4 w-4 stroke-[3]" />
+              <span className="text-xs font-bold">Cerrar</span>
             </button>
           </div>
         </div>
