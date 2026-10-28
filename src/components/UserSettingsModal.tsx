@@ -33,6 +33,21 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [pushStatus, setPushStatus] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
+  const [weeklyHistoryOpen, setWeeklyHistoryOpen] = useState(false);
+  const [weeklyHistory, setWeeklyHistory] = useState<Array<{
+    week_start: string;
+    callsign: string;
+    station_callsign: string;
+    qso_date: string;
+    qso_time: string;
+    band: string;
+    frequency: string;
+    mode: string;
+    votes: number;
+    published_at: string;
+  }>>([]);
+  const [weeklyHistoryLoading, setWeeklyHistoryLoading] = useState(false);
+  const [weeklyHistoryError, setWeeklyHistoryError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -61,6 +76,36 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       }
       setSavedSuccess(false);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    const loadWeeklyHistory = async () => {
+      setWeeklyHistoryLoading(true);
+      setWeeklyHistoryError('');
+      if (!supabase) {
+        setWeeklyHistory([]);
+        setWeeklyHistoryError('El histórico compartido no está disponible en este momento.');
+        setWeeklyHistoryLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('live_qso_spot_weekly_winners')
+        .select('week_start, callsign, station_callsign, qso_date, qso_time, band, frequency, mode, votes, published_at')
+        .order('week_start', { ascending: false })
+        .limit(52);
+      if (cancelled) return;
+      if (error) {
+        setWeeklyHistory([]);
+        setWeeklyHistoryError('No se pudo cargar el histórico. Verificá que la configuración compartida de DX semanal esté aplicada en Supabase.');
+      } else {
+        setWeeklyHistory((data || []) as typeof weeklyHistory);
+      }
+      setWeeklyHistoryLoading(false);
+    };
+    void loadWeeklyHistory();
+    return () => { cancelled = true; };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -387,11 +432,49 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
           </section>
 
-          <section className="py-3 border-y border-slate-800" aria-labelledby="eqsl-actions-settings">
-            <h3 id="eqsl-actions-settings" className="text-xs font-bold uppercase tracking-wider text-purple-300">Acciones eQSL</h3>
-            <div className="mt-2 rounded-lg border border-purple-500/25 bg-slate-950/60 p-3 flex items-center gap-3">
-              <div className="p-2 bg-purple-500/10 text-purple-300 rounded-lg"><MessageCircle className="w-4 h-4" /></div>
-              <div><p className="text-sm font-semibold text-slate-200">Acciones eQSL</p><p className="text-xs text-slate-400">Sin datos verificados disponibles por el momento.</p></div>
+          <section className="py-3 border-y border-slate-800" aria-labelledby="weekly-history-title">
+            <div className="overflow-hidden rounded-xl border border-violet-500/40 bg-slate-950/60">
+              <button
+                type="button"
+                id="weekly-history-title"
+                onClick={() => setWeeklyHistoryOpen((open) => !open)}
+                aria-expanded={weeklyHistoryOpen}
+                aria-controls="weekly-history-panel"
+                className="flex w-full items-center gap-3 bg-violet-700 px-3.5 py-3 text-left text-white transition-colors hover:bg-violet-600 focus:outline-none focus:ring-2 focus:ring-violet-300"
+              >
+                <Trophy className="h-5 w-5 shrink-0" />
+                <span className="flex-1 text-sm font-extrabold uppercase tracking-wide">DX SEMANAL HISTORICO</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${weeklyHistoryOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {weeklyHistoryOpen && (
+                <div id="weekly-history-panel" className="space-y-3 p-3.5">
+                  {weeklyHistoryLoading && <p className="text-xs text-slate-400">Cargando histórico…</p>}
+                  {!weeklyHistoryLoading && weeklyHistoryError && <p role="status" className="text-xs text-amber-300">{weeklyHistoryError}</p>}
+                  {!weeklyHistoryLoading && !weeklyHistoryError && weeklyHistory.length === 0 && <p className="text-xs text-slate-400">Sin datos verificados disponibles por el momento.</p>}
+                  {!weeklyHistoryLoading && weeklyHistory.length > 0 && (
+                    <div className="max-h-64 space-y-2 overflow-y-auto">
+                      {weeklyHistory.map((entry) => (
+                        <article key={entry.week_start} className="rounded-lg border border-slate-700 bg-slate-900/80 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-violet-300">Semana del {entry.week_start}</span>
+                            <span className="text-xs font-bold text-amber-300">♥ {entry.votes} votos</span>
+                          </div>
+                          <p className="mt-1 break-words font-mono text-sm font-bold text-white">{entry.callsign} ↔ {entry.station_callsign}</p>
+                          <p className="mt-1 text-xs text-slate-300">{entry.frequency} MHz · {entry.band} · {entry.mode || 'Modo no indicado'}</p>
+                          <p className="mt-1 text-[11px] text-slate-400">QSO: {entry.qso_date} · {String(entry.qso_time || '').slice(0, 5)} UTC</p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setWeeklyHistoryOpen(false)}
+                    className="w-full rounded-lg border border-violet-400/50 bg-slate-800 px-3 py-2 text-sm font-bold text-violet-200 transition-colors hover:bg-slate-700"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              )}
             </div>
           </section>
           <section className="py-2 border-y border-slate-800" aria-labelledby="eqsl-alert-settings">
