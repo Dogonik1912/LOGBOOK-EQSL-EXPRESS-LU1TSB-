@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy } from 'lucide-react';
+import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck } from 'lucide-react';
 import { QSO } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
@@ -53,6 +53,7 @@ export const LiveSpots: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [adminStatus, setAdminStatus] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [adminCallsign, setAdminCallsign] = useState(() => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
   const [identityToken, setIdentityToken] = useState(() => localStorage.getItem('community_chat_identity_token') || '');
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
@@ -228,9 +229,19 @@ export const LiveSpots: React.FC = () => {
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
     {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-200">{adminStatus}</p>}
     {voteMessage && <p role="status" className="px-4 py-2 text-sm text-cyan-200">{voteMessage}</p>}
-    {isAdmin && <div className="flex items-center justify-between gap-2 border-b border-rose-900 bg-slate-900 px-3 py-2">
-      <span className="text-xs font-semibold text-rose-200">Administración de spots</span>
-      <button type="button" disabled={spots.length === 0 || deletingAll || Boolean(deletingKey)} onClick={() => void deleteAllSpots()} className="inline-flex items-center gap-1 rounded-lg bg-rose-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" />{deletingAll ? 'Borrando…' : 'Borrar todos'}</button>
+    {isAdmin && <div className="border-b border-rose-900 bg-slate-900">
+      <button type="button" onClick={() => setAdminPanelOpen(open => !open)} aria-expanded={adminPanelOpen} className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left">
+        <span className="flex min-w-0 items-center gap-2"><ShieldCheck className="h-4 w-4 shrink-0 text-rose-300" /><span className="text-xs font-bold text-rose-200">Administración de spots</span><span className="rounded-full bg-rose-950 px-2 py-0.5 text-[10px] text-rose-200">{spots.length} activos</span></span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-rose-200 transition-transform ${adminPanelOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {adminPanelOpen && <div className="space-y-3 border-t border-rose-900/70 px-3 py-3">
+        <p className="text-xs leading-relaxed text-slate-300">Herramientas exclusivas del administrador. Podés borrar un spot individual con la papelera que aparece junto a cada registro, o limpiar todos los spots compartidos. Los QSO guardados, votos, ganadores publicados, eQSL y mensajes del chat no se borran con estas acciones.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => { setLoading(true); void loadSpots(); }} disabled={loading || deletingAll || Boolean(deletingKey)} className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-700 bg-slate-800 px-3 py-2 text-xs font-bold text-cyan-200 disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5" /> Actualizar lista</button>
+          <button type="button" disabled={spots.length === 0 || deletingAll || Boolean(deletingKey)} onClick={() => void deleteAllSpots()} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" />{deletingAll ? 'Borrando todos…' : 'Borrar todos los spots'}</button>
+        </div>
+        {weeklyWinner && <div className="rounded-lg border border-amber-700/50 bg-amber-950/40 p-3 text-xs text-amber-100"><p className="font-bold"><Trophy className="mr-1 inline h-4 w-4" />Último ganador DX publicado</p><p className="mt-1">{weeklyWinner.callsign} ↔ {weeklyWinner.station_callsign} · {weeklyWinner.votes} voto(s)</p><p className="mt-1 text-amber-200/80">El cierre semanal conserva el ganador publicado y limpia únicamente los spots activos.</p></div>}
+      </div>}
     </div>}
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
     {!loading && !errorMessage && spots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos. Al registrar un QSO aparecerá aquí.</p>}
