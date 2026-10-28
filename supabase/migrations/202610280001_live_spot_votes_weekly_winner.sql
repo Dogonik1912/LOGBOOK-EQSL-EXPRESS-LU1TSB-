@@ -40,6 +40,7 @@ drop policy if exists "Public can read weekly live spot winners" on public.live_
 create policy "Public can read weekly live spot winners"
   on public.live_qso_spot_weekly_winners for select to anon, authenticated using (true);
 revoke insert, update, delete on public.live_qso_spot_weekly_winners from anon, authenticated;
+grant select on public.live_qso_spot_weekly_winners to anon, authenticated;
 
 create or replace function public.vote_live_qso_spot(
   p_callsign text,
