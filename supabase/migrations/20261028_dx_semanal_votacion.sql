@@ -31,14 +31,17 @@ CREATE TABLE IF NOT EXISTS public.live_qso_spot_weekly_winners (
 
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_contest_settings (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
-  contest_started_at timestamptz,
-  required_users integer NOT NULL DEFAULT 100 CHECK (required_users > 0),
+  contest_started_at timestamptz NOT NULL DEFAULT now(),
+  required_users integer NOT NULL DEFAULT 1 CHECK (required_users > 0),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-INSERT INTO public.live_qso_spot_contest_settings (singleton, required_users)
-VALUES (true, 100)
-ON CONFLICT (singleton) DO NOTHING;
+INSERT INTO public.live_qso_spot_contest_settings (singleton, contest_started_at, required_users)
+VALUES (true, now(), 1)
+ON CONFLICT (singleton) DO UPDATE
+SET contest_started_at = COALESCE(public.live_qso_spot_contest_settings.contest_started_at, now()),
+    required_users = 1,
+    updated_at = now();
 
 ALTER TABLE public.live_qso_spot_votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.live_qso_spot_weekly_winners ENABLE ROW LEVEL SECURITY;
@@ -79,12 +82,11 @@ BEGIN
   SELECT count(*) INTO v_users
   FROM public.community_call_signs;
 
-  IF v_users >= v_required THEN
-    UPDATE public.live_qso_spot_contest_settings
-       SET contest_started_at = now(), updated_at = now()
-     WHERE singleton = true
-     RETURNING contest_started_at INTO v_started_at;
-  END IF;
+  -- DX semanal comienza inmediatamente; no depende de alcanzar 100 usuarios.
+  UPDATE public.live_qso_spot_contest_settings
+     SET contest_started_at = now(), required_users = 1, updated_at = now()
+   WHERE singleton = true
+   RETURNING contest_started_at INTO v_started_at;
 
   RETURN v_started_at;
 END;
@@ -130,9 +132,7 @@ BEGIN
   IF v_started_at IS NULL THEN
     RETURN jsonb_build_object(
       'ok', false,
-      'reason', 'contest_waiting_for_100_users',
-      'registered_users', (SELECT count(*) FROM public.community_call_signs),
-      'required_users', 100
+      'reason', 'contest_not_started'
     );
   END IF;
 
@@ -195,7 +195,7 @@ DECLARE
 BEGIN
   v_started_at := public._ensure_live_qso_spot_contest_started();
   IF v_started_at IS NULL OR v_previous_week < date_trunc('week', v_started_at AT TIME ZONE 'UTC')::date THEN
-    RETURN jsonb_build_object('ok', true, 'status', 'waiting_for_100_users');
+    RETURN jsonb_build_object('ok', true, 'status', 'contest_started');
   END IF;
 
   INSERT INTO public.live_qso_spot_weekly_winners (
