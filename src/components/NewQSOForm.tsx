@@ -77,8 +77,20 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   // Campos que se limpian al guardar (corresponsal, RST enviada, RST recibida, y detalles)
   const [callsign, setCallsign] = useState('');
-  const [cbStationCallsign, setCbStationCallsign] = useState(() => localStorage.getItem('cb_station_callsign') || '');
-  const [hasSavedCbStationCallsign, setHasSavedCbStationCallsign] = useState(() => Boolean(localStorage.getItem('cb_station_callsign')?.trim()));
+  const getRegisteredStationIdentity = () =>
+    (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+  const isAmateurRadioCallsign = (value: string) =>
+    /^[A-Z]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(value.trim().toUpperCase());
+  const getSavedCbStationCallsign = () => {
+    const saved = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
+    if (saved) return saved;
+    const registered = getRegisteredStationIdentity();
+    // Si el usuario se registró directamente con una identificación CB (no un indicativo
+    // de radioaficionado), esa misma identificación es su estación de 11 metros.
+    return registered && !isAmateurRadioCallsign(registered) ? registered : '';
+  };
+  const [cbStationCallsign, setCbStationCallsign] = useState(() => getSavedCbStationCallsign());
+  const [hasSavedCbStationCallsign, setHasSavedCbStationCallsign] = useState(() => Boolean(getSavedCbStationCallsign()));
   const [showCbStationCallsignPrompt, setShowCbStationCallsignPrompt] = useState(false);
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
@@ -100,19 +112,27 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
   const handleBandChange = (newBand: string) => {
-    // En 11 metros la señal propia es necesaria para guardar el QSO y emitir la eQSL.
-    // Mostrar siempre el campo en esa banda, incluso si el aviso se cerró anteriormente.
-    setShowCbStationCallsignPrompt(newBand === '11 metros');
     setBand(newBand);
     const found = HAM_BANDS.find((b) => b.name === newBand);
     if (found) setFrequency(found.defaultFreq);
 
-    // Al entrar en banda ciudadana, restaurar automáticamente sus parámetros propios.
-    // La señal CB se mantiene separada del indicativo de radioaficionado.
+    // El campo CB solo se pide a quien tiene una SD de radioafición y aún no
+    // guardó su identificación de 11 metros. Al cambiar de banda se oculta.
     if (newBand === '11 metros') {
-      setCbStationCallsign(localStorage.getItem('cb_station_callsign') || '');
+      const savedCB = getSavedCbStationCallsign();
+      if (savedCB) {
+        setCbStationCallsign(savedCB);
+        setHasSavedCbStationCallsign(true);
+        localStorage.setItem('cb_station_callsign', savedCB);
+        setShowCbStationCallsignPrompt(false);
+      } else {
+        setCbStationCallsign('');
+        setShowCbStationCallsignPrompt(true);
+      }
       setRstSent('59');
       setRstRcvd('59');
+    } else {
+      setShowCbStationCallsignPrompt(false);
     }
   };
 
@@ -260,7 +280,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const validMode = HAM_MODES.includes(mode);
     const missing = [
       !validCall ? (band === '11 metros' ? 'identificador de estación de 11 metros' : 'indicativo válido') : '',
-      band === '11 metros' && !cleanCBStationCallsign ? 'tu señal distintiva de 11 metros' : '',
+      band === '11 metros' && !cleanCBStationCallsign && !getSavedCbStationCallsign() ? 'tu señal distintiva de 11 metros' : '',
       !validDate ? 'fecha válida' : '',
       !validTime ? 'hora válida en UTC' : '',
       !validFrequency ? 'frecuencia válida en MHz' : '',
@@ -276,7 +296,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     const newQSO: QSO = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       callsign: cleanCall,
-      ...(band === '11 metros' ? { stationCallsign: cleanCBStationCallsign } : {}),
+      ...(band === '11 metros' ? { stationCallsign: cleanCBStationCallsign || getSavedCbStationCallsign() } : {}),
       date,
       time,
       band,
@@ -300,10 +320,17 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
     };
 
     if (band === '11 metros') {
-      localStorage.setItem('cb_station_callsign', cleanCBStationCallsign);
-      setHasSavedCbStationCallsign(true);
-      setShowCbStationCallsignPrompt(false);
-      localStorage.setItem('cb_station_callsign_prompt_seen', 'true');
+      const finalCBStationCallsign = cleanCBStationCallsign || getSavedCbStationCallsign();
+      if (finalCBStationCallsign) {
+        localStorage.setItem('cb_station_callsign', finalCBStationCallsign);
+        // Vincular la identidad CB con la SD registrada en este dispositivo.
+        const registeredSD = getRegisteredStationIdentity();
+        if (registeredSD) localStorage.setItem('cb_station_linked_sd', registeredSD);
+        setCbStationCallsign(finalCBStationCallsign);
+        setHasSavedCbStationCallsign(true);
+        setShowCbStationCallsignPrompt(false);
+        localStorage.setItem('cb_station_callsign_prompt_seen', 'true');
+      }
     }
 
     // Recordar los datos del corresponsal para próximos QSOs, incluso si el correo fue pegado manualmente.
@@ -415,7 +442,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO }) => {
           ))}
         </div>
 
-        {band === '11 metros' && (
+        {band === '11 metros' && showCbStationCallsignPrompt && !hasSavedCbStationCallsign && (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
             <label htmlFor="cb-station-callsign" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
               Mi señal distintiva de 11 metros (emisor) *
