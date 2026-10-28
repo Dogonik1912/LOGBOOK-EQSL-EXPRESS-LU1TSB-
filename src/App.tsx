@@ -158,7 +158,7 @@ function MainApp() {
     localStorage.setItem('logbook_qsos', JSON.stringify(newQsos));
   };
 
-  const handleAddQSO = (qso: QSO, openEQSL = true) => {
+  const handleAddQSO = (qso: QSO, openEQSL = true, publishSpot = true) => {
     // Evitar duplicados al guardar una respuesta eQSL de un QSO que ya estaba cargado.
     const makeQsoKey = (item: QSO) => [
       String(item.callsign || '').trim().toUpperCase(),
@@ -189,9 +189,9 @@ function MainApp() {
       ? qsos.map((item) => item.id === existing.id ? trackedQSO : item)
       : [trackedQSO, ...qsos];
     handleSaveQsos(updated);
-    // Publicar el QSO como spot compartido, independientemente de que se envíe eQSL.
-    // La clave única en Supabase evita spots duplicados al actualizar un contacto existente.
-    void publishQsoSpot(trackedQSO);
+    // Las respuestas eQSL actualizan el libro local, pero no son un nuevo QSO/spot.
+    // Solo el formulario de un contacto real puede publicar un spot compartido.
+    if (publishSpot) void publishQsoSpot(trackedQSO);
     // Cargar QSO y abrir la tarjeta son acciones distintas; la respuesta usa openEQSL=false.
     if (openEQSL) setActiveEQSLQSO(trackedQSO);
   };
@@ -345,7 +345,7 @@ function MainApp() {
           setIsReplyModalOpen(false);
           setReplyData(null);
         }}
-        onSaveQSO={(qso) => handleAddQSO(qso, false)}
+        onSaveQSO={(qso) => handleAddQSO(qso, false, false)}
       />
 
 
