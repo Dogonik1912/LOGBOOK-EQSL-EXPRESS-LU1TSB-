@@ -25,6 +25,10 @@ class MainActivity : Activity() {
 
         // Expose native gallery saving only inside this app's trusted, HTTPS WebView.
         webView.addJavascriptInterface(AndroidEQSLGalleryBridge(applicationContext), "AndroidEQSL")
+        webView.addJavascriptInterface(AppControlBridge(), "LogBookApp")
+
+        // Keep the native close action separate from browser/window close behavior.
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
@@ -40,6 +44,13 @@ class MainActivity : Activity() {
         setContentView(webView)
         if (savedInstanceState == null) webView.loadUrl(appUrl)
         else webView.restoreState(savedInstanceState)
+    }
+
+    private inner class AppControlBridge {
+        @android.webkit.JavascriptInterface
+        fun closeApp() {
+            runOnUiThread { finishAndRemoveTask() }
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
