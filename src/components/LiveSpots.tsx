@@ -139,7 +139,6 @@ export const LiveSpots: React.FC = () => {
 
   useEffect(() => {
     void loadSpots();
-    void loadWeeklyWinnerAndVotes();
     if (!supabase) return;
     const channel = supabase.channel('live-qso-spots-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_qso_spots' }, () => { void loadSpots(); })
@@ -147,6 +146,10 @@ export const LiveSpots: React.FC = () => {
       .subscribe((status) => setConnected(status === 'SUBSCRIBED'));
     return () => { void supabase.removeChannel(channel); };
   }, []);
+
+  useEffect(() => {
+    void loadWeeklyWinnerAndVotes();
+  }, [adminCallsign, identityToken]);
 
   const deleteSpot = async (spot: Spot) => {
     if (!supabase || !isAdmin || !identityToken || !adminCallsign) return;
