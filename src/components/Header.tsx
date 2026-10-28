@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass } from 'lucide-react';
+import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
 import { LanguageSelector } from './LanguageSelector';
@@ -506,7 +506,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <LanguageSelector
               value={shareLanguage}
-              className="min-w-0 flex-1 sm:min-w-[13rem]"
+              className="min-w-0 max-w-[8.5rem] flex-none sm:max-w-[12rem]"
               onChange={(nextLanguage) => {
                 localStorage.setItem('app_language', nextLanguage);
                 setShareLanguage(nextLanguage);
@@ -514,6 +514,16 @@ export const Header: React.FC<HeaderProps> = ({
                 window.dispatchEvent(new Event('user-profile-updated'));
               }}
             />
+            <button type="button" onClick={() => {
+              // Los navegadores suelen bloquear window.close() si la pestaña no fue abierta por un script.
+              // En ese caso, se informa cómo cerrar la ventana sin navegar fuera de LogBook.
+              window.close();
+              window.setTimeout(() => {
+                if (!window.closed) window.alert('LogBook sigue abierto porque el navegador no permite cerrar esta pestaña desde una página web. Podés cerrar la pestaña o la ventana del navegador; al volver a abrir LogBook ingresarás en Inicio.');
+              }, 100);
+            }} aria-label="Cerrar LogBook eQSL EXPRESS" title="Cerrar app" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-400 bg-red-700 text-white hover:bg-red-600">
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
         {/* Encabezamiento panorámico; la brújula se abre en un panel independiente */}
