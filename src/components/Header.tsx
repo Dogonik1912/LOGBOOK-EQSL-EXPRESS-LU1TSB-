@@ -570,13 +570,13 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
             )}
-            <div className="absolute left-0 top-full z-40 mt-2 flex flex-col items-stretch gap-1">
+            <div className="absolute right-0 top-full z-40 mt-2 flex flex-row items-center gap-1 whitespace-nowrap">
               <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
                 <span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span>
                 <span className="whitespace-nowrap text-white">{utcClock}</span>
               </div>
-              <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
-              <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex w-full items-center justify-between gap-2 rounded border border-cyan-500 bg-cyan-950 px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
+              <div className="flex flex-nowrap items-center gap-2 rounded border border-slate-700 bg-slate-800/95 px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1.5" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1.5" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
+              <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex shrink-0 items-center justify-between gap-2 rounded border border-cyan-500 bg-cyan-950 px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
                 <span className="inline-flex items-center gap-1.5"><CloudSun className="h-4 w-4" /> Clima</span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
               </button>
