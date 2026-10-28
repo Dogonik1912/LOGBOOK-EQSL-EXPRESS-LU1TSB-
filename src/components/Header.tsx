@@ -572,34 +572,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
             </div>
-            {/* UTC, temperatura/humedad y Clima quedan pegados debajo de Compartir app */}
-            <div className="flex flex-row items-center justify-start gap-0 whitespace-nowrap">
-              <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-b-none rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
-                <span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span>
-                <span className="whitespace-nowrap text-white">{utcClock}</span>
-              </div>
-              <div className="flex min-h-10 shrink-0 flex-nowrap items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/95 px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
-              <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-cyan-500 bg-cyan-950 px-2 sm:px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
-                <span className="inline-flex items-center gap-1"><CloudSun className="h-4 w-4" /> Clima</span>
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {forecastOpen && <div className="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] rounded-lg border border-slate-600 bg-slate-900 p-2.5 text-white shadow-lg">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <strong className="text-xs">Pronóstico para 7 días</strong>
-                  <button type="button" onClick={() => { setWeeklyForecast([]); setForecastStatus(''); setForecastOpen(false); window.setTimeout(() => { setForecastOpen(true); if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { void loadWeeklyForecast(p.coords.latitude, p.coords.longitude); }, () => { if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); else setForecastStatus('No se pudo obtener la ubicación.'); }, { timeout: 8000, maximumAge: 1800000 }); else if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); }, 0); }} className="text-[10px] text-cyan-300 underline">Actualizar</button>
-                </div>
-                {forecastLoading && <p className="flex items-center gap-2 py-2 text-xs text-slate-300"><LoaderCircle className="h-4 w-4 animate-spin" /> Cargando pronóstico…</p>}
-                {!forecastLoading && weeklyForecast.length > 0 && <div className="space-y-1.5">
-                  {weeklyForecast.map((day) => <div key={day.date} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-t border-slate-700 py-1.5 text-xs">
-                    <div className="flex min-w-0 items-center gap-2"><WeatherIcon code={day.code} /><span className="truncate">{new Date(day.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: '2-digit' })}<span className="block text-[10px] text-slate-400">{describeWeatherCode(day.code)}</span></span></div>
-                    <span className="whitespace-nowrap font-mono"><span className="text-red-300">{Math.round(day.max)}°</span> / <span className="text-sky-300">{Math.round(day.min)}°</span></span>
-                    <span className="whitespace-nowrap text-sky-200" title="Probabilidad máxima de precipitación">{Number.isFinite(day.rain) ? Math.round(day.rain) + '%' : '—'}</span>
-                  </div>)}
-                </div>}
-                {!forecastLoading && forecastStatus && <p className="mt-2 text-[10px] text-slate-300">{forecastStatus}</p>}
-                <p className="mt-2 border-t border-slate-700 pt-2 text-[10px] text-slate-400">Datos meteorológicos por ubicación del dispositivo. Si no autorizás la ubicación, se intentará usar la ubicación aproximada por Internet. Fuente: Open-Meteo.</p>
-              </div>}
-            </div>
+
           </div>
 
           {/* Botón para desplegar la brújula */}
@@ -628,6 +601,36 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
+      <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-1 sm:gap-3">
+        {/* Información UTC y meteorológica debajo de la fila principal de accesos */}
+            <div className="flex flex-row items-center justify-start gap-0 whitespace-nowrap">
+        <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-b-none rounded-xl border border-slate-500 bg-black px-2 sm:px-3 py-2 font-mono text-xs sm:text-sm font-bold shadow-sm" title={`Hora UTC: ${localDate}`}>
+          <span className="rounded-sm bg-white px-1.5 py-0.5 text-black">UTC</span>
+          <span className="whitespace-nowrap text-white">{utcClock}</span>
+        </div>
+        <div className="flex min-h-10 shrink-0 flex-nowrap items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/95 px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
+        <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-xl border border-cyan-500 bg-cyan-950 px-2 sm:px-3 py-1.5 text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
+          <span className="inline-flex items-center gap-1"><CloudSun className="h-4 w-4" /> Clima</span>
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {forecastOpen && <div className="absolute left-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] rounded-lg border border-slate-600 bg-slate-900 p-2.5 text-white shadow-lg">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <strong className="text-xs">Pronóstico para 7 días</strong>
+            <button type="button" onClick={() => { setWeeklyForecast([]); setForecastStatus(''); setForecastOpen(false); window.setTimeout(() => { setForecastOpen(true); if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { void loadWeeklyForecast(p.coords.latitude, p.coords.longitude); }, () => { if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); else setForecastStatus('No se pudo obtener la ubicación.'); }, { timeout: 8000, maximumAge: 1800000 }); else if (ipCoordinates) void loadWeeklyForecast(ipCoordinates.latitude, ipCoordinates.longitude); }, 0); }} className="text-[10px] text-cyan-300 underline">Actualizar</button>
+          </div>
+          {forecastLoading && <p className="flex items-center gap-2 py-2 text-xs text-slate-300"><LoaderCircle className="h-4 w-4 animate-spin" /> Cargando pronóstico…</p>}
+          {!forecastLoading && weeklyForecast.length > 0 && <div className="space-y-1.5">
+            {weeklyForecast.map((day) => <div key={day.date} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-t border-slate-700 py-1.5 text-xs">
+              <div className="flex min-w-0 items-center gap-2"><WeatherIcon code={day.code} /><span className="truncate">{new Date(day.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: '2-digit' })}<span className="block text-[10px] text-slate-400">{describeWeatherCode(day.code)}</span></span></div>
+              <span className="whitespace-nowrap font-mono"><span className="text-red-300">{Math.round(day.max)}°</span> / <span className="text-sky-300">{Math.round(day.min)}°</span></span>
+              <span className="whitespace-nowrap text-sky-200" title="Probabilidad máxima de precipitación">{Number.isFinite(day.rain) ? Math.round(day.rain) + '%' : '—'}</span>
+            </div>)}
+          </div>}
+          {!forecastLoading && forecastStatus && <p className="mt-2 text-[10px] text-slate-300">{forecastStatus}</p>}
+          <p className="mt-2 border-t border-slate-700 pt-2 text-[10px] text-slate-400">Datos meteorológicos por ubicación del dispositivo. Si no autorizás la ubicación, se intentará usar la ubicación aproximada por Internet. Fuente: Open-Meteo.</p>
+        </div>}
+            </div>
+      
 
       {compassOpen && (
         <section aria-label="Brújula del dispositivo" className="mx-auto mt-3 w-full max-w-sm rounded-2xl border border-amber-400 bg-slate-950 p-4 text-white shadow-xl">
