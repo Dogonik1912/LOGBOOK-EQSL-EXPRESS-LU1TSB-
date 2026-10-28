@@ -186,3 +186,86 @@ exception when undefined_table or insufficient_privilege then
   raise notice 'pg_cron no está disponible para programar la publicación automática; se finalizará al abrir Live Spot en la semana siguiente.';
 end;
 $schedule$;
+
+-- Grid Locator del perfil para calcular distancias DX compartidas.
+-- El locator solo se guarda asociado a una identidad comunitaria verificada.
+create table if not exists public.live_spot_grid_locators (
+  callsign text primary key,
+  identity_token uuid not null,
+  grid_locator text not null,
+  updated_at timestamptz not null default now(),
+  constraint live_spot_grid_locator_format check (
+    grid_locator ~ '^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$'
+  )
+);
+alter table public.live_spot_grid_locators enable row level security;
+drop policy if exists "Public can read live spot grid locators" on public.live_spot_grid_locators;
+create policy "Public can read live spot grid locators"
+  on public.live_spot_grid_locators for select to anon, authenticated using (true);
+revoke insert, update, delete on public.live_spot_grid_locators from anon, authenticated;
+grant select on public.live_spot_grid_locators to anon, authenticated;
+alter table public.live_spot_grid_locators replica identity full;
+
+create or replace function public.save_live_spot_grid_locator(
+  p_callsign text,
+  p_token uuid,
+  p_grid_locator text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  station text := upper(trim(coalesce(p_callsign, '')));
+  locator text := upper(trim(coalesce(p_grid_locator, '')));
+begin
+  if p_token is null or char_length(station) not between 3 and 24
+     or station !~ '^[A-Z0-9/.-]+$' then
+    return jsonb_build_object('ok', false, 'reason', 'invalid_identity');
+  end if;
+
+  if not exists (
+    select 1 from public.community_call_signs c
+     where upper(trim(c.callsign)) = station and c.identity_token = p_token
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'identity_not_verified');
+  end if;
+
+  if locator = '' then
+    delete from public.live_spot_grid_locators
+     where callsign = station and identity_token = p_token;
+    return jsonb_build_object('ok', true, 'deleted', true);
+  end if;
+
+  if locator !~ '^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$' then
+    return jsonb_build_object('ok', false, 'reason', 'invalid_grid_locator');
+  end if;
+
+  insert into public.live_spot_grid_locators (callsign, identity_token, grid_locator, updated_at)
+  values (station, p_token, locator, now())
+  on conflict (callsign) do update
+    set identity_token = excluded.identity_token,
+        grid_locator = excluded.grid_locator,
+        updated_at = now()
+    where public.live_spot_grid_locators.identity_token = p_token;
+
+  if not exists (select 1 from public.live_spot_grid_locators where callsign = station and identity_token = p_token) then
+    return jsonb_build_object('ok', false, 'reason', 'identity_mismatch');
+  end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+revoke all on function public.save_live_spot_grid_locator(text, uuid, text) from public;
+grant execute on function public.save_live_spot_grid_locator(text, uuid, text) to anon, authenticated;
+
+do $grid_realtime$
+begin
+  alter publication supabase_realtime add table public.live_spot_grid_locators;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'La publicación supabase_realtime no existe; habilitar Realtime desde Supabase Dashboard.';
+end;
+$grid_realtime$;
