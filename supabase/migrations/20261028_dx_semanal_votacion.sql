@@ -1,7 +1,9 @@
 -- LogBook eQSL EXPRESS — DX DE LA SEMANA
 -- Safe additive migration. Does not delete or modify existing spots, chat messages, or eQSL data.
 -- Voting rule: one vote per registered identity per spot per UTC week.
--- DX DE LA SEMANA starts automatically when the shared registry reaches 100 identities.
+-- DX INTERNACIONAL semanal: inicia automáticamente; no espera a un mínimo de usuarios.
+-- El registro compartido (community_call_signs + identity_token) valida la identidad para votar.
+-- El ganador se calcula y publica automáticamente cada lunes; no existe concurso nacional.
 
 CREATE TABLE IF NOT EXISTS public.live_qso_spot_votes (
   week_start date NOT NULL,
@@ -37,9 +39,10 @@ CREATE TABLE IF NOT EXISTS public.live_qso_spot_contest_settings (
 );
 
 INSERT INTO public.live_qso_spot_contest_settings (singleton, contest_started_at, required_users)
-VALUES (true, NULL, 100)
+VALUES (true, now(), 0)
 ON CONFLICT (singleton) DO UPDATE
-SET required_users = 100,
+SET required_users = 0,
+    contest_started_at = COALESCE(public.live_qso_spot_contest_settings.contest_started_at, now()),
     updated_at = now();
 
 ALTER TABLE public.live_qso_spot_votes ENABLE ROW LEVEL SECURITY;
@@ -78,12 +81,8 @@ BEGIN
     RETURN v_started_at;
   END IF;
 
-  SELECT count(*)::integer INTO v_registered_users
-  FROM public.community_call_signs;
-
-  IF v_registered_users < v_required_users THEN
-    RETURN NULL;
-  END IF;
+  -- Se inicia sin esperar a alcanzar un número de usuarios registrados.
+  v_registered_users := 0;
 
   UPDATE public.live_qso_spot_contest_settings
      SET contest_started_at = now(), updated_at = now()
@@ -252,14 +251,14 @@ EXCEPTION
 END;
 $$;
 
--- Automatiza el inicio al llegar a 100 identidades registradas (consulta cada minuto)
+-- Automatiza la comprobación del inicio inmediato (cada minuto)
 -- y el cierre semanal/publicación automática del ganador (lunes 00:05 UTC).
 -- La publicación del ganador queda en live_qso_spot_weekly_winners.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
     PERFORM cron.schedule(
-      'dx-semanal-start-at-100-users',
+      'dx-semanal-start-immediately',
       '* * * * *',
       $job$SELECT public._ensure_live_qso_spot_contest_started();$job$
     );
