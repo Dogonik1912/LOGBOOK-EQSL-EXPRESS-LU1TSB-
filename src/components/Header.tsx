@@ -639,7 +639,12 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="absolute left-3 text-lg font-black">O</span>
               <span className="absolute right-3 text-lg font-black">E</span>
               <span className="absolute inset-7 rounded-full border border-slate-300" />
-              <Compass className="h-24 w-24 text-slate-800 transition-transform duration-150" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }} />
+              <svg aria-label="Aguja: punta roja hacia el norte" viewBox="0 0 100 100" className="h-24 w-24 transition-transform duration-150" style={{ transform: `rotate(${compassHeading === null ? 0 : -compassHeading}deg)` }}>
+                <circle cx="50" cy="50" r="4" fill="#334155" />
+                <path d="M50 8 L62 51 L50 45 L38 51 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="1.5" />
+                <path d="M50 92 L38 49 L50 55 L62 49 Z" fill="#334155" stroke="#0f172a" strokeWidth="1.5" />
+                <circle cx="50" cy="50" r="3" fill="#f8fafc" stroke="#334155" strokeWidth="1.5" />
+              </svg>
             </button>
             <p className="text-2xl font-black tabular-nums">{compassHeading === null ? (isFixedDevice ? 'N ↑' : '—°') : `${Math.round(compassHeading)}°`}</p>
             <p role="status" className="text-center text-xs text-slate-300">{compassStatus}</p>
