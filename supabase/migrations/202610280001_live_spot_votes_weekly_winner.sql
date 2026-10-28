@@ -42,6 +42,17 @@ create policy "Public can read weekly live spot winners"
 revoke insert, update, delete on public.live_qso_spot_weekly_winners from anon, authenticated;
 grant select on public.live_qso_spot_weekly_winners to anon, authenticated;
 
+alter table public.live_qso_spot_weekly_winners replica identity full;
+do $realtime$
+begin
+  alter publication supabase_realtime add table public.live_qso_spot_weekly_winners;
+exception
+  when duplicate_object then null;
+  when undefined_object then
+    raise notice 'La publicación supabase_realtime no existe; habilitar Realtime desde Supabase Dashboard.';
+end;
+$realtime$;
+
 create or replace function public.vote_live_qso_spot(
   p_callsign text,
   p_token uuid,
