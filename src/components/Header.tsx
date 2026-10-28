@@ -523,7 +523,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zona derecha: instalación, compartir app y ajustes */}
-        <div className="flex w-full flex-nowrap items-center justify-center gap-1 sm:gap-3">
+        <div className="-mt-3 flex w-full flex-nowrap items-center justify-center gap-1 sm:gap-3">
           {!isInstalled && <button
             type="button"
             onClick={() => { void handleInstall(); }}
