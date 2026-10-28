@@ -407,6 +407,12 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     }
     return window.location.origin + '/?e=' + encodeURIComponent(result.id);
   };
+  const returnToHome = () => {
+    localStorage.setItem('logbook_return_home_after_reply', '1');
+    window.history.replaceState({}, '', '/');
+    onClose();
+  };
+
   const handleSendReplyByEQSLPost = async () => {
     if (eqslPostSending) return;
     const identityToken = localStorage.getItem('community_chat_identity_token') || '';
@@ -423,8 +429,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     setEqslPostStatus('');
     try {
       await createReplyCardLink(true);
-      setEqslPostStatus('Respuesta enviada al eQSL POST de ' + replyToCall.trim().toUpperCase() + '.');
       window.dispatchEvent(new Event('eqsl-pending-count-updated'));
+      returnToHome();
     } catch (error) {
       setEqslPostStatus(error instanceof Error ? error.message : 'No se pudo enviar la respuesta por eQSL POST.');
     } finally {
@@ -471,14 +477,16 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     // Si la eQSL original contiene el número, abrir directamente ese chat.
     // No usamos primero la hoja genérica de compartir, que obliga a elegir contacto.
     if (cleanPhone) {
-      window.location.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      returnToHome();
       return;
     }
 
     // Sin número verificado no es posible seleccionar automáticamente un destinatario.
     // Dejamos la respuesta preparada y explicamos por qué hace falta elegir contacto.
     if (await shareReplyCardFile(text)) return;
-    window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    returnToHome();
   };
 
   const handleShareTelegram = async () => {
@@ -494,6 +502,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       : 'https://t.me/share/url?url=' + encodeURIComponent(cardUrl) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
     requestChatInvitation('reply');
+    returnToHome();
   };
 
   // El correo incluye el enlace a la tarjeta visual completa para verla y descargarla.
@@ -506,7 +515,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const subject = encodeURIComponent(`Respuesta a tu eQSL de ${activeMyCall}`);
     const body = encodeURIComponent(getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', cardUrl));
     requestChatInvitation('reply');
-    window.location.href = `mailto:${emailTo.trim()}?subject=${subject}&body=${body}`;
+    window.open(`mailto:${emailTo.trim()}?subject=${subject}&body=${body}`, '_blank');
+    returnToHome();
   };
   // Guardar automáticamente el QSO de respuesta antes de abrir el canal externo.
   // La aplicación no puede confirmar si WhatsApp, Telegram o el cliente de correo terminó enviándolo.
