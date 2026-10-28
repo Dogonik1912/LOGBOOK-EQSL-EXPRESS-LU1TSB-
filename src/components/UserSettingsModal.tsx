@@ -32,7 +32,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [pushStatus, setPushStatus] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
-  const [showCountryRanking, setShowCountryRanking] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -345,23 +344,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
 
 
-          <section className="rounded-xl border border-amber-500/25 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="world-ranking-title">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 id="world-ranking-title" className="text-xs font-bold uppercase tracking-wider text-amber-300">Ranking mundial · pendiente</h3>
-                <p className="mt-1 text-[11px] text-slate-400">Información y reglas previstas del ranking.</p>
-              </div>
-              <button type="button" onClick={() => setShowCountryRanking((open) => !open)} aria-expanded={showCountryRanking} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-slate-800">
-                {showCountryRanking ? 'Ocultar' : 'Ver detalles'}
-              </button>
-            </div>
-            {showCountryRanking && <div className="border-t border-slate-800 pt-2 text-[11px] leading-relaxed text-slate-300 space-y-2">
-              <p>Ranking mundial por señal distintiva, bandera y países contactados; requiere registro compartido.</p>
-              <p>Reglas previstas: +1 por el primer contacto puntuable con cada estación y +5 extra por la primera eQSL de contestación. Contactos y respuestas repetidos no suman.</p>
-              <p>El campeón anual podrá lucir un diamante junto a su señal en el chat. Los premios se acumularán mientras conserve la racha anual definida.</p>
-              <p className="text-amber-300">Estas reglas todavía no calculan puntos reales; deben implementarse y verificarse con el registro compartido.</p>
-            </div>}
-          </section>
+          
 
           <section className="rounded-xl border border-sky-500/25 bg-slate-950/70 p-3.5 space-y-3" aria-labelledby="profile-photo-title">
             <div>
