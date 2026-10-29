@@ -112,7 +112,7 @@ export async function sendEqslPush(callsign, item = {}) {
   const failed = new Set();
   await Promise.all(active.map(async (entry) => {
     try {
-      const notificationPayload = JSON.stringify({ title: 'LogBook eQSL EXPRESS', body: item.isResponse ? 'Has recibido una respuesta a tu eQSL.' : 'Has recibido una nueva eQSL.', tag: 'eqsl-' + clean(item.id, 24), url: '/?open_eqsl_inbox=1', unreadCount: Number(item.unreadCount) || 1, silent: entry.alertsEnabled === false });
+      const notificationPayload = JSON.stringify({ title: 'LogBook eQSL EXPRESS', body: item.isResponse ? 'Has recibido una respuesta a tu eQSL.' : 'Has recibido una nueva eQSL.', tag: 'eqsl-' + clean(item.id, 24), url: '/?open_eqsl_inbox=1', silent: entry.alertsEnabled === false });
       await webpush.sendNotification(entry.subscription, notificationPayload, { TTL: 60 * 60 * 24 });
     } catch (error) {
       if (error?.statusCode === 404 || error?.statusCode === 410) failed.add(entry.subscription.endpoint);
