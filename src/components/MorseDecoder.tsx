@@ -112,7 +112,7 @@ export function MorseDecoder() {
   };
   const clear=()=>{setCode('');setDecoded('');setTranslated('');Object.assign(refs.current,{current:'',text:'',code:''});};
   return <section className="my-4" data-no-translate>
-    <button type="button" aria-expanded={open} onClick={()=>{if(open&&active)stop();setOpen(value=>!value);setStatus(t.idle);}} className="mb-2 w-full rounded-xl border border-blue-700 bg-blue-500 px-4 py-3 text-left font-bold text-black shadow-sm hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-700">
+    <button type="button" aria-expanded={open} onClick={()=>{if(open&&active)stop();setOpen(value=>!value);setStatus(t.idle);}} className="mb-2 flex min-h-[56px] w-full items-center rounded-xl border border-blue-700 bg-blue-500 px-4 py-2.5 text-left font-bold text-black shadow-sm hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-700">
       Decodificador Morse (CW)
     </button>
     {open && <div className="rounded-2xl border border-cyan-300 bg-white/95 p-4 shadow-sm">
