@@ -54,6 +54,7 @@ export async function publishQsoSpot(qso: QSO) {
 }
 
 export const LiveSpots: React.FC = () => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -223,10 +224,11 @@ export const LiveSpots: React.FC = () => {
   };
 
   return <section className="mb-5 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
-    <div className="flex min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-white">
-      <div className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><h2 className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</h2></div>
-      <div className="flex shrink-0 items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</div>
-    </div>
+    <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex w-full min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-left text-white hover:bg-slate-800/80">
+      <span className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><span className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</span><span className="text-[10px] text-slate-400">({spots.length})</span></span>
+      <span className="flex shrink-0 items-center gap-2"><span className="flex items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</span><ChevronDown className={`h-4 w-4 text-cyan-200 transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></span>
+    </button>
+    {isExpanded && <div>
     {weeklyWinner && <div className="flex min-w-0 items-center gap-2 overflow-hidden border-b border-amber-700/60 bg-amber-950/50 px-2 py-1.5 text-xs">
       <span className="flex shrink-0 items-center gap-1 font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-3.5 w-3.5" /> CONCURSO DX SEMANAL</span>
       <span className="min-w-0 flex-1 truncate font-mono font-bold text-white" title={`${weeklyWinner.callsign} ↔ ${weeklyWinner.station_callsign} · ${weeklyWinner.frequency} MHz · ${weeklyWinner.band} · ${weeklyWinner.mode}`}>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign} ↔ {weeklyWinner.station_callsign} · {weeklyWinner.frequency} MHz</span>
@@ -257,6 +259,8 @@ export const LiveSpots: React.FC = () => {
       <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100"><button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
       <div className="flex items-center gap-1 text-right text-[10px] text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{spot.qso_time} UTC</div><div className="leading-3">{spot.qso_date}</div></div><button type="button" aria-label={votedSpotKeys.has(spot.spot_key) ? 'Spot votado' : 'Votar por este spot'} disabled={!adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey === spot.spot_key || Boolean(votingKey)} onClick={() => void voteForSpot(spot)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:cursor-default" style={{ color: votedSpotKeys.has(spot.spot_key) ? '#ff3040' : '#ffffff' }}><Heart className={`h-4 w-4 ${votedSpotKeys.has(spot.spot_key) ? 'fill-current' : ''}`} strokeWidth={2.2} /></button>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-md p-1.5 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /></button>}</div>
     </article>)}</div>}
-    <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">Solo contactos guardados; hora UTC registrada.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
+    <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">Solo contactos guardados; hora UTC registrada.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
+    <div className="flex justify-end border-t border-slate-800 px-3 py-3"><button type="button" onClick={() => setIsExpanded(false)} className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-700">Cerrar</button></div>
+    </div>}
   </section>;
 };
