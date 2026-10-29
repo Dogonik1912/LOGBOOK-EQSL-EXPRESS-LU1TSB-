@@ -657,7 +657,7 @@ export const CommunityChat: React.FC = () => {
           <span className={`text-[10px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>{onlineUsers.length}</span>
         </div>
         {onlineUsers.length > 0 ? <ul className="flex flex-wrap gap-2">
-          {onlineUsers.map((user) => <li key={user.identityToken || user.callsign} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</li>)}
+          {onlineUsers.map((user) => <li key={user.identityToken || user.callsign}><button type="button" onClick={() => openPrivateMessage(user.callsign)} aria-label={`Escribir mensaje privado a ${user.callsign}`} title={`Escribir mensaje privado a ${user.callsign}`} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold transition hover:border-sky-400 hover:ring-2 hover:ring-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</button></li>)}
         </ul> : <p className={`text-xs ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>No hay indicativos conectados en este momento.</p>}
       </div>}
       </>}
