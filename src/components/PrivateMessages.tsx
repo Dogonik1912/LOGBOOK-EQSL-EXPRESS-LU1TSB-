@@ -214,6 +214,27 @@ export const PrivateMessages: React.FC = () => {
     setActiveRecipient(recipient);
   };
 
+  // Permite abrir la bandeja privada desde cualquier foto o indicativo de la aplicación.
+  useEffect(() => {
+    const handleOpenPrivateMessage = (event: Event) => {
+      const detail = (event as CustomEvent<{ callsign?: string }>).detail;
+      const recipient = String(detail?.callsign || '').trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
+      if (recipient.length < 3) return;
+      if (recipient === callsign) {
+        setIsOpen(true);
+        setError('No podés iniciar una conversación privada con tu propio indicativo.');
+        return;
+      }
+      setIsOpen(true);
+      setRecipientDraft(recipient);
+      setActiveRecipient(recipient);
+      setError('');
+      setNotice('');
+    };
+    window.addEventListener('open-private-message', handleOpenPrivateMessage);
+    return () => window.removeEventListener('open-private-message', handleOpenPrivateMessage);
+  }, [callsign]);
+
   const deleteConversation = async (otherCallsign: string) => {
     if (!supabase || !callsign || !identityToken || deletingConversation) return;
     const confirmed = window.confirm(`¿Ocultar la conversación con ${otherCallsign} de tu bandeja? Los mensajes no se borrarán y la otra persona conservará su conversación.`);
