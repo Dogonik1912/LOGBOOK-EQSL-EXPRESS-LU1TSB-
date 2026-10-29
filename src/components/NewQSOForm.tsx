@@ -433,7 +433,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl mb-6 overflow-hidden">
-      <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex w-full items-center justify-between gap-3 p-4 sm:px-6 text-left hover:bg-slate-800/70 transition-colors">
+      <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 py-2.5 sm:px-4 text-left hover:bg-slate-800/70 transition-colors">
         <span className="flex items-center gap-3">
           <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
           <span className="min-w-0 text-left">
