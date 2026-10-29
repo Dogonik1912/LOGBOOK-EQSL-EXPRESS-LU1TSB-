@@ -570,7 +570,6 @@ export const CommunityChat: React.FC = () => {
           {adminAudit.length > 0 && <div className="space-y-1"><p className="font-bold">Auditoría reciente</p>{adminAudit.slice(0, 20).map((entry) => <p key={entry.id} className="rounded bg-white px-2 py-1 text-xs">{new Date(entry.created_at).toLocaleString()} · {entry.actor_callsign} · {entry.action}{entry.target_callsign ? ` · ${entry.target_callsign}` : ''}</p>)}</div>}
         </div>}
       </div>}
-      {moderationStatus && <div role="status" className={`border-b px-4 py-2 text-xs ${darkChat ? 'border-amber-800 bg-amber-950 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>{moderationStatus}</div>}
       <div className={`flex items-center justify-between border-b px-4 py-2.5 text-xs sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
         <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> Acceso público · sin registro</span>
         {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
