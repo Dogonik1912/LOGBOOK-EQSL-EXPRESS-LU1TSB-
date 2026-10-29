@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { MessageCircle, Send, ShieldCheck, Users, Reply, AlertTriangle, LogOut, Trash2, Sun, Moon, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageCircle, Send, ShieldCheck, Reply, AlertTriangle, Trash2, Sun, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type OnlineUser = { callsign: string; identityToken?: string };
@@ -72,7 +72,6 @@ export const CommunityChat: React.FC = () => {
     return created;
   });
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-  const [showInfo, setShowInfo] = useState(false);
   // Por privacidad y para no ocupar espacio al entrar, el chat siempre inicia cerrado.
   // Al desplegarlo, los usuarios nuevos verán aquí mismo la validación de su señal distintiva.
   const [chatCollapsed, setChatCollapsed] = useState(true);
@@ -551,10 +550,9 @@ export const CommunityChat: React.FC = () => {
             <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{onlineUsers.length} {onlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo claro" : "Cambiar a fondo oscuro"} title={darkChat ? "Fondo claro" : "Fondo oscuro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={() => setShowInfo((v) => !v)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Información de seguridad"><ShieldCheck className="h-5 w-5" /></button><button type="button" onClick={toggleCommunityChat} className="rounded-lg p-2 text-slate-100 hover:bg-slate-800" aria-label={chatCollapsed ? "Desplegar chat comunitario" : "Replegar chat comunitario"} title={chatCollapsed ? "Desplegar chat" : "Replegar chat"} aria-expanded={!chatCollapsed}>{chatCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}</button></div>
+        <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo claro" : "Cambiar a fondo oscuro"} title={darkChat ? "Fondo claro" : "Fondo oscuro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={toggleCommunityChat} className="rounded-lg p-2 text-slate-100 hover:bg-slate-800" aria-label={chatCollapsed ? "Desplegar chat comunitario" : "Replegar chat comunitario"} title={chatCollapsed ? "Desplegar chat" : "Replegar chat"} aria-expanded={!chatCollapsed}>{chatCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}</button></div>
       </div>
       {!chatCollapsed && <>
-      {showInfo && <div className={`border-b px-4 py-3 text-sm ${darkChat ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-sky-200 bg-sky-50 text-sky-950'}`}><strong>Chat comunitario:</strong> cualquier visitante puede leer y publicar mensajes sin registro. No compartas datos personales ni información privada de contacto.</div>}
       {isAdmin && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:px-5">
         <button type="button" onClick={() => setAdminPanelOpen((open) => !open)} className="font-bold underline underline-offset-2">Herramientas del administrador LU1TSB {adminPanelOpen ? '−' : '+'}</button>
         {adminPanelOpen && <div className="mt-3 space-y-3">
