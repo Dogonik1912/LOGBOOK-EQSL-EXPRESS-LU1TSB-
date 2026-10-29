@@ -287,11 +287,43 @@ export const EQSLMailbox: React.FC = () => {
       }
       try {
         const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
+        const publicKey = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env.VITE_VAPID_PUBLIC_KEY || '';
+        const identityToken = token();
+        const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+        let subscription = await registration.pushManager.getSubscription();
+        const decodeKey = (value: string) => {
+          const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+          return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+        };
+        // Permission was already granted: restore/create the browser subscription without
+        // asking the user again, then synchronize it with the server on every app entry.
+        if (!subscription && publicKey && callsign && identityToken) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: decodeKey(publicKey),
+          });
+        }
+        let serverSynced = false;
+        if (subscription && publicKey && callsign && identityToken) {
+          const response = await fetch('/api/push-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'subscribe',
+              token: identityToken,
+              callsign,
+              subscription: subscription.toJSON(),
+              alertsEnabled: true,
+            }),
+          });
+          serverSynced = response.ok;
+        }
         if (!cancelled) {
-          const enabled = Boolean(subscription) && (saved || Notification.permission === 'granted');
+          const enabled = Boolean(subscription) && (saved || Notification.permission === 'granted') && serverSynced;
           setPushEnabled(enabled);
           localStorage.setItem('eqsl_push_enabled', enabled ? 'true' : 'false');
+          if (enabled) localStorage.setItem('eqsl_push_permission_choice', 'accepted');
         }
       } catch { if (!cancelled) setPushEnabled(false); }
     };
