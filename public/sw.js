@@ -84,11 +84,13 @@ self.addEventListener('push', (event) => {
 
     // The Badging API is optional; never let it prevent the notification itself.
     try {
-      const count = Number(data.unreadCount) || 0;
-      if (count > 0 && typeof self.navigator?.setAppBadge === 'function') {
-        await self.navigator.setAppBadge(count);
-      } else if (count === 0 && typeof self.navigator?.clearAppBadge === 'function') {
-        await self.navigator.clearAppBadge();
+      if (Object.prototype.hasOwnProperty.call(data, 'unreadCount')) {
+        const count = Math.max(0, Number(data.unreadCount) || 0);
+        if (count > 0 && typeof self.navigator?.setAppBadge === 'function') {
+          await self.navigator.setAppBadge(count);
+        } else if (count === 0 && typeof self.navigator?.clearAppBadge === 'function') {
+          await self.navigator.clearAppBadge();
+        }
       }
     } catch { /* Badge support varies by browser and operating system. */ }
 
@@ -114,7 +116,11 @@ self.addEventListener('notificationclick', (event) => {
     for (const client of windows) {
       if (client.url.startsWith(self.location.origin) && 'focus' in client) {
         await client.focus();
-        client.postMessage({ type: 'OPEN_EQSL_INBOX' });
+        if (new URL(target).searchParams.has('open_private_messages')) {
+          client.postMessage({ type: 'OPEN_PRIVATE_MESSAGES' });
+        } else {
+          client.postMessage({ type: 'OPEN_EQSL_INBOX' });
+        }
         return;
       }
     }
