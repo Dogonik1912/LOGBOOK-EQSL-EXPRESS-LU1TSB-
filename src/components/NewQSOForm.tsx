@@ -104,12 +104,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [contestType, setContestType] = useState(() => localStorage.getItem('logbook_contest_type') || 'GENERIC');
   const [contestSetupOpen, setContestSetupOpen] = useState(false);
   const beginContest = () => {
-    if (contestMode) {
-      if (!window.confirm('¿Desactivar el modo concurso? Si el concurso terminó, usa «Finalizar concurso y guardar log».')) return;
-      setContestMode(false);
-      localStorage.setItem('logbook_contest_active', 'false');
-      return;
-    }
+    // El modo concurso solo puede cerrarse desde "Finalizar concurso y guardar log".
+    // Nunca permitir que una segunda activación o un cambio accidental lo desactive.
+    if (contestMode) return;
     const name = contestLogName.trim();
     if (!name) { setValidationError('Escribe un nombre para el log antes de activar el modo concurso.'); return; }
     const id = contestLogId || `contest-${Date.now()}`;
@@ -471,15 +468,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3">
         <label className="flex items-center gap-2 text-sm font-semibold text-white">
           <input type="checkbox" checked={contestMode || contestSetupOpen} onChange={(e) => {
-            if (e.target.checked) {
-              if (!contestMode) setContestSetupOpen(true);
-            } else if (contestMode) {
-              if (!window.confirm('¿Desactivar el modo concurso? Si el concurso terminó, usa «Finalizar concurso y guardar log».')) return;
-              setContestMode(false);
-              localStorage.setItem('logbook_contest_active', 'false');
-            } else {
-              setContestSetupOpen(false);
-            }
+            // Una vez activo, tocar la casilla no puede desactivar el concurso
+            // ni abrir un diálogo que facilite perder el log por accidente.
+            if (contestMode) return;
+            if (e.target.checked) setContestSetupOpen(true);
+            else setContestSetupOpen(false);
           }} className="h-4 w-4 accent-amber-500" />
           Activar modo concurso
         </label>
