@@ -224,7 +224,7 @@ export const LiveSpots: React.FC = () => {
   };
 
   return <section className="mb-5 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
-    <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex w-full min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-left text-white hover:bg-slate-800/80">
+    <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex min-h-[56px] w-full min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-2.5 text-left text-white hover:bg-slate-800/80">
       <span className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><span className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</span><span className="text-[10px] text-slate-400">({spots.length})</span></span>
       <span className="flex shrink-0 items-center gap-2"><span className="flex items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</span><ChevronDown className={`h-4 w-4 text-cyan-200 transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></span>
     </button>
