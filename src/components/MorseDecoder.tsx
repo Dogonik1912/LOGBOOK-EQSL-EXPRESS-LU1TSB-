@@ -21,7 +21,7 @@ const label: Record<string,string> = {
   ro:'Decodor Morse',hu:'Morse-dekóder',id:'Dekoder Morse'
 };
 const words: Record<string,Record<string,string>> = {
-  es:{start:'Activar micrófono',stop:'Detener',clear:'Borrar',decoded:'Texto decodificado',morse:'Código Morse',listening:'Escuchando el micrófono…',idle:'Pulsa Activar micrófono y acerca el teléfono al audio Morse.',permission:'No se pudo acceder al micrófono. Comprueba los permisos del navegador.',translate:'Traduciendo…',translation:'Traducción',unsupported:'Este navegador no permite capturar audio.'},
+  es:{start:'Activar micrófono',stop:'Detener',clear:'Borrar',decoded:'Texto decodificado',morse:'Código Morse',listening:'Escuchando el micrófono…',idle:'Pulsa Activar micrófono y acerca el teléfono al audio Morse.',permission:'No se pudo acceder al micrófono. En Chrome, abre los permisos del sitio y permite Micrófono; después vuelve a pulsar Activar micrófono.',noDevice:'No se detectó un micrófono disponible en este dispositivo.',insecure:'El micrófono requiere abrir la app mediante HTTPS o desde su aplicación instalada.',translate:'Traduciendo…',translation:'Traducción',unsupported:'Este navegador no permite capturar audio.'},
   en:{start:'Enable microphone',stop:'Stop',clear:'Clear',decoded:'Decoded text',morse:'Morse code',listening:'Listening to microphone…',idle:'Tap Enable microphone and place the phone near the Morse audio.',permission:'Could not access the microphone. Check browser permissions.',translate:'Translating…',translation:'Translation',unsupported:'This browser does not support audio capture.'}
 };
 function morseText(code:string) {
@@ -67,7 +67,9 @@ export function MorseDecoder() {
     return()=>{cancelled=true;window.clearTimeout(timer);};
   },[decoded,language]);
   const start = async () => {
+    if(!window.isSecureContext){setStatus(t.insecure || words.en.insecure);return;}
     if(!navigator.mediaDevices?.getUserMedia){setStatus(t.unsupported);return;}
+    setStatus(lang==='es'?'Esperando autorización del micrófono…':'Waiting for microphone permission…');
     try{
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
       const context=new AudioContext();await context.resume();
@@ -98,7 +100,15 @@ export function MorseDecoder() {
       };
       audioRef.current={stream,context,source,analyser,raf:requestAnimationFrame(tick)};
       setActive(true);setStatus(t.listening);
-    }catch{setStatus(t.permission);stop();}
+    }catch(error){
+      const err=error as DOMException;
+      if(err?.name==='NotFoundError'||err?.name==='DevicesNotFoundError')setStatus(t.noDevice||words.en.noDevice);
+      else if(err?.name==='NotAllowedError'||err?.name==='PermissionDeniedError')setStatus(t.permission);
+      else setStatus((t.permission||words.en.permission)+(err?.message?` (${err.message})`:''));
+      const a=audioRef.current;
+      if(a){cancelAnimationFrame(a.raf);a.stream.getTracks().forEach(track=>track.stop());void a.context.close();audioRef.current=null;}
+      refs.current.on=false;setActive(false);
+    }
   };
   const clear=()=>{setCode('');setDecoded('');setTranslated('');Object.assign(refs.current,{current:'',text:'',code:''});};
   return <section className="my-4" data-no-translate>
