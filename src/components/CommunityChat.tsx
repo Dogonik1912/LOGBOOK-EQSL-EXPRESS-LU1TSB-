@@ -570,11 +570,6 @@ export const CommunityChat: React.FC = () => {
           {adminAudit.length > 0 && <div className="space-y-1"><p className="font-bold">Auditoría reciente</p>{adminAudit.slice(0, 20).map((entry) => <p key={entry.id} className="rounded bg-white px-2 py-1 text-xs">{new Date(entry.created_at).toLocaleString()} · {entry.actor_callsign} · {entry.action}{entry.target_callsign ? ` · ${entry.target_callsign}` : ''}</p>)}</div>}
         </div>}
       </div>}
-      <div className={`flex items-center justify-between border-b px-4 py-2.5 text-xs sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-        <span className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" /> Acceso público · sin registro</span>
-        {session && <button type="button" onClick={signOut} className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold hover:bg-slate-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>}
-      </div>
-
       {!supabase ? (
         <div className="space-y-2 bg-amber-50 px-4 py-5 text-sm text-amber-950 sm:px-5">
           <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4 shrink-0" /> Chat pendiente de conexión</p>
@@ -629,7 +624,6 @@ export const CommunityChat: React.FC = () => {
               <div className={`mb-3 rounded-xl border p-3 ${darkChat ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
                 <label htmlFor="community-current-callsign" className={`mb-1 block text-xs font-semibold ${darkChat ? 'text-slate-200' : 'text-slate-600'}`}>Señal distintiva para el chat</label>
                 <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className={`w-full rounded-lg border px-3 py-2 font-mono text-sm outline-none focus:border-sky-500 ${darkChat ? 'border-slate-600 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-900'}`} />
-                <p className={`mt-1 text-[11px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>Este indicativo solo identifica tus mensajes en el chat. Los campos de indicativo de las eQSL se mantienen separados.</p>
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => void saveCallsign()} disabled={busy || callsign.trim().length < 3} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? 'Guardando…' : 'Guardar indicativo'}</button>                </div>
               </div>
