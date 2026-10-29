@@ -182,7 +182,9 @@ export const Header: React.FC<HeaderProps> = ({
       const fluxData = await fluxResponse.json();
       const kpData = await kpResponse.json();
       const forecastText = await forecastResponse.text();
-      const fluxValue = Number(fluxData?.Flux ?? fluxData?.flux ?? fluxData?.['10cm_flux']);
+      const fluxRows = Array.isArray(fluxData) ? fluxData : [fluxData];
+      const fluxRow = [...fluxRows].reverse().find((row: any) => Number.isFinite(Number(row?.Flux ?? row?.flux ?? row?.['10cm_flux'])));
+      const fluxValue = Number(fluxRow?.Flux ?? fluxRow?.flux ?? fluxRow?.['10cm_flux']);
       if (Number.isFinite(fluxValue)) setSolarFlux(fluxValue);
       const kpRows = Array.isArray(kpData) ? kpData : [];
       const recentKp = kpRows.slice(1).reverse().find((row: any) => {
@@ -192,7 +194,7 @@ export const Header: React.FC<HeaderProps> = ({
       const kpValue = Number(recentKp?.kp_index ?? recentKp?.estimated_kp ?? recentKp?.Kp);
       if (Number.isFinite(kpValue)) setGeomagneticKp(kpValue);
       const forecastLines = String(forecastText || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const usefulLines = forecastLines.filter((line) => /solar activity forecast|geomagnetic activity forecast|solar activity is expected|geomagnetic field is expected|radio blackouts/i.test(line));
+      const usefulLines = forecastLines.filter((line) => /solar activity forecast|geomagnetic activity forecast|solar activity is expected|geomagnetic field is expected|radio blackouts|solar activity:|geomagnetic activity:/i.test(line));
       setPropagationForecast(usefulLines.slice(0, 3).join(' ').replace(/\s+/g, ' ') || 'Pronóstico solar de tres días no disponible.');
       setPropagationUpdated(new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }));
     } catch {
