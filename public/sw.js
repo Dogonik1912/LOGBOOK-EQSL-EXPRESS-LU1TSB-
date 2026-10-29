@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lb-eqsl-express-shell-v6';
+const CACHE_NAME = 'lb-eqsl-express-shell-v7';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/logbook-header.svg'];
 
 self.addEventListener('install', (event) => {
