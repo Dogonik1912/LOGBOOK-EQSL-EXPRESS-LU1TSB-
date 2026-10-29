@@ -5,6 +5,12 @@ import { supabase } from '../services/supabaseClient';
 
 type OnlineUser = { callsign: string; identityToken?: string };
 
+const openPrivateMessage = (rawCallsign: string) => {
+  const callsign = String(rawCallsign || '').trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
+  if (callsign.length < 3) return;
+  window.dispatchEvent(new CustomEvent('open-private-message', { detail: { callsign } }));
+};
+
 // Country flags are inferred from amateur-radio callsign prefixes. Unknown/non-amateur
 // identifiers remain visible with a neutral globe rather than an incorrect flag.
 const callsignCountryFlag = (rawCallsign: string): string => {
@@ -589,12 +595,12 @@ export const CommunityChat: React.FC = () => {
             {messages.map((message) => (
               <article key={message.id} className={`rounded-xl border px-3 py-2.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
                 <div className="flex items-start gap-2.5">
-                  <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-300 bg-slate-100 flex items-center justify-center" aria-label={`Foto de perfil de ${message.callsign}`}>
-                    {profilePhotos[message.callsign.trim().toUpperCase()] ? <img src={profilePhotos[message.callsign.trim().toUpperCase()]} alt={`Foto de ${message.callsign}`} className="h-full w-full object-cover" /> : <span className="font-mono text-xs font-bold text-slate-500">{message.callsign.trim().slice(0, 3).toUpperCase()}</span>}
-                  </div>
+                  <button type="button" onClick={() => openPrivateMessage(message.callsign)} className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 hover:ring-2 hover:ring-sky-400" aria-label={`Escribir mensaje privado a ${message.callsign}`} title={`Escribir mensaje privado a ${message.callsign}`}>
+                    {profilePhotos[message.callsign.trim().toUpperCase()] ? <img src={profilePhotos[message.callsign.trim().toUpperCase()]} alt={`Foto de perfil de ${message.callsign}`} className="h-full w-full object-cover" /> : <span className="font-mono text-xs font-bold text-slate-500">{message.callsign.trim().slice(0, 3).toUpperCase()}</span>}
+                  </button>
                   <div className="min-w-0 flex-1">
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="underline decoration-dotted underline-offset-2 hover:text-amber-700" title="Opciones de administrador para este usuario">{message.callsign}</button> : message.callsign}:</strong> <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
+                <p className="break-words text-sm leading-relaxed"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}><button type="button" onClick={() => openPrivateMessage(message.callsign)} className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-sky-500" title={`Escribir mensaje privado a ${message.callsign}`}>{message.callsign}</button>:</strong>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="ml-1 inline-flex rounded p-0.5 text-amber-600 hover:bg-amber-100" title="Opciones de administrador para este usuario" aria-label={`Opciones de administrador para ${message.callsign}`}><ShieldCheck className="h-3 w-3" /></button>} <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
                 {isAdmin && moderatorTargetSelected === message.callsign.trim().toUpperCase() && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
                   <span>Usuario: <strong>{message.callsign}</strong></span>
                   <button type="button" disabled={moderationBusy} onClick={() => void appointModerator(message.callsign)} className="rounded-md bg-amber-800 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Designar como moderador'}</button>
