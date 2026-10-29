@@ -200,7 +200,7 @@ export function SDRSmart() {
   };
 
   return <section className="my-4 min-w-0 overflow-hidden rounded-2xl border border-cyan-300 bg-slate-950 text-white shadow-sm" aria-label="LogBook SDR Smart">
-    <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="flex w-full items-center gap-3 bg-gradient-to-r from-slate-900 to-cyan-950 px-4 py-4 text-left">
+    <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="flex min-h-[56px] w-full items-center gap-3 bg-gradient-to-r from-slate-900 to-cyan-950 px-3 py-2.5 text-left">
       <span className="rounded-xl bg-cyan-300 p-2 text-slate-950"><Radio className="h-6 w-6" /></span>
       <span className="min-w-0 flex-1"><strong className="block text-base">SDR LogBook eQSL EXPRESS</strong><span className="block text-xs text-cyan-100">Receptores remotos · espectro y cascada en directo</span></span>
       <Waves className="h-5 w-5 text-cyan-200" />
