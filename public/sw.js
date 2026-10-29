@@ -1,28 +1,38 @@
-const CACHE_NAME = 'lb-eqsl-express-shell-v7';
+const CACHE_NAME = 'lb-eqsl-express-shell-v8';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/logbook-header.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(APP_SHELL);
-    // Cache the built JS/CSS referenced by index.html too. Caching only HTML
-    // caused a blank screen when the installed app launched without a connection.
-    const response = await fetch('/index.html', { cache: 'reload' });
-    if (response.ok) {
-      const html = await response.clone().text();
-      const assets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css)(?:\?[^"]*)?)"/g)]
-        .map((match) => new URL(match[1], self.location.origin).href)
-        .filter((url) => new URL(url).origin === self.location.origin);
-      await Promise.all(assets.map(async (url) => {
-        try {
-          const asset = await fetch(url, { cache: 'reload' });
-          if (asset.ok) await cache.put(url, asset);
-        } catch { /* Keep installation usable even if a noncritical asset fails. */ }
-      }));
-      await cache.put('/index.html', response);
-    }
+
+    // Cache each shell file independently so a missing optional asset cannot
+    // prevent installation or updating in a supported browser.
+    await Promise.all(APP_SHELL.map(async (path) => {
+      try {
+        const response = await fetch(path, { cache: 'reload' });
+        if (response.ok) await cache.put(path, response);
+      } catch { /* Optional shell resource; continue installing. */ }
+    }));
+
+    // Cache the built JS/CSS referenced by index.html for offline launches.
+    try {
+      const response = await fetch('/index.html', { cache: 'reload' });
+      if (response.ok) {
+        const html = await response.clone().text();
+        const assets = [...html.matchAll(/(?:src|href)="([^"]+\\.(?:js|css)(?:\\?[^"]*)?)"/g)]
+          .map((match) => new URL(match[1], self.location.origin).href)
+          .filter((url) => new URL(url).origin === self.location.origin);
+        await Promise.all(assets.map(async (url) => {
+          try {
+            const asset = await fetch(url, { cache: 'reload' });
+            if (asset.ok) await cache.put(url, asset);
+          } catch { /* Keep installation usable if an asset is temporarily offline. */ }
+        }));
+        await cache.put('/index.html', response);
+      }
+    } catch { /* Do not block service-worker installation on a temporary network error. */ }
   })());
-  self.skipWaiting();
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
