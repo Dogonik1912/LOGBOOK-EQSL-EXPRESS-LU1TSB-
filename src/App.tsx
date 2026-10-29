@@ -24,6 +24,7 @@ import { LiveSpots, publishQsoSpot } from './components/LiveSpots';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
+import { PropagationReport } from './components/PropagationReport';
 
 
 interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
@@ -351,6 +352,9 @@ function MainApp() {
 
       {/* PRIORIDAD 1: Footer con crédito discreto */}
       <Footer />
+
+      {/* Informe de propagación al final de toda la página, fuera del encabezado. */}
+      <PropagationReport />
 
       {/* Modales */}
       {/* Modal de Configuración General */}
