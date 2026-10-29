@@ -175,6 +175,20 @@ export const PrivateMessages: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const openPrivateInbox = () => setIsOpen(true);
+    const onServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OPEN_PRIVATE_MESSAGES') openPrivateInbox();
+    };
+    if (new URLSearchParams(window.location.search).has('open_private_messages')) setIsOpen(true);
+    navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage);
+    window.addEventListener('open-private-messages', openPrivateInbox);
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', onServiceWorkerMessage);
+      window.removeEventListener('open-private-messages', openPrivateInbox);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!callsign || !supabase) {
       setUnreadTotal(0);
       localStorage.setItem('community_private_unread_count', '0');
