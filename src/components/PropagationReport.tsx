@@ -72,9 +72,9 @@ export const PropagationReport: React.FC = () => {
   };
 
   return (
-    <section className="mx-auto my-4 w-[calc(100%-1rem)] max-w-4xl overflow-hidden rounded-xl border border-amber-500/70 bg-slate-950 text-white shadow-lg">
+    <section className="mx-auto my-3 w-full max-w-4xl overflow-hidden rounded-xl border border-amber-500/70 bg-slate-950 text-white shadow-lg">
       <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
-        className="flex w-full min-w-0 items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-left hover:bg-slate-800">
+        className="flex min-h-[56px] w-full min-w-0 items-center justify-between gap-3 bg-slate-900 px-3 py-2.5 text-left hover:bg-slate-800">
         <span className="min-w-0 break-words font-bold">PROPAGACIÓN · INFORME POR ZONAS</span>
         <ChevronDown className={'h-5 w-5 shrink-0 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
