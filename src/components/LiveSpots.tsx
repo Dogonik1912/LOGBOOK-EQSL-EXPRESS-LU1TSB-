@@ -6,6 +6,7 @@ import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign } from '../services/callsignCountry';
 import { countryUsesMiles, distanceForSpot } from '../services/dxDistance';
 
+// Los indicativos del feed abren la conversación privada del usuario correspondiente.
 const openPrivateMessage = (rawCallsign: string) => {
   const callsign = String(rawCallsign || '').trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
   if (callsign.length < 3) return;
