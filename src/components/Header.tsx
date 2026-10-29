@@ -515,20 +515,27 @@ export const Header: React.FC<HeaderProps> = ({
               }}
             />
             <button type="button" onClick={() => {
-              // En la app nativa usar el puente de cierre. En navegador, window.close()
-              // suele estar bloqueado si la pestaña no fue abierta por un script;
-              // por eso recurrimos al historial como alternativa.
+              // En contenedores nativos, usar el puente si está disponible.
               const nativeApp = (window as Window & { LogBookApp?: { closeApp?: () => void } }).LogBookApp;
               if (nativeApp?.closeApp) {
-                nativeApp.closeApp();
-                return;
-              }
-              window.close();
-              window.setTimeout(() => {
-                if (!document.hidden && window.history.length > 1) {
-                  window.history.back();
+                try {
+                  nativeApp.closeApp();
+                  return;
+                } catch (error) {
+                  console.warn('No se pudo cerrar desde el contenedor nativo; se usará la navegación web.', error);
                 }
-              }, 180);
+              }
+
+              // Los navegadores no permiten cerrar por código una pestaña abierta
+              // manualmente. Intentamos cerrar cuando esté permitido y, si no,
+              // volvemos a la página anterior sin que la app intercepte Atrás.
+              const hasPreviousPage = window.history.length > 1;
+              window.close();
+              if (hasPreviousPage) {
+                window.history.back();
+              } else {
+                window.alert('Para salir de LogBook eQSL EXPRESS, cerrá esta pestaña del navegador. Si la instalaste como aplicación, usá el gesto o botón Inicio del dispositivo y cerrala desde las aplicaciones recientes. Los navegadores no permiten que una página cierre por la fuerza una pestaña abierta manualmente.');
+              }
             }} aria-label="Cerrar app" title="Cerrar" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-700 bg-red-600 px-2.5 text-black hover:bg-red-500">
               <X className="h-4 w-4 stroke-[3]" />
               <span className="text-xs font-bold">Cerrar</span>
