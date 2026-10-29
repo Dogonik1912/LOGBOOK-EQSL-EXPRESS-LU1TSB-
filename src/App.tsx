@@ -54,19 +54,13 @@ function MainApp() {
   const settingsHistoryEntry = useRef(false);
 
   useEffect(() => {
-    // Mantener la app abierta al pulsar Atrás en Android o en el navegador.
-    // La navegación Atrás solo cierra primero el modal de ajustes si está abierto;
-    // nunca permite que el usuario salga accidentalmente de la app.
-    const stayInAppState = { logbookStayInApp: true };
-    window.history.pushState(stayInAppState, '', window.location.href);
-
+    // Atrás debe cerrar primero Ajustes si está abierto; si no, dejamos que
+    // el navegador o el sistema operativo salga de la app de forma normal.
     const handlePopState = () => {
       if (settingsHistoryEntry.current) {
         settingsHistoryEntry.current = false;
         setIsSettingsModalOpen(false);
       }
-      // Volver a crear el estado de protección después de cada pulsación de Atrás.
-      window.history.pushState(stayInAppState, '', window.location.href);
     };
 
     window.addEventListener('popstate', handlePopState);
