@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { MapPin, Radio, RefreshCw, ExternalLink, Volume2, Waves } from 'lucide-react';
+import { MapPin, Radio, RefreshCw, ExternalLink, Volume2, Waves, X } from 'lucide-react';
 
 type KiwiReceiver = {
   id?: string;
@@ -255,6 +255,11 @@ export function SDRSmart() {
         <a href="https://openwebrx.nl/map" target="_blank" rel="noreferrer" className="text-cyan-200 underline">Mapa OpenWebRX+</a>
         <a href="https://receiverbook.de/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">ReceiverBook · OpenWebRX</a>
         <a href="https://www.websdr.org/" target="_blank" rel="noreferrer" className="text-cyan-200 underline">Directorio WebSDR</a>
+      </div>
+      <div className="flex justify-center border-t border-slate-800 pt-4">
+        <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-400 bg-red-600 px-6 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-500" aria-label="Cerrar apartado SDR">
+          <X className="h-4 w-4" /> Cerrar SDR
+        </button>
       </div>
     </div>}
   </section>;
