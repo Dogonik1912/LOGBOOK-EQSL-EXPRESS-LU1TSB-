@@ -364,7 +364,7 @@ export const EQSLMailbox: React.FC = () => {
   };
 
   return <section className={`min-w-0 rounded-xl border border-amber-400/60 bg-slate-900 p-2.5 sm:p-3 ${open ? 'sm:col-span-3' : ''}`}>
-    <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
+    <button type="button" onClick={toggle} aria-expanded={open} className="flex min-h-[56px] w-full items-center gap-2 text-left">
       <span className="relative shrink-0 rounded-lg bg-amber-400 p-2 text-slate-950"><Inbox className="h-5 w-5" />
         {pendingReplies > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-slate-900 bg-red-600 px-1 text-[10px] font-black text-white">{pendingReplies > 99 ? '99+' : pendingReplies}</span>}
       </span>
