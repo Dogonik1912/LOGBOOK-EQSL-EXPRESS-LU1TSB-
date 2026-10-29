@@ -568,7 +568,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Encabezamiento panorámico; la brújula se abre en un panel independiente */}
         <div className="-mt-3 flex w-full min-w-0 items-center overflow-hidden rounded-b-xl border-b border-sky-500/60 bg-black">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <img src="/logbook-header.svg?v=20261029b" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-none object-contain object-center mx-auto" />
+            <img src="/logbook-header.svg?v=20261029b" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-none object-contain object-center mx-auto" style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
           </div>
         </div>
         <div className="mt-1 flex min-h-5 w-full items-center justify-center gap-2 bg-slate-700/80 py-0.5 text-[11px] leading-tight">
