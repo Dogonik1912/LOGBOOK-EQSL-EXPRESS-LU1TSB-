@@ -2,11 +2,11 @@
 -- verificada, premio/ganador automático y limpieza de spots cada domingo 00:00 UTC.
 -- No borra QSO, eQSL, mensajes ni votos históricos.
 
--- Eliminar el bloqueo antiguo de 100 usuarios.
+-- El concurso semanal se activa inmediatamente, sin mínimo de participantes.
 DROP TRIGGER IF EXISTS activate_dx_weekly_at_100_users ON public.community_call_signs;
 UPDATE public.live_qso_spot_contest_settings
    SET contest_started_at = COALESCE(contest_started_at, now()),
-       required_users = 1,
+       required_users = 0,
        updated_at = now()
  WHERE singleton = true;
 
@@ -47,7 +47,7 @@ BEGIN
 
   IF v_started_at IS NULL THEN
     UPDATE public.live_qso_spot_contest_settings
-       SET contest_started_at = now(), required_users = 1, updated_at = now()
+       SET contest_started_at = now(), required_users = 0, updated_at = now()
      WHERE singleton = true
      RETURNING contest_started_at INTO v_started_at;
   END IF;
