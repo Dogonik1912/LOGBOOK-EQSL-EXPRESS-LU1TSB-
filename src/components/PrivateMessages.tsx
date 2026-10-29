@@ -337,7 +337,7 @@ export const PrivateMessages: React.FC = () => {
 
   return (
     <section className={`min-w-0 overflow-hidden rounded-xl border border-violet-300 bg-violet-950 p-2.5 text-white sm:p-3 shadow-sm ${isOpen ? 'sm:col-span-3' : ''}`} aria-label="Mensajes privados">
-      <button type="button" onClick={() => setIsOpen((value) => !value)} className="flex w-full items-center gap-2 text-left" aria-expanded={isOpen}>
+      <button type="button" onClick={() => setIsOpen((value) => !value)} className="flex min-h-[56px] w-full items-center gap-2 text-left" aria-expanded={isOpen}>
         <span className="relative shrink-0 rounded-lg bg-violet-200 p-2 text-violet-950"><MessageCircle className="h-5 w-5" />
           {unreadTotal > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-violet-950 bg-red-600 px-1 text-[10px] font-black text-white">{unreadTotal > 99 ? '99+' : unreadTotal}</span>}
         </span>
