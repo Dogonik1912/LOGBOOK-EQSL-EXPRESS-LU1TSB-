@@ -226,11 +226,18 @@ export const EQSLMailbox: React.FC = () => {
     }
     setPushBusy(true);
     try {
-      const permission = await Notification.requestPermission();
+      // Si el usuario ya aceptó el permiso del navegador, no volver a solicitarlo.
+      const permission = Notification.permission === 'granted'
+        ? 'granted'
+        : await Notification.requestPermission();
       if (permission !== 'granted') {
-        setPushStatus('Permití las notificaciones de LogBook eQSL EXPRESS en los ajustes del navegador.');
+        if (permission === 'denied') localStorage.setItem('eqsl_push_permission_choice', 'denied');
+        setPushStatus('El permiso no está concedido. Si lo rechazaste, podrás cambiarlo en los ajustes del navegador.');
         return;
       }
+      // Persistir la decisión en cuanto se concede, aunque la suscripción del servidor
+      // falle temporalmente; no volver a mostrar el cartel de permiso en futuros ingresos.
+      localStorage.setItem('eqsl_push_permission_choice', 'accepted');
       const registration = await navigator.serviceWorker.ready;
       const decodeKey = (value: string) => {
         const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -255,6 +262,7 @@ export const EQSLMailbox: React.FC = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'No se pudo activar la notificación.');
       setPushEnabled(true);
+      localStorage.setItem('eqsl_push_permission_choice', 'accepted');
       localStorage.setItem('eqsl_push_enabled', 'true');
       setPushStatus('Notificaciones activadas y guardadas en este dispositivo. Permanecerán seleccionadas mientras el navegador conserve la suscripción y el permiso.');
     } catch (e) {
@@ -268,6 +276,11 @@ export const EQSLMailbox: React.FC = () => {
     let cancelled = false;
     const restorePushState = async () => {
       const saved = localStorage.getItem('eqsl_push_enabled') === 'true';
+      if ('Notification' in window && Notification.permission === 'granted') {
+        localStorage.setItem('eqsl_push_permission_choice', 'accepted');
+      } else if ('Notification' in window && Notification.permission === 'denied') {
+        localStorage.setItem('eqsl_push_permission_choice', 'denied');
+      }
       if (!('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') {
         if (!cancelled) { setPushEnabled(false); if (saved) localStorage.setItem('eqsl_push_enabled', 'false'); }
         return;
