@@ -13,12 +13,12 @@ import {
   Download, 
   Mail, 
   Share2, 
-  Check, 
+
   Sparkles, 
   Image as ImageIcon, 
   Trash2, 
   Anchor,
-  Copy,
+
   ExternalLink,
   MessageSquare
 } from 'lucide-react';
@@ -127,7 +127,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => {
     try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; }
   });
-  const [copied, setCopied] = useState(false);
   const [eqslPostSent, setEqslPostSent] = useState(false);
   const [eqslPostSending, setEqslPostSending] = useState(false);
   const [themeNotice, setThemeNotice] = useState('');
@@ -644,19 +643,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     return true;
   };
 
-  // Copiar resumen del QSO con link de respuesta
-  const handleCopyText = async () => {
-    try {
-      const receivedCardLink = await getReceivedCardUrl();
-      const text = `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`;
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto.');
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-xs overflow-y-auto">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl text-slate-100 my-auto">
@@ -819,7 +805,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               <span className="text-slate-400">Destinatario:</span>
               <strong className="text-amber-300 font-mono text-sm">{qso.callsign}</strong>
             </div>
-            <p className="text-slate-500">No necesitás cargar su teléfono ni usuario. Elegilo directamente en WhatsApp o Telegram.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -838,14 +823,6 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={handleCopyText}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition-colors cursor-pointer"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? '¡Copiado!' : 'Copiar enlace y datos'}
-            </button>
           </div>
         </div>
 
