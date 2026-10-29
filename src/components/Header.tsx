@@ -552,7 +552,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
       {/* Controles esenciales: permanecen accesibles al desplazarse por la página. */}
-      <div className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900 shadow-md" style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}>
+      <div className="relative z-40 border-b border-slate-800 bg-slate-900 shadow-md">
         <div className="relative w-full px-2 sm:px-4 py-0.5 sm:py-1 flex flex-col gap-0.5">
         {/* Zona de instalación, compartir app, brújula y ajustes */}
         <div className="flex w-full flex-wrap sm:flex-nowrap items-center justify-center gap-1 sm:gap-1.5">
