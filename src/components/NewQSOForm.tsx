@@ -145,7 +145,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [whatsapp, setWhatsapp] = useState('');
   const [whatsappUsername, setWhatsappUsername] = useState('');
   const [telegram, setTelegram] = useState('');
-  const [lookupMessage, setLookupMessage] = useState('');
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
@@ -255,7 +254,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setWhatsapp('');
     setWhatsappUsername('');
     setTelegram('');
-    setLookupMessage('');
     setCountry('');
     setGrid('');
     // Buscar primero la libreta local. Si falta una ficha, recuperar los datos del historial de QSOs
@@ -294,12 +292,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       setTelegram(String(localContact.telegram || ''));
       setCountry(String(localContact.country || ''));
       setGrid(String(localContact.grid || '').toUpperCase());
-      setLookupMessage('Datos recuperados de la libreta o de un QSO anterior para ' + upper + '.');
     }
-    if (!localContact && upper.length >= 3) {
-      setLookupMessage('No hay datos guardados en este dispositivo para este indicativo. El directorio comunitario compartido aún no está disponible.');
-    }
-
     if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 
     if (upper.length >= 3) {
@@ -412,7 +405,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setEmail('');
     setWhatsapp('');
     setTelegram('');
-    setLookupMessage('');
     setCountry('');
     setGrid('');
     setNotes('');
@@ -593,8 +585,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           </div>
 
         </div>
-
-        {lookupMessage && <p role="status" className="text-[11px] text-sky-300">{lookupMessage}</p>}
 
         {validationError && <div role="alert" className="rounded-lg border border-rose-500/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{validationError}</div>}
 
