@@ -54,13 +54,13 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
   const [filterBand, setFilterBand] = useState('ALL');
   const [filterMode, setFilterMode] = useState('ALL');
-  const [selectedContestLogId, setSelectedContestLogId] = useState('');
+  const [selectedContestLogName, setSelectedContestLogName] = useState('');
   const [importCabrilloInputKey, setImportCabrilloInputKey] = useState(0);
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.965 && f <= 27.999; })();
   const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
   const cbQSOs = qsos.filter(isCitizenBand);
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
-  const selectedContestLog = contestLogs.find((log) => log.id === selectedContestLogId);
+  const selectedContestLog = contestLogs.find((log) => log.name.trim().toLocaleLowerCase() === selectedContestLogName.trim().toLocaleLowerCase());
   const exportQSOs = selectedContestLog
     ? (selectedContestLog.qsos?.length
         ? selectedContestLog.qsos
@@ -513,11 +513,16 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             ))}
           </select>
 
-          <select value={selectedContestLogId} onChange={(e) => setSelectedContestLogId(e.target.value)} className="max-w-full rounded-lg border border-amber-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200" aria-label="Seleccionar log de concurso">
-            <option value="">Registro completo (por categoría)</option>
-            {contestLogs.map((log) => <option key={log.id} value={log.id}>{log.name} — {log.type}</option>)}
-          </select>
-          {selectedContestLog && <span className="text-xs text-amber-300">Exportando solo «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
+          <input
+            type="text"
+            value={selectedContestLogName}
+            onChange={(e) => setSelectedContestLogName(e.target.value)}
+            placeholder="Nombre del concurso (opcional)"
+            aria-label="Escribir nombre del concurso libremente"
+            className="min-w-0 max-w-full rounded-lg border border-amber-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-500"
+          />
+          {selectedContestLog && <span className="text-xs text-amber-300">Exportando el registro guardado «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
+          {!selectedContestLog && <span className="text-xs text-slate-400">Exportación: registro completo por categoría.</span>}
 
           <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar Excel (.xls)</button>
           <button type="button" onClick={handleExportCSV} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar CSV</button>
