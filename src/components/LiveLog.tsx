@@ -25,7 +25,7 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 
-interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; }
+interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
 
 interface LiveLogProps {
   qsos: QSO[];
@@ -62,7 +62,9 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
   const selectedContestLog = contestLogs.find((log) => log.id === selectedContestLogId);
   const exportQSOs = selectedContestLog
-    ? qsos.filter((q) => q.contestLogId === selectedContestLog.id)
+    ? (selectedContestLog.qsos?.length
+        ? selectedContestLog.qsos
+        : qsos.filter((q) => q.contestLogId === selectedContestLog.id || q.contestLogName === selectedContestLog.name))
     : categoryQSOs;
   const visibleQSOs = categoryQSOs.filter((q) => {
     const term = searchTerm.trim().toLowerCase();
@@ -294,6 +296,26 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     URL.revokeObjectURL(url);
   };
 
+
+  // Exportar el archivo seleccionado como CSV para volver a descargarlo cuando se necesite.
+  const handleExportCSV = () => {
+    if (!exportQSOs.length) return;
+    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas'];
+    const cell = (value: unknown) => {
+      const raw = String(value ?? '');
+      return '"' + raw.replace(/"/g, '""') + '"';
+    };
+    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent || '59', q.rstRcvd || '59', q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes]);
+    const csv = '\\ufeff' + [columns, ...rows].map((row) => row.map(cell).join(',')).join('\\r\\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Importar Cabrillo 3.x: conserva los datos de QSO e intercambios cuando están presentes.
   const handleCabrilloImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -418,7 +440,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       >
         <span className="flex items-center gap-3">
           <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
-          <span className="text-base font-bold text-white tracking-wide">LIBRO DE GUARDIA</span>
+          <span className="text-base font-bold text-white tracking-wide">ARCHIVO DE LOG</span>
           <span className="text-xs text-slate-400">({qsos.length})</span>
         </span>
         <span className="text-slate-300 text-xl leading-none" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
@@ -497,7 +519,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           </select>
           {selectedContestLog && <span className="text-xs text-amber-300">Exportando solo «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
 
-          <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Exportar Excel (.xls)</button>
+          <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar Excel (.xls)</button>
+          <button type="button" onClick={handleExportCSV} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar CSV</button>
 
           <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 cursor-pointer">
             <Upload className="w-3.5 h-3.5" /> Importar Cabrillo
