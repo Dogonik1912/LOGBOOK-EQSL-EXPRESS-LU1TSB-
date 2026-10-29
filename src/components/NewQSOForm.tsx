@@ -102,6 +102,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [contestLogId, setContestLogId] = useState(() => localStorage.getItem('logbook_contest_id') || '');
   const [contestLogName, setContestLogName] = useState(() => localStorage.getItem('logbook_contest_name') || '');
   const [contestType, setContestType] = useState(() => localStorage.getItem('logbook_contest_type') || 'GENERIC');
+  const [contestSetupOpen, setContestSetupOpen] = useState(false);
   const beginContest = () => {
     if (contestMode) {
       if (!window.confirm('¿Desactivar el modo concurso? Si el concurso terminó, usa «Finalizar concurso y guardar log».')) return;
@@ -115,6 +116,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setContestLogId(id);
     setContestLogName(name);
     setContestMode(true);
+    setContestSetupOpen(false);
     localStorage.setItem('logbook_contest_active', 'true');
     localStorage.setItem('logbook_contest_id', id);
     localStorage.setItem('logbook_contest_name', name);
@@ -126,6 +128,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     const log = { id: contestLogId || `contest-${Date.now()}`, name: contestLogName.trim(), type: contestType, finishedAt: new Date().toISOString() };
     onFinishContest(log);
     setContestMode(false);
+    setContestSetupOpen(false);
     setContestLogId('');
     setContestLogName('');
     setContestType('GENERIC');
@@ -467,20 +470,27 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
 
       <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3">
         <label className="flex items-center gap-2 text-sm font-semibold text-white">
-          <input type="checkbox" checked={contestMode} onChange={(e) => {
-            if (e.target.checked) beginContest();
-            else { setContestMode(false); localStorage.setItem('logbook_contest_active', 'false'); }
+          <input type="checkbox" checked={contestMode || contestSetupOpen} onChange={(e) => {
+            if (e.target.checked) {
+              if (!contestMode) setContestSetupOpen(true);
+            } else if (contestMode) {
+              if (!window.confirm('¿Desactivar el modo concurso? Si el concurso terminó, usa «Finalizar concurso y guardar log».')) return;
+              setContestMode(false);
+              localStorage.setItem('logbook_contest_active', 'false');
+            } else {
+              setContestSetupOpen(false);
+            }
           }} className="h-4 w-4 accent-amber-500" />
           Activar modo concurso
         </label>
-        {(!contestMode || contestLogName) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {contestSetupOpen && !contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-slate-800 p-3">
           <div>
             <label className="block text-xs text-slate-300 mb-1">Nombre del log</label>
-            <input value={contestLogName} onChange={(e) => { setContestLogName(e.target.value); if (!contestMode) localStorage.setItem('logbook_contest_name', e.target.value); }} disabled={contestMode} placeholder="Ej. CQ WW SSB 2026" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-80" />
+            <input value={contestLogName} onChange={(e) => { setContestLogName(e.target.value); localStorage.setItem('logbook_contest_name', e.target.value); }} placeholder="Ej. CQ WW SSB 2026" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white" />
           </div>
           <div>
             <label className="block text-xs text-slate-300 mb-1">Tipo / plantilla de concurso</label>
-            <select value={contestType} onChange={(e) => { setContestType(e.target.value); localStorage.setItem('logbook_contest_type', e.target.value); }} disabled={contestMode} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-80">
+            <select value={contestType} onChange={(e) => { setContestType(e.target.value); localStorage.setItem('logbook_contest_type', e.target.value); }} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white">
               <option value="GENERIC">Cabrillo genérico 3.0</option>
               <option value="CQ-WW">CQ World Wide DX</option>
               <option value="CQ-WPX">CQ WPX</option>
@@ -490,11 +500,15 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
               <option value="EDI">EDI (concursos VHF/UHF)</option>
             </select>
           </div>
+          <div className="sm:col-span-2 flex justify-end">
+            <button type="button" onClick={beginContest} disabled={!contestLogName.trim()} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">Guardar y activar concurso</button>
+          </div>
         </div>}
-        {contestMode ? <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {contestMode && <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <p className="text-xs text-amber-300">Concurso activo: {contestLogName}. Los próximos QSO se vincularán a este log.</p>
           <button type="button" onClick={finishContest} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-bold text-white">Finalizar concurso y guardar log</button>
-        </div> : <p className="text-xs text-slate-400">Activa el modo para registrar progresivos y guardar contactos en un log independiente.</p>}
+        </div>}
+        {!contestMode && !contestSetupOpen && <p className="text-xs text-slate-400">Activa el modo para configurar el nombre y la plantilla del log de concurso.</p>}
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Banda rápida selector */}
