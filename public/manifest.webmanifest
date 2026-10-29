@@ -2,26 +2,28 @@
   "id": "/",
   "name": "LogBook eQSL Express",
   "short_name": "LogBook eQSL",
-  "description": "LogBook eQSL Express",
-  "lang": "es-AR",
+  "description": "LogBook eQSL Express: libro de guardia y tarjetas eQSL para radioaficionados de todo el mundo.",
+  "lang": "es",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "any",
   "background_color": "#101827",
   "theme_color": "#101827",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon.svg",
-      "sizes": "192x192",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
       "src": "/icon.svg",
-      "sizes": "512x512",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
