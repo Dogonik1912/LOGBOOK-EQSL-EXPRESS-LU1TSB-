@@ -515,11 +515,20 @@ export const Header: React.FC<HeaderProps> = ({
               }}
             />
             <button type="button" onClick={() => {
-              // Cerrar la ventana de la app instalada cuando el entorno lo permita.
-              // No navegar a otra página ni mostrar avisos sobre el navegador.
+              // En la app nativa usar el puente de cierre. En navegador, window.close()
+              // suele estar bloqueado si la pestaña no fue abierta por un script;
+              // por eso recurrimos al historial como alternativa.
               const nativeApp = (window as Window & { LogBookApp?: { closeApp?: () => void } }).LogBookApp;
-              if (nativeApp?.closeApp) nativeApp.closeApp();
-              else window.close();
+              if (nativeApp?.closeApp) {
+                nativeApp.closeApp();
+                return;
+              }
+              window.close();
+              window.setTimeout(() => {
+                if (!document.hidden && window.history.length > 1) {
+                  window.history.back();
+                }
+              }, 180);
             }} aria-label="Cerrar app" title="Cerrar" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-700 bg-red-600 px-2.5 text-black hover:bg-red-500">
               <X className="h-4 w-4 stroke-[3]" />
               <span className="text-xs font-bold">Cerrar</span>
