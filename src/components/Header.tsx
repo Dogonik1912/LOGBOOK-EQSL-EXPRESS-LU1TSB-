@@ -111,13 +111,6 @@ export const Header: React.FC<HeaderProps> = ({
   const [localWeather, setLocalWeather] = useState<{ temperature: number; humidity: number } | null>(null);
   const [weatherStatus, setWeatherStatus] = useState('Cargando clima...');
   const [ipCoordinates, setIpCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [propagationOpen, setPropagationOpen] = useState(false);
-  const [propagationDay, setPropagationDay] = useState(0);
-  const [solarFlux, setSolarFlux] = useState<number | null>(null);
-  const [geomagneticKp, setGeomagneticKp] = useState<number | null>(null);
-  const [propagationForecast, setPropagationForecast] = useState('');
-  const [propagationUpdated, setPropagationUpdated] = useState('');
-  const [propagationLoading, setPropagationLoading] = useState(false);
   const [forecastOpen, setForecastOpen] = useState(false);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastStatus, setForecastStatus] = useState('');
@@ -169,52 +162,6 @@ export const Header: React.FC<HeaderProps> = ({
     } finally {
       setForecastLoading(false);
     }
-  };
-  const loadPropagationReport = async () => {
-    setPropagationLoading(true);
-    try {
-      const [fluxResponse, kpResponse, forecastResponse] = await Promise.all([
-        fetch('https://services.swpc.noaa.gov/products/summary/10cm-flux.json'),
-        fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'),
-        fetch('https://services.swpc.noaa.gov/text/3-day-forecast.txt'),
-      ]);
-      if (!fluxResponse.ok || !kpResponse.ok || !forecastResponse.ok) throw new Error('Solar data unavailable');
-      const fluxData = await fluxResponse.json();
-      const kpData = await kpResponse.json();
-      const forecastText = await forecastResponse.text();
-      const fluxRows = Array.isArray(fluxData) ? fluxData : [fluxData];
-      const fluxRow = [...fluxRows].reverse().find((row: any) => Number.isFinite(Number(row?.Flux ?? row?.flux ?? row?.['10cm_flux'])));
-      const fluxValue = Number(fluxRow?.Flux ?? fluxRow?.flux ?? fluxRow?.['10cm_flux']);
-      if (Number.isFinite(fluxValue)) setSolarFlux(fluxValue);
-      const kpRows = Array.isArray(kpData) ? kpData : [];
-      const recentKp = kpRows.slice(1).reverse().find((row: any) => {
-        const value = Number(row?.kp_index ?? row?.estimated_kp ?? row?.Kp);
-        return Number.isFinite(value);
-      });
-      const kpValue = Number(recentKp?.kp_index ?? recentKp?.estimated_kp ?? recentKp?.Kp);
-      if (Number.isFinite(kpValue)) setGeomagneticKp(kpValue);
-      const forecastLines = String(forecastText || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const usefulLines = forecastLines.filter((line) => /solar activity forecast|geomagnetic activity forecast|solar activity is expected|geomagnetic field is expected|radio blackouts|solar activity:|geomagnetic activity:/i.test(line));
-      setPropagationForecast(usefulLines.slice(0, 3).join(' ').replace(/\s+/g, ' ') || 'Pronóstico solar de tres días no disponible.');
-      setPropagationUpdated(new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }));
-    } catch {
-      setPropagationForecast('No se pudo obtener el informe solar. Intentá actualizar más tarde.');
-    } finally {
-      setPropagationLoading(false);
-    }
-  };
-  const togglePropagation = () => {
-    const willOpen = !propagationOpen;
-    setPropagationOpen(willOpen);
-    if (willOpen && !propagationUpdated && !propagationLoading) void loadPropagationReport();
-  };
-  const getPropagationSummary = () => {
-    if (geomagneticKp === null) return 'Actividad ionosférica: datos Kp no disponibles.';
-    if (geomagneticKp >= 5) return 'Actividad geomagnética elevada; posible inestabilidad en HF.';
-    if (geomagneticKp >= 4) return 'Actividad geomagnética moderada; condiciones HF variables.';
-    if (solarFlux !== null && solarFlux >= 120 && geomagneticKp < 4) return 'Actividad solar favorable y campo geomagnético relativamente tranquilo para HF.';
-    if (solarFlux !== null && solarFlux >= 90 && geomagneticKp < 4) return 'Condiciones solares moderadas con actividad geomagnética tranquila.';
-    return 'Actividad solar moderada o baja; condiciones HF variables según banda y hora.';
   };
   const toggleForecast = () => {
     const willOpen = !forecastOpen;
@@ -693,31 +640,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="whitespace-nowrap text-white">{utcClock}</span>
         </div>
         <div className="flex min-h-9 shrink-0 flex-nowrap items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/95 px-2 sm:px-2.5 py-1 text-[11px] sm:text-sm font-bold text-white shadow-sm" title="Temperatura y humedad actuales estimadas para la ubicación detectada por Internet"><span className="inline-flex items-center gap-1" title={localWeather ? `Temperatura: ${localWeather.temperature}°C` : weatherStatus}><Thermometer className="h-4 w-4 text-red-400" />{localWeather ? `${localWeather.temperature}°C` : '— °C'}</span><span className="inline-flex items-center gap-1" title={localWeather ? `Humedad: ${localWeather.humidity}%` : weatherStatus}><Droplets className="h-4 w-4 text-sky-400" />{localWeather ? `${localWeather.humidity}%` : '— %'}</span>{!localWeather && <span className="text-[10px] font-normal text-slate-300">{weatherStatus}</span>}</div>
-        <button type="button" onClick={togglePropagation} aria-expanded={propagationOpen} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-amber-500 bg-amber-950 px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold text-amber-100 shadow-sm hover:bg-amber-900">
-          <span>PROPAGACION</span>
-          <ChevronDown className={'h-3.5 w-3.5 transition-transform ' + (propagationOpen ? 'rotate-180' : '')} />
-        </button>
-        {propagationOpen && <section aria-label="Informe de propagación" className="absolute left-1/2 top-full z-[60] mt-2 w-[min(24rem,calc(100vw-1rem))] -translate-x-1/2 rounded-lg border border-amber-500/70 bg-slate-950 p-3 text-white shadow-2xl">
-          <div className="relative mb-2 flex items-center justify-center border-b border-slate-700 pb-2">
-            <h2 className="w-full text-center text-sm font-bold">PROPAGACION</h2>
-            <button type="button" onClick={() => setPropagationOpen(false)} aria-label="Cerrar informe de propagación" className="absolute right-0 rounded-md border border-slate-600 bg-slate-800 px-2 py-1 text-xs font-semibold hover:bg-slate-700">Cerrar</button>
-          </div>
-          <div className="mb-2 grid grid-cols-3 gap-1">
-            {['Hoy', 'Mañana', 'Pasado mañana'].map((day, index) => <button key={day} type="button" onClick={() => setPropagationDay(index)} className={'min-h-8 rounded-md border px-1 py-1 text-[11px] font-semibold ' + (propagationDay === index ? 'border-amber-400 bg-amber-500 text-slate-950' : 'border-slate-700 bg-slate-900 text-slate-200')}>{day}</button>)}
-          </div>
-          {propagationLoading && <p className="py-2 text-center text-xs text-slate-300">Consultando actividad solar e ionosférica…</p>}
-          {!propagationLoading && <div className="space-y-2 text-xs">
-            <p className="text-center font-semibold text-amber-200">{new Date(Date.now() + propagationDay * 86400000).toLocaleDateString(undefined, { weekday: 'long', day: '2-digit', month: '2-digit' })}</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-md bg-slate-900 p-2 text-center"><span className="block text-slate-400">Flujo solar (SFI)</span><strong className="text-base">{solarFlux === null ? '—' : Math.round(solarFlux)}</strong></div>
-              <div className="rounded-md bg-slate-900 p-2 text-center"><span className="block text-slate-400">Índice geomagnético Kp</span><strong className="text-base">{geomagneticKp === null ? '—' : geomagneticKp.toFixed(1)}</strong></div>
-            </div>
-            <p className="text-center leading-snug">{getPropagationSummary()}</p>
-            {propagationForecast && <p className="rounded-md border-t border-slate-700 pt-2 leading-snug text-slate-300">{propagationForecast}</p>}
-            {propagationUpdated && <p className="text-center text-[10px] text-slate-500">Actualizado: {propagationUpdated} · Fuente: NOAA SWPC</p>}
-            <button type="button" onClick={() => { setPropagationUpdated(''); void loadPropagationReport(); }} className="w-full rounded-md border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-700">Actualizar informe</button>
-          </div>}
-        </section>}
         <button type="button" onClick={toggleForecast} aria-expanded={forecastOpen} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-cyan-500 bg-cyan-950 px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-cyan-100 shadow-sm hover:bg-cyan-900">
           <span className="inline-flex items-center gap-1"><CloudSun className="h-4 w-4" /> Clima</span>
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${forecastOpen ? 'rotate-180' : ''}`} />
