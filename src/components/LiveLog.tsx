@@ -418,7 +418,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       >
         <span className="flex items-center gap-3">
           <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
-          <span className="text-base font-bold text-white tracking-wide">QSO GUARDADOS</span>
+          <span className="text-base font-bold text-white tracking-wide">LIBRO DE GUARDIA</span>
           <span className="text-xs text-slate-400">({qsos.length})</span>
         </span>
         <span className="text-slate-300 text-xl leading-none" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
