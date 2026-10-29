@@ -26,7 +26,7 @@ import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
 
 
-interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; }
+interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
 function MainApp() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
     const saved = localStorage.getItem('logbook_qsos');
@@ -45,7 +45,16 @@ function MainApp() {
     catch { return []; }
   });
   const handleFinishContest = (log: ContestLogRecord) => {
-    const updated = [log, ...contestLogs.filter((item) => item.id !== log.id)];
+    // Congelar una copia de los QSO del concurso: el archivo seguirá disponible
+    // aunque luego se edite o elimine un contacto del libro activo.
+    const snapshot = qsos
+      .filter((q) => q.contestLogId === log.id || q.contestLogName === log.name)
+      .map((q) => ({ ...q }));
+    const archivedLog: ContestLogRecord = {
+      ...log,
+      qsos: snapshot.length ? snapshot : (contestLogs.find((item) => item.id === log.id)?.qsos || []),
+    };
+    const updated = [archivedLog, ...contestLogs.filter((item) => item.id !== log.id)];
     setContestLogs(updated);
     localStorage.setItem('logbook_contest_logs', JSON.stringify(updated));
   };
