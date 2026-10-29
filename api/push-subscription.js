@@ -37,6 +37,47 @@ async function writeSubscriptions(callsign, subscriptions, cfg) {
     addRandomSuffix: false, allowOverwrite: true,
   });
 }
+export async function sendPrivateMessagePush(callsign, item = {}) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+  let webpush;
+  try { webpush = (await import('web-push')).default; } catch { return; }
+  let cfg;
+  try { cfg = config(); } catch { return; }
+  const normalized = callsign.trim().toUpperCase();
+  const aliases = ['LU1TSB', 'LU1TSB/4RC978', '4RC978'].includes(normalized)
+    ? ['LU1TSB', 'LU1TSB/4RC978', '4RC978']
+    : [normalized];
+  const groups = await Promise.all(aliases.map(alias => readSubscriptions(alias, cfg)));
+  const seen = new Set();
+  const active = groups.flat().filter(entry => {
+    const endpoint = entry?.subscription?.endpoint;
+    if (!endpoint || seen.has(endpoint)) return false;
+    seen.add(endpoint);
+    return true;
+  });
+  if (!active.length) return;
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:lu1tsb.4rc978@gmail.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+  const failed = new Set();
+  await Promise.all(active.map(async entry => {
+    try {
+      await webpush.sendNotification(entry.subscription, JSON.stringify({
+        title: 'Nuevo mensaje privado',
+        body: 'Tienes un mensaje privado de ' + clean(item.from, 40) + '.',
+        tag: 'private-' + clean(item.id, 36),
+        url: '/?open_private_messages=1',
+        silent: entry.alertsEnabled === false,
+      }), { TTL: 60 * 60 * 24 });
+    } catch (error) {
+      if (error?.statusCode === 404 || error?.statusCode === 410) failed.add(entry.subscription.endpoint);
+    }
+  }));
+  if (failed.size) await writeSubscriptions(normalized, active.filter(entry => !failed.has(entry.subscription?.endpoint)), cfg);
+}
+
 export async function sendEqslPush(callsign, item = {}) {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
   let webpush;
@@ -89,8 +130,30 @@ export default async function handler(req, res) {
     if (!callsign || callsign !== clean(req.body?.callsign, 40).toUpperCase()) {
       return json(res, 401, { error: 'No se pudo verificar la señal distintiva de este dispositivo.' });
     }
-    const subscriptions = await readSubscriptions(callsign, cfg);
     const action = clean(req.body?.action, 24);
+    if (action === 'notify-private') {
+      const recipient = clean(req.body?.recipient, 40).toUpperCase();
+      const messageId = clean(req.body?.messageId, 36);
+      if (!recipient || recipient === callsign || !/^[0-9a-f-]{36}$/i.test(messageId)) {
+        return json(res, 400, { error: 'Destinatario o mensaje privado no válido.' });
+      }
+      // Verify against the database that this authenticated sender actually sent the message.
+      const verify = await fetch(cfg.supabaseUrl + '/rest/v1/rpc/community_private_messages', {
+        method: 'POST',
+        headers: { apikey: cfg.supabaseKey, Authorization: 'Bearer ' + cfg.supabaseKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_callsign: callsign, p_token: token, p_other_callsign: recipient }),
+      });
+      if (!verify.ok) return json(res, 403, { error: 'No se pudo verificar el mensaje privado.' });
+      const rows = await verify.json();
+      const messages = Array.isArray(rows) ? rows : [];
+      const sent = messages.find(message => message?.id === messageId &&
+        String(message.sender_callsign || '').toUpperCase() === callsign &&
+        String(message.recipient_callsign || '').toUpperCase() === recipient);
+      if (!sent) return json(res, 403, { error: 'El mensaje no coincide con un envío confirmado.' });
+      await sendPrivateMessagePush(recipient, { id: messageId, from: callsign });
+      return json(res, 200, { ok: true });
+    }
+    const subscriptions = await readSubscriptions(callsign, cfg);
     if (action === 'subscribe') {
       const subscription = req.body?.subscription;
       if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
