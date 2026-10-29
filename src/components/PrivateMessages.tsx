@@ -304,7 +304,7 @@ export const PrivateMessages: React.FC = () => {
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Primero guardá tu señal distintiva en el chat comunitario. Se usará la identidad registrada en este dispositivo.</p>
             ) : (
               <>
-                <p className="mb-2 text-xs text-slate-300">Tu indicativo: <strong className="font-mono text-slate-100">{callsign}</strong></p>
+                <p className="mb-2 rounded-lg border border-amber-400/60 bg-slate-950 px-3 py-2 text-xs text-slate-200">TU INDICATIVO <strong className="ml-2 inline-block font-mono text-base font-black tracking-wider text-amber-300">{callsign}</strong></p>
                 <form onSubmit={(event) => { event.preventDefault(); openConversation(recipientDraft); }} className="mb-3 flex gap-1.5">
                   <input value={recipientDraft} onChange={(event) => setRecipientDraft(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo destino" aria-label="Indicativo destinatario" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-2 font-mono text-xs text-slate-950 placeholder:text-slate-500 outline-none focus:border-violet-500" />
                   <button type="submit" className="rounded-lg bg-violet-800 px-3 py-2 text-xs font-bold text-white">Abrir</button>
@@ -317,15 +317,15 @@ export const PrivateMessages: React.FC = () => {
                   <ul className="space-y-1.5">
                     {conversations.map((conversation) => (
                       <li key={conversation.other_callsign} className="flex items-stretch gap-1.5">
-                        <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'min-w-0 flex-1 rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-500 bg-violet-900' : 'border-slate-700 bg-slate-800 hover:bg-slate-700')}>
-                          <span className="flex items-center gap-2 text-slate-900">
+                        <button type="button" onClick={() => openConversation(conversation.other_callsign)} className={'min-w-0 flex-1 rounded-lg border px-3 py-2 text-left ' + (activeRecipient === conversation.other_callsign ? 'border-violet-400 bg-violet-900' : 'border-slate-700 bg-slate-800 hover:bg-slate-700')}>
+                          <span className="flex items-center gap-2">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-violet-100">
                               {profilePhotos[conversation.other_callsign]
                                 ? <img src={profilePhotos[conversation.other_callsign]} alt={`Foto de ${conversation.other_callsign}`} className="h-full w-full object-cover" />
                                 : <span className="font-mono text-[10px] font-bold text-violet-900">{conversation.other_callsign.slice(0, 3)}</span>}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="flex items-center justify-between gap-2 font-mono text-xs font-bold text-slate-900">{conversation.other_callsign}{conversation.unread_count > 0 && <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">{conversation.unread_count}</span>}</span>
+                              <span className={'flex items-center justify-between gap-2 rounded-md px-1.5 py-1 font-mono text-sm font-black tracking-wide ' + (activeRecipient === conversation.other_callsign ? 'bg-violet-700 text-white' : 'bg-slate-950 text-amber-300')}>{conversation.other_callsign}{conversation.unread_count > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">{conversation.unread_count}</span>}</span>
                               <span className="mt-1 block truncate text-[11px] font-normal text-slate-500">{conversation.last_body}</span>
                             </span>
                           </span>
@@ -342,7 +342,7 @@ export const PrivateMessages: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2.5">
               <div className="flex items-center gap-2">
                 {activeRecipient && <button type="button" onClick={() => setActiveRecipient('')} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Volver a conversaciones"><ArrowLeft className="h-4 w-4" /></button>}
-                <h3 className="text-sm font-bold">{activeRecipient ? 'Conversación con ' + activeRecipient : 'Elegí una conversación'}</h3>
+                <h3 className="text-sm font-bold">{activeRecipient ? <>Conversación con <span className="ml-1 inline-block rounded-md border border-amber-400/70 bg-slate-950 px-2 py-1 font-mono text-base font-black tracking-wide text-amber-300">{activeRecipient}</span></> : 'Elegí una conversación'}</h3>
               </div>
               {activeRecipient && <button type="button" onClick={() => void refreshMessages(activeRecipient)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Actualizar mensajes"><RefreshCw className="h-4 w-4" /></button>}
             </div>
@@ -358,9 +358,9 @@ export const PrivateMessages: React.FC = () => {
                     {photo ? <img src={photo} alt={`Foto de ${sender}`} className="h-full w-full object-cover" /> : <span className="font-mono text-[10px] font-bold text-slate-500">{sender.slice(0, 3)}</span>}
                   </div>
                   <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
-                    <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wide">{sender}</p>
+                    <p className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')}>{sender}</p>
                     <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
-                    <p className="mt-1 text-right text-[10px] text-slate-500">{new Date(message.created_at).toLocaleString()}</p>
+                    <p className={'mt-1 text-right text-[10px] ' + (mine ? 'text-violet-100' : 'text-slate-300')}>{new Date(message.created_at).toLocaleString()}</p>
                   </div>
                 </article>;
               })}
