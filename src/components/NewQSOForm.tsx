@@ -15,7 +15,8 @@ import {
   Globe, 
   Sparkles, 
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 
 interface NewQSOFormProps {
@@ -67,6 +68,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const initial = getLastQSOData();
 
   // Campos que se mantienen precargados del último QSO
+  const [isExpanded, setIsExpanded] = useState(false);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   // La banda seleccionada es temporal: cada nueva apertura comienza en 40 m,
@@ -438,35 +440,23 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl mb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b border-slate-800 gap-2">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
-            <Radio className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-white tracking-wide">
-              LIBRO DE GUARDIA
-            </h2>
-            <p className="text-xs text-slate-400">
-              Registro separado de radioafición y banda ciudadana
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleUpdateToCurrentUTC}
-            className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer"
-            title="Sincronizar a hora UTC actual"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Hora UTC actual
-          </button>
-        </div>
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl mb-6 overflow-hidden">
+      <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex w-full items-center justify-between gap-3 p-4 sm:px-6 text-left hover:bg-slate-800/70 transition-colors">
+        <span className="flex items-center gap-3">
+          <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
+          <span className="min-w-0 text-left">
+            <span className="block text-base font-bold text-white tracking-wide">LIBRO DE GUARDIA</span>
+            <span className="block text-xs text-slate-400">Registro separado de radioafición y banda ciudadana</span>
+          </span>
+        </span>
+        <ChevronDown className={`h-5 w-5 shrink-0 text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+      </button>
+      {isExpanded && <div className="p-5 sm:p-6 pt-0">
+      <div className="flex justify-end pb-3">
+        <button type="button" onClick={handleUpdateToCurrentUTC} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer" title="Sincronizar a hora UTC actual">
+          <RefreshCw className="w-3.5 h-3.5" /> Hora UTC actual
+        </button>
       </div>
-
       <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3">
         <label className="flex items-center gap-2 text-sm font-semibold text-white">
           <input type="checkbox" checked={contestMode || contestSetupOpen} onChange={(e) => {
@@ -743,6 +733,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           </button>
         </div>
       </form>
+      <div className="flex justify-end mt-4 border-t border-slate-800 pt-4">
+        <button type="button" onClick={() => setIsExpanded(false)} className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-700 transition-colors">Cerrar</button>
+      </div>
+      </div>}
     </div>
   );
 };
