@@ -238,6 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.clearInterval(timer);
   }, []);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [appUserCount, setAppUserCount] = useState<number | null>(null);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [shareLanguage, setShareLanguage] = useState(() => getInitialAppLanguage());
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
@@ -467,6 +468,28 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const registerInstallation = async () => {
+      if (!supabase) return;
+      try {
+        let installId = localStorage.getItem('logbook_installation_id');
+        if (!installId) {
+          installId = crypto.randomUUID();
+          localStorage.setItem('logbook_installation_id', installId);
+        }
+        const { data, error } = await supabase.rpc('register_app_installation', { p_install_id: installId });
+        if (error) throw error;
+        const count = Number(data);
+        if (!cancelled && Number.isFinite(count) && count >= 0) setAppUserCount(count);
+      } catch (error) {
+        console.warn('No se pudo actualizar el contador de usuarios de LogBook.', error);
+      }
+    };
+    void registerInstallation();
+    return () => { cancelled = true; };
+  }, []);
+
   const handleInstall = () => {
     if (isInstalled) {
       window.alert('LogBook eQSL Express ya está instalada en este equipo.');
@@ -548,7 +571,10 @@ export const Header: React.FC<HeaderProps> = ({
             <img src="/logbook-header.svg" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-none object-contain object-center mx-auto" />
           </div>
         </div>
-
+        <div className="mt-1 flex min-h-5 w-full items-center justify-center gap-2 bg-slate-700/80 py-0.5 text-[11px] leading-tight">
+          <span className="font-semibold tracking-wide text-sky-300">USUARIOS</span>
+          <span className="font-bold tabular-nums text-white" aria-live="polite">{appUserCount === null ? '—' : appUserCount.toLocaleString('es-ES')}</span>
+        </div>
       </div>
     </header>
       {/* Controles esenciales: permanecen accesibles al desplazarse por la página. */}
