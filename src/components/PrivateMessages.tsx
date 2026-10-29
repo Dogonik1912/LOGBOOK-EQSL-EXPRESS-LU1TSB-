@@ -301,6 +301,19 @@ export const PrivateMessages: React.FC = () => {
         return;
       }
       setDraft('');
+      // Enviar push en segundo plano solo después de que Supabase confirme el mensaje.
+      // La entrega del mensaje no falla si el servicio push no está configurado.
+      void fetch('/api/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'notify-private',
+          token: identityToken,
+          callsign,
+          recipient: activeRecipient,
+          messageId: String(data.message?.id || ''),
+        }),
+      }).catch(() => {});
       await refreshMessages(activeRecipient);
       await refreshConversations();
     } finally {
