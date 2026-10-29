@@ -436,7 +436,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
         aria-expanded={isExpanded}
-        className="w-full flex items-center justify-between gap-3 p-4 sm:px-6 text-left hover:bg-slate-800/70 transition-colors"
+        className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 py-2.5 sm:px-4 text-left hover:bg-slate-800/70 transition-colors"
       >
         <span className="flex items-center gap-3">
           <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
