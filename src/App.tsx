@@ -44,19 +44,33 @@ function MainApp() {
     try { return JSON.parse(localStorage.getItem('logbook_contest_logs') || '[]') as ContestLogRecord[]; }
     catch { return []; }
   });
-  const handleFinishContest = (log: ContestLogRecord) => {
-    // Congelar una copia de los QSO del concurso: el archivo seguirá disponible
-    // aunque luego se edite o elimine un contacto del libro activo.
+  const handleFinishContest = (log: ContestLogRecord): boolean => {
+    // No cerrar el concurso si no podemos confirmar que hay QSO asociados y archivados.
     const snapshot = qsos
       .filter((q) => q.contestLogId === log.id || q.contestLogName === log.name)
       .map((q) => ({ ...q }));
-    const archivedLog: ContestLogRecord = {
-      ...log,
-      qsos: snapshot.length ? snapshot : (contestLogs.find((item) => item.id === log.id)?.qsos || []),
-    };
+    if (snapshot.length === 0) {
+      window.alert('No se encontraron QSO vinculados a este concurso. El concurso sigue activo para proteger sus datos.');
+      return false;
+    }
+
+    const archivedLog: ContestLogRecord = { ...log, qsos: snapshot };
     const updated = [archivedLog, ...contestLogs.filter((item) => item.id !== log.id)];
-    setContestLogs(updated);
-    localStorage.setItem('logbook_contest_logs', JSON.stringify(updated));
+    try {
+      // Persistir primero; solo después confirmar el cierre al formulario.
+      localStorage.setItem('logbook_contest_logs', JSON.stringify(updated));
+      const verification = JSON.parse(localStorage.getItem('logbook_contest_logs') || '[]') as ContestLogRecord[];
+      const saved = verification.find((item) => item.id === log.id);
+      if (!saved || !Array.isArray(saved.qsos) || saved.qsos.length !== snapshot.length) {
+        throw new Error('La verificación del log archivado no coincide.');
+      }
+      setContestLogs(updated);
+      return true;
+    } catch (error) {
+      console.error('No se pudo archivar el log del concurso:', error);
+      window.alert('No se pudo verificar el archivo del concurso. El concurso sigue activo y sus datos no se han limpiado.');
+      return false;
+    }
   };
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
