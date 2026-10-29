@@ -11,6 +11,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [callsign, setCallsign] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [deviceLimit, setDeviceLimit] = useState(false);
   const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
   const [welcome, setWelcome] = useState<{ callsign: string; name: string } | null>(null);
 
@@ -69,6 +70,10 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         p_callsign: clean,
         p_token: token,
       });
+      if (data?.reason === 'device_limit') {
+        setDeviceLimit(true);
+        return;
+      }
       if (registerError || !data?.ok) {
         setError(data?.reason === 'taken'
           ? 'Ese indicativo ya está registrado por otra persona.'
@@ -90,6 +95,17 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   if (!ready) return null;
+  if (deviceLimit) return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/90 p-4" role="alertdialog" aria-modal="true" aria-labelledby="device-limit-title">
+      <section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl">
+        <h2 id="device-limit-title" className="text-xl font-black text-red-300">Acceso bloqueado — Límite de dispositivos alcanzado</h2>
+        <p className="mt-3 text-sm leading-relaxed text-slate-200">Este indicativo ya tiene 2 dispositivos autorizados. Si cambiaste de teléfono o computadora, o necesitás reemplazar un dispositivo, comunicate con el administrador para solicitar la revisión y autorización.</p>
+        <p className="mt-4 text-sm font-semibold">Correo de administración:</p>
+        <a className="mt-1 block break-all text-sky-300 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a>
+        <p className="mt-4 text-xs text-slate-400">No necesitás crear otra cuenta ni proporcionar datos personales adicionales.</p>
+      </section>
+    </div>
+  );
   if (!required) return <>{welcome && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title"><section className="w-full max-w-md rounded-2xl border border-sky-300 bg-white p-6 text-center text-slate-900 shadow-2xl"><p className="text-xl font-black text-sky-800">{welcome.callsign}{welcome.name ? ` · ${welcome.name}` : ''}</p><h2 id="welcome-title" className="mt-3 text-xl font-bold">¡Bienvenido/a a <strong>LogBook eQSL EXPRESS</strong>!</h2><p className="mt-4 text-base leading-relaxed">Aquí encontrarás<br />las herramientas<br />para hacer radio<br />de forma más fácil.</p><button type="button" onClick={() => setWelcome(null)} className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 font-bold text-white">Continuar</button></section></div>} {children}</>;
 
   return (
