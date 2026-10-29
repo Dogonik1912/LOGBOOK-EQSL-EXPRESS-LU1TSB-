@@ -318,7 +318,7 @@ function MainApp() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <EQSLMailbox />
           <PrivateMessages />
         </div>
@@ -350,11 +350,11 @@ function MainApp() {
         />
       </main>
 
-      {/* PRIORIDAD 1: Footer con crédito discreto */}
-      <Footer />
-
-      {/* Informe de propagación al final de toda la página, fuera del encabezado. */}
+      {/* Informe de propagación al final del contenido, antes del pie de página. */}
       <PropagationReport />
+
+      {/* Pie de página al final de la aplicación. */}
+      <Footer />
 
       {/* Modales */}
       {/* Modal de Configuración General */}
