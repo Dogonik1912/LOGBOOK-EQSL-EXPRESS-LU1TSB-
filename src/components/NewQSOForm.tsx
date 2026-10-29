@@ -20,7 +20,7 @@ import {
 
 interface NewQSOFormProps {
   onAddQSO: (qso: QSO, openEQSL?: boolean) => void;
-  onFinishContest: (log: { id: string; name: string; type: string; finishedAt: string }) => void;
+  onFinishContest: (log: { id: string; name: string; type: string; finishedAt: string }) => boolean;
 }
 
 export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContest }) => {
@@ -123,7 +123,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const finishContest = () => {
     if (!contestMode || !contestLogName.trim()) return;
     const log = { id: contestLogId || `contest-${Date.now()}`, name: contestLogName.trim(), type: contestType, finishedAt: new Date().toISOString() };
-    onFinishContest(log);
+    // El formulario solo cierra el concurso si App confirma que el log quedó archivado.
+    const archived = onFinishContest(log);
+    if (!archived) return;
     setContestMode(false);
     setContestSetupOpen(false);
     setContestLogId('');
