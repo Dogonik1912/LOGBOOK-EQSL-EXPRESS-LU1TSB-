@@ -61,7 +61,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
  */
 export function is11MeterStationIdentifier(identifier: string): boolean {
   const normalized = String(identifier || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return /^\\d{1,3}[A-Z]/.test(normalized);
+  return /^\d{1,3}[A-Z]/.test(normalized);
 }
 
 export function countryForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
