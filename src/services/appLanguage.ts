@@ -62,15 +62,15 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
     const divisionLanguages: Record<string, AppLanguage> = {
       '1':'it','2':'en','3':'pt-br','4':'es','5':'es','6':'es','7':'es','8':'es','9':'en',
       '10':'en','11':'es','12':'es','13':'de','14':'es','15':'fr','16':'fr','17':'en','18':'el',
-      '19':'mt' as AppLanguage,'20':'pt','21':'en','22':'fr','23':'fr','24':'en','25':'en','26':'en',
-      '27':'no','28':'he' as AppLanguage,'29':'da','30':'es','31':'en','32':'en','33':'en','34':'es',
+      '19':'en','20':'pt','21':'en','22':'fr','23':'fr','24':'en','25':'en','26':'en',
+      '27':'no','28':'en','29':'da','30':'es','31':'en','32':'en','33':'en','34':'es',
       '35':'fr','36':'fr','37':'en','38':'en','39':'fr','40':'en','41':'fr','42':'es','43':'en',
       '44':'en','45':'en','46':'en','47':'en','48':'ar','49':'es','50':'en','51':'en','52':'en',
-      '53':'es','54':'es','55':'es','56':'es','57':'nl' as AppLanguage,'58':'es','59':'es','60':'en',
-      '61':'ja','62':'ko','63':'vi' as AppLanguage,'64':'ur' as AppLanguage,'65':'fa' as AppLanguage,
-      '66':'th' as AppLanguage,'67':'es','68':'en','69':'en','70':'en','71':'en','72':'zh','73':'fr',
-      '74':'fr','75':'en','76':'en','77':'fr','78':'en','79':'en','80':'en','81':'bn' as AppLanguage,
-      '82':'zh','83':'zh','84':'mn' as AppLanguage,'85':'ne' as AppLanguage,'86':'hi','87':'ur' as AppLanguage,
+      '53':'es','54':'es','55':'es','56':'es','57':'nl','58':'es','59':'es','60':'en',
+      '61':'ja','62':'ko','63':'en','64':'en','65':'en',
+      '66':'en','67':'es','68':'en','69':'en','70':'en','71':'en','72':'zh','73':'fr',
+      '74':'fr','75':'en','76':'en','77':'fr','78':'en','79':'en','80':'en','81':'en',
+      '82':'zh','83':'zh','84':'en','85':'en','86':'hi','87':'en',
       '88':'zh','89':'ja','90':'en','91':'fr','92':'en','93':'en','94':'en','95':'en','96':'en',
       '97':'en','98':'en','99':'fr'
     };
