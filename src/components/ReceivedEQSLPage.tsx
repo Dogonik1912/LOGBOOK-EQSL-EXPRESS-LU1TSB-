@@ -44,6 +44,10 @@ const translations: Record<Language, Record<string, string>> = {
 };
 
 const languageForRecipient = (): Language => {
+  // La preferencia que eligió el destinatario en su instalación tiene prioridad.
+  const savedLanguage = String(localStorage.getItem('app_language') || '').toLowerCase().replace('_', '-');
+  const preferredLanguage = savedLanguage === 'pt-br' ? 'pt' : savedLanguage.split('-')[0];
+  if (preferredLanguage in translations) return preferredLanguage as Language;
   const params = new URLSearchParams(window.location.search);
   let targetCall = '';
   try {
