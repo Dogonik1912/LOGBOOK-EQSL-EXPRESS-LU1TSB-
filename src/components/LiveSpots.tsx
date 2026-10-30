@@ -3,7 +3,7 @@ import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy,
 import { QSO } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
-import { countryForCallsign, flagForCallsign } from '../services/callsignCountry';
+import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { countryUsesMiles, distanceForSpot } from '../services/dxDistance';
 
 // Los indicativos del feed abren la conversación privada del usuario correspondiente.
@@ -236,7 +236,7 @@ export const LiveSpots: React.FC = () => {
     {weeklyWinner && <div className="flex min-w-0 items-center gap-2 overflow-hidden border-b border-amber-700/60 bg-amber-950/50 px-2 py-1.5 text-xs">
       <span className="flex shrink-0 items-center gap-1 font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-3.5 w-3.5" /> CONCURSO DX SEMANAL</span>
       <span className="min-w-0 flex-1 truncate font-mono font-bold text-white" title={`${weeklyWinner.callsign} ↔ ${weeklyWinner.station_callsign} · ${weeklyWinner.frequency} MHz · ${weeklyWinner.band} · ${weeklyWinner.mode}`}>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign} ↔ {weeklyWinner.station_callsign} · {weeklyWinner.frequency} MHz</span>
-      <span className="shrink-0 font-bold text-cyan-200">{distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\d/.test(adminCallsign))))}</span>
+      <span className="shrink-0 font-bold text-cyan-200">{distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, is11MeterStationIdentifier(adminCallsign))))}</span>
       <span className="flex shrink-0 items-center gap-1 font-bold text-amber-300"><Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />{weeklyWinner.votes}</span>
     </div>}
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
