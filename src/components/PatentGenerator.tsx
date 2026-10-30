@@ -27,9 +27,9 @@ const callsignCountryPrefixes: Record<string, string> = {
 const detectCountryFromCallsign = (raw: string): string | null => {
   const call = raw.trim().toUpperCase();
   if (!call) return null;
-  const detectedCountry = countryForCallsign(call, undefined, /^\\d/.test(call));
+  const detectedCountry = countryForCallsign(call, undefined, /^\d/.test(call));
   if (!detectedCountry) return null;
-  const match = countries.find((item) => item[1].replace(/^\\S+\\s+/, '') === detectedCountry);
+  const match = countries.find((item) => item[1].replace(/^\S+\s+/, '') === detectedCountry);
   return match?.[0] || null;
 };
 const W=1800, H=1200;
@@ -44,7 +44,7 @@ const localizedCountryName = (countryCode: string, fallback: string): string => 
    return fallback;
  }
 };
-const countryLabel = (item: typeof countries[number]) => item[1].split(' ')[0] + ' ' + localizedCountryName(item[0], item[1].replace(/^\\S+\\s+/, ''));
+const countryLabel = (item: typeof countries[number]) => item[1].split(' ')[0] + ' ' + localizedCountryName(item[0], item[1].replace(/^\S+\s+/, ''));
 
 
 async function plate(call:string, code:string) {
