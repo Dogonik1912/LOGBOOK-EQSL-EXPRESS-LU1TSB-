@@ -67,8 +67,40 @@ async function plate(call:string, code:string) {
  x.fillStyle='#f4d58d'; x.font='500 28px system-ui'; x.fillText('AMATEUR RADIO • DX • FRIENDSHIP',W/2,1080);
  return c;
 }
+
+async function narrowPlate(call:string, code:string, customText:string) {
+ const W=1800,H=620,c=document.createElement('canvas'); c.width=W;c.height=H;
+ const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
+ x.fillStyle='#f8fafc';x.fillRect(0,0,W,H);
+ x.fillStyle='#050505';x.beginPath();x.roundRect(35,35,W-70,H-70,42);x.fill();
+ x.strokeStyle='#d4d4d4';x.lineWidth=8;x.beginPath();x.roundRect(48,48,W-96,H-96,32);x.stroke();
+ x.fillStyle='#0756b8';x.beginPath();x.roundRect(62,62,W-124,150,18);x.fill();
+ // Flag marker on the left, national crest in gold for Argentina, flag symbol for other countries.
+ const flag=countries.find(v=>v[0]===code)?.[1].split(' ')[0]||'🌐';
+ x.textAlign='center';x.textBaseline='middle';
+ x.font='110px system-ui, Apple Color Emoji, Segoe UI Emoji';x.fillText(flag,155,137);
+ x.fillStyle='#fff';x.font='700 56px system-ui';x.fillText(code.startsWith('IC')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\\S+ /,'').toUpperCase()||'RADIO'),W/2,137);
+ if(code==='AR'){
+   // stylized golden Argentine national coat of arms
+   x.save();x.translate(W-190,137);x.strokeStyle='#f5c542';x.fillStyle='#f5c542';x.lineWidth=8;
+   x.beginPath();x.ellipse(0,12,42,52,0,0,Math.PI*2);x.stroke();
+   x.beginPath();x.moveTo(-42,12);x.lineTo(42,12);x.stroke();
+   x.beginPath();x.moveTo(0,-42);x.lineTo(0,67);x.stroke();
+   x.beginPath();x.arc(0,-58,17,0,Math.PI*2);x.fill();
+   for(let i=0;i<12;i++){const a=i*Math.PI/6;x.beginPath();x.moveTo(Math.cos(a)*53,Math.sin(a)*53-6);x.lineTo(Math.cos(a)*66,Math.sin(a)*66-6);x.stroke();}
+   x.restore();
+ }
+ x.fillStyle='#fff';x.font='900 235px system-ui';x.textBaseline='alphabetic';x.fillText(call,W/2,440);
+ x.fillStyle='#fff';x.fillRect(90,405,70,12);x.fillRect(W-160,405,70,12);
+ x.fillStyle='#0756b8';x.beginPath();x.roundRect(62,455,W-124,100,18);x.fill();
+ const text=customText.trim().slice(0,42);
+ if(text){x.fillStyle='#fff';x.font='700 54px system-ui';x.fillText(text,W/2,505);}
+ else {x.fillStyle='#dcecff';x.font='600 32px system-ui';x.fillText('LOGBOOK eQSL EXPRESS',W/2,505);}
+ x.textBaseline='alphabetic';return c;
+}
+
 export const PatentGenerator:React.FC=()=>{
- const [open,setOpen]=useState(false),[code,setCode]=useState('AR'),[call,setCall]=useState(''),[preview,setPreview]=useState<string|null>(null),[countryManuallySelected,setCountryManuallySelected]=useState(false);
+ const [open,setOpen]=useState(false),[code,setCode]=useState('AR'),[call,setCall]=useState(''),[preview,setPreview]=useState<string|null>(null),[countryManuallySelected,setCountryManuallySelected]=useState(false),[format,setFormat]=useState('classic'),[customText,setCustomText]=useState('');
  const handleCallChange=(value:string)=>{
    const normalized=value.toUpperCase();
    setCall(normalized);
@@ -79,7 +111,7 @@ export const PatentGenerator:React.FC=()=>{
  };
  const canvas=useRef<HTMLCanvasElement|null>(null);
  const chosen=useMemo(()=>countries.find(v=>v[0]===code),[code]);
- const generate=async()=>{const v=call.trim().toUpperCase().replace(/[^A-Z0-9/.-]/g,'').slice(0,18);if(!v){alert('Introducí tu indicativo o SD.');return;}setCall(v);try{canvas.current=await plate(v,code);setPreview(canvas.current.toDataURL('image/png'));}catch(e){alert(e instanceof Error?e.message:'No se pudo generar la patente.');}};
+ const generate=async()=>{const v=call.trim().toUpperCase().replace(/[^A-Z0-9/.-]/g,'').slice(0,18);if(!v){alert('Introducí tu indicativo o SD.');return;}setCall(v);try{canvas.current=format==='narrow'?await narrowPlate(v,code,customText):await plate(v,code);setPreview(canvas.current.toDataURL('image/png'));}catch(e){alert(e instanceof Error?e.message:'No se pudo generar la patente.');}};
  const returnHome=()=>{setOpen(false);setPreview(null);window.location.assign(APP_URL);};
  const download=()=>{if(!canvas.current)return;const a=document.createElement('a');a.download='patente-radio-'+call.toLowerCase()+'.png';a.href=canvas.current.toDataURL('image/png');a.click();window.setTimeout(returnHome,900);};
  const share=async()=>{if(!canvas.current){alert('Primero generá la patente.');return;}const blob=await new Promise<Blob|null>(r=>canvas.current!.toBlob(r,'image/png'));if(!blob)return;const file=new File([blob],'patente-radio-'+call+'.png',{type:'image/png'});const shareText='Creá tu propia patente de radio en LogBook eQSL EXPRESS: '+APP_URL;if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){try{await navigator.share({files:[file],title:'Mi patente de radio',text:shareText});returnHome();return;}catch(e){if(e instanceof Error&&e.name==='AbortError')return;}}const a=document.createElement('a');a.download=file.name;a.href=URL.createObjectURL(blob);a.click();window.open('https://wa.me/?text='+encodeURIComponent(shareText+' La patente PNG se descargó para adjuntarla.'),'_blank','noopener,noreferrer');window.setTimeout(returnHome,900);};
@@ -87,12 +119,12 @@ export const PatentGenerator:React.FC=()=>{
   <button type="button" onClick={()=>setOpen(true)} className="w-full min-h-[56px] rounded-xl border border-sky-300 bg-slate-900 px-4 py-3 text-center font-extrabold tracking-wide text-white shadow-md hover:bg-slate-800"><span className="inline-flex items-center justify-center gap-2"><Award size={20}/> GENERADOR DE PATENTES</span></button>
   {open&&<div className="mt-3 rounded-2xl border border-sky-200 bg-white p-4 shadow-lg">
    <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-extrabold text-slate-900">Generador de patentes de radio</h2><button onClick={()=>{setOpen(false);setPreview(null);}} aria-label="Cerrar"><X/></button></div>
-   <label htmlFor="patent-country" className="mb-1 block text-sm font-bold text-slate-700">País o territorio</label>
+   <label htmlFor="patent-format" className="mb-1 block text-sm font-bold text-slate-700">Formato</label><select id="patent-format" value={format} onChange={e=>setFormat(e.target.value)} className="mb-3 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900"><option value="classic">Formato actual</option><option value="narrow">Patente angosta horizontal (nueva)</option></select>\n   <label htmlFor="patent-country" className="mb-1 block text-sm font-bold text-slate-700">País o territorio</label>
    <select id="patent-country" value={code} onChange={e=>{setCode(e.target.value);setCountryManuallySelected(true);}} className="mb-3 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900">{countries.map(v=><option key={v[0]} value={v[0]}>{countryLabel(v)}</option>)}<option value="IC">🏝️ Canarias — tricolor de siete estrellas</option><option value="IC-ESCUDO">🏛️ Canarias — bandera institucional con escudo de los dos perros</option></select>
    {code.startsWith('IC')&&<p className="mb-3 rounded-lg bg-sky-50 p-3 text-sm text-sky-900">{code==='IC'?'Bandera tricolor blanca, celeste y amarilla con siete estrellas verdes.':'Bandera institucional oficial blanca, azul y amarilla con el escudo original del Gobierno de Canarias (dos perros).'}</p>}
    <label htmlFor="patent-callsign" className="mb-1 block text-sm font-bold text-slate-700">Indicativo / SD</label>
    <input id="patent-callsign" value={call} onChange={e=>handleCallChange(e.target.value)} maxLength={18} placeholder="Ej.: LU1TSB o 4RC978" className="mb-3 w-full rounded-lg border border-slate-300 p-3 text-lg font-bold uppercase tracking-wider text-slate-900"/>
-   <button onClick={generate} className="w-full rounded-lg bg-sky-700 px-4 py-3 font-bold text-white">GENERAR PATENTE</button>
+   <label htmlFor="patent-custom-text" className="mb-1 block text-sm font-bold text-slate-700">Texto opcional (QAP, frecuencia, localidad, saludos)</label><input id="patent-custom-text" value={customText} onChange={e=>setCustomText(e.target.value)} maxLength={42} placeholder="Ej.: QAP 7.120 · TUCUMAN · 73 SALUDOS" className="mb-3 w-full rounded-lg border border-slate-300 p-3 text-slate-900"/><button onClick={generate} className="w-full rounded-lg bg-sky-700 px-4 py-3 font-bold text-white">GENERAR PATENTE</button>
    {preview&&<div className="mt-4"><img src={preview} alt="Vista previa de la patente de radio" className="w-full rounded-xl border border-slate-200"/><div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><button onClick={download} className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-3 font-bold text-white"><Download size={18}/> DESCARGAR PNG</button><button onClick={share} className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-3 font-bold text-white"><Share2 size={18}/> COMPARTIR POR WHATSAPP</button></div><p className="mt-2 text-xs text-slate-500">PNG de 1800 × 1200 píxeles. Al compartir se incluye el enlace directo a LogBook eQSL EXPRESS para crear otra patente. Al terminar, volverás al inicio con el encabezado visible.</p></div>}
    <button onClick={()=>{setOpen(false);setPreview(null);}} className="mt-4 w-full rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 font-bold text-slate-700">CERRAR</button>
   </div>}
