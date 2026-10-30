@@ -64,6 +64,7 @@ const continentForSpot = (spot: Spot): string => {
  if(/japon|china|corea|india|tailandia|indonesia|filipinas|singapur|malasia|taiwan|pakistan|bangladesh|nepal|mongolia|vietnam|hong kong|israel|jordania/.test(country)) return 'Asia';
  if(/australia|nueva zelanda|fiyi|samoa|guam|tonga|vanuatu|kiribati|nauru|tuvalu|caledonia|tahiti/.test(country)) return 'Oceanía';
  if(/sudafrica|marruecos|egipto|tunez|kenia|nigeria|ghana|senegal|madagascar|liberia|gambia/.test(country)) return 'África';
+ if(/antartida|antártida|antarctica|south pole|polo sur/.test(country)) return 'Antártida';
  return 'Otros';
 }
 export const LiveSpots: React.FC = () => {
@@ -90,9 +91,11 @@ export const LiveSpots: React.FC = () => {
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
   const [gridLocators, setGridLocators] = useState<Record<string, string>>({});
 
-  // Catálogos completos: las opciones no dependen de los 50 spots visibles.
-  const bandOptions=Array.from(new Set([...HAM_BANDS.map(item=>item.name), ...spots.map(spot=>spot.band).filter(Boolean)])).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-  const modeOptions=Array.from(new Set([...HAM_MODES, ...spots.map(spot=>spot.mode).filter(Boolean)])).sort();
+  // Catálogos amplios: no dependen de los 50 spots visibles.
+  const allSpotBands = ['2200m','630m','560m','160m','80m','60m','40m','30m','20m','17m','15m','12m','11 metros','10m','8m','6m','5m','4m','2m','1.25m','70cm','33cm','23cm','13cm','9cm','6cm','3cm','1.25cm','6mm'];
+  const allSpotModes = ['SSB','USB','LSB','CW','AM','FM','NFM','WFM','RTTY','FT8','FT4','JT65','JT9','JT4','JT6M','Q65','MSK144','FSK441','PSK31','PSK63','PSK125','JS8','Olivia','Contestia','MFSK','MT63','THOR','DominoEX','Hell','SSTV','ATV','D-STAR','DMR','C4FM','P25','FreeDV','Packet','APRS','AX.25','VARA','WINMOR','PACTOR','Clover','ROS','EchoLink'];
+  const bandOptions=Array.from(new Set([...allSpotBands, ...HAM_BANDS.map(item=>item.name), ...spots.map(spot=>spot.band).filter(Boolean)])).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const modeOptions=Array.from(new Set([...allSpotModes, ...HAM_MODES, ...spots.map(spot=>spot.mode).filter(Boolean)])).sort((a,b)=>a.localeCompare(b));
   const continentOptions=['África','América','Asia','Europa','Oceanía','Antártida','Otros'];
   const filteredSpots=showAllActivity ? spots : spots.filter(spot=>(!selectedBands.length||selectedBands.includes(spot.band))&&(!selectedModes.length||selectedModes.includes(spot.mode))&&(!selectedContinents.length||selectedContinents.includes(continentForSpot(spot))));
   const toggleFilter=(values:string[],value:string,setter:(next:string[])=>void)=>{setShowAllActivity(false);setter(values.includes(value)?values.filter(item=>item!==value):[...values,value]);};
