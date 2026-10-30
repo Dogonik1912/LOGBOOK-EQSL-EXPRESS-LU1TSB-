@@ -42,6 +42,7 @@ export const CommunityChat: React.FC = () => {
   const isModerator = isAdmin || moderationRole === 'moderator';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const chatSectionRef = useRef<HTMLElement | null>(null);
   const [profilePhotos, setProfilePhotos] = useState<Record<string, string>>({});
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [appLanguage, setAppLanguage] = useState(() => (localStorage.getItem('app_language') || 'es').toLowerCase());
@@ -62,6 +63,20 @@ export const CommunityChat: React.FC = () => {
   // Al desplegarlo, los usuarios nuevos verán aquí mismo la validación de su señal distintiva.
   const [chatCollapsed, setChatCollapsed] = useState(true);
   const toggleCommunityChat = () => setChatCollapsed((current) => !current);
+
+  // Al abrir el chat, llevar su encabezado al borde superior de la pantalla.
+  // El listado conserva su propio scroll y queda posicionado en el mensaje más reciente.
+  useEffect(() => {
+    if (chatCollapsed) return;
+    const frame = window.requestAnimationFrame(() => {
+      chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.requestAnimationFrame(() => {
+        const container = messagesContainerRef.current;
+        if (container) container.scrollTop = container.scrollHeight;
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [chatCollapsed]);
   const [darkChat, setDarkChat] = useState(() => localStorage.getItem('community_chat_theme') !== 'light');
   const toggleChatTheme = () => setDarkChat((current) => { const next = !current; localStorage.setItem('community_chat_theme', next ? 'dark' : 'light'); return next; });
   const [busy, setBusy] = useState(false);
@@ -166,7 +181,7 @@ export const CommunityChat: React.FC = () => {
         .limit(100);
       if (!active) return;
       if (loadError) setError('No se pudieron cargar los mensajes. Revisá la configuración de la tabla y sus permisos.');
-      else setMessages((data || []) as ChatMessage[]);
+      else setMessages(((data || []) as ChatMessage[]).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
     };
     void loadMessages();
     // Poll as a fallback so messages still appear on other devices if Realtime
@@ -176,7 +191,7 @@ export const CommunityChat: React.FC = () => {
       .channel('logbook-community-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_messages' }, (payload) => {
         const incoming = payload.new as ChatMessage;
-        setMessages((current) => current.some((item) => item.id === incoming.id) ? current : [...current, incoming].slice(-100));
+        setMessages((current) => current.some((item) => item.id === incoming.id) ? current : [...current, incoming].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(-100));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'community_messages' }, (payload) => {
         const removed = payload.old as Partial<ChatMessage>;
@@ -377,7 +392,7 @@ export const CommunityChat: React.FC = () => {
       setSdLocked(true);
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
       if (sendError || !data?.ok) { console.error('[LogBook chat] public message insert error:', sendError || data); setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.'); return; }
-      if (data.message) setMessages((current) => current.some((item) => item.id === data.message.id) ? current : [...current, data.message as ChatMessage].slice(-100));
+      if (data.message) setMessages((current) => current.some((item) => item.id === data.message.id) ? current : [...current, data.message as ChatMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(-100));
       setDraft(''); setReplyTo(null);
     } finally { setBusy(false); }
   };
@@ -527,7 +542,7 @@ export const CommunityChat: React.FC = () => {
   };
 
   return (
-    <section id="community-chat" className={`mb-6 overflow-hidden rounded-2xl border border-sky-900/70 shadow-xl ${darkChat ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`} aria-label="Chat de la comunidad">
+    <section ref={chatSectionRef} id="community-chat" className={`mb-6 scroll-mt-2 overflow-hidden rounded-2xl border border-sky-900/70 shadow-xl ${darkChat ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`} aria-label="Chat de la comunidad">
       <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
@@ -562,29 +577,29 @@ export const CommunityChat: React.FC = () => {
         </div>
       ) : (
         <>
-          <article className={`border-b-2 border-sky-500 px-3 py-2 shadow-sm ${darkChat ? "bg-slate-900 text-slate-100" : "bg-sky-50 text-slate-950"}`} aria-label="Mensaje de bienvenida fijado">
-            <div className="flex items-center gap-2">
-              <strong className="font-mono text-sm font-extrabold uppercase text-red-600">LU1TSB</strong>
-              <p className="text-sm font-semibold">Bienvenidos al espacio de la comunidad LogBook eQSL EXPRESS.</p>
+          <article className={`border-b-2 border-sky-500 px-4 py-4 shadow-sm ${darkChat ? "bg-slate-900 text-slate-100" : "bg-sky-50 text-slate-950"}`} aria-label="Mensaje de bienvenida fijado">
+            <div className="flex items-start gap-3">
+              <strong className="shrink-0 pt-0.5 font-mono text-sm font-extrabold uppercase text-red-600">LU1TSB</strong>
+              <p className="text-sm font-semibold leading-relaxed">Bienvenidos al espacio de la comunidad LogBook eQSL EXPRESS.</p>
             </div>
           </article>
-          <div ref={messagesContainerRef} className={`max-h-[300px] min-h-[180px] space-y-2 overflow-y-auto px-3 py-2 sm:px-4 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
+          <div ref={messagesContainerRef} className={`max-h-[min(48vh,420px)] min-h-[180px] space-y-1.5 overflow-y-auto scroll-smooth px-3 py-2 sm:px-4 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
             {messages.length === 0 && <p className="py-5 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
             {messages.map((message) => (
-              <article key={message.id} className={`rounded-lg border px-2.5 py-1.5 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
+              <article key={message.id} className={`rounded-lg border px-2.5 py-1 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
                 <div className="flex items-start gap-2.5">
-                  <div role="button" tabIndex={0} onClick={() => openPrivateMessage(message.callsign)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPrivateMessage(message.callsign); } }} className="mt-0.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 hover:ring-2 hover:ring-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400" aria-label={`Abrir mensaje privado a ${message.callsign}`} title={`Abrir mensaje privado a ${message.callsign}`}>
+                  <div role="button" tabIndex={0} onClick={() => openPrivateMessage(message.callsign)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPrivateMessage(message.callsign); } }} className="mt-0.5 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 hover:ring-2 hover:ring-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400" aria-label={`Abrir mensaje privado a ${message.callsign}`} title={`Abrir mensaje privado a ${message.callsign}`}>
                     {profilePhotos[message.callsign.trim().toUpperCase()] ? <img src={profilePhotos[message.callsign.trim().toUpperCase()]} alt={`Foto de perfil de ${message.callsign}`} className="h-full w-full object-cover" /> : <span className="font-mono text-xs font-bold text-slate-500">{message.callsign.trim().slice(0, 3).toUpperCase()}</span>}
                   </div>
                   <div className="min-w-0 flex-1">
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-snug"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}><button type="button" onClick={() => openPrivateMessage(message.callsign)} className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-sky-500" title={`Escribir mensaje privado a ${message.callsign}`}>{message.callsign}</button>:</strong><span className="ml-1" aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(message.callsign)}</span>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="ml-1 inline-flex rounded p-0.5 text-amber-600 hover:bg-amber-100" title="Opciones de administrador para este usuario" aria-label={`Opciones de administrador para ${message.callsign}`}><ShieldCheck className="h-3 w-3" /></button>} <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
+                <p className="break-words text-sm leading-[1.35]"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}><button type="button" onClick={() => openPrivateMessage(message.callsign)} className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-sky-500" title={`Escribir mensaje privado a ${message.callsign}`}>{message.callsign}</button>:</strong><span className="ml-1" aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(message.callsign)}</span>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="ml-1 inline-flex rounded p-0.5 text-amber-600 hover:bg-amber-100" title="Opciones de administrador para este usuario" aria-label={`Opciones de administrador para ${message.callsign}`}><ShieldCheck className="h-3 w-3" /></button>} <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
                 {isAdmin && moderatorTargetSelected === message.callsign.trim().toUpperCase() && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
                   <span>Usuario: <strong>{message.callsign}</strong></span>
                   <button type="button" disabled={moderationBusy} onClick={() => void appointModerator(message.callsign)} className="rounded-md bg-amber-800 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Designar como moderador'}</button>
                   <button type="button" onClick={() => setModeratorTargetSelected(null)} className="rounded-md px-2 py-1.5 font-semibold underline">Cancelar</button>
                 </div>}</p>
-                <div className="mt-1 flex items-center justify-between gap-2">
+                <div className="mt-0.5 flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => setReplyTo(message)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"><Reply className="h-3 w-3" /> Responder</button>
