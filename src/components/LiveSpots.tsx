@@ -38,7 +38,11 @@ export async function publishQsoSpot(qso: QSO) {
   const remoteCall = String(qso.callsign || '').trim().toUpperCase();
   // Nunca publicar un contacto consigo mismo; también protege contra indicativos mal asignados.
   if (!ownCall || !remoteCall || ownCall === remoteCall || !qso.date || !qso.time || !qso.frequency || !qso.band) return;
-  const spotKey = [ownCall, remoteCall, qso.date, qso.time, qso.band, String(qso.frequency).replace(',', '.'), qso.mode].join('|');
+  // Clave simétrica: el mismo QSO se reconoce aunque lo publique cualquiera de las dos estaciones.
+  // Banda, frecuencia y modo permanecen en la clave para no mezclar servicios/contactos distintos.
+  const [firstCall, secondCall] = [ownCall, remoteCall].sort((a, b) => a.localeCompare(b));
+  const normalizedFrequency = String(qso.frequency).trim().replace(',', '.');
+  const spotKey = [firstCall, secondCall, qso.date, qso.time, String(qso.band).trim().toLowerCase(), normalizedFrequency, String(qso.mode || '').trim().toUpperCase()].join('|');
   const { error } = await supabase.from('live_qso_spots').upsert({
     spot_key: spotKey,
     callsign: remoteCall,
