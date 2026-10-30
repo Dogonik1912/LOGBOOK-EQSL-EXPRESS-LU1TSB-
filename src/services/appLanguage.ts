@@ -340,8 +340,8 @@ export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'recei
   };
   const item = messages[language] || messages.en;
   return kind === 'received'
-    ? item.received + '\\n' + item.view + ': ' + cardUrl
-    : item.reply + '\\n' + item.view + ': ' + cardUrl;
+    ? item.received + '\n' + item.view + ': ' + cardUrl
+    : item.reply + '\n' + item.view + ': ' + cardUrl;
 }
 
 
