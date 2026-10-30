@@ -133,78 +133,70 @@ async function officialNationalEmblem(code:string):Promise<HTMLImageElement|null
 async function narrowPlate(call:string,code:string,customText:string){
  const W=2400,H=900,c=document.createElement('canvas');c.width=W;c.height=H;
  const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
- const country=(code==='IC'||code==='IC-ESCUDO')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\S+\s+/,'').toUpperCase()||code);
- const flagCode=(code==='IC'||code==='IC-ESCUDO')?'es':code.toLowerCase();
- const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+flagCode+'.png');
- const emblem=(code==='AR'||code==='ES')?null:((code==='IC'||code==='IC-ESCUDO')
+ const country=(code==='IC'||code==='IC-ESCUDO')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\\S+\\s+/,'').toUpperCase()||code);
+ const flagCode=code.toLowerCase();
+ const flag=code.startsWith('IC')
+  ? null
+  : await loadCanvasImage('https://flagcdn.com/w1600/'+flagCode+'.png');
+ const emblem=(code==='IC'||code==='IC-ESCUDO')
   ? await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg')
-  : await officialNationalEmblem(code));
+  : await officialNationalEmblem(code);
  const t=(customText.trim().slice(0,42)||'LOGBOOK eQSL EXPRESS').toUpperCase();
- const rounded=(fill:string)=>{x.fillStyle=fill;x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.fill();};
- const image=(img:HTMLImageElement,dx:number,dy:number,dw:number,dh:number)=>x.drawImage(img,dx,dy,dw,dh);
+ const text=(value:string,px:number,py:number,size:number,color:string,weight=900,align:CanvasTextAlign='center')=>{
+  x.textAlign=align;x.textBaseline='middle';x.font=weight+' '+size+'px system-ui,sans-serif';x.fillStyle=color;x.fillText(value,px,py);
+ };
  const fit=(img:HTMLImageElement,maxW:number,maxH:number)=>{const s=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight);return {w:img.naturalWidth*s,h:img.naturalHeight*s};};
- const text=(value:string,px:number,py:number,size:number,color:string,weight=900,align:CanvasTextAlign='center')=>{x.textAlign=align;x.textBaseline='middle';x.font=weight+' '+size+'px system-ui,sans-serif';x.fillStyle=color;x.fillText(value,px,py);};
  x.clearRect(0,0,W,H);
  x.save();x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.clip();
- if(code==='AR'){
-  // Argentina: estética inspirada en la placa Mercosur, no una reproducción homologada.
-  rounded('#f7f9fc');
-  x.fillStyle='#153f78';x.fillRect(24,24,W-48,178);
-  x.fillStyle='#ffffff';x.fillRect(24,202,W-48,H-226);
-  text('ARGENTINA',W/2,111,76,'#ffffff',900);
-  text('MERCOSUR',170,275,34,'#174b82',800,'left');
-  image(flag,2035,48,230,150);
-  // Marca de agua diagonal muy tenue, sin interferir con la lectura.
-  x.save();x.translate(W/2,H/2);x.rotate(-.16);text('ARGENTINA  •  MERCOSUR',0,0,105,'rgba(21,63,120,.055)',900);x.restore();
-  text(call,W/2,555,Math.min(310,Math.floor(2050/Math.max(1,call.length*.62))),'#101820',900);
-  x.fillStyle='#153f78';x.fillRect(24,745,W-48,110);
-  text(t,W/2,800,52,'#ffffff',800);
- } else if(code==='ES'){
-  // España: placa europea blanca, caracteres negros y banda azul UE a la izquierda.
-  rounded('#ffffff');
-  x.fillStyle='#164b9b';x.fillRect(24,24,245,H-48);
-  // Doce estrellas en círculo y distintivo E.
-  x.fillStyle='#ffdf35';
-  for(let i=0;i<12;i++){const a=-Math.PI/2+i*Math.PI/6;const sx=146+Math.cos(a)*63,sy=245+Math.sin(a)*63;x.beginPath();x.arc(sx,sy,10,0,Math.PI*2);x.fill();}
-  text('E',146,440,116,'#ffffff',900);
-  x.fillStyle='#f4f6f8';x.fillRect(269,24,W-293,H-48);
-  // Pequeño acento con los colores de la bandera, sin convertir toda la placa en una bandera.
-  x.fillStyle='#aa151b';x.fillRect(315,92,220,25);x.fillStyle='#f1bf00';x.fillRect(315,117,220,50);x.fillStyle='#aa151b';x.fillRect(315,167,220,25);
-  text('ESPAÑA',W-300,132,52,'#243447',800);
-  text(call,1350,505,Math.min(310,Math.floor(1900/Math.max(1,call.length*.62))),'#111820',900);
-  x.fillStyle='#dbe3ec';x.fillRect(315,735,W-390,4);
-  text(t,1350,805,50,'#174477',800);
- } else {
-  // Se conserva el tratamiento de bandera completa para Brasil, Australia y el resto.
+ // La bandera auténtica del país ocupa TODO el fondo horizontal: no se usan
+ // colores ni diseños de matrículas automovilísticas.
+ if(flag){
   const scale=Math.max((W-48)/flag.naturalWidth,(H-48)/flag.naturalHeight);
   const fw=flag.naturalWidth*scale,fh=flag.naturalHeight*scale;
-  image(flag,(W-fw)/2,(H-fh)/2,fw,fh);
-  const gloss=x.createLinearGradient(0,24,0,310);gloss.addColorStop(0,'rgba(255,255,255,.28)');gloss.addColorStop(.55,'rgba(255,255,255,.06)');gloss.addColorStop(1,'rgba(255,255,255,0)');
-  x.fillStyle=gloss;x.fillRect(24,24,W-48,310);
-  x.fillStyle='rgba(0,0,0,.34)';x.fillRect(55,55,W-110,135);
-  text(country,1080,151,76,'#ffffff',900);
-  // Mantener el medallón solo cuando existe un escudo nacional cargado correctamente.
-  if(emblem){
-   const mx=2110,my=285,mr=205;
-   const med=x.createRadialGradient(mx-65,my-85,10,mx,my,mr);med.addColorStop(0,'#fff9df');med.addColorStop(.58,'#f3d98f');med.addColorStop(.86,'#d5a743');med.addColorStop(1,'#8e641d');
-   x.save();x.shadowColor='rgba(0,0,0,.48)';x.shadowBlur=28;x.fillStyle=med;x.beginPath();x.arc(mx,my,mr,0,Math.PI*2);x.fill();x.restore();
-   x.strokeStyle='#fff0b5';x.lineWidth=13;x.beginPath();x.arc(mx,my,mr-8,0,Math.PI*2);x.stroke();
-   x.strokeStyle='#8d651f';x.lineWidth=5;x.beginPath();x.arc(mx,my,mr-25,0,Math.PI*2);x.stroke();
-   const es=fit(emblem,285,330);image(emblem,mx-es.w/2,my-es.h/2,es.w,es.h);
+  x.drawImage(flag,(W-fw)/2,(H-fh)/2,fw,fh);
+ }else{
+  // Bandera de Canarias para la opción territorial: blanco, azul y amarillo.
+  x.fillStyle='#ffffff';x.fillRect(24,24,(W-48)/3,H-48);
+  x.fillStyle='#0071bc';x.fillRect(24+(W-48)/3,24,(W-48)/3,H-48);
+  x.fillStyle='#f6d331';x.fillRect(24+2*(W-48)/3,24,(W-48)/3,H-48);
+  if(code==='IC'){
+   x.fillStyle='#087b43';
+   for(let i=0;i<7;i++){const a=-Math.PI/2+i*Math.PI*2/7;x.beginPath();x.arc(W/2+Math.cos(a)*155,H/2+Math.sin(a)*155,18,0,Math.PI*2);x.fill();}
   }
-  const cx=1060,cy=595,callMax=1750;let fontSize=300;
-  x.font='900 '+fontSize+'px system-ui,sans-serif';
-  while(x.measureText(call).width>callMax&&fontSize>135){fontSize-=8;x.font='900 '+fontSize+'px system-ui,sans-serif';}
-  x.textAlign='center';x.lineJoin='round';x.lineWidth=28;x.strokeStyle='rgba(0,0,0,.92)';x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=24;x.strokeText(call,cx,cy);x.shadowBlur=0;
-  const letters=x.createLinearGradient(0,cy-fontSize,0,cy+35);letters.addColorStop(0,'#ffffff');letters.addColorStop(.55,'#f8fafc');letters.addColorStop(1,'#c8d2dc');x.fillStyle=letters;x.fillText(call,cx,cy);
-  const footer=x.createLinearGradient(0,735,0,865);footer.addColorStop(0,'#ffffff');footer.addColorStop(1,'#dce7f1');x.fillStyle=footer;x.fillRect(55,750,W-110,105);
-  text(t,W/2,802,55,'#07336b',900);
  }
- // Marco limpio, común a todos los modelos.
- x.strokeStyle='#111820';x.lineWidth=24;x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.stroke();
- x.strokeStyle='#f5f7fa';x.lineWidth=9;x.beginPath();x.roundRect(43,43,W-86,H-86,39);x.stroke();
- for(const px of [105,W-105]){x.fillStyle='#e9edf0';x.beginPath();x.arc(px,450,20,0,Math.PI*2);x.fill();x.strokeStyle='#596875';x.lineWidth=4;x.stroke();}
- drawPatentWatermark(x,W,H,code==='AR'||code==='ES');
+ // Velo discreto superior para identificar el país sin tapar la bandera.
+ const top=x.createLinearGradient(0,24,0,230);top.addColorStop(0,'rgba(0,0,0,.58)');top.addColorStop(1,'rgba(0,0,0,0)');
+ x.fillStyle=top;x.fillRect(24,24,W-48,230);
+ text(country,105,125,76,'#ffffff',900,'left');
+ // Escudo nacional original, si existe y se pudo cargar, arriba a la derecha.
+ if(emblem){
+  const mx=2145,my=170,mr=118;
+  x.save();x.shadowColor='rgba(0,0,0,.62)';x.shadowBlur=26;
+  const med=x.createRadialGradient(mx-35,my-45,8,mx,my,mr);
+  med.addColorStop(0,'#fffdf2');med.addColorStop(.72,'#f5e5b8');med.addColorStop(1,'#c69b43');
+  x.fillStyle=med;x.beginPath();x.arc(mx,my,mr,0,Math.PI*2);x.fill();x.restore();
+  x.strokeStyle='#fff3ca';x.lineWidth=9;x.beginPath();x.arc(mx,my,mr-5,0,Math.PI*2);x.stroke();
+  const es=fit(emblem,155,175);x.drawImage(emblem,mx-es.w/2,my-es.h/2,es.w,es.h);
+ }
+ // SD grande, centrada y legible sobre la bandera con contorno de alto contraste.
+ let fontSize=300;x.font='900 '+fontSize+'px system-ui,sans-serif';
+ while(x.measureText(call).width>2050&&fontSize>125){fontSize-=6;x.font='900 '+fontSize+'px system-ui,sans-serif';}
+ x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';x.lineWidth=34;
+ x.strokeStyle='rgba(0,0,0,.94)';x.shadowColor='rgba(0,0,0,.72)';x.shadowBlur=25;
+ x.strokeText(call,W/2,535);x.shadowBlur=0;
+ const letters=x.createLinearGradient(0,535-fontSize/2,0,535+fontSize/2);
+ letters.addColorStop(0,'#ffffff');letters.addColorStop(.55,'#fffdf5');letters.addColorStop(1,'#dce7f2');
+ x.fillStyle=letters;x.fillText(call,W/2,535);
+ // Texto opcional en una banda translúcida: la bandera sigue siendo el fondo visible.
+ if(customText.trim()){
+  x.fillStyle='rgba(0,0,0,.48)';x.fillRect(70,755,W-140,86);
+  text(t,W/2,798,48,'#ffffff',800);
+ }
+ // Marco premium sin alterar los colores de la bandera.
+ x.strokeStyle='rgba(12,20,30,.96)';x.lineWidth=25;x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.stroke();
+ x.strokeStyle='rgba(255,255,255,.92)';x.lineWidth=8;x.beginPath();x.roundRect(45,45,W-90,H-90,38);x.stroke();
+ for(const px of [105,W-105]){x.fillStyle='#f4f6f8';x.beginPath();x.arc(px,450,18,0,Math.PI*2);x.fill();x.strokeStyle='#536170';x.lineWidth=4;x.stroke();}
+ drawPatentWatermark(x,W,H,false);
  x.restore();
  return c;
 }
