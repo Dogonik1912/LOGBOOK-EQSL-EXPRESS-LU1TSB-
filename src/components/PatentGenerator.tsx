@@ -112,52 +112,55 @@ async function officialNationalEmblem(code:string):Promise<HTMLImageElement|null
  return null;
 }
 async function narrowPlate(call:string,code:string,customText:string){
- const W=1800,H=620,c=document.createElement('canvas');c.width=W;c.height=H;
+ const W=2400,H=900,c=document.createElement('canvas');c.width=W;c.height=H;
  const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
  const cc=(code==='IC'||code==='IC-ESCUDO')?'es':code.toLowerCase();
  const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+cc+'.png');
- // Base y bandera completa a sangre, con tratamiento de placa esmaltada.
- x.clearRect(0,0,W,H);
- x.save();x.beginPath();x.roundRect(20,20,W-40,H-40,48);x.clip();x.drawImage(flag,20,20,W-40,H-40);
- const shade=x.createLinearGradient(0,20,0,H-20);shade.addColorStop(0,'rgba(0,0,0,.30)');shade.addColorStop(.32,'rgba(0,0,0,.04)');shade.addColorStop(.68,'rgba(0,0,0,.10)');shade.addColorStop(1,'rgba(0,0,0,.36)');x.fillStyle=shade;x.fillRect(20,20,W-40,H-40);
- const gloss=x.createLinearGradient(0,20,0,210);gloss.addColorStop(0,'rgba(255,255,255,.32)');gloss.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gloss;x.fillRect(20,20,W-40,190);
- x.restore();
- // Marco metálico doble, bisel y remaches.
- x.save();x.shadowColor='rgba(0,0,0,.45)';x.shadowBlur=18;x.strokeStyle='#101820';x.lineWidth=18;x.beginPath();x.roundRect(20,20,W-40,H-40,48);x.stroke();x.restore();
- x.strokeStyle='#f4f4ee';x.lineWidth=9;x.beginPath();x.roundRect(34,34,W-68,H-68,39);x.stroke();
- x.strokeStyle='rgba(10,25,42,.85)';x.lineWidth=3;x.beginPath();x.roundRect(48,48,W-96,H-96,31);x.stroke();
- // Banda inferior satinada para el texto personalizado.
- const footer=x.createLinearGradient(0,500,0,600);footer.addColorStop(0,'rgba(255,255,255,.94)');footer.addColorStop(1,'rgba(224,235,245,.98)');x.fillStyle=footer;x.fillRect(48,510,W-96,58);
- // País centrado arriba, con sombra para contraste.
+ // Bandera completa como fondo, sin sustituir sus colores ni deformar sus proporciones.
+ x.clearRect(0,0,W,H);x.save();x.beginPath();x.roundRect(24,24,W-48,H-48,58);x.clip();
+ const scale=Math.max((W-48)/flag.naturalWidth,(H-48)/flag.naturalHeight);
+ const fw=flag.naturalWidth*scale,fh=flag.naturalHeight*scale;
+ x.drawImage(flag,(W-fw)/2,(H-fh)/2,fw,fh);
+ // Brillo esmaltado muy sutil para conservar los colores originales de cada bandera.
+ const gloss=x.createLinearGradient(0,24,0,310);gloss.addColorStop(0,'rgba(255,255,255,.28)');gloss.addColorStop(.55,'rgba(255,255,255,.06)');gloss.addColorStop(1,'rgba(255,255,255,0)');
+ x.fillStyle=gloss;x.fillRect(24,24,W-48,310);x.restore();
+ // Cabecera discreta para el nombre del país.
+ x.save();x.fillStyle='rgba(0,0,0,.34)';x.fillRect(55,55,W-110,135);x.restore();
  const country=(code==='IC'||code==='IC-ESCUDO')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\\S+ /,'').toUpperCase()||code);
  x.textAlign='center';x.textBaseline='alphabetic';x.lineJoin='round';
- x.font='900 54px system-ui, sans-serif';x.lineWidth=9;x.strokeStyle='rgba(0,0,0,.72)';x.fillStyle='#fff';x.strokeText(country,W/2,118);x.fillText(country,W/2,118);
- // Escudo oficial arriba a la derecha, en medallón dorado como el modelo de referencia.
- if(code==='IC'||code==='IC-ESCUDO'){
-  if(code==='IC-ESCUDO'){
-   const crest=await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg');
-   const scale=Math.min(178/crest.naturalWidth,205/crest.naturalHeight);const ew=crest.naturalWidth*scale,eh=crest.naturalHeight*scale;
-   x.fillStyle='rgba(255,255,255,.94)';x.beginPath();x.arc(1600,190,122,0,Math.PI*2);x.fill();x.strokeStyle='#d8ad43';x.lineWidth=12;x.stroke();x.drawImage(crest,1600-ew/2,190-eh/2,ew,eh);
-  }else{
-   x.fillStyle='rgba(255,255,255,.9)';x.beginPath();x.arc(1600,190,112,0,Math.PI*2);x.fill();x.strokeStyle='#d8ad43';x.lineWidth=10;x.stroke();x.fillStyle='#087b43';for(let i=0;i<7;i++){const a=-Math.PI/2+i*Math.PI*2/7;x.beginPath();x.arc(1600+Math.cos(a)*66,190+Math.sin(a)*66,12,0,Math.PI*2);x.fill();}
-  }
- }else{
-  const emblem=await officialNationalEmblem(code);
-  if(!emblem)throw new Error('No se encontró un archivo verificable del escudo o emblema nacional de '+(commonsCountryNames[code]||code)+'. No se generó una insignia inventada.');
-  x.save();x.shadowColor='rgba(0,0,0,.38)';x.shadowBlur=18;x.fillStyle='rgba(255,255,255,.94)';x.beginPath();x.arc(1600,190,120,0,Math.PI*2);x.fill();x.restore();
-  const med=x.createRadialGradient(1565,150,10,1600,190,125);med.addColorStop(0,'#fff8dc');med.addColorStop(.7,'#f0d58a');med.addColorStop(1,'#b8862b');x.fillStyle=med;x.beginPath();x.arc(1600,190,120,0,Math.PI*2);x.fill();x.strokeStyle='#fff1bd';x.lineWidth=7;x.stroke();x.strokeStyle='#8b641e';x.lineWidth=3;x.beginPath();x.arc(1600,190,108,0,Math.PI*2);x.stroke();
-  const maxW=168,maxH=190,scale=Math.min(maxW/emblem.naturalWidth,maxH/emblem.naturalHeight);const ew=emblem.naturalWidth*scale,eh=emblem.naturalHeight*scale;
-  x.drawImage(emblem,1600-ew/2,190-eh/2,ew,eh);
- }
- // Indicativo grande, centrado en el espacio libre a la izquierda del escudo.
- x.textAlign='center';x.textBaseline='alphabetic';const callArea=W-390;
- let fontSize=205;x.font='900 '+fontSize+'px system-ui, sans-serif';
- while(x.measureText(call).width>callArea-100&&fontSize>90){fontSize-=6;x.font='900 '+fontSize+'px system-ui, sans-serif';}
- const cx=760,cy=390;x.lineWidth=20;x.strokeStyle='rgba(0,0,0,.88)';x.lineJoin='round';x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=12;x.strokeText(call,cx,cy);x.shadowBlur=0;
- const lettering=x.createLinearGradient(0,cy-fontSize,0,cy+20);lettering.addColorStop(0,'#ffffff');lettering.addColorStop(.58,'#f4f7fb');lettering.addColorStop(1,'#c8d4df');x.fillStyle=lettering;x.fillText(call,cx,cy);
- const t=(customText.trim().slice(0,42)||'LOGBOOK eQSL EXPRESS').toUpperCase();x.font='800 34px system-ui, sans-serif';x.lineWidth=3;x.strokeStyle='rgba(0,0,0,.18)';x.fillStyle='#092c59';x.strokeText(t,W/2,552);x.fillText(t,W/2,552);
- // Tornillos discretos de placa.
- for(const px of [88,W-88]){x.fillStyle='#dce3e8';x.beginPath();x.arc(px,310,15,0,Math.PI*2);x.fill();x.strokeStyle='#52616d';x.lineWidth=3;x.stroke();x.strokeStyle='rgba(30,40,50,.65)';x.beginPath();x.moveTo(px-7,310);x.lineTo(px+7,310);x.stroke();}
+ x.font='900 76px system-ui, sans-serif';x.lineWidth=12;x.strokeStyle='rgba(0,0,0,.78)';x.fillStyle='#fff';x.strokeText(country,1080,151);x.fillText(country,1080,151);
+ // Escudo/emblema arriba a la derecha dentro de un medallón dorado.
+ const emblem=(code==='IC'||code==='IC-ESCUDO')
+  ? await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg')
+  : await officialNationalEmblem(code);
+ if(!emblem)throw new Error('No se encontró un archivo verificable del escudo o emblema nacional de '+(commonsCountryNames[code]||code)+'. No se generó una insignia inventada.');
+ const mx=2110,my=285,mr=205;
+ const med=x.createRadialGradient(mx-65,my-85,10,mx,my,mr);med.addColorStop(0,'#fff9df');med.addColorStop(.58,'#f3d98f');med.addColorStop(.86,'#d5a743');med.addColorStop(1,'#8e641d');
+ x.save();x.shadowColor='rgba(0,0,0,.48)';x.shadowBlur=28;x.fillStyle=med;x.beginPath();x.arc(mx,my,mr,0,Math.PI*2);x.fill();x.restore();
+ x.strokeStyle='#fff0b5';x.lineWidth=13;x.beginPath();x.arc(mx,my,mr-8,0,Math.PI*2);x.stroke();
+ x.strokeStyle='#8d651f';x.lineWidth=5;x.beginPath();x.arc(mx,my,mr-25,0,Math.PI*2);x.stroke();
+ const maxW=285,maxH=330,es=Math.min(maxW/emblem.naturalWidth,maxH/emblem.naturalHeight);
+ const ew=emblem.naturalWidth*es,eh=emblem.naturalHeight*es;
+ x.drawImage(emblem,mx-ew/2,my-eh/2,ew,eh);
+ // Indicativo central, tipografía gruesa blanca, contorno negro y relieve.
+ const cx=1060,cy=595,callMax=1750;let fontSize=300;
+ x.font='900 '+fontSize+'px system-ui, sans-serif';
+ while(x.measureText(call).width>callMax&&fontSize>135){fontSize-=8;x.font='900 '+fontSize+'px system-ui, sans-serif';}
+ x.textAlign='center';x.lineJoin='round';x.lineWidth=28;x.strokeStyle='rgba(0,0,0,.92)';
+ x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=24;x.strokeText(call,cx,cy);x.shadowBlur=0;
+ const letters=x.createLinearGradient(0,cy-fontSize,0,cy+35);letters.addColorStop(0,'#ffffff');letters.addColorStop(.55,'#f8fafc');letters.addColorStop(1,'#c8d2dc');
+ x.fillStyle=letters;x.fillText(call,cx,cy);
+ // Franja inferior blanca satinada, igual para todos los países.
+ const footer=x.createLinearGradient(0,735,0,865);footer.addColorStop(0,'#ffffff');footer.addColorStop(1,'#dce7f1');
+ x.fillStyle=footer;x.fillRect(55,750,W-110,105);
+ const t=(customText.trim().slice(0,42)||'LOGBOOK eQSL EXPRESS').toUpperCase();
+ x.font='900 55px system-ui, sans-serif';x.textAlign='center';x.textBaseline='middle';x.lineWidth=3;x.strokeStyle='rgba(0,0,0,.12)';x.fillStyle='#07336b';
+ x.strokeText(t,W/2,802);x.fillText(t,W/2,802);
+ // Bisel metálico multicapa y tornillos de fijación.
+ x.save();x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=22;x.strokeStyle='#101820';x.lineWidth=28;x.beginPath();x.roundRect(24,24,W-48,H-48,58);x.stroke();x.restore();
+ x.strokeStyle='#f7f7f3';x.lineWidth=13;x.beginPath();x.roundRect(46,46,W-92,H-92,48);x.stroke();
+ x.strokeStyle='rgba(12,30,48,.9)';x.lineWidth=5;x.beginPath();x.roundRect(65,65,W-130,H-130,39);x.stroke();
+ for(const px of [105,W-105]){x.fillStyle='#e9edf0';x.beginPath();x.arc(px,450,23,0,Math.PI*2);x.fill();x.strokeStyle='#596875';x.lineWidth=4;x.stroke();x.strokeStyle='#596875';x.beginPath();x.moveTo(px-11,450);x.lineTo(px+11,450);x.stroke();}
  return c;
 }
 
