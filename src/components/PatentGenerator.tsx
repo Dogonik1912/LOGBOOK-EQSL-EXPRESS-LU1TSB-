@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Award, Download, Share2, X } from 'lucide-react';
+import { countryForCallsign } from '../services/callsignCountry';
 
 const countries = [
  ['AR','🇦🇷 Argentina'],['BR','🇧🇷 Brasil'],['PT','🇵🇹 Portugal'],['ES','🇪🇸 España'],['US','🇺🇸 Estados Unidos'],['GB','🇬🇧 Reino Unido'],['FR','🇫🇷 Francia'],['DE','🇩🇪 Alemania'],['IT','🇮🇹 Italia'],['NL','🇳🇱 Países Bajos'],['PL','🇵🇱 Polonia'],['RU','🇷🇺 Rusia'],['UA','🇺🇦 Ucrania'],['CN','🇨🇳 China'],['JP','🇯🇵 Japón'],['KR','🇰🇷 Corea del Sur'],['IN','🇮🇳 India'],['TR','🇹🇷 Turquía'],['SE','🇸🇪 Suecia'],['NO','🇳🇴 Noruega'],['DK','🇩🇰 Dinamarca'],['FI','🇫🇮 Finlandia'],['CZ','🇨🇿 Chequia'],['GR','🇬🇷 Grecia'],['RO','🇷🇴 Rumania'],['HU','🇭🇺 Hungría'],['CA','🇨🇦 Canadá'],['AU','🇦🇺 Australia'],['NZ','🇳🇿 Nueva Zelanda'],['CL','🇨🇱 Chile'],['UY','🇺🇾 Uruguay'],['PE','🇵🇪 Perú'],['BO','🇧🇴 Bolivia'],['PY','🇵🇾 Paraguay'],['CO','🇨🇴 Colombia'],['VE','🇻🇪 Venezuela'],['EC','🇪🇨 Ecuador'],['GT','🇬🇹 Guatemala'],['CR','🇨🇷 Costa Rica'],['HN','🇭🇳 Honduras'],['SV','🇸🇻 El Salvador'],['NI','🇳🇮 Nicaragua'],['MX','🇲🇽 México'],['ZA','🇿🇦 Sudáfrica'],['IS','🇮🇸 Islandia'],['IE','🇮🇪 Irlanda'],['CH','🇨🇭 Suiza'],['AT','🇦🇹 Austria'],['BE','🇧🇪 Bélgica'],['BG','🇧🇬 Bulgaria'],['HR','🇭🇷 Croacia'],['SI','🇸🇮 Eslovenia'],['SK','🇸🇰 Eslovaquia'],['LT','🇱🇹 Lituania'],['LV','🇱🇻 Letonia'],['EE','🇪🇪 Estonia'],['BY','🇧🇾 Bielorrusia'],['IL','🇮🇱 Israel'],['TH','🇹🇭 Tailandia'],['ID','🇮🇩 Indonesia'],['PH','🇵🇭 Filipinas'],['SG','🇸🇬 Singapur'],['MY','🇲🇾 Malasia'],['HK','🇭🇰 Hong Kong'],['TW','🇹🇼 Taiwán'],['PK','🇵🇰 Pakistán'],['BD','🇧🇩 Bangladés'],['LK','🇱🇰 Sri Lanka'],['EG','🇪🇬 Egipto'],['MA','🇲🇦 Marruecos'],['TN','🇹🇳 Túnez'],['KE','🇰🇪 Kenia'],['NG','🇳🇬 Nigeria'],['GH','🇬🇭 Ghana']
@@ -23,32 +24,13 @@ const callsignCountryPrefixes: Record<string, string> = {
   MY:'9M', HK:'VR', TW:'BV', PK:'AP', BD:'S2', LK:'4P 4Q 4R',
   EG:'SU', MA:'CN', TN:'3V', KE:'5Z', NG:'5N', GH:'9G'
 };
-const elevenMeterDivisionCountries: Record<string, string> = {
-  '3': 'BR', // Brasil — división DX 3
-  '4': 'AR', // Argentina — división DX 4
-};
 const detectCountryFromCallsign = (raw: string): string | null => {
-  const call = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (call.length < 3) return null;
-
-  // Primero reconocer prefijos oficiales de radioaficionado (UIT).
-  // PY/PP/PX/PY pertenecen a Brasil; ZP corresponde a Paraguay.
-  const amateurMatches = Object.entries(callsignCountryPrefixes)
-    .flatMap(([country, prefixes]) => prefixes.split(/\\s+/).map(prefix => ({ country, prefix: prefix.toUpperCase() })))
-    .filter(item => call.startsWith(item.prefix))
-    .sort((a, b) => b.prefix.length - a.prefix.length);
-  if (amateurMatches.length) {
-    const country = amateurMatches[0].country;
-    if (countries.some(item => item[0] === country)) return country;
-  }
-
-  // En 11 metros, la primera cifra identifica la división DX:
-  // 3 = Brasil; 4 = Argentina. No usar idioma ni región del teléfono.
-  if (/^\\d{1,2}[A-Z]/.test(call)) {
-    const divisionCountry = elevenMeterDivisionCountries[call[0]];
-    if (divisionCountry) return divisionCountry;
-  }
-  return null;
+  const call = raw.trim().toUpperCase();
+  if (!call) return null;
+  const detectedCountry = countryForCallsign(call, undefined, /^\\d/.test(call));
+  if (!detectedCountry) return null;
+  const match = countries.find((item) => item[1].replace(/^\\S+\\s+/, '') === detectedCountry);
+  return match?.[0] || null;
 };
 const W=1800, H=1200;
 const APP_URL='https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
