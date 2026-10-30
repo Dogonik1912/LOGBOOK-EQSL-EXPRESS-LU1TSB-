@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { MessageCircle, Send, ShieldCheck, Reply, AlertTriangle, Trash2, Sun, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { flagForCallsign } from '../services/callsignCountry';
+import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type OnlineUser = { callsign: string; identityToken?: string };
 
@@ -15,7 +15,7 @@ const openPrivateMessage = (rawCallsign: string) => {
 // La misma función central se usa en generador, usuarios en línea y Live Spot.
 const callsignCountryFlag = (rawCallsign: string): string => {
   const call = String(rawCallsign || '').trim().toUpperCase();
-  return flagForCallsign(call, undefined, /^\d/.test(call));
+  return flagForCallsign(call, undefined, is11MeterStationIdentifier(call));
 };
 
 type ChatMessage = {
