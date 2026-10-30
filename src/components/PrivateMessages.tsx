@@ -384,7 +384,7 @@ export const PrivateMessages: React.FC = () => {
         <div className="mt-3 border-t border-violet-800 pt-3 grid grid-cols-1 md:grid-cols-[minmax(180px,0.75fr)_minmax(0,1.5fr)]">
           <aside className="border-b border-violet-800 bg-slate-900 p-3 text-slate-100 md:border-b-0 md:border-r">
             {!callsign ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Primero guardá tu señal distintiva en el chat comunitario. Se usará la identidad registrada en este dispositivo.</p>
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Tu señal distintiva se valida al instalar LogBook eQSL EXPRESS. Si todavía no aparece, recargá la aplicación para sincronizar tu identidad.</p>
             ) : (
               <>
                 <p className="mb-2 rounded-lg border border-amber-400/60 bg-slate-950 px-3 py-2 text-xs text-slate-200">TU INDICATIVO <strong className="ml-2 inline-block font-mono text-base font-black tracking-wider text-amber-300">{callsign}</strong></p>
