@@ -70,10 +70,10 @@ const continentForSpot = (spot: Spot): string => {
 export const LiveSpots: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedBands, setSelectedBands] = useState<string[]>([]);
-  const [selectedModes, setSelectedModes] = useState<string[]>([]);
-  const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
-  const [showAllActivity, setShowAllActivity] = useState(true);
+  const [selectedBands, setSelectedBands] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('live_spot_filter_bands') || '[]'); } catch { return []; } });
+  const [selectedModes, setSelectedModes] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('live_spot_filter_modes') || '[]'); } catch { return []; } });
+  const [selectedContinents, setSelectedContinents] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('live_spot_filter_continents') || '[]'); } catch { return []; } });
+  const [showAllActivity, setShowAllActivity] = useState(() => localStorage.getItem('live_spot_show_all') !== 'false');
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -97,7 +97,16 @@ export const LiveSpots: React.FC = () => {
   const bandOptions=Array.from(new Set([...allSpotBands, ...HAM_BANDS.map(item=>item.name), ...spots.map(spot=>spot.band).filter(Boolean)])).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
   const modeOptions=Array.from(new Set([...allSpotModes, ...HAM_MODES, ...spots.map(spot=>spot.mode).filter(Boolean)])).sort((a,b)=>a.localeCompare(b));
   const continentOptions=['África','América','Asia','Europa','Oceanía','Antártida','Otros'];
-  const filteredSpots=showAllActivity ? spots : spots.filter(spot=>(!selectedBands.length||selectedBands.includes(spot.band))&&(!selectedModes.length||selectedModes.includes(spot.mode))&&(!selectedContinents.length||selectedContinents.includes(continentForSpot(spot))));
+  const normalizeFilterValue=(value:string)=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ');
+  const filteredSpots=showAllActivity ? spots : spots.filter(spot=>
+    (!selectedBands.length||selectedBands.some(value=>normalizeFilterValue(value)===normalizeFilterValue(spot.band))) &&
+    (!selectedModes.length||selectedModes.some(value=>normalizeFilterValue(value)===normalizeFilterValue(spot.mode))) &&
+    (!selectedContinents.length||selectedContinents.includes(continentForSpot(spot)))
+  );
+  useEffect(()=>{localStorage.setItem('live_spot_filter_bands',JSON.stringify(selectedBands));},[selectedBands]);
+  useEffect(()=>{localStorage.setItem('live_spot_filter_modes',JSON.stringify(selectedModes));},[selectedModes]);
+  useEffect(()=>{localStorage.setItem('live_spot_filter_continents',JSON.stringify(selectedContinents));},[selectedContinents]);
+  useEffect(()=>{localStorage.setItem('live_spot_show_all',String(showAllActivity));},[showAllActivity]);
   const toggleFilter=(values:string[],value:string,setter:(next:string[])=>void)=>{setShowAllActivity(false);setter(values.includes(value)?values.filter(item=>item!==value):[...values,value]);};
   const enableShowAll=(checked:boolean)=>{setShowAllActivity(checked);if(checked){setSelectedBands([]);setSelectedModes([]);setSelectedContinents([]);}};
   const loadGridLocators = async () => {
@@ -253,13 +262,13 @@ export const LiveSpots: React.FC = () => {
 
   return <section className="mb-5 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
     <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex min-h-[56px] w-full min-w-0 items-center justify-between gap-2 bg-slate-900 px-3 py-2.5 text-left text-white hover:bg-slate-800/80">
-      <span className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><span className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</span><span className="text-[10px] text-slate-400">({spots.length})</span></span>
+      <span className="flex min-w-0 items-center gap-2"><Radio className="h-5 w-5 shrink-0 text-cyan-300" /><span className="whitespace-nowrap text-sm font-bold sm:text-base">Spot en vivo</span><span className="text-[10px] text-slate-400">({showAllActivity ? spots.length : filteredSpots.length})</span></span>
       <span className="flex shrink-0 items-center gap-2"><span className="flex items-center gap-1 text-[10px]">{connected ? <><Wifi className="h-4 w-4 text-emerald-300" /> En vivo</> : <><WifiOff className="h-4 w-4 text-amber-300" /> Conectando</>}</span><ChevronDown className={`h-4 w-4 text-cyan-200 transition-transform ${isExpanded ? 'rotate-180' : ''}`} /></span>
     </button>
     {isExpanded && <div>
     <div className="border-b border-slate-800 px-3 py-2">
       <button type="button" onClick={()=>setFilterOpen(open=>!open)} aria-expanded={filterOpen} className="text-[11px] font-medium text-cyan-300 underline decoration-dotted underline-offset-2">Filtra los spot que quieres ver</button>
-      {!showAllActivity&&(selectedBands.length+selectedModes.length+selectedContinents.length)>0&&<span className="ml-2 text-[10px] text-slate-400">({filteredSpots.length} de {spots.length})</span>}
+      {!showAllActivity&&<span className="ml-2 text-[10px] text-slate-400">Mostrando {filteredSpots.length} de {spots.length}</span>}
       {filterOpen&&<div className="mt-2 space-y-3 rounded-xl border border-slate-700 bg-slate-900 p-3">
         <div><p className="mb-1 text-xs font-bold text-white">Bandas</p><div className="flex flex-wrap gap-2">{bandOptions.map(value=><label key={value} className="flex items-center gap-1 text-xs text-slate-200"><input type="checkbox" checked={selectedBands.includes(value)} onChange={()=>toggleFilter(selectedBands,value,setSelectedBands)}/>{value}</label>)}</div></div>
         <div><p className="mb-1 text-xs font-bold text-white">Modos</p><div className="flex flex-wrap gap-2">{modeOptions.map(value=><label key={value} className="flex items-center gap-1 text-xs text-slate-200"><input type="checkbox" checked={selectedModes.includes(value)} onChange={()=>toggleFilter(selectedModes,value,setSelectedModes)}/>{value}</label>)}</div></div>
