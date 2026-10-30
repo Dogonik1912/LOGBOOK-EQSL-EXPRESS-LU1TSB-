@@ -560,7 +560,7 @@ export const CommunityChat: React.FC = () => {
             <button type="button" disabled={moderationBusy} onClick={() => void loadAdminData('list_sanctions')} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50">Ver sanciones</button>
             <button type="button" disabled={moderationBusy} onClick={() => void loadAdminData('list_audit')} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold disabled:opacity-50">Ver auditoría</button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input value={moderatorCandidate} onChange={(e) => setModeratorCandidate(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo para nombrar moderador" className="min-w-0 flex-1 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs text-slate-900" />
             <button type="button" disabled={moderationBusy || moderatorCandidate.trim().length < 3} onClick={() => void appointModerator()} className="rounded-lg bg-amber-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Nombrar</button>
           </div>
@@ -625,7 +625,7 @@ export const CommunityChat: React.FC = () => {
                   <button type="button" onClick={() => void saveCallsign()} disabled={busy || callsign.trim().length < 3} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? 'Guardando…' : 'Guardar indicativo'}</button>                </div>
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className={`min-w-0 flex-1 rounded-xl border px-3 py-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 ${darkChat ? "border-slate-600 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-900"}`} />
               <button type="button" onClick={() => void sendMessage()} disabled={busy || !draft.trim() || callsign.trim().length < 3} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /><span className="hidden sm:inline">Enviar</span></button>
             </div>
