@@ -25,6 +25,7 @@ import { startAutomaticUiTranslation } from './services/appLanguage';
 import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
 import { PropagationReport } from './components/PropagationReport';
+import { PatentGenerator } from './components/PatentGenerator';
 
 
 interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
@@ -352,6 +353,7 @@ function MainApp() {
 
       {/* Informe de propagación al final del contenido, antes del pie de página. */}
       <PropagationReport />
+      <PatentGenerator />
 
       {/* Pie de página al final de la aplicación. */}
       <Footer />
