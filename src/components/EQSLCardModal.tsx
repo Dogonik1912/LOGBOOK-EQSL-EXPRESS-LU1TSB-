@@ -452,7 +452,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       hi: ['आपको eQSL मिला है! eQSL EXPRESS से जल्दी और मुफ्त जवाब दें।', 'कार्ड खोलें और जवाब देने के लिए बटन दबाएँ:'],
       id: ['ANDA MENERIMA eQSL! Balas dengan cepat dan gratis melalui eQSL EXPRESS.', 'Buka kartu dan tekan tombol balas:'],
     };
-    return copy[lang] || copy.en;
+    const messageLanguage = lang === 'pt-br' ? 'pt' : lang;
+    return copy[messageLanguage] || copy.en;
   };
 
   // Crear un enlace público corto. Los datos del QSO se guardan temporalmente en el servidor,
