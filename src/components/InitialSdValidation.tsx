@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { getLocalizedWelcome, getRecipientLanguage } from '../services/appLanguage';
 
 /**
  * Initial one-time SD identity check. Existing devices with a saved community
@@ -14,7 +15,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [deviceLimit, setDeviceLimit] = useState(false);
   const [identityNotice, setIdentityNotice] = useState('');
   const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
-  const [welcome, setWelcome] = useState<{ callsign: string; name: string } | null>(null);
+  const [welcome, setWelcome] = useState<{ callsign: string; name: string; language: ReturnType<typeof getRecipientLanguage> } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -123,7 +124,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       // The official Argentine license-holder lookup is not connected yet.
       // Use a saved verified holder name only when one is already available; never invent it.
       const holderName = (localStorage.getItem('radio_license_holder_name') || '').trim();
-      setWelcome({ callsign: clean, name: holderName });
+      setWelcome({ callsign: clean, name: holderName, language: getRecipientLanguage(undefined, clean) });
       setRequired(false);
     } finally {
       setBusy(false);
@@ -142,7 +143,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       </section>
     </div>
   );
-  if (!required) return <>{identityNotice && <div className="fixed left-3 right-3 top-3 z-[10002] mx-auto max-w-xl rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-slate-900 shadow-xl" role="status"><strong className="block">Aviso de verificación de identidad</strong><p className="mt-1">{identityNotice}</p><a className="mt-2 inline-block font-bold text-sky-800 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a></div>}{welcome && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title"><section className="w-full max-w-md rounded-2xl border border-sky-300 bg-white p-6 text-center text-slate-900 shadow-2xl"><p className="text-xl font-black text-sky-800">{welcome.callsign}{welcome.name ? ` · ${welcome.name}` : ''}</p><h2 id="welcome-title" className="mt-3 text-xl font-bold">¡Bienvenido a <strong>LogBook eQSL EXPRESS</strong>!</h2><p className="mt-4 text-base leading-relaxed">Aquí encontrarás<br />las herramientas<br />para hacer radio<br />de forma más fácil.</p><button type="button" autoFocus onClick={() => setWelcome(null)} className="mt-5 min-h-12 w-full rounded-xl bg-sky-700 px-4 py-3 text-base font-black text-white shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300">CERRAR Y ENTRAR A LA APP</button></section></div>} {children}</>;
+  if (!required) return <>{identityNotice && <div className="fixed left-3 right-3 top-3 z-[10002] mx-auto max-w-xl rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-slate-900 shadow-xl" role="status"><strong className="block">Aviso de verificación de identidad</strong><p className="mt-1">{identityNotice}</p><a className="mt-2 inline-block font-bold text-sky-800 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a></div>}{welcome && (() => { const message = getLocalizedWelcome(welcome.language); return <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title"><section className="w-full max-w-md rounded-2xl border border-sky-300 bg-white p-6 text-center text-slate-900 shadow-2xl"><p className="text-xl font-black text-sky-800">{welcome.callsign}{welcome.name ? ` · ${welcome.name}` : ''}</p><h2 id="welcome-title" className="mt-3 text-xl font-bold">{message.title}</h2><p className="mt-4 text-base leading-relaxed">{message.body}</p><button type="button" autoFocus onClick={() => setWelcome(null)} className="mt-5 min-h-12 w-full rounded-xl bg-sky-700 px-4 py-3 text-base font-black text-white shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300">{message.close}</button></section></div>; })()} {children}</>;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="sd-validation-title">
