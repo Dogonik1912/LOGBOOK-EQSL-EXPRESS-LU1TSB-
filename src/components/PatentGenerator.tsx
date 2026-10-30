@@ -23,16 +23,32 @@ const callsignCountryPrefixes: Record<string, string> = {
   MY:'9M', HK:'VR', TW:'BV', PK:'AP', BD:'S2', LK:'4P 4Q 4R',
   EG:'SU', MA:'CN', TN:'3V', KE:'5Z', NG:'5N', GH:'9G'
 };
+const elevenMeterDivisionCountries: Record<string, string> = {
+  '3': 'BR', // Brasil — división DX 3
+  '4': 'AR', // Argentina — división DX 4
+};
 const detectCountryFromCallsign = (raw: string): string | null => {
   const call = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (call.length < 3 || !/[A-Z]/.test(call) || !/[0-9]/.test(call)) return null;
-  const matches = Object.entries(callsignCountryPrefixes)
+  if (call.length < 3) return null;
+
+  // Primero reconocer prefijos oficiales de radioaficionado (UIT).
+  // PY/PP/PX/PY pertenecen a Brasil; ZP corresponde a Paraguay.
+  const amateurMatches = Object.entries(callsignCountryPrefixes)
     .flatMap(([country, prefixes]) => prefixes.split(/\\s+/).map(prefix => ({ country, prefix: prefix.toUpperCase() })))
     .filter(item => call.startsWith(item.prefix))
     .sort((a, b) => b.prefix.length - a.prefix.length);
-  if (!matches.length) return null;
-  const country = matches[0].country;
-  return countries.some(item => item[0] === country) ? country : null;
+  if (amateurMatches.length) {
+    const country = amateurMatches[0].country;
+    if (countries.some(item => item[0] === country)) return country;
+  }
+
+  // En 11 metros, la primera cifra identifica la división DX:
+  // 3 = Brasil; 4 = Argentina. No usar idioma ni región del teléfono.
+  if (/^\\d{1,2}[A-Z]/.test(call)) {
+    const divisionCountry = elevenMeterDivisionCountries[call[0]];
+    if (divisionCountry) return divisionCountry;
+  }
+  return null;
 };
 const W=1800, H=1200;
 const APP_URL='https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
