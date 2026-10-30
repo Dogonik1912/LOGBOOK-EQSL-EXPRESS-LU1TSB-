@@ -681,13 +681,10 @@ export const CommunityChat: React.FC = () => {
           </div>
           {replyTo && <div className="flex items-center justify-between border-t border-slate-200 bg-sky-50 px-4 py-2 text-xs text-slate-700"><span>Respondiendo a <strong>{replyTo.callsign}</strong></span><button type="button" onClick={() => setReplyTo(null)} className="font-semibold underline">Cancelar</button></div>}
           <div className={`border-t p-3 sm:p-4 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
-            {!sdLocked && (
-              <div className={`mb-3 rounded-xl border p-3 ${darkChat ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
-                <label htmlFor="community-current-callsign" className={`mb-1 block text-xs font-semibold ${darkChat ? 'text-slate-200' : 'text-slate-600'}`}>Señal distintiva para el chat</label>
-                <input id="community-current-callsign" value={callsign} onChange={(e) => setCallsign(e.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} onBlur={() => setCallsign(callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} autoComplete="off" spellCheck={false} placeholder="Ej.: LU1TSB/4RC978" className={`w-full rounded-lg border px-3 py-2 font-mono text-sm outline-none focus:border-sky-500 ${darkChat ? 'border-slate-600 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-900'}`} />
-                <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => void saveCallsign()} disabled={busy || callsign.trim().length < 3} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? 'Guardando…' : 'Guardar indicativo'}</button>                </div>
-              </div>
+            {!callsign && (
+              <p className={`mb-3 rounded-xl border p-3 text-xs ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>
+                Tu señal distintiva se valida una sola vez al instalar e ingresar a LogBook eQSL EXPRESS. Si no aparece aquí, recargá la aplicación para sincronizar tu identidad.
+              </p>
             )}
             <div className="flex flex-wrap gap-2">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} maxLength={500} placeholder="Escribí un mensaje…" className={`min-w-0 flex-1 rounded-xl border px-3 py-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 ${darkChat ? "border-slate-600 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-900"}`} />
