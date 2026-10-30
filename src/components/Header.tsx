@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
+import { getInitialAppLanguage } from '../services/appLanguage';
 import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
@@ -242,7 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [shareLanguage, setShareLanguage] = useState(() => getInitialAppLanguage());
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
-  const shareText = getLocalizedShareText(shareLanguage);
+  const shareText = 'LOGBOOK eQSL EXPRESS';
   const shareOptions = [
     { name: 'WhatsApp', mark: 'wa', color: 'bg-green-600', url: () => 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl) },
     { name: 'Telegram', mark: 'tg', color: 'bg-sky-500', url: () => 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText) },
@@ -251,8 +251,8 @@ export const Header: React.FC<HeaderProps> = ({
     { name: 'Facebook', mark: 'f', color: 'bg-blue-700', url: () => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl) },
     { name: 'TikTok', mark: '♪', color: 'bg-black', url: () => 'https://www.tiktok.com/' },
     { name: 'Messenger', mark: 'm', color: 'bg-blue-600', url: () => 'https://www.facebook.com/dialog/send?link=' + encodeURIComponent(shareUrl) },
-    { name: 'Gmail', mark: 'M', color: 'bg-red-600', url: () => 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent('LogBook eQSL EXPRESS') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
-    { name: 'Outlook', mark: 'O', color: 'bg-sky-700', url: () => 'https://outlook.live.com/mail/0/deeplink/compose?subject=' + encodeURIComponent('LogBook eQSL Express') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
+    { name: 'Gmail', mark: 'M', color: 'bg-red-600', url: () => 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent('LOGBOOK eQSL EXPRESS') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
+    { name: 'Outlook', mark: 'O', color: 'bg-sky-700', url: () => 'https://outlook.live.com/mail/0/deeplink/compose?subject=' + encodeURIComponent('LOGBOOK eQSL EXPRESS') + '&body=' + encodeURIComponent(shareText + '\\n' + shareUrl) },
   ];
   const handleShareChoice = async (name: string, url: string) => {
     setShareMenuOpen(false);
@@ -261,7 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
       // navegar la pestaña actual hacia el diálogo externo de Facebook.
       if (typeof navigator.share === 'function') {
         try {
-          await navigator.share({ title: 'LogBook eQSL Express', text: shareText, url: shareUrl });
+          await navigator.share({ title: 'LOGBOOK eQSL EXPRESS', text: shareText, url: shareUrl });
           return;
         } catch (error) {
           // Cancelar el menú de compartir no debe sacar al usuario de LogBook.
@@ -275,7 +275,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (name === 'Instagram' || name === 'TikTok') {
       try { await navigator.clipboard.writeText(shareText + ' ' + shareUrl); } catch { /* El usuario puede copiar el enlace manualmente si el navegador lo permite. */ }
       window.open(url, '_blank', 'noopener,noreferrer');
-      window.alert('Copiá el enlace de LogBook eQSL Express y pegalo en tu publicación.');
+      window.alert('Copiá el enlace de LOGBOOK eQSL EXPRESS y pegalo en tu publicación.');
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -492,7 +492,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleInstall = () => {
     if (isInstalled) {
-      window.alert('LogBook eQSL Express ya está instalada en este equipo.');
+      window.alert('LOGBOOK eQSL EXPRESS ya está instalada en este equipo.');
       return;
     }
     if (installPrompt) {
@@ -557,7 +557,7 @@ export const Header: React.FC<HeaderProps> = ({
               if (hasPreviousPage) {
                 window.history.back();
               } else {
-                window.alert('Para salir de LogBook eQSL EXPRESS, cerrá esta pestaña del navegador. Si la instalaste como aplicación, usá el gesto o botón Inicio del dispositivo y cerrala desde las aplicaciones recientes. Los navegadores no permiten que una página cierre por la fuerza una pestaña abierta manualmente.');
+                window.alert('Para salir de LOGBOOK eQSL EXPRESS, cerrá esta pestaña del navegador. Si la instalaste como aplicación, usá el gesto o botón Inicio del dispositivo y cerrala desde las aplicaciones recientes. Los navegadores no permiten que una página cierre por la fuerza una pestaña abierta manualmente.');
               }
             }} aria-label="Cerrar app" title="Cerrar" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-700 bg-red-600 px-2.5 text-black hover:bg-red-500">
               <X className="h-4 w-4 stroke-[3]" />
@@ -568,7 +568,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Encabezamiento panorámico; la brújula se abre en un panel independiente */}
         <div className="-mt-3 flex w-full min-w-0 items-center overflow-hidden rounded-b-xl border-b border-sky-500/60 bg-black">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <img src="/logbook-header.svg?v=20261029b" alt="LogBook eQSL EXPRESS" className="block w-full h-auto max-h-none object-contain object-center mx-auto" style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
+            <img src="/logbook-header.svg?v=20261029b" alt="LOGBOOK eQSL EXPRESS" className="block w-full h-auto max-h-none object-contain object-center mx-auto" style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
           </div>
         </div>
         <div className="mt-1 flex min-h-5 w-full items-center justify-center gap-2 bg-slate-700/80 py-0.5 text-[11px] leading-tight">
@@ -604,7 +604,7 @@ export const Header: React.FC<HeaderProps> = ({
                 aria-expanded={shareMenuOpen}
                 aria-haspopup="menu"
                 className="inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
-                title="Compartir LogBook eQSL Express en tus redes"
+                title="Compartir LOGBOOK eQSL EXPRESS en tus redes"
               >
                 <Share2 className="w-4 h-4" />
                 <span>Compartir app</span>
