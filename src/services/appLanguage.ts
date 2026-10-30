@@ -57,7 +57,7 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
   const call = String(callsign || '').trim().toUpperCase();
   // Las SD de 11 metros empiezan por la división internacional numérica.
   // La división 34 corresponde a España/Canarias; se prueba el prefijo más largo.
-  const numeric = call.match(/^(\\d{1,3})[A-Z]/)?.[1];
+  const numeric = call.match(/^(\d{1,3})[A-Z]/)?.[1];
   if (numeric) {
     const divisionLanguages: Record<string, AppLanguage> = {
       '1':'it','2':'en','3':'pt-br','4':'es','5':'es','6':'es','7':'es','8':'es','9':'en',
