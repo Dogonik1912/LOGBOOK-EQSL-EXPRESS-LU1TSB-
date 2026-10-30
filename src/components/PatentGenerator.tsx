@@ -87,27 +87,31 @@ const commonsCountryNames:Record<string,string>={
 async function officialNationalEmblem(code:string):Promise<HTMLImageElement|null>{
  const country=commonsCountryNames[code];
  if(!country)return null;
- // Buscar archivos de emblemas nacionales en Wikimedia Commons; no se dibujan escudos ficticios.
- const terms=[`national coat of arms ${country}`,`coat of arms ${country}`,`national emblem ${country}`];
+ // Priorizar originales vectoriales de Commons y títulos que identifiquen inequívocamente
+ // el escudo/emblema del país. Nunca usar banderas, mapas ni insignias genéricas.
+ const terms=[\`"coat of arms" "\${country}"\`,\`"national emblem" "\${country}"\`,\`"arms of" "\${country}"\`];
+ const normalized=country.toLowerCase().replace(/[^a-z]/g,'');
+ const scoreTitle=(title:string,mime:string)=>{
+  const t=title.toLowerCase(),compact=t.replace(/[^a-z]/g,'');
+  if(!compact.includes(normalized))return -1;
+  if(!/(coat.?of.?arms|national.?emblem|arms.?of)/i.test(t))return -1;
+  if(/(flag|map|logo|roundel|seal of the army|president)/i.test(t))return -1;
+  return (mime==='image/svg+xml'?100:0)+(/coat.?of.?arms/i.test(t)?40:0)+(/national.?emblem/i.test(t)?35:0)+(/arms.?of/i.test(t)?20:0);
+ };
  for(const term of terms){
   try{
-   const api='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=12&gsrsearch='+encodeURIComponent(term)+'&prop=imageinfo&iiprop=url&iiurlwidth=700&format=json&origin=*';
+   const api='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=30&gsrsearch='+encodeURIComponent(term)+'&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=1600&format=json&origin=*';
    const response=await fetch(api,{headers:{Accept:'application/json'}});
    if(!response.ok)continue;
    const data=await response.json();
-   const pages=Object.values(data?.query?.pages||{}) as Array<{title?:string,imageinfo?:Array<{thumburl?:string,url?:string}>}>;
-   const normalized=country.toLowerCase().replace(/[^a-z]/g,'');
-   const candidates=pages.filter(page=>{
-    const title=(page.title||'').toLowerCase();
-    const compact=title.replace(/[^a-z]/g,'');
-    return (compact.includes(normalized)||title.includes(code.toLowerCase())) &&
-      /(coat.?of.?arms|national.?emblem|arms.?of)/i.test(title) &&
-      !!(page.imageinfo?.[0]?.thumburl||page.imageinfo?.[0]?.url);
-   });
-   const candidate=candidates[0];
-   const imageUrl=candidate?.imageinfo?.[0]?.thumburl||candidate?.imageinfo?.[0]?.url;
+   const pages=Object.values(data?.query?.pages||{}) as Array<{title?:string,imageinfo?:Array<{url?:string,thumburl?:string,mime?:string,width?:number,height?:number}>}>;
+   const candidates=pages.map(page=>({page,info:page.imageinfo?.[0],score:scoreTitle(page.title||'',page.imageinfo?.[0]?.mime||'')}))
+    .filter(v=>v.score>=20&&!!(v.info?.url||v.info?.thumburl))
+    .sort((a,b)=>b.score-a.score);
+   const selected=candidates[0];
+   const imageUrl=selected?.info?.mime==='image/svg+xml'?(selected.info.url||selected.info.thumburl):(selected?.info?.thumburl||selected?.info?.url);
    if(imageUrl)return await loadCanvasImage(imageUrl);
-  }catch{/* Probar el siguiente término; no bloquear la generación por una búsqueda fallida. */}
+  }catch{/* Continuar con la siguiente búsqueda; no crear un escudo sustituto. */}
  }
  return null;
 }
