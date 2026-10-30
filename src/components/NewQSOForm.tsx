@@ -502,7 +502,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
                   : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
             >
-              {b.name}
+              {b.name === '11 metros' ? '11' : b.name}
             </button>
           ))}
         </div>
