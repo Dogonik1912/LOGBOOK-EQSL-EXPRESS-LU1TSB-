@@ -81,20 +81,58 @@ async function loadCanvasImage(url:string):Promise<HTMLImageElement>{
  if(!image.naturalWidth||!image.naturalHeight) throw new Error('La imagen oficial recibida está vacía o no es válida.');
  return image;
 }
+const commonsCountryNames:Record<string,string>={
+ AR:'Argentina',BR:'Brazil',PT:'Portugal',ES:'Spain',US:'United States',GB:'United Kingdom',FR:'France',DE:'Germany',IT:'Italy',NL:'Netherlands',PL:'Poland',RU:'Russia',UA:'Ukraine',CN:'China',JP:'Japan',KR:'South Korea',IN:'India',TR:'Turkey',SE:'Sweden',NO:'Norway',DK:'Denmark',FI:'Finland',CZ:'Czech Republic',GR:'Greece',RO:'Romania',HU:'Hungary',CA:'Canada',AU:'Australia',NZ:'New Zealand',CL:'Chile',UY:'Uruguay',PE:'Peru',BO:'Bolivia',PY:'Paraguay',CO:'Colombia',VE:'Venezuela',EC:'Ecuador',GT:'Guatemala',CR:'Costa Rica',HN:'Honduras',SV:'El Salvador',NI:'Nicaragua',MX:'Mexico',ZA:'South Africa',IS:'Iceland',IE:'Ireland',CH:'Switzerland',AT:'Austria',BE:'Belgium',BG:'Bulgaria',HR:'Croatia',SI:'Slovenia',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',BY:'Belarus',IL:'Israel',TH:'Thailand',ID:'Indonesia',PH:'Philippines',SG:'Singapore',MY:'Malaysia',HK:'Hong Kong',TW:'Taiwan',PK:'Pakistan',BD:'Bangladesh',LK:'Sri Lanka',EG:'Egypt',MA:'Morocco',TN:'Tunisia',KE:'Kenya',NG:'Nigeria',GH:'Ghana'
+};
+async function officialNationalEmblem(code:string):Promise<HTMLImageElement|null>{
+ const country=commonsCountryNames[code];
+ if(!country)return null;
+ // Buscar archivos de emblemas nacionales en Wikimedia Commons; no se dibujan escudos ficticios.
+ const terms=[`national coat of arms ${country}`,`coat of arms ${country}`,`national emblem ${country}`];
+ for(const term of terms){
+  try{
+   const api='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=12&gsrsearch='+encodeURIComponent(term)+'&prop=imageinfo&iiprop=url&iiurlwidth=700&format=json&origin=*';
+   const response=await fetch(api,{headers:{Accept:'application/json'}});
+   if(!response.ok)continue;
+   const data=await response.json();
+   const pages=Object.values(data?.query?.pages||{}) as Array<{title?:string,imageinfo?:Array<{thumburl?:string,url?:string}>}>;
+   const normalized=country.toLowerCase().replace(/[^a-z]/g,'');
+   const candidates=pages.filter(page=>{
+    const title=(page.title||'').toLowerCase();
+    const compact=title.replace(/[^a-z]/g,'');
+    return (compact.includes(normalized)||title.includes(code.toLowerCase())) &&
+      /(coat.?of.?arms|national.?emblem|arms.?of)/i.test(title) &&
+      !!(page.imageinfo?.[0]?.thumburl||page.imageinfo?.[0]?.url);
+   });
+   const candidate=candidates[0];
+   const imageUrl=candidate?.imageinfo?.[0]?.thumburl||candidate?.imageinfo?.[0]?.url;
+   if(imageUrl)return await loadCanvasImage(imageUrl);
+  }catch{/* Probar el siguiente término; no bloquear la generación por una búsqueda fallida. */}
+ }
+ return null;
+}
 async function narrowPlate(call:string,code:string,customText:string){
  const W=1800,H=620,c=document.createElement('canvas');c.width=W;c.height=H;
  const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
  const cc=(code==='IC'||code==='IC-ESCUDO')?'es':code.toLowerCase();
  const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+cc+'.png');
- // Ajustar la bandera al lienzo horizontal sin dejar bordes vacíos.
  x.drawImage(flag,0,0,W,H);
- if(code==='AR'||code==='ES'){
-  const url=code==='AR'
-   ? 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Coat_of_arms_of_Argentina.svg/500px-Coat_of_arms_of_Argentina.svg.png'
-   : 'https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Coat_of_Arms_of_Spain.svg/960px-Coat_of_Arms_of_Spain.svg.png';
-  const crest=await loadCanvasImage(url);const maxW=code==='AR'?190:170,maxH=280;
-  const scale=Math.min(maxW/crest.naturalWidth,maxH/crest.naturalHeight);const cw=crest.naturalWidth*scale,ch=crest.naturalHeight*scale;
-  x.save();x.shadowColor='rgba(0,0,0,.3)';x.shadowBlur=10;x.drawImage(crest,(W-cw)/2,(H-ch)/2,cw,ch);x.restore();
+ if(code==='IC'||code==='IC-ESCUDO'){
+  if(code==='IC-ESCUDO'){
+   const crest=await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg');
+   x.drawImage(crest, W/2-100, H/2-135, 200,270);
+  }else{
+   x.fillStyle='#087b43';for(let i=0;i<7;i++){const angle=-Math.PI/2+i*Math.PI*2/7;x.beginPath();x.arc(W/2+Math.cos(angle)*70,H/2+Math.sin(angle)*70,12,0,Math.PI*2);x.fill();}
+  }
+ }else{
+  const emblem=await officialNationalEmblem(code);
+  if(emblem){
+   const maxW=240,maxH=310,scale=Math.min(maxW/emblem.naturalWidth,maxH/emblem.naturalHeight);
+   const ew=emblem.naturalWidth*scale,eh=emblem.naturalHeight*scale;
+   x.save();x.shadowColor='rgba(0,0,0,.3)';x.shadowBlur=10;x.drawImage(emblem,(W-ew)/2,(H-eh)/2,ew,eh);x.restore();
+  }else{
+   throw new Error('No se encontró un archivo verificable del escudo o emblema nacional de '+(commonsCountryNames[code]||code)+'. No se generó una insignia inventada. Revisá ese país antes de volver a intentarlo.');
+  }
  }
  x.fillStyle='rgba(0,0,0,.48)';x.fillRect(0,390,W,230);x.textAlign='center';x.textBaseline='alphabetic';
  x.lineWidth=5;x.strokeStyle='rgba(0,0,0,.7)';x.fillStyle='#fff';x.font='900 210px system-ui';x.strokeText(call,W/2,555);x.fillText(call,W/2,555);
