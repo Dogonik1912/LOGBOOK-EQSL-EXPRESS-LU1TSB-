@@ -68,35 +68,26 @@ async function plate(call:string, code:string) {
  return c;
 }
 
-async function narrowPlate(call:string, code:string, customText:string) {
- const W=1800,H=620,c=document.createElement('canvas'); c.width=W;c.height=H;
+async function loadCanvasImage(url:string):Promise<HTMLImageElement>{
+ const image=new Image();image.crossOrigin='anonymous';image.src=url;
+ await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error('No se pudo cargar la bandera o el escudo oficial. Revisá la conexión e intentá nuevamente.'));});
+ return image;
+}
+async function narrowPlate(call:string,code:string,customText:string){
+ const W=1800,H=620,c=document.createElement('canvas');c.width=W;c.height=H;
  const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
- x.fillStyle='#f8fafc';x.fillRect(0,0,W,H);
- x.fillStyle='#050505';x.beginPath();x.roundRect(35,35,W-70,H-70,42);x.fill();
- x.strokeStyle='#d4d4d4';x.lineWidth=8;x.beginPath();x.roundRect(48,48,W-96,H-96,32);x.stroke();
- x.fillStyle='#0756b8';x.beginPath();x.roundRect(62,62,W-124,150,18);x.fill();
- // Flag marker on the left, national crest in gold for Argentina, flag symbol for other countries.
- const flag=countries.find(v=>v[0]===code)?.[1].split(' ')[0]||'🌐';
- x.textAlign='center';x.textBaseline='middle';
- x.font='110px system-ui, Apple Color Emoji, Segoe UI Emoji';x.fillText(flag,155,137);
- x.fillStyle='#fff';x.font='700 56px system-ui';x.fillText(code.startsWith('IC')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\\S+ /,'').toUpperCase()||'RADIO'),W/2,137);
- if(code==='AR'){
-   // stylized golden Argentine national coat of arms
-   x.save();x.translate(W-190,137);x.strokeStyle='#f5c542';x.fillStyle='#f5c542';x.lineWidth=8;
-   x.beginPath();x.ellipse(0,12,42,52,0,0,Math.PI*2);x.stroke();
-   x.beginPath();x.moveTo(-42,12);x.lineTo(42,12);x.stroke();
-   x.beginPath();x.moveTo(0,-42);x.lineTo(0,67);x.stroke();
-   x.beginPath();x.arc(0,-58,17,0,Math.PI*2);x.fill();
-   for(let i=0;i<12;i++){const a=i*Math.PI/6;x.beginPath();x.moveTo(Math.cos(a)*53,Math.sin(a)*53-6);x.lineTo(Math.cos(a)*66,Math.sin(a)*66-6);x.stroke();}
-   x.restore();
+ const cc=(code==='IC'||code==='IC-ESCUDO')?'es':code.toLowerCase();
+ const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+cc+'.png');x.drawImage(flag,0,0,W,H);
+ if(code==='AR'||code==='ES'){
+  const url=code==='AR'?'https://commons.wikimedia.org/wiki/Special:Redirect/file/Coat_of_arms_of_Argentina.svg':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Escudo_de_Espa%C3%B1a.svg';
+  const crest=await loadCanvasImage(url);const maxW=code==='AR'?190:170,maxH=280;
+  const scale=Math.min(maxW/crest.naturalWidth,maxH/crest.naturalHeight);const cw=crest.naturalWidth*scale,ch=crest.naturalHeight*scale;
+  x.save();x.shadowColor='rgba(0,0,0,.3)';x.shadowBlur=10;x.drawImage(crest,(W-cw)/2,(H-ch)/2,cw,ch);x.restore();
  }
- x.fillStyle='#fff';x.font='900 235px system-ui';x.textBaseline='alphabetic';x.fillText(call,W/2,440);
- x.fillStyle='#fff';x.fillRect(90,405,70,12);x.fillRect(W-160,405,70,12);
- x.fillStyle='#0756b8';x.beginPath();x.roundRect(62,455,W-124,100,18);x.fill();
- const text=customText.trim().slice(0,42);
- if(text){x.fillStyle='#fff';x.font='700 54px system-ui';x.fillText(text,W/2,505);}
- else {x.fillStyle='#dcecff';x.font='600 32px system-ui';x.fillText('LOGBOOK eQSL EXPRESS',W/2,505);}
- x.textBaseline='alphabetic';return c;
+ x.fillStyle='rgba(0,0,0,.48)';x.fillRect(0,390,W,230);x.textAlign='center';x.textBaseline='alphabetic';
+ x.lineWidth=5;x.strokeStyle='rgba(0,0,0,.7)';x.fillStyle='#fff';x.font='900 210px system-ui';x.strokeText(call,W/2,555);x.fillText(call,W/2,555);
+ const t=customText.trim().slice(0,42)||'LOGBOOK eQSL EXPRESS';x.font='700 30px system-ui';x.strokeText(t,W/2,605);x.fillText(t,W/2,605);
+ return c;
 }
 
 export const PatentGenerator:React.FC=()=>{
