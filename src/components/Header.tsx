@@ -612,6 +612,8 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               {shareMenuOpen && (
                 <div role="menu" className="fixed left-1/2 top-auto z-[100] mt-2 w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl sm:absolute sm:left-1/2 sm:top-full sm:w-60 sm:-translate-x-1/2">
+                  <p className="px-2 py-1.5 text-[11px] text-slate-300">Idioma del mensaje para quien lo recibe</p>
+                  <LanguageSelector value={shareLanguage} onChange={setShareLanguage} label="Idioma del mensaje compartido" className="mb-2" />
                   <p className="px-2 py-1.5 text-[11px] text-slate-400">Elegí dónde compartir</p>
                   <div className="grid grid-cols-2 gap-1">
                     {shareOptions.map((option) => (
