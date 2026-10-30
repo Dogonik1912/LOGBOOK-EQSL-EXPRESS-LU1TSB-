@@ -82,4 +82,5 @@ export const HAM_MODES = [
   'JS8',
   'D-STAR',
   'DMR',
+  'FreeDV',
 ];
