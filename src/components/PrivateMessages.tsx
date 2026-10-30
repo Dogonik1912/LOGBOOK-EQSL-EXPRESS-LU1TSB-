@@ -40,6 +40,7 @@ export const PrivateMessages: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState('');
+  const [deletingMessage, setDeletingMessage] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -272,6 +273,34 @@ export const PrivateMessages: React.FC = () => {
     }
   };
 
+  const deleteOwnMessage = async (messageId: string) => {
+    if (!supabase || !callsign || !identityToken || deletingMessage) return;
+    if (!window.confirm('¿Eliminar este mensaje enviado por vos? No se borrará ningún otro mensaje.')) return;
+    setDeletingMessage(messageId);
+    setError('');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('delete_community_private_message', {
+        p_callsign: callsign,
+        p_token: identityToken,
+        p_message_id: messageId,
+      });
+      if (rpcError) throw rpcError;
+      if (!data?.ok) {
+        setError(data?.reason === 'forbidden'
+          ? 'No se pudo validar tu identidad para eliminar el mensaje.'
+          : 'El mensaje ya no existe o no fue enviado por tu indicativo.');
+        return;
+      }
+      setMessages((current) => current.filter((message) => message.id !== messageId));
+      await refreshConversations();
+    } catch (err) {
+      console.error('[Mensajes privados] No se pudo eliminar el mensaje', err);
+      setError('No se pudo eliminar el mensaje. Volvé a intentarlo.');
+    } finally {
+      setDeletingMessage('');
+    }
+  };
+
   const sendMessage = async () => {
     const body = draft.trim();
     if (!supabase || !callsign || !activeRecipient || !body || sending) return;
@@ -408,7 +437,10 @@ export const PrivateMessages: React.FC = () => {
                   <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
                     <p className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')}>{sender}</p>
                     <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
-                    <p className={'mt-1 text-right text-[10px] ' + (mine ? 'text-violet-100' : 'text-slate-300')}>{new Date(message.created_at).toLocaleString()}</p>
+                    <div className="mt-1 flex items-center justify-end gap-2">
+                      <p className={'text-[10px] ' + (mine ? 'text-violet-100' : 'text-slate-300')}>{new Date(message.created_at).toLocaleString()}</p>
+                      {mine && <button type="button" onClick={() => void deleteOwnMessage(message.id)} disabled={Boolean(deletingMessage)} aria-label="Eliminar mi mensaje" title="Eliminar mi mensaje" className="rounded p-1 text-red-200 hover:bg-red-950 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    </div>
                   </div>
                 </article>;
               })}
