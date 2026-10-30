@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { getInitialAppLanguage } from '../services/appLanguage';
+import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
 import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
@@ -242,7 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [shareLanguage, setShareLanguage] = useState(() => getInitialAppLanguage());
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
-  const shareText = 'LOGBOOK eQSL EXPRESS';
+  const shareText = getLocalizedShareText(shareLanguage);
   const shareOptions = [
     { name: 'WhatsApp', mark: 'wa', color: 'bg-green-600', url: () => 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl) },
     { name: 'Telegram', mark: 'tg', color: 'bg-sky-500', url: () => 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText) },
