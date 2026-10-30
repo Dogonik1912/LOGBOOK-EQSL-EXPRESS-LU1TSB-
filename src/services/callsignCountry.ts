@@ -57,9 +57,8 @@ export function countryForCallsign(callsign: string, savedCountry?: string, is11
   // Asignación específica: 34RC879 es un indicativo de 11 m de Canarias (España).
   // Priorizarla sobre el país guardado anteriormente o el prefijo de radioaficionado.
   if (call === '34RC879') return 'España';
-  // Los indicativos de 11 m con formato división-letras-números, como 6RC113,
-  // pertenecen a Colombia aunque el perfil no tenga marcado el modo 11 m.
-  if (/^6[A-Z]{1,2}\\d/.test(call)) return 'Colombia';
+  // Todo indicativo que comience con 6 corresponde a la división 6: Colombia.
+  if (call.startsWith('6')) return 'Colombia';
   // Los indicativos colombianos HK deben mostrar siempre la bandera de Colombia,
   // incluso si el perfil conserva un país anterior o fue completado manualmente.
   if (call.startsWith('HK')) return 'Colombia';
