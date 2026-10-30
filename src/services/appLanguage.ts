@@ -91,6 +91,8 @@ let currentLanguage: AppLanguage = 'es';
 let languageGeneration = 0;
 let translationBatchRunning = false;
 let rescanRequested = false;
+let scanTimer: number | null = null;
+const pendingAttributes = new WeakMap<HTMLElement, Set<string>>();
 
 function isExcludedTextNode(node: Text): boolean {
   const parent = node.parentElement;
@@ -164,9 +166,19 @@ function translateAttributes(root: ParentNode, language: AppLanguage) {
       const marker = 'data-lang-original-' + attribute;
       if (!element.hasAttribute(marker)) element.setAttribute(marker, original);
       const source = element.getAttribute(marker) || original;
+      let pending = pendingAttributes.get(element);
+      if (!pending) {
+        pending = new Set<string>();
+        pendingAttributes.set(element, pending);
+      }
+      if (pending.has(attribute)) continue;
+      if (element.getAttribute(attribute) === source && language === 'es') continue;
+      pending.add(attribute);
       void translateOne(source, language).then((value) => {
         if (language === currentLanguage && element.isConnected && element.getAttribute(marker) === source) element.setAttribute(attribute, value);
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        pending?.delete(attribute);
+      });
     }
   });
 }
@@ -189,14 +201,14 @@ export function startAutomaticUiTranslation(): () => void {
       return !(prior && textNode.nodeValue === prior.translated && prior.language === currentLanguage);
     });
     // Work in small batches so large screens do not flood the translation service.
-    const batch = eligible.slice(0, 16);
+    const batch = eligible.slice(0, 8);
     if (batch.length) {
       translationBatchRunning = true;
       void Promise.all(batch.map((textNode) => translateNode(textNode, currentLanguage))).finally(() => {
         translationBatchRunning = false;
         if (eligible.length > batch.length || rescanRequested) {
           rescanRequested = false;
-          window.setTimeout(scan, 120);
+          window.setTimeout(scan, 180);
         }
       });
     }
@@ -212,13 +224,26 @@ export function startAutomaticUiTranslation(): () => void {
     scan();
   };
   scan();
-  observer = new MutationObserver(() => scan());
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  // React and translation both update text nodes. Observing characterData made
+  // every translated word trigger a full-document scan, creating a feedback loop
+  // that could exhaust memory on slower desktop browsers. Only new DOM subtrees
+  // require another pass; the initial scan already handles existing text.
+  observer = new MutationObserver((records) => {
+    if (!records.some((record) => record.addedNodes.length > 0)) return;
+    if (scanTimer !== null) window.clearTimeout(scanTimer);
+    scanTimer = window.setTimeout(() => {
+      scanTimer = null;
+      scan();
+    }, 160);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('user-profile-updated', changeLanguage);
   window.addEventListener('storage', changeLanguage);
   return () => {
     observer?.disconnect();
     observer = null;
+    if (scanTimer !== null) window.clearTimeout(scanTimer);
+    scanTimer = null;
     window.removeEventListener('user-profile-updated', changeLanguage);
     window.removeEventListener('storage', changeLanguage);
   };
