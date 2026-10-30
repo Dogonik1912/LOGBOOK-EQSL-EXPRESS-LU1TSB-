@@ -43,7 +43,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   LU:'Argentina',LW:'Argentina',AY:'Argentina',AZ:'Argentina',
   EA:'España',EB:'España',EC:'España',ED:'España',EE:'España',EF:'España',EG:'España',EH:'España',
   CT:'Portugal',CR:'Portugal',CS:'Portugal',CU:'Portugal',
-  PY:'Brasil',PP:'Brasil',PR:'Brasil',PU:'Brasil',PT:'Brasil',
+  PY:'Brasil',PP:'Brasil',PR:'Brasil',PS:'Brasil',PT:'Brasil',PU:'Brasil',PV:'Brasil',PW:'Brasil',PX:'Brasil',PZ:'Brasil',ZV:'Brasil',ZW:'Brasil',ZX:'Brasil',
   CX:'Uruguay',CE:'Chile',CA:'Chile',CB:'Chile',OA:'Perú',CP:'Bolivia',ZP:'Paraguay',
   HK:'Colombia',YV:'Venezuela',HC:'Ecuador',XE:'México',XF:'México',XG:'México',
   W:'Estados Unidos',K:'Estados Unidos',N:'Estados Unidos',VE:'Canadá',VA:'Canadá',
@@ -54,23 +54,31 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
 
 export function countryForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
   const call = String(callsign || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  // Asignación específica: 34RC879 es un indicativo de 11 m de Canarias (España).
-  // Priorizarla sobre el país guardado anteriormente o el prefijo de radioaficionado.
-  if (call === '34RC879') return 'España';
-  // Todo indicativo que comience con 6 corresponde a la división 6: Colombia.
-  if (call.startsWith('6')) return 'Colombia';
-  // Los indicativos colombianos HK deben mostrar siempre la bandera de Colombia,
-  // incluso si el perfil conserva un país anterior o fue completado manualmente.
-  if (call.startsWith('HK')) return 'Colombia';
-  if (savedCountry?.trim()) return savedCountry.trim();
   if (!call) return '';
-  if (is11m) {
-    const match = call.match(/^(\d{1,2})/);
-    if (match && DIVISION_COUNTRY[match[1]]) return DIVISION_COUNTRY[match[1]];
+
+  // Los indicativos numéricos se interpretan como 11 metros cuando el contexto
+  // lo confirma o cuando no existe otro dato de banda (presencia en línea/generador).
+  const numericCall = /^\\d/.test(call);
+  if (is11m || numericCall) {
+    const match = call.match(/^(\\d{1,3})/);
+    if (match) {
+      // La división 34 identifica Canarias (España); las demás se buscan
+      // por prefijo más largo para no confundir 34 con la división 3.
+      const division = match[1];
+      if (DIVISION_COUNTRY[division]) return DIVISION_COUNTRY[division];
+      for (let length = Math.min(3, division.length - 1); length >= 1; length--) {
+        const shorter = division.slice(0, length);
+        if (DIVISION_COUNTRY[shorter]) return DIVISION_COUNTRY[shorter];
+      }
+    }
   }
+
+  // Para radioafición prevalecen los prefijos ITU sobre datos de perfil antiguos.
   const keys = Object.keys(HAM_PREFIX_COUNTRY).sort((a,b)=>b.length-a.length);
   const prefix = keys.find(key => call.startsWith(key));
-  return prefix ? HAM_PREFIX_COUNTRY[prefix] : '';
+  if (prefix) return HAM_PREFIX_COUNTRY[prefix];
+  if (savedCountry?.trim()) return savedCountry.trim();
+  return '';
 }
 
 export function flagForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
