@@ -28,14 +28,17 @@ begin
   loop
     select identity_token into v_call_token from public.community_call_signs where callsign=r.callsign;
     select callsign into v_token_call from public.community_call_signs where identity_token=r.identity_token;
-    if r.callsign !~ '^[A-Z0-9/]{3,24}
+    if r.callsign !~ '^[A-Z0-9/]{3,24}$' then
+      v_reason := 'legacy_callsign_format_not_supported';
+    elsif (v_call_token is null or v_call_token=r.identity_token)
+       and (v_token_call is null or v_token_call=r.callsign) then
       insert into public.community_call_signs(callsign,identity_token)
       values(r.callsign,r.identity_token) on conflict do nothing;
     else
-      if v_reason is null then
-        v_reason := case when v_call_token is not null and v_call_token<>r.identity_token
-          then 'callsign_owned_by_different_token' else 'token_bound_to_different_callsign' end;
-      end if;
+      v_reason := case when v_call_token is not null and v_call_token<>r.identity_token
+        then 'callsign_owned_by_different_token' else 'token_bound_to_different_callsign' end;
+    end if;
+    if v_reason is not null then
       insert into public.community_identity_reconciliation_conflicts(callsign,conflict_reason)
       select r.callsign,v_reason
       where not exists (select 1 from public.community_identity_reconciliation_conflicts c
