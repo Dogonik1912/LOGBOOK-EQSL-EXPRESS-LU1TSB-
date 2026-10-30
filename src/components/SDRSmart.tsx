@@ -116,7 +116,7 @@ export function SDRSmart() {
         if (cached) {
           const parsed = JSON.parse(cached) as { at: number; payload: KiwiDirectory };
           if (Date.now() - parsed.at < CACHE_MS && Array.isArray(parsed.payload.receivers)) {
-            setReceivers(parsed.payload.receivers.filter(receiverIsUsable));
+            setReceivers(parsed.payload.receivers.filter(receiverIsUsable).slice(0, 300));
             setDirectoryStatus('Lista pública cargada desde caché reciente.');
             setLoading(false);
             return;
@@ -127,9 +127,13 @@ export function SDRSmart() {
       if (!response.ok) throw new Error('El directorio público no respondió.');
       const payload = await response.json() as KiwiDirectory;
       if (payload.schema !== 1 || !Array.isArray(payload.receivers)) throw new Error('El formato del directorio SDR no es compatible.');
-      const usable = payload.receivers.filter(receiverIsUsable);
+      // Keep a bounded directory snapshot; the public index can contain many
+      // receivers and storing the entire response duplicates a large object in
+      // memory and sessionStorage on low-resource machines.
+      const usable = payload.receivers.filter(receiverIsUsable).slice(0, 300);
       setReceivers(usable);
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), payload }));
+      const compactPayload = { schema: payload.schema, fetched_at: payload.fetched_at, receivers: usable };
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), payload: compactPayload })); } catch { /* Optional cache. */ }
       const date = payload.fetched_at ? new Date(payload.fetched_at).toLocaleString() : 'fecha no indicada';
       setDirectoryStatus(`${usable.length} receptores KiwiSDR disponibles en la lista · directorio actualizado: ${date}.`);
     } catch {
@@ -155,10 +159,6 @@ export function SDRSmart() {
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 30 * 60 * 1000 },
     );
   }, []);
-
-  useEffect(() => {
-    void loadDirectory();
-  }, [loadDirectory]);
 
   const sortedReceivers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -200,7 +200,7 @@ export function SDRSmart() {
   };
 
   return <section className="my-4 min-w-0 overflow-hidden rounded-2xl border border-cyan-300 bg-slate-950 text-white shadow-sm" aria-label="LogBook SDR Smart">
-    <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="flex min-h-[56px] w-full items-center gap-3 bg-gradient-to-r from-slate-900 to-cyan-950 px-3 py-2.5 text-left">
+    <button type="button" onClick={() => { setOpen(value => { const next = !value; if (next && receivers.length === 0 && !loading) void loadDirectory(); return next; }); }} aria-expanded={open} className="flex min-h-[56px] w-full items-center gap-3 bg-gradient-to-r from-slate-900 to-cyan-950 px-3 py-2.5 text-left">
       <span className="rounded-xl bg-cyan-300 p-2 text-slate-950"><Radio className="h-6 w-6" /></span>
       <span className="min-w-0 flex-1"><strong className="block text-base">SDR LogBook eQSL EXPRESS</strong><span className="block text-xs text-cyan-100">Receptores remotos · espectro y cascada en directo</span></span>
       <Waves className="h-5 w-5 text-cyan-200" />
