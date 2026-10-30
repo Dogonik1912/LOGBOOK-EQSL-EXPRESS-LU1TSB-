@@ -57,7 +57,7 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
   const call = String(callsign || '').trim().toUpperCase();
   if (/^(LU|LW|AY|AZ|LO|LP|LQ|LS|LT|LR)/.test(call)) return 'es';
   if (/^(I[0-9]|IK|IZ|IW|IN|IS|IT|IU|IV|IX)/.test(call)) return 'it';
-  if (/^PY|^PP|^PR|^PS|^PT|^PU|^PV|^PW|^PX|^ZV|^ZW|^ZX/.test(call)) return 'pt';
+  if (/^PY|^PP|^PR|^PS|^PT|^PU|^PV|^PW|^PX|^ZV|^ZW|^ZX/.test(call)) return 'pt-br';
   if (/^(F[0-9]|TM|TO|TK)/.test(call)) return 'fr';
   if (/^(D[ABCEFGHIJKLMPQRSTUVWXYZ]|Y[0-9])/.test(call)) return 'de';
   if (/^(PA|PB|PC|PD|PE|PF|PG|PH|PI)/.test(call)) return 'nl';
@@ -232,7 +232,8 @@ export function getLocalizedShareText(language: AppLanguage): string {
   const messages: Record<AppLanguage, string> = {
     es: 'Compartí LogBook eQSL EXPRESS: registrá tus contactos de radio y enviá eQSL fácilmente.',
     en: 'Share LogBook eQSL EXPRESS: log your radio contacts and send eQSL cards easily.',
-    pt: 'Compartilhe o LogBook eQSL EXPRESS: registre seus contatos de rádio e envie eQSL facilmente.',
+    pt: 'Partilhe o LogBook eQSL EXPRESS: registe os seus contactos de rádio e envie eQSL facilmente.',
+    'pt-br': 'Compartilhe o LogBook eQSL EXPRESS: registre seus contatos de rádio e envie cartões eQSL com facilidade.',
     fr: 'Partagez LogBook eQSL EXPRESS : enregistrez vos contacts radio et envoyez des eQSL facilement.',
     de: 'Teile LogBook eQSL EXPRESS: protokolliere Funkkontakte und versende eQSL-Karten ganz einfach.',
     it: 'Condividi LogBook eQSL EXPRESS: registra i tuoi collegamenti radio e invia eQSL facilmente.',
