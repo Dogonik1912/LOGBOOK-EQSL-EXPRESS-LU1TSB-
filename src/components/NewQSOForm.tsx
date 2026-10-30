@@ -451,7 +451,6 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
           <span className="min-w-0 text-left">
             <span className="block text-base font-bold text-white tracking-wide">LIBRO DE GUARDIA</span>
-            <span className="block text-xs text-slate-400">Registro separado de radioafición y banda ciudadana</span>
           </span>
         </span>
         <ChevronDown className={`h-5 w-5 shrink-0 text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
