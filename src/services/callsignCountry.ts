@@ -53,8 +53,11 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
 };
 
 export function countryForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
-  if (savedCountry?.trim()) return savedCountry.trim();
   const call = String(callsign || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Asignación específica: 34RC879 es un indicativo de 11 m de Canarias (España).
+  // Priorizarla sobre el país guardado anteriormente o el prefijo de radioaficionado.
+  if (call === '34RC879') return 'España';
+  if (savedCountry?.trim()) return savedCountry.trim();
   if (!call) return '';
   if (is11m) {
     const match = call.match(/^(\d{1,2})/);
