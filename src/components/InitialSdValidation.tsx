@@ -23,26 +23,45 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         token = crypto.randomUUID();
         localStorage.setItem('community_chat_identity_token', token);
       }
-      const savedCall = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-      if (localStorage.getItem('logbook_sd_validated') === '1' && savedCall) {
-        if (active) { setCallsign(savedCall); setReady(true); }
-        return;
-      }
-      // Older installations that already completed the community identity flow
-      // should not be prompted again.
-      if (savedCall && token) {
-        localStorage.setItem('logbook_sd_validated', '1');
-        if (active) { setCallsign(savedCall); setReady(true); }
-        return;
-      }
+      const savedCall = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
       if (token && supabase) {
-        const { data, error: recoveryError } = await supabase.rpc('resolve_community_callsign', { p_token: token });
-        if (!recoveryError && typeof data === 'string' && data.trim()) {
-          const recovered = data.trim().toUpperCase();
-          localStorage.setItem('community_chat_sd', recovered);
-          localStorage.setItem('logbook_sd_validated', '1');
-          if (active) { setCallsign(recovered); setReady(true); }
-          return;
+        // Keep the installation validation as the single registration point for
+        // all app features. Reconcile legacy local identities with the server.
+        let canonicalCall = savedCall;
+        const { data: recovered, error: recoveryError } = await supabase.rpc('resolve_community_callsign', { p_token: token });
+        if (!recoveryError && typeof recovered === 'string' && recovered.trim()) {
+          canonicalCall = recovered.trim().toUpperCase();
+        }
+        if (canonicalCall) {
+          const { data: registration, error: registrationError } = await supabase.rpc('register_community_callsign', {
+            p_callsign: canonicalCall,
+            p_token: token,
+          });
+          if (!registrationError && registration?.ok) {
+            localStorage.setItem('community_chat_sd', canonicalCall);
+            localStorage.setItem('user_callsign', canonicalCall);
+            localStorage.setItem('logbook_sd_validated', '1');
+            if (active) { setCallsign(canonicalCall); setReady(true); }
+            return;
+          }
+          const reason = String(registration?.reason || '');
+          if (reason === 'taken' || reason === 'locked') {
+            if (active) {
+              setCallsign(canonicalCall);
+              setError(reason === 'taken'
+                ? 'Ese indicativo ya está vinculado a otra identidad. Contactá con administración para revisar el acceso.'
+                : 'Este dispositivo tiene otro indicativo vinculado. Recuperá la señal distintiva original o solicitá una revisión.');
+              setRequired(true);
+              setReady(true);
+            }
+            return;
+          }
+          // A temporary network failure does not block an installation that was
+          // already validated; reconciliation is retried on the next launch.
+          if (localStorage.getItem('logbook_sd_validated') === '1' && savedCall) {
+            if (active) { setCallsign(savedCall); setReady(true); }
+            return;
+          }
         }
       }
       if (active) { setRequired(true); setReady(true); }
