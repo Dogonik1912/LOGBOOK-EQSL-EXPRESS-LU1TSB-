@@ -58,9 +58,9 @@ export function countryForCallsign(callsign: string, savedCountry?: string, is11
 
   // Los indicativos numéricos se interpretan como 11 metros cuando el contexto
   // lo confirma o cuando no existe otro dato de banda (presencia en línea/generador).
-  const numericCall = /^\\d/.test(call);
+  const numericCall = /^\d/.test(call);
   if (is11m || numericCall) {
-    const match = call.match(/^(\\d{1,3})/);
+    const match = call.match(/^(\d{1,3})/);
     if (match) {
       // La división 34 identifica Canarias (España); las demás se buscan
       // por prefijo más largo para no confundir 34 con la división 3.
