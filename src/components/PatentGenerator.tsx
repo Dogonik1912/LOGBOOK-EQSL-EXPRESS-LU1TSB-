@@ -58,12 +58,14 @@ async function plate(call:string, code:string) {
  return c;
 }
 export const PatentGenerator:React.FC=()=>{
- const [open,setOpen]=useState(false),[code,setCode]=useState('AR'),[call,setCall]=useState(''),[preview,setPreview]=useState<string|null>(null);
+ const [open,setOpen]=useState(false),[code,setCode]=useState('AR'),[call,setCall]=useState(''),[preview,setPreview]=useState<string|null>(null),[countryManuallySelected,setCountryManuallySelected]=useState(false);
  const handleCallChange=(value:string)=>{
    const normalized=value.toUpperCase();
    setCall(normalized);
-   const detected=detectCountryFromCallsign(normalized);
-   if(detected) setCode(detected);
+   if (!countryManuallySelected) {
+     const detected=detectCountryFromCallsign(normalized);
+     if(detected) setCode(detected);
+   }
  };
  const canvas=useRef<HTMLCanvasElement|null>(null);
  const chosen=useMemo(()=>countries.find(v=>v[0]===code),[code]);
