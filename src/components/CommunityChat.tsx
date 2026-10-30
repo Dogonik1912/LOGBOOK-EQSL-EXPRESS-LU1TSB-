@@ -547,6 +547,7 @@ export const CommunityChat: React.FC = () => {
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
           <div className="min-w-0">
             <h2 className="font-bold leading-tight">CHAT eQSL EXPRESS</h2>
+            <p className="mt-1 text-xs font-semibold leading-snug text-sky-200">ESCRIBE EN TU IDIOMA · TRADUCCIÓN AUTOMÁTICA</p>
             <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{onlineUsers.length} {onlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
           </div>
         </div>
