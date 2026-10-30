@@ -36,6 +36,19 @@ const W=1800, H=1200;
 const APP_URL='https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
 const GENERATOR_URL=APP_URL+'?generador=patentes';
 
+// Marca de agua fija, discreta y no editable; se aplica a todos los formatos.
+const drawPatentWatermark=(ctx:CanvasRenderingContext2D,width:number,height:number,lightBackground=false)=>{
+ ctx.save();
+ ctx.textAlign='right';
+ ctx.textBaseline='bottom';
+ ctx.font='600 27px system-ui,sans-serif';
+ ctx.fillStyle=lightBackground?'rgba(20,45,75,.48)':'rgba(255,255,255,.62)';
+ ctx.shadowColor=lightBackground?'rgba(255,255,255,.45)':'rgba(0,0,0,.35)';
+ ctx.shadowBlur=3;
+ ctx.fillText('LogBook eQSL EXPRESS',width-72,height-58);
+ ctx.restore();
+};
+
 const localizedCountryName = (countryCode: string, fallback: string): string => {
  const language = (localStorage.getItem('app_language') || navigator.language || 'es').replace('_','-');
  try {
@@ -66,6 +79,7 @@ async function plate(call:string, code:string) {
  x.fillStyle='#fff'; x.font='900 190px system-ui'; x.fillText(call,W/2,875);
  x.fillStyle='#b9d7f2'; x.font='600 42px system-ui'; x.fillText('LOGBOOK eQSL EXPRESS',W/2,1015);
  x.fillStyle='#f4d58d'; x.font='500 28px system-ui'; x.fillText('AMATEUR RADIO • DX • FRIENDSHIP',W/2,1080);
+ drawPatentWatermark(x,W,H,false);
  return c;
 }
 
@@ -190,6 +204,7 @@ async function narrowPlate(call:string,code:string,customText:string){
  x.strokeStyle='#111820';x.lineWidth=24;x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.stroke();
  x.strokeStyle='#f5f7fa';x.lineWidth=9;x.beginPath();x.roundRect(43,43,W-86,H-86,39);x.stroke();
  for(const px of [105,W-105]){x.fillStyle='#e9edf0';x.beginPath();x.arc(px,450,20,0,Math.PI*2);x.fill();x.strokeStyle='#596875';x.lineWidth=4;x.stroke();}
+ drawPatentWatermark(x,W,H,code==='AR'||code==='ES');
  x.restore();
  return c;
 }
