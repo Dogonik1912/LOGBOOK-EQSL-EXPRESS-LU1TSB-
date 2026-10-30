@@ -89,7 +89,7 @@ async function officialNationalEmblem(code:string):Promise<HTMLImageElement|null
  if(!country)return null;
  // Priorizar originales vectoriales de Commons y títulos que identifiquen inequívocamente
  // el escudo/emblema del país. Nunca usar banderas, mapas ni insignias genéricas.
- const terms=[\`"coat of arms" "\${country}"\`,\`"national emblem" "\${country}"\`,\`"arms of" "\${country}"\`];
+ const terms=['"coat of arms" "'+country+'"','"national emblem" "'+country+'"','"arms of" "'+country+'"'];
  const normalized=country.toLowerCase().replace(/[^a-z]/g,'');
  const scoreTitle=(title:string,mime:string)=>{
   const t=title.toLowerCase(),compact=t.replace(/[^a-z]/g,'');
