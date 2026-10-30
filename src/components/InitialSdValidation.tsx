@@ -12,26 +12,39 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [deviceLimit, setDeviceLimit] = useState(false);
+  const [identityNotice, setIdentityNotice] = useState('');
   const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
   const [welcome, setWelcome] = useState<{ callsign: string; name: string } | null>(null);
 
   useEffect(() => {
     let active = true;
     const initialize = async () => {
+      const savedCall = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
       let token = localStorage.getItem('community_chat_identity_token') || '';
+
+      // Una SD guardada identifica la instalación habitual para el acceso general.
+      // Si falta el token, no inventamos uno nuevo: podría crear un conflicto de titularidad.
+      if (savedCall && !token) {
+        if (active) {
+          setCallsign(savedCall);
+          setIdentityNotice('Tu señal distintiva está guardada en este dispositivo, pero falta recuperar el vínculo seguro de identidad para usar el chat y los mensajes privados. Contactá con administración para verificarlo.');
+          setReady(true);
+        }
+        return;
+      }
+
       if (!token) {
         token = crypto.randomUUID();
         localStorage.setItem('community_chat_identity_token', token);
       }
-      const savedCall = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+
       if (token && supabase) {
-        // Keep the installation validation as the single registration point for
-        // all app features. Reconcile legacy local identities with the server.
         let canonicalCall = savedCall;
         const { data: recovered, error: recoveryError } = await supabase.rpc('resolve_community_callsign', { p_token: token });
         if (!recoveryError && typeof recovered === 'string' && recovered.trim()) {
           canonicalCall = recovered.trim().toUpperCase();
         }
+
         if (canonicalCall) {
           const { data: registration, error: registrationError } = await supabase.rpc('register_community_callsign', {
             p_callsign: canonicalCall,
@@ -44,26 +57,30 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
             if (active) { setCallsign(canonicalCall); setReady(true); }
             return;
           }
+
           const reason = String(registration?.reason || '');
           if (reason === 'taken' || reason === 'locked') {
             if (active) {
-              setCallsign(canonicalCall);
-              setError(reason === 'taken'
-                ? 'Ese indicativo ya está vinculado a otra identidad. Contactá con administración para revisar el acceso.'
-                : 'Este dispositivo tiene otro indicativo vinculado. Recuperá la señal distintiva original o solicitá una revisión.');
-              setRequired(true);
+              setCallsign(savedCall || canonicalCall);
+              setIdentityNotice('Tu señal distintiva está guardada, pero el vínculo de identidad necesita revisión. El acceso general a la app continúa; para recuperar el chat y los mensajes privados, escribí a lu1tsb.4rc978@gmail.com.');
               setReady(true);
             }
             return;
           }
-          // A temporary network failure does not block an installation that was
-          // already validated; reconciliation is retried on the next launch.
-          if (localStorage.getItem('logbook_sd_validated') === '1' && savedCall) {
-            if (active) { setCallsign(savedCall); setReady(true); }
+
+          // Ante una falla temporal conservamos el acceso general, sin afirmar
+          // que la identidad esté autenticada para operaciones protegidas del servidor.
+          if (savedCall) {
+            if (active) {
+              setCallsign(savedCall);
+              setIdentityNotice('No pudimos comprobar ahora el vínculo seguro de tu identidad. Podés seguir usando la app; si el problema continúa con el chat o los mensajes privados, contactá a lu1tsb.4rc978@gmail.com.');
+              setReady(true);
+            }
             return;
           }
         }
       }
+
       if (active) { setRequired(true); setReady(true); }
     };
     void initialize();
@@ -125,7 +142,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       </section>
     </div>
   );
-  if (!required) return <>{welcome && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title"><section className="w-full max-w-md rounded-2xl border border-sky-300 bg-white p-6 text-center text-slate-900 shadow-2xl"><p className="text-xl font-black text-sky-800">{welcome.callsign}{welcome.name ? ` · ${welcome.name}` : ''}</p><h2 id="welcome-title" className="mt-3 text-xl font-bold">¡Bienvenido a <strong>LogBook eQSL EXPRESS</strong>!</h2><p className="mt-4 text-base leading-relaxed">Aquí encontrarás<br />las herramientas<br />para hacer radio<br />de forma más fácil.</p><button type="button" autoFocus onClick={() => setWelcome(null)} className="mt-5 min-h-12 w-full rounded-xl bg-sky-700 px-4 py-3 text-base font-black text-white shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300">CERRAR Y ENTRAR A LA APP</button></section></div>} {children}</>;
+  if (!required) return <>{identityNotice && <div className="fixed left-3 right-3 top-3 z-[10002] mx-auto max-w-xl rounded-xl border border-amber-400 bg-amber-50 p-3 text-sm text-slate-900 shadow-xl" role="status"><strong className="block">Aviso de verificación de identidad</strong><p className="mt-1">{identityNotice}</p><a className="mt-2 inline-block font-bold text-sky-800 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a></div>}{welcome && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title"><section className="w-full max-w-md rounded-2xl border border-sky-300 bg-white p-6 text-center text-slate-900 shadow-2xl"><p className="text-xl font-black text-sky-800">{welcome.callsign}{welcome.name ? ` · ${welcome.name}` : ''}</p><h2 id="welcome-title" className="mt-3 text-xl font-bold">¡Bienvenido a <strong>LogBook eQSL EXPRESS</strong>!</h2><p className="mt-4 text-base leading-relaxed">Aquí encontrarás<br />las herramientas<br />para hacer radio<br />de forma más fácil.</p><button type="button" autoFocus onClick={() => setWelcome(null)} className="mt-5 min-h-12 w-full rounded-xl bg-sky-700 px-4 py-3 text-base font-black text-white shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300">CERRAR Y ENTRAR A LA APP</button></section></div>} {children}</>;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="sd-validation-title">
