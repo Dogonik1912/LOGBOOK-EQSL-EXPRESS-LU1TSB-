@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck } from 'lucide-react';
-import { QSO } from '../types';
+import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
@@ -72,6 +72,7 @@ export const LiveSpots: React.FC = () => {
   const [selectedBands, setSelectedBands] = useState<string[]>([]);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
+  const [showAllActivity, setShowAllActivity] = useState(true);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -89,11 +90,13 @@ export const LiveSpots: React.FC = () => {
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
   const [gridLocators, setGridLocators] = useState<Record<string, string>>({});
 
-  const bandOptions=Array.from(new Set(spots.map(spot=>spot.band).filter(Boolean))).sort();
-  const modeOptions=Array.from(new Set(spots.map(spot=>spot.mode).filter(Boolean))).sort();
-  const continentOptions=Array.from(new Set(spots.map(continentForSpot))).sort();
-  const filteredSpots=spots.filter(spot=>(!selectedBands.length||selectedBands.includes(spot.band))&&(!selectedModes.length||selectedModes.includes(spot.mode))&&(!selectedContinents.length||selectedContinents.includes(continentForSpot(spot))));
-  const toggleFilter=(values:string[],value:string,setter:(next:string[])=>void)=>setter(values.includes(value)?values.filter(item=>item!==value):[...values,value]);
+  // Catálogos completos: las opciones no dependen de los 50 spots visibles.
+  const bandOptions=Array.from(new Set([...HAM_BANDS.map(item=>item.name), ...spots.map(spot=>spot.band).filter(Boolean)])).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const modeOptions=Array.from(new Set([...HAM_MODES, ...spots.map(spot=>spot.mode).filter(Boolean)])).sort();
+  const continentOptions=['África','América','Asia','Europa','Oceanía','Antártida','Otros'];
+  const filteredSpots=showAllActivity ? spots : spots.filter(spot=>(!selectedBands.length||selectedBands.includes(spot.band))&&(!selectedModes.length||selectedModes.includes(spot.mode))&&(!selectedContinents.length||selectedContinents.includes(continentForSpot(spot))));
+  const toggleFilter=(values:string[],value:string,setter:(next:string[])=>void)=>{setShowAllActivity(false);setter(values.includes(value)?values.filter(item=>item!==value):[...values,value]);};
+  const enableShowAll=(checked:boolean)=>{setShowAllActivity(checked);if(checked){setSelectedBands([]);setSelectedModes([]);setSelectedContinents([]);}};
   const loadGridLocators = async () => {
     if (!supabase) return;
     const { data, error } = await supabase.from('live_spot_grid_locators').select('callsign,grid_locator');
@@ -253,12 +256,12 @@ export const LiveSpots: React.FC = () => {
     {isExpanded && <div>
     <div className="border-b border-slate-800 px-3 py-2">
       <button type="button" onClick={()=>setFilterOpen(open=>!open)} aria-expanded={filterOpen} className="text-[11px] font-medium text-cyan-300 underline decoration-dotted underline-offset-2">Filtra los spot que quieres ver</button>
-      {(selectedBands.length+selectedModes.length+selectedContinents.length)>0&&<span className="ml-2 text-[10px] text-slate-400">({filteredSpots.length} de {spots.length})</span>}
+      {!showAllActivity&&(selectedBands.length+selectedModes.length+selectedContinents.length)>0&&<span className="ml-2 text-[10px] text-slate-400">({filteredSpots.length} de {spots.length})</span>}
       {filterOpen&&<div className="mt-2 space-y-3 rounded-xl border border-slate-700 bg-slate-900 p-3">
         <div><p className="mb-1 text-xs font-bold text-white">Bandas</p><div className="flex flex-wrap gap-2">{bandOptions.map(value=><label key={value} className="flex items-center gap-1 text-xs text-slate-200"><input type="checkbox" checked={selectedBands.includes(value)} onChange={()=>toggleFilter(selectedBands,value,setSelectedBands)}/>{value}</label>)}</div></div>
         <div><p className="mb-1 text-xs font-bold text-white">Modos</p><div className="flex flex-wrap gap-2">{modeOptions.map(value=><label key={value} className="flex items-center gap-1 text-xs text-slate-200"><input type="checkbox" checked={selectedModes.includes(value)} onChange={()=>toggleFilter(selectedModes,value,setSelectedModes)}/>{value}</label>)}</div></div>
         <div><p className="mb-1 text-xs font-bold text-white">Continentes</p><div className="flex flex-wrap gap-2">{continentOptions.map(value=><label key={value} className="flex items-center gap-1 text-xs text-slate-200"><input type="checkbox" checked={selectedContinents.includes(value)} onChange={()=>toggleFilter(selectedContinents,value,setSelectedContinents)}/>{value}</label>)}</div></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={()=>{setSelectedBands([]);setSelectedModes([]);setSelectedContinents([]);}} className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-bold text-cyan-200">Ver todo</button><button type="button" onClick={()=>setFilterOpen(false)} className="ml-auto rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Cerrar</button></div>
+        <div className="flex flex-wrap items-center gap-3 border-t border-slate-700 pt-3"><label className="flex min-h-8 items-center gap-2 text-sm font-bold text-cyan-200"><input type="checkbox" checked={showAllActivity} onChange={event=>enableShowAll(event.target.checked)} className="h-4 w-4 accent-cyan-400"/>Ver todo</label><button type="button" onClick={()=>setFilterOpen(false)} className="ml-auto rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Cerrar</button></div>
       </div>}
     </div>
     {weeklyWinner && <div className="flex min-w-0 items-center gap-2 overflow-hidden border-b border-amber-700/60 bg-amber-950/50 px-2 py-1.5 text-xs">
@@ -286,7 +289,7 @@ export const LiveSpots: React.FC = () => {
     </div>}
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
     {!loading && !errorMessage && spots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos. Al registrar un QSO aparecerá aquí.</p>}
-    {!loading && !errorMessage && spots.length>0 && filteredSpots.length===0 && <p className="px-4 py-4 text-sm text-slate-400">No hay spots que coincidan con los filtros elegidos. Pulsa «Ver todo» para mostrar todos.</p>}
+    {!loading && !errorMessage && spots.length>0 && filteredSpots.length===0 && <p className="px-4 py-4 text-sm text-slate-400">No hay spots que coincidan con los filtros elegidos. Marca «Ver todo» para mostrar toda la actividad.</p>}
     {filteredSpots.length > 0 && <div className="max-h-[30rem] overflow-y-auto overscroll-contain divide-y divide-slate-800">{filteredSpots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5">
       <div className="min-w-[3.5rem] text-center"><div className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-cyan-500/60 bg-slate-900 px-1.5 py-1 text-sm font-extrabold leading-none text-cyan-200 shadow-sm">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country || countryForCallsign(spot.callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\d/.test(adminCallsign))))}</div></div>
       <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100"><button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
