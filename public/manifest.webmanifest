@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "LogBook eQSL Express",
-  "short_name": "LogBook eQSL",
-  "description": "LogBook eQSL Express: libro de guardia y tarjetas eQSL para radioaficionados de todo el mundo.",
+  "name": "LOGBOOK eQSL EXPRESS",
+  "short_name": "LOGBOOK eQSL",
+  "description": "LOGBOOK eQSL EXPRESS: libro de guardia y tarjetas eQSL para radioaficionados de todo el mundo.",
   "lang": "es",
   "start_url": "/",
   "scope": "/",
