@@ -25,23 +25,26 @@ interface NewQSOFormProps {
 }
 
 export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContest }) => {
-  const getNowUTC = () => {
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(now.getUTCDate()).padStart(2, '0');
-    const hh = String(now.getUTCHours()).padStart(2, '0');
-    const mm = String(now.getUTCMinutes()).padStart(2, '0');
-    return {
-      date: `${y}-${m}-${d}`,
-      time: `${hh}:${mm}`,
-    };
+  const formatDateTime = (date: Date, utc: boolean) => ({
+    date: `${utc ? date.getUTCFullYear() : date.getFullYear()}-${String((utc ? date.getUTCMonth() : date.getMonth()) + 1).padStart(2, '0')}-${String(utc ? date.getUTCDate() : date.getDate()).padStart(2, '0')}`,
+    time: `${String(utc ? date.getUTCHours() : date.getHours()).padStart(2, '0')}:${String(utc ? date.getUTCMinutes() : date.getMinutes()).padStart(2, '0')}`,
+  });
+  const getNowUTC = () => formatDateTime(new Date(), true);
+  const getNowLocal = () => formatDateTime(new Date(), false);
+  const convertDateTime = (dateValue: string, timeValue: string, from: 'UTC' | 'LOCAL', to: 'UTC' | 'LOCAL') => {
+    const [year, month, day] = dateValue.split('-').map(Number);
+    const [hour, minute] = timeValue.split(':').map(Number);
+    const instant = from === 'UTC'
+      ? new Date(Date.UTC(year, month - 1, day, hour, minute))
+      : new Date(year, month - 1, day, hour, minute);
+    return formatDateTime(instant, to === 'UTC');
   };
 
   // PRIORIDAD 5: Cargar último QSO desde localStorage ('last_qso')
   const getLastQSOData = () => {
     const stored = localStorage.getItem('last_qso');
-    const now = getNowUTC();
+    const timeMode = localStorage.getItem('logbook_contest_time_mode') === 'LOCAL' ? 'LOCAL' : 'UTC';
+    const now = timeMode === 'LOCAL' ? getNowLocal() : getNowUTC();
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -69,8 +72,17 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
 
   // Campos que se mantienen precargados del último QSO
   const [isExpanded, setIsExpanded] = useState(false);
+  const [timeMode, setTimeMode] = useState<'UTC' | 'LOCAL'>(() => localStorage.getItem('logbook_contest_time_mode') === 'LOCAL' ? 'LOCAL' : 'UTC');
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
+  const handleTimeModeChange = (nextMode: 'UTC' | 'LOCAL') => {
+    if (nextMode === timeMode) return;
+    const converted = convertDateTime(date, time, timeMode, nextMode);
+    setDate(converted.date);
+    setTime(converted.time);
+    setTimeMode(nextMode);
+    localStorage.setItem('logbook_contest_time_mode', nextMode);
+  };
   // La banda seleccionada es temporal: cada nueva apertura comienza en 40 m,
   // aunque el último QSO guardado haya sido en 11 metros. Los datos del QSO
   // anterior siguen disponibles para fecha, hora y modo.
@@ -188,7 +200,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   };
 
   const handleUpdateToCurrentUTC = () => {
-    const now = getNowUTC();
+    const now = timeMode === 'UTC' ? getNowUTC() : getNowLocal();
     setDate(now.date);
     setTime(now.time);
   };
@@ -320,7 +332,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       !validCall ? (band === '11 metros' ? 'identificador de estación de 11 metros' : 'indicativo válido') : '',
       band === '11 metros' && !cleanCBStationCallsign && !getSavedCbStationCallsign() ? 'tu señal distintiva de 11 metros' : '',
       !validDate ? 'fecha válida' : '',
-      !validTime ? 'hora válida en UTC' : '',
+      !validTime ? (timeMode === 'UTC' ? 'hora válida en UTC' : 'hora local válida') : '',
       !validFrequency ? 'frecuencia válida en MHz' : '',
       !validMode ? 'modo válido' : '',
     ].filter(Boolean);
@@ -331,12 +343,13 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       return;
     }
 
+    const qsoUtc = timeMode === 'UTC' ? { date, time } : convertDateTime(date, time, 'LOCAL', 'UTC');
     const newQSO: QSO = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       callsign: cleanCall,
       ...(band === '11 metros' ? { stationCallsign: cleanCBStationCallsign || getSavedCbStationCallsign() } : {}),
-      date,
-      time,
+      date: qsoUtc.date,
+      time: qsoUtc.time,
       band,
       frequency: normalizedFrequency,
       mode,
@@ -387,8 +400,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     // PRIORIDAD 5: Guardar el último QSO en localStorage ('last_qso')
     // Manteniendo hora (UTC), fecha, banda, frecuencia, modo
     const lastQSOToPersist = {
-      date,
-      time,
+      date: qsoUtc.date,
+      time: qsoUtc.time,
       band,
       frequency,
       mode,
@@ -444,6 +457,18 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
         <ChevronDown className={`h-5 w-5 shrink-0 text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
       </button>
       {isExpanded && <div className="p-5 sm:p-6 pt-0">
+      <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950 p-3">
+        <p className="mb-2 text-xs font-semibold text-slate-300">HORARIO DEL LIBRO DE GUARDIA</p>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
+            <input type="checkbox" checked={timeMode === 'UTC'} onChange={() => handleTimeModeChange('UTC')} className="h-4 w-4 accent-amber-500" /> UTC
+          </label>
+          <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
+            <input type="checkbox" checked={timeMode === 'LOCAL'} onChange={() => handleTimeModeChange('LOCAL')} className="h-4 w-4 accent-amber-500" /> Hora local
+          </label>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">Selecciona una sola opción. Los QSO se guardan internamente en UTC para mantener la compatibilidad de los registros y concursos.</p>
+      </div>
       <div className="flex justify-end pb-3">
         <button type="button" onClick={handleUpdateToCurrentUTC} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer" title="Sincronizar a hora UTC actual">
           <RefreshCw className="w-3.5 h-3.5" /> Hora UTC actual
@@ -592,7 +617,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> Fecha UTC <span className="text-rose-500">*</span>
+              <Calendar className="w-3 h-3" /> Fecha {timeMode === 'UTC' ? 'UTC' : 'local'} <span className="text-rose-500">*</span>
             </label>
             <input
               type="date"
@@ -605,7 +630,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
 
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Hora UTC <span className="text-rose-500">*</span>
+              <Clock className="w-3 h-3" /> Hora {timeMode === 'UTC' ? 'UTC' : 'local'} <span className="text-rose-500">*</span>
             </label>
             <input
               type="time"
