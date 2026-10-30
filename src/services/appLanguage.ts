@@ -55,6 +55,30 @@ export function languageFromPhone(phone?: string | null): AppLanguage | null {
 
 export function languageFromCallsign(callsign?: string | null): AppLanguage | null {
   const call = String(callsign || '').trim().toUpperCase();
+  // Las SD de 11 metros empiezan por la división internacional numérica.
+  // La división 34 corresponde a España/Canarias; se prueba el prefijo más largo.
+  const numeric = call.match(/^(\\d{1,3})[A-Z]/)?.[1];
+  if (numeric) {
+    const divisionLanguages: Record<string, AppLanguage> = {
+      '1':'it','2':'en','3':'pt-br','4':'es','5':'es','6':'es','7':'es','8':'es','9':'en',
+      '10':'en','11':'es','12':'es','13':'de','14':'es','15':'fr','16':'fr','17':'en','18':'el',
+      '19':'mt' as AppLanguage,'20':'pt','21':'en','22':'fr','23':'fr','24':'en','25':'en','26':'en',
+      '27':'no','28':'he' as AppLanguage,'29':'da','30':'es','31':'en','32':'en','33':'en','34':'es',
+      '35':'fr','36':'fr','37':'en','38':'en','39':'fr','40':'en','41':'fr','42':'es','43':'en',
+      '44':'en','45':'en','46':'en','47':'en','48':'ar','49':'es','50':'en','51':'en','52':'en',
+      '53':'es','54':'es','55':'es','56':'es','57':'nl' as AppLanguage,'58':'es','59':'es','60':'en',
+      '61':'ja','62':'ko','63':'vi' as AppLanguage,'64':'ur' as AppLanguage,'65':'fa' as AppLanguage,
+      '66':'th' as AppLanguage,'67':'es','68':'en','69':'en','70':'en','71':'en','72':'zh','73':'fr',
+      '74':'fr','75':'en','76':'en','77':'fr','78':'en','79':'en','80':'en','81':'bn' as AppLanguage,
+      '82':'zh','83':'zh','84':'mn' as AppLanguage,'85':'ne' as AppLanguage,'86':'hi','87':'ur' as AppLanguage,
+      '88':'zh','89':'ja','90':'en','91':'fr','92':'en','93':'en','94':'en','95':'en','96':'en',
+      '97':'en','98':'en','99':'fr'
+    };
+    for (let size = numeric.length; size >= 1; size--) {
+      const language = divisionLanguages[numeric.slice(0, size)];
+      if (language && (APP_LANGUAGES as readonly string[]).includes(language)) return language;
+    }
+  }
   if (/^(LU|LW|AY|AZ|LO|LP|LQ|LS|LT|LR)/.test(call)) return 'es';
   if (/^(I[0-9]|IK|IZ|IW|IN|IS|IT|IU|IV|IX)/.test(call)) return 'it';
   if (/^PY|^PP|^PR|^PS|^PT|^PU|^PV|^PW|^PX|^ZV|^ZW|^ZX/.test(call)) return 'pt-br';
@@ -318,4 +342,37 @@ export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'recei
   return kind === 'received'
     ? item.received + '\\n' + item.view + ': ' + cardUrl
     : item.reply + '\\n' + item.view + ': ' + cardUrl;
+}
+
+
+export function getLocalizedWelcome(language: AppLanguage) {
+  const messages: Record<AppLanguage, { title: string; body: string; close: string }> = {
+    es: { title: '¡Bienvenido a LogBook eQSL EXPRESS!', body: 'Aquí encontrarás las herramientas para hacer radio de forma más fácil.', close: 'CERRAR Y ENTRAR A LA APP' },
+    en: { title: 'Welcome to LogBook eQSL EXPRESS!', body: 'Here you will find tools to make radio communication easier.', close: 'CLOSE AND ENTER THE APP' },
+    pt: { title: 'Bem-vindo ao LogBook eQSL EXPRESS!', body: 'Aqui encontrará ferramentas para tornar a atividade de rádio mais fácil.', close: 'FECHAR E ENTRAR NO APP' },
+    'pt-br': { title: 'Bem-vindo ao LogBook eQSL EXPRESS!', body: 'Aqui você encontrará ferramentas para facilitar suas comunicações de rádio.', close: 'FECHAR E ENTRAR NO APP' },
+    fr: { title: 'Bienvenue sur LogBook eQSL EXPRESS !', body: 'Vous trouverez ici des outils pour faciliter vos communications radio.', close: 'FERMER ET ENTRER DANS L’APPLICATION' },
+    de: { title: 'Willkommen bei LogBook eQSL EXPRESS!', body: 'Hier findest du Werkzeuge, die den Funkbetrieb einfacher machen.', close: 'SCHLIESSEN UND APP ÖFFNEN' },
+    it: { title: 'Benvenuto su LogBook eQSL EXPRESS!', body: 'Qui troverai strumenti per rendere più semplice l’attività radio.', close: 'CHIUDI E APRI L’APP' },
+    nl: { title: 'Welkom bij LogBook eQSL EXPRESS!', body: 'Hier vind je hulpmiddelen om radioverbindingen eenvoudiger te maken.', close: 'SLUITEN EN APP OPENEN' },
+    pl: { title: 'Witamy w LogBook eQSL EXPRESS!', body: 'Znajdziesz tu narzędzia ułatwiające łączności radiowe.', close: 'ZAMKNIJ I OTWÓRZ APLIKACJĘ' },
+    ru: { title: 'Добро пожаловать в LogBook eQSL EXPRESS!', body: 'Здесь вы найдете инструменты для упрощения радиосвязи.', close: 'ЗАКРЫТЬ И ОТКРЫТЬ ПРИЛОЖЕНИЕ' },
+    uk: { title: 'Ласкаво просимо до LogBook eQSL EXPRESS!', body: 'Тут ви знайдете інструменти для спрощення радіозв’язку.', close: 'ЗАКРИТИ Й ВІДКРИТИ ЗАСТОСУНОК' },
+    zh: { title: '欢迎使用 LogBook eQSL EXPRESS！', body: '这里有帮助您轻松进行无线电通信的工具。', close: '关闭并进入应用' },
+    ja: { title: 'LogBook eQSL EXPRESSへようこそ！', body: '無線通信をより簡単にするツールをご利用いただけます。', close: '閉じてアプリを開く' },
+    ko: { title: 'LogBook eQSL EXPRESS에 오신 것을 환영합니다!', body: '무선 통신을 더 쉽게 할 수 있는 도구를 만나보세요.', close: '닫고 앱 열기' },
+    ar: { title: 'مرحبًا بك في LogBook eQSL EXPRESS!', body: 'ستجد هنا أدوات تجعل الاتصالات اللاسلكية أسهل.', close: 'إغلاق وفتح التطبيق' },
+    hi: { title: 'LogBook eQSL EXPRESS में आपका स्वागत है!', body: 'यहाँ आपको रेडियो संचार को आसान बनाने वाले उपकरण मिलेंगे।', close: 'बंद करें और ऐप खोलें' },
+    tr: { title: 'LogBook eQSL EXPRESS’e hoş geldiniz!', body: 'Burada telsiz iletişimini kolaylaştıran araçlar bulacaksınız.', close: 'KAPAT VE UYGULAMAYI AÇ' },
+    sv: { title: 'Välkommen till LogBook eQSL EXPRESS!', body: 'Här hittar du verktyg som gör radiosamband enklare.', close: 'STÄNG OCH ÖPPNA APPEN' },
+    no: { title: 'Velkommen til LogBook eQSL EXPRESS!', body: 'Her finner du verktøy som gjør radiosamband enklere.', close: 'LUKK OG ÅPNE APPEN' },
+    da: { title: 'Velkommen til LogBook eQSL EXPRESS!', body: 'Her finder du værktøjer, der gør radiokontakter nemmere.', close: 'LUK OG ÅBN APPEN' },
+    fi: { title: 'Tervetuloa LogBook eQSL EXPRESS -sovellukseen!', body: 'Täältä löydät työkaluja radioyhteyksien helpottamiseen.', close: 'SULJE JA AVAA SOVELLUS' },
+    cs: { title: 'Vítejte v LogBook eQSL EXPRESS!', body: 'Najdete zde nástroje, které usnadní rádiová spojení.', close: 'ZAVŘÍT A OTEVŘÍT APLIKACI' },
+    el: { title: 'Καλώς ήρθατε στο LogBook eQSL EXPRESS!', body: 'Εδώ θα βρείτε εργαλεία που κάνουν τις ραδιοεπικοινωνίες ευκολότερες.', close: 'ΚΛΕΙΣΙΜΟ ΚΑΙ ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ' },
+    ro: { title: 'Bine ați venit la LogBook eQSL EXPRESS!', body: 'Aici veți găsi instrumente care facilitează comunicațiile radio.', close: 'ÎNCHIDE ȘI DESCHIDE APLICAȚIA' },
+    hu: { title: 'Üdvözöljük a LogBook eQSL EXPRESS alkalmazásban!', body: 'Itt a rádiókapcsolatokat megkönnyítő eszközöket talál.', close: 'BEZÁRÁS ÉS ALKALMAZÁS MEGNYITÁSA' },
+    id: { title: 'Selamat datang di LogBook eQSL EXPRESS!', body: 'Di sini Anda akan menemukan alat untuk memudahkan komunikasi radio.', close: 'TUTUP DAN BUKA APLIKASI' },
+  };
+  return messages[language] || messages.en;
 }
