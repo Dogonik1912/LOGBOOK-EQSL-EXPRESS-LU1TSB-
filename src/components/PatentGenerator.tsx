@@ -121,9 +121,9 @@ async function narrowPlate(call:string,code:string,customText:string){
  const country=(code==='IC'||code==='IC-ESCUDO')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\S+\s+/,'').toUpperCase()||code);
  const flagCode=(code==='IC'||code==='IC-ESCUDO')?'es':code.toLowerCase();
  const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+flagCode+'.png');
- const emblem=(code==='IC'||code==='IC-ESCUDO')
+ const emblem=(code==='AR'||code==='ES')?null:((code==='IC'||code==='IC-ESCUDO')
   ? await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg')
-  : await officialNationalEmblem(code);
+  : await officialNationalEmblem(code));
  const t=(customText.trim().slice(0,42)||'LOGBOOK eQSL EXPRESS').toUpperCase();
  const rounded=(fill:string)=>{x.fillStyle=fill;x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.fill();};
  const image=(img:HTMLImageElement,dx:number,dy:number,dw:number,dh:number)=>x.drawImage(img,dx,dy,dw,dh);
