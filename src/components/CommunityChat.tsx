@@ -15,7 +15,7 @@ const openPrivateMessage = (rawCallsign: string) => {
 // La misma función central se usa en generador, usuarios en línea y Live Spot.
 const callsignCountryFlag = (rawCallsign: string): string => {
   const call = String(rawCallsign || '').trim().toUpperCase();
-  return flagForCallsign(call, undefined, /^\\d/.test(call));
+  return flagForCallsign(call, undefined, /^\d/.test(call));
 };
 
 type ChatMessage = {
