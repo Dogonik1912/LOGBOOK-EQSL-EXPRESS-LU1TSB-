@@ -52,6 +52,18 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   HB:'Suiza',SM:'Suecia',SP:'Polonia',YO:'Rumania',UR:'Ucrania',UA:'Rusia'
 };
 
+
+/**
+ * Clasifica el identificador visible: una SD de 11 metros comienza con
+ * la división numérica (p. ej. 4RC978 o 34RC879); un indicativo de
+ * radioaficionado comienza por letras (p. ej. LU1TSB o PY1ABC).
+ * En Live Spot la banda del QSO prevalece sobre esta detección automática.
+ */
+export function is11MeterStationIdentifier(identifier: string): boolean {
+  const normalized = String(identifier || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return /^\\d{1,3}[A-Z]/.test(normalized);
+}
+
 export function countryForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
   const call = String(callsign || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!call) return '';
