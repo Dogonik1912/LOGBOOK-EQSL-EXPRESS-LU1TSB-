@@ -69,17 +69,29 @@ async function plate(call:string, code:string) {
 }
 
 async function loadCanvasImage(url:string):Promise<HTMLImageElement>{
- const image=new Image();image.crossOrigin='anonymous';image.src=url;
- await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error('No se pudo cargar la bandera o el escudo oficial. Revisá la conexión e intentá nuevamente.'));});
+ const image=new Image();
+ image.crossOrigin='anonymous';
+ image.referrerPolicy='no-referrer';
+ image.decoding='async';
+ image.src=url;
+ await new Promise<void>((resolve,reject)=>{
+   image.onload=()=>resolve();
+   image.onerror=()=>reject(new Error('No se pudo preparar la imagen oficial de la patente. El recurso gráfico no respondió correctamente; volvé a generar la patente.'));
+ });
+ if(!image.naturalWidth||!image.naturalHeight) throw new Error('La imagen oficial recibida está vacía o no es válida.');
  return image;
 }
 async function narrowPlate(call:string,code:string,customText:string){
  const W=1800,H=620,c=document.createElement('canvas');c.width=W;c.height=H;
  const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
  const cc=(code==='IC'||code==='IC-ESCUDO')?'es':code.toLowerCase();
- const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+cc+'.png');x.drawImage(flag,0,0,W,H);
+ const flag=await loadCanvasImage('https://flagcdn.com/w1600/'+cc+'.png');
+ // Ajustar la bandera al lienzo horizontal sin dejar bordes vacíos.
+ x.drawImage(flag,0,0,W,H);
  if(code==='AR'||code==='ES'){
-  const url=code==='AR'?'https://commons.wikimedia.org/wiki/Special:Redirect/file/Coat_of_arms_of_Argentina.svg':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Escudo_de_Espa%C3%B1a.svg';
+  const url=code==='AR'
+   ? 'https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Coat_of_arms_of_Argentina.svg/500px-Coat_of_arms_of_Argentina.svg.png'
+   : 'https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/Coat_of_Arms_of_Spain.svg/960px-Coat_of_Arms_of_Spain.svg.png';
   const crest=await loadCanvasImage(url);const maxW=code==='AR'?190:170,maxH=280;
   const scale=Math.min(maxW/crest.naturalWidth,maxH/crest.naturalHeight);const cw=crest.naturalWidth*scale,ch=crest.naturalHeight*scale;
   x.save();x.shadowColor='rgba(0,0,0,.3)';x.shadowBlur=10;x.drawImage(crest,(W-cw)/2,(H-ch)/2,cw,ch);x.restore();
