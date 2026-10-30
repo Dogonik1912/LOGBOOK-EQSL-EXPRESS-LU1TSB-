@@ -557,7 +557,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
       return;
     }
-    const message = `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`;
+    const [invitation, openInstruction] = getShareInvitation();
+    const message = `📻 ${invitation} (${myCallsign}).\n${openInstruction} ${receivedCardLink}`;
     const canvas = canvasRef.current;
     if (canvas && typeof navigator.share === 'function' && typeof File !== 'undefined') {
       try {
@@ -590,7 +591,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
       return;
     }
-    const text = `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`;
+    const [invitation, openInstruction] = getShareInvitation();
+    const text = `📻 ${invitation} (${myCallsign}).\n${openInstruction} ${receivedCardLink}`;
     const url = 'https://t.me/share/url?url=' + encodeURIComponent(receivedCardLink) + '&text=' + encodeURIComponent(text);
     window.open(url, '_blank', 'noopener,noreferrer');
     requestChatInvitation('send');
@@ -616,7 +618,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     }
     const subject = encodeURIComponent(`eQSL de ${myCallsign}`);
     const body = encodeURIComponent(
-      `📻 Recibiste una eQSL de ${myCallsign}.\nVer y descargar la tarjeta: ${receivedCardLink}`
+      `📻 ${getShareInvitation()[0]} (${myCallsign}).\n${getShareInvitation()[1]} ${receivedCardLink}`
     );
     requestChatInvitation('send');
     window.open(`mailto:${encodeURIComponent(targetEmail)}?subject=${subject}&body=${body}`, '_blank');
