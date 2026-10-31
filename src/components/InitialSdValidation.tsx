@@ -111,9 +111,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       return;
     }
     const clean = callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
-    const divisionMatch = clean.match(/^(\\d{1,3})[A-Z]{1,4}\\d{1,4}$/);
+    const divisionMatch = clean.match(/^(\d{1,3})[A-Z]{1,4}\d{1,4}$/);
     const valid11m = Boolean(divisionMatch && Number(divisionMatch[1]) >= 1 && Number(divisionMatch[1]) <= 99);
-    const validHam = /^[A-Z0-9]{1,3}\\d[A-Z]{1,4}(\\/[A-Z0-9]{1,4})?$/.test(clean);
+    const validHam = /^[A-Z0-9]{1,3}\d[A-Z]{1,4}(\/[A-Z0-9]{1,4})?$/.test(clean);
     const adminException = clean === 'DOGON1K';
     if (!valid11m && !validHam && !adminException) {
       setError('Para ingresar, escribí una SD o indicativo válido de radioaficionado o de 11 metros con división internacional (por ejemplo LU1TSB, 4RC978 o 34RC879). No se admiten nombres, apodos ni códigos aleatorios.');
