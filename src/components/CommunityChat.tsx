@@ -84,6 +84,8 @@ export const CommunityChat: React.FC = () => {
   const [adminNotice, setAdminNotice] = useState('');
   const [error, setError] = useState('');
   const [moderationBusy, setModerationBusy] = useState(false);
+  const [moderationDialog, setModerationDialog] = useState<{ title: string; body: string; callsign: string } | null>(null);
+  const [accountBlockedNotice, setAccountBlockedNotice] = useState(false);
 
   // Recover a previously registered callsign from this device token if local storage
   // lost the callsign value. Never ask the user to invent a replacement in that case.
@@ -391,7 +393,16 @@ export const CommunityChat: React.FC = () => {
       setCallsign(cleanCallsign);
       setSdLocked(true);
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
-      if (sendError || !data?.ok) { console.error('[LogBook chat] public message insert error:', sendError || data); setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.'); return; }
+      if (sendError || !data?.ok) {
+        console.error('[LogBook chat] public message insert error:', sendError || data);
+        if (data?.reason === 'blocked' || data?.reason === 'silenced') {
+          setAccountBlockedNotice(true);
+          setError('');
+        } else {
+          setError('No se pudo enviar. Verificá que las migraciones públicas del chat estén aplicadas en Supabase.');
+        }
+        return;
+      }
       if (data.message) setMessages((current) => current.some((item) => item.id === data.message.id) ? current : [...current, data.message as ChatMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(-100));
       setDraft(''); setReplyTo(null);
     } finally { setBusy(false); }
@@ -468,7 +479,14 @@ export const CommunityChat: React.FC = () => {
     try {
       const result = await callModerationAction(sanctionType, target, sanctionType, durationMinutes, 'Moderación desde el chat');
       if (!result) return;
-      setNotice(sanctionType === 'block' ? `${target} quedó bloqueado para enviar mensajes.` : `${target} quedó silenciado durante ${durationLabel}.`);
+      setNotice('');
+      setModerationDialog({
+        callsign: target,
+        title: sanctionType === 'block' ? 'Bloqueo aplicado' : 'Silenciamiento aplicado',
+        body: sanctionType === 'block'
+          ? `La cuenta ${target} quedó bloqueada para participar en el chat. Cuando intente escribir, recibirá un aviso para comunicarse con administración en lu1tsb.4rc978@gmail.com.`
+          : `${target} quedó silenciado durante ${durationLabel}.`,
+      });
       if (isAdmin && adminPanelOpen) await loadAdminData('list_sanctions');
     } finally {
       setModerationBusy(false);
@@ -593,7 +611,7 @@ export const CommunityChat: React.FC = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                 {message.reply_to_callsign && <p className="mb-1 text-xs text-slate-500"><Reply className="mr-1 inline h-3 w-3" />Respuesta a {message.reply_to_callsign}</p>}
-                <p className="break-words text-sm leading-[1.35]"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}><button type="button" onClick={() => openPrivateMessage(message.callsign)} className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-sky-500" title={`Escribir mensaje privado a ${message.callsign}`}>{message.callsign}</button>:</strong><span className="ml-1" aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(message.callsign)}</span>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="ml-1 inline-flex rounded p-0.5 text-amber-600 hover:bg-amber-100" title="Opciones de administrador para este usuario" aria-label={`Opciones de administrador para ${message.callsign}`}><ShieldCheck className="h-3 w-3" /></button>} <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
+                <div className="break-words text-sm leading-[1.35]"><strong className={`font-mono font-extrabold uppercase ${["LU1TSB","LU1TSB/4RC978","RC978","4RC978"].includes(message.callsign.trim().toUpperCase()) ? "text-red-600" : darkChat ? "text-white" : "text-slate-950"}`}><button type="button" onClick={() => openPrivateMessage(message.callsign)} className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-sky-500" title={`Escribir mensaje privado a ${message.callsign}`}>{message.callsign}</button>:</strong><span className="ml-1" aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(message.callsign)}</span>{isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <button type="button" onClick={() => setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase())} className="ml-1 inline-flex rounded p-0.5 text-amber-600 hover:bg-amber-100" title="Opciones de administrador para este usuario" aria-label={`Opciones de administrador para ${message.callsign}`}><ShieldCheck className="h-3 w-3" /></button>} <span className={darkChat ? "text-white" : "text-slate-800"}>{translatedBodies[appLanguage + ':' + message.id] || message.body}{translatedBodies[appLanguage + ':' + message.id] && translatedBodies[appLanguage + ':' + message.id] !== message.body && <span className="ml-1 align-super text-[9px] text-sky-500" title="Traducción automática según el idioma de tu aplicación">trad.</span>}</span>
                 {isAdmin && moderatorTargetSelected === message.callsign.trim().toUpperCase() && message.callsign.trim().toUpperCase() !== 'LU1TSB' && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
                   <span>Usuario: <strong>{message.callsign}</strong></span>
                   <button type="button" disabled={moderationBusy} onClick={() => void applySanction(message.callsign, 'block')} className="rounded-md bg-rose-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Bloquear'}</button>
@@ -632,10 +650,11 @@ export const CommunityChat: React.FC = () => {
           </div>
         </>
       )}
-      {(notice || error) && <div role={error ? 'alert' : 'status'} className={`border-t px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>{error || notice}</div>}
+      {error && <div role="alert" className="border-t border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
       {isAdmin && adminNotice && <div role="status" className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{adminNotice}</div>}
 
 
+      {(moderationDialog || accountBlockedNotice) && <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/80 p-4" role="alertdialog" aria-modal="true" aria-labelledby="chat-moderation-dialog-title"><section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl"><h2 id="chat-moderation-dialog-title" className="text-xl font-black text-red-300">{accountBlockedNotice ? 'No podés enviar mensajes' : moderationDialog?.title}</h2><p className="mt-3 text-sm leading-relaxed text-slate-200">{accountBlockedNotice ? 'Tu cuenta tiene una restricción activa para participar en el chat. Si considerás que se trata de un error o deseás solicitar una revisión, comunicate con la administración y exponé tu caso.' : moderationDialog?.body}</p><p className="mt-4 text-sm font-semibold">Correo de administración:</p><a className="block break-all text-sky-300 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a><p className="mt-4 text-sm font-semibold">Atentamente,<br/>La Administración de LogBook eQSL EXPRESS.</p><button type="button" onClick={() => { setModerationDialog(null); setAccountBlockedNotice(false); }} className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 font-bold text-white">Cerrar</button></section></div>}
       <div className={`flex justify-end border-t px-4 py-3 sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
         <button type="button" onClick={() => setChatCollapsed(true)} className="inline-flex items-center gap-2 rounded-lg border border-sky-500 bg-slate-800 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-300" aria-label="Cerrar chat comunitario">
           Cerrar chat
