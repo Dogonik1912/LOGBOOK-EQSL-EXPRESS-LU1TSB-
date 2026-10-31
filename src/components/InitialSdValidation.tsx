@@ -13,6 +13,8 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [deviceLimit, setDeviceLimit] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockCheckFailed, setBlockCheckFailed] = useState(false);
   const [identityNotice, setIdentityNotice] = useState('');
   const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
   const [welcome, setWelcome] = useState<{ callsign: string; name: string; language: ReturnType<typeof getRecipientLanguage> } | null>(null);
@@ -47,6 +49,15 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         }
 
         if (canonicalCall) {
+          const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: canonicalCall });
+          if (blockError) {
+            if (active) { setCallsign(canonicalCall); setBlockCheckFailed(true); setReady(true); }
+            return;
+          }
+          if (isBlocked === true) {
+            if (active) { setCallsign(canonicalCall); setBlocked(true); setReady(true); }
+            return;
+          }
           const { data: registration, error: registrationError } = await supabase.rpc('register_community_callsign', {
             p_callsign: canonicalCall,
             p_token: token,
@@ -103,6 +114,16 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     setBusy(true);
     setError('');
     try {
+      const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: clean });
+      if (blockError) {
+        setError('No se pudo comprobar el estado de acceso. Volvé a intentarlo más tarde.');
+        return;
+      }
+      if (isBlocked === true) {
+        setBlocked(true);
+        setRequired(false);
+        return;
+      }
       const { data, error: registerError } = await supabase.rpc('register_community_callsign', {
         p_callsign: clean,
         p_token: token,
@@ -132,6 +153,27 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   if (!ready) return null;
+  if (blocked) return (
+    <div className="fixed inset-0 z-[10003] flex items-center justify-center bg-slate-950 p-4" role="alertdialog" aria-modal="true" aria-labelledby="blocked-access-title">
+      <section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl">
+        <h1 id="blocked-access-title" className="text-xl font-black text-red-300">Acceso bloqueado</h1>
+        <p className="mt-4 text-sm leading-relaxed text-slate-200">Esta es una app para radioaficionados. Si desea retomar el ingreso a su cuenta ingresando una señal distintiva, comuníquese al correo</p>
+        <a className="mt-2 block break-all text-sky-300 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a>
+        <p className="mt-2 text-sm leading-relaxed text-slate-200">y exponga su caso.</p>
+        <p className="mt-5 text-sm font-semibold">Atentamente,</p>
+        <p className="text-sm font-semibold">La Administración de LogBook eQSL EXPRESS.</p>
+      </section>
+    </div>
+  );
+  if (blockCheckFailed) return (
+    <div className="fixed inset-0 z-[10003] flex items-center justify-center bg-slate-950 p-4" role="alert" aria-live="assertive">
+      <section className="w-full max-w-md rounded-2xl border border-amber-400 bg-slate-900 p-6 text-white shadow-2xl">
+        <h1 className="text-lg font-black text-amber-300">No se pudo verificar el acceso</h1>
+        <p className="mt-3 text-sm leading-relaxed">No podemos comprobar ahora si esta señal distintiva tiene una restricción activa. Volvé a intentarlo más tarde.</p>
+        <button type="button" onClick={() => window.location.reload()} className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 font-bold text-white">Reintentar</button>
+      </section>
+    </div>
+  );
   if (deviceLimit) return (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/90 p-4" role="alertdialog" aria-modal="true" aria-labelledby="device-limit-title">
       <section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl">
