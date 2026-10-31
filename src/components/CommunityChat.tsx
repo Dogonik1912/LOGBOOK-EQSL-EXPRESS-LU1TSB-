@@ -617,7 +617,7 @@ export const CommunityChat: React.FC = () => {
                   <button type="button" disabled={moderationBusy} onClick={() => void applySanction(message.callsign, 'block')} className="rounded-md bg-rose-700 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Bloquear'}</button>
                   <button type="button" disabled={moderationBusy} onClick={() => void appointModerator(message.callsign)} className="rounded-md bg-amber-800 px-3 py-1.5 font-bold text-white disabled:opacity-50">{moderationBusy ? 'Procesando…' : 'Designar como moderador'}</button>
                   <button type="button" onClick={() => setModeratorTargetSelected(null)} className="rounded-md px-2 py-1.5 font-semibold underline">Cancelar</button>
-                </div>}</p>
+                </div>}</div>
                 <div className="mt-0.5 flex items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-400">{new Date(message.created_at).toLocaleString()}</span>
                   <div className="flex items-center gap-1">
