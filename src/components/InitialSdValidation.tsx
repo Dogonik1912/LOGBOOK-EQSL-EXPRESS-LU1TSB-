@@ -114,8 +114,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     const divisionMatch = clean.match(/^(\\d{1,3})[A-Z]{1,4}\\d{1,4}$/);
     const valid11m = Boolean(divisionMatch && Number(divisionMatch[1]) >= 1 && Number(divisionMatch[1]) <= 99);
     const validHam = /^[A-Z0-9]{1,3}\\d[A-Z]{1,4}(\\/[A-Z0-9]{1,4})?$/.test(clean);
-    if (!valid11m && !validHam) {
-      setError('Solo se admiten indicativos de radioaficionado con formato de estación o señales de 11 metros con división internacional válida (por ejemplo LU1TSB, 4RC978 o 34RC879). No se permiten nombres, apodos ni códigos aleatorios.');
+    const adminException = clean === 'DOGON1K';
+    if (!valid11m && !validHam && !adminException) {
+      setError('Para ingresar, escribí una SD o indicativo válido de radioaficionado o de 11 metros con división internacional (por ejemplo LU1TSB, 4RC978 o 34RC879). No se admiten nombres, apodos ni códigos aleatorios.');
       return;
     }
     const token = localStorage.getItem('community_chat_identity_token') || crypto.randomUUID();
@@ -202,7 +203,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="sd-validation-title">
       <section className="w-full max-w-md rounded-2xl border border-sky-400 bg-slate-900 p-5 text-white shadow-2xl">
         <h2 id="sd-validation-title" className="text-lg font-black">Validación inicial de SD</h2>
-        <p className="mt-2 text-sm text-slate-200">Para continuar e instalar LogBook eQSL EXPRESS, identificá tu estación una sola vez.</p>
+        <p className="mt-2 text-sm text-slate-200">Para ingresar a LogBook eQSL EXPRESS, ingresá una SD o indicativo válido de radioaficionado o de 11 metros. Si no cumple los requisitos, no podrás acceder.</p>
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button type="button" onClick={() => setHelpChoice('radio')} className={`rounded-xl border px-3 py-3 text-sm font-bold ${helpChoice === 'radio' ? 'border-sky-300 bg-sky-800' : 'border-slate-600 bg-slate-800'}`}>Tengo SD de radioaficionado</button>
           <button type="button" onClick={() => setHelpChoice('other')} className={`rounded-xl border px-3 py-3 text-sm font-bold ${helpChoice === 'other' ? 'border-sky-300 bg-sky-800' : 'border-slate-600 bg-slate-800'}`}>No tengo SD de radioaficionado</button>
@@ -210,7 +211,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         {helpChoice && <div className="mt-4">
           <label htmlFor="initial-sd" className="mb-1 block text-sm font-semibold"> {helpChoice === 'radio' ? 'Ingresá tu SD para validarla' : 'Ingresá el indicativo que usarás en la app'} </label>
           <input id="initial-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1ABC" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-sky-400" />
-          <p className="mt-2 text-xs text-slate-400">Solo se admiten indicativos de radioaficionado con formato de estación o SD de 11 metros con división internacional válida. No se admiten nombres ni códigos aleatorios.</p>
+          <p className="mt-2 text-xs text-slate-400">Debés ingresar una SD o indicativo válido. Los nombres, apodos y códigos aleatorios no permiten el ingreso.</p>
         </div>}
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-950 p-3 text-sm text-red-200">{error}</p>}
         <button type="button" disabled={!helpChoice || busy || !callsign.trim()} onClick={() => { void validate(); }} className="mt-4 w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Validando…' : 'Validar y continuar'}</button>
