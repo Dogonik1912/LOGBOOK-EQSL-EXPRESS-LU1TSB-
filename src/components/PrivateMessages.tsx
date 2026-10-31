@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, MessageCircle, RefreshCw, Send, Inbox, Trash2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, RefreshCw, Send, Inbox, Trash2, ShieldAlert, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 
 type PrivateMessage = {
@@ -37,6 +37,10 @@ export const PrivateMessages: React.FC = () => {
   const previousUnreadRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [profilePhotos, setProfilePhotos] = useState<Record<string, string>>({});
+  const [moderationRole, setModerationRole] = useState<string | null>(null);
+  const [profileTarget, setProfileTarget] = useState('');
+  const [blockingProfile, setBlockingProfile] = useState(false);
+  const [profileNotice, setProfileNotice] = useState('');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState('');
@@ -165,6 +169,61 @@ export const PrivateMessages: React.FC = () => {
       window.removeEventListener('user-profile-updated', refresh);
     };
   }, [photoCallsigns]);
+
+  useEffect(() => {
+    let active = true;
+    const loadRole = async () => {
+      if (!supabase || !callsign || !identityToken) {
+        if (active) setModerationRole(null);
+        return;
+      }
+      const { data, error: roleError } = await supabase.rpc('community_actor_role', {
+        p_callsign: callsign.trim().toUpperCase(),
+        p_token: identityToken,
+      });
+      if (!active) return;
+      setModerationRole(roleError ? null : (data === 'admin' || data === 'moderator' ? data : null));
+    };
+    void loadRole();
+    return () => { active = false; };
+  }, [callsign, identityToken]);
+
+  const blockProfileAccount = async () => {
+    const target = profileTarget.trim().toUpperCase();
+    if (!supabase || moderationRole !== 'admin' || !target || target === callsign || blockingProfile) return;
+    if (!window.confirm(`¿Bloquear a ${target} de LogBook eQSL EXPRESS? No podrá volver a acceder con ese indicativo. También se eliminarán sus mensajes del chat público y no podrá enviar ni recibir nuevos mensajes privados.`)) return;
+    setBlockingProfile(true);
+    setProfileNotice('');
+    setError('');
+    try {
+      const { data, error: actionError } = await supabase.rpc('community_moderation_action', {
+        p_callsign: callsign,
+        p_token: identityToken,
+        p_action: 'block',
+        p_target_callsign: target,
+        p_sanction_type: 'block',
+        p_duration_minutes: null,
+        p_reason: 'Bloqueo integral desde el perfil en mensajes privados',
+      });
+      if (actionError || !data?.ok) {
+        console.error('[Mensajes privados] No se pudo bloquear la cuenta', actionError || data);
+        setProfileNotice(data?.reason === 'forbidden'
+          ? 'No se verificaron los permisos de administración de este dispositivo.'
+          : 'No se pudo aplicar el bloqueo. Volvé a intentarlo.');
+        return;
+      }
+      setProfileNotice(`${target} quedó bloqueado de LogBook eQSL EXPRESS.`);
+      setConversations((current) => current.filter((item) => item.other_callsign !== target));
+      if (activeRecipient === target) {
+        setActiveRecipient('');
+        setMessages([]);
+      }
+      setProfileTarget('');
+      await refreshConversations();
+    } finally {
+      setBlockingProfile(false);
+    }
+  };
 
   useEffect(() => {
     const syncCallsign = () => setCallsign((localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
@@ -437,9 +496,9 @@ export const PrivateMessages: React.FC = () => {
                 const sender = message.sender_callsign.trim().toUpperCase();
                 const photo = profilePhotos[sender];
                 return <article key={message.id} className={'flex max-w-[100%] items-start gap-2 ' + (mine ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row')}>
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-slate-100">
+                  <button type="button" onClick={() => { setProfileTarget(sender); setProfileNotice(''); }} aria-label={`Ver perfil de ${sender}`} title={`Ver perfil de ${sender}`} className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-slate-100 hover:ring-2 hover:ring-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400">
                     {photo ? <img src={photo} alt={`Foto de ${sender}`} className="h-full w-full object-cover" /> : <span className="font-mono text-[10px] font-bold text-slate-500">{sender.slice(0, 3)}</span>}
-                  </div>
+                  </button>
                   <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
                     <p className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')}>{sender}</p>
                     <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
@@ -466,6 +525,23 @@ export const PrivateMessages: React.FC = () => {
         </div>
         </>
       )}
+      {profileTarget && <div className="fixed inset-0 z-[10030] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="private-profile-title">
+        <section className="w-full max-w-sm rounded-2xl border border-violet-300 bg-slate-900 p-5 text-white shadow-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <h3 id="private-profile-title" className="text-lg font-black">Perfil de {profileTarget}</h3>
+            <button type="button" onClick={() => setProfileTarget('')} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Cerrar perfil"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-violet-300 bg-slate-800">
+              {profilePhotos[profileTarget] ? <img src={profilePhotos[profileTarget]} alt={`Foto de perfil de ${profileTarget}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center font-mono text-xl font-black">{profileTarget.slice(0,3)}</div>}
+            </div>
+            <p className="font-mono text-xl font-black tracking-wider">{profileTarget}</p>
+          </div>
+          {moderationRole === 'admin' && profileTarget !== callsign && <button type="button" disabled={blockingProfile} onClick={() => void blockProfileAccount()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 py-3 font-bold text-white hover:bg-rose-600 disabled:opacity-50"><ShieldAlert className="h-4 w-4" />{blockingProfile ? 'Bloqueando…' : 'Bloquear de la app'}</button>}
+          {profileNotice && <p role="status" className="mt-3 rounded-lg border border-emerald-700 bg-emerald-950 p-3 text-sm text-emerald-200">{profileNotice}</p>}
+          <button type="button" onClick={() => setProfileTarget('')} className="mt-3 w-full rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200">Cerrar</button>
+        </section>
+      </div>}
       {(error || notice) && <div role={error ? 'alert' : 'status'} className={'border-t px-4 py-3 text-sm ' + (error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-900')}>{error || notice}</div>}
     </section>
   );
