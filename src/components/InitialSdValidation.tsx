@@ -144,7 +144,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       if (registerError || !data?.ok) {
         setError(data?.reason === 'taken'
           ? 'Ese indicativo ya está registrado por otra persona.'
-          : 'No se pudo validar el indicativo. Comprobá la conexión e intentá nuevamente.');
+          : data?.reason === 'invalid_format'
+            ? 'El formato no corresponde a un indicativo de radioaficionado ni a una SD válida de 11 metros.'
+            : 'No se pudo validar el indicativo. Comprobá la conexión e intentá nuevamente.');
         return;
       }
       localStorage.setItem('community_chat_sd', clean);
