@@ -395,7 +395,7 @@ export const CommunityChat: React.FC = () => {
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
       if (sendError || !data?.ok) {
         console.error('[LogBook chat] public message insert error:', sendError || data);
-        if (data?.reason === 'blocked' || data?.reason === 'silenced') {
+        if (data?.reason === 'sanctioned' || data?.reason === 'blocked' || data?.reason === 'silenced') {
           setAccountBlockedNotice(true);
           setError('');
         } else {
@@ -479,6 +479,7 @@ export const CommunityChat: React.FC = () => {
     try {
       const result = await callModerationAction(sanctionType, target, sanctionType, durationMinutes, 'Moderación desde el chat');
       if (!result) return;
+      if (sanctionType === 'block') setMessages((current) => current.filter((message) => message.callsign.trim().toUpperCase() !== target));
       setNotice('');
       setModerationDialog({
         callsign: target,
