@@ -111,8 +111,11 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       return;
     }
     const clean = callsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
-    if (clean.length < 3 || clean.length > 24) {
-      setError('Ingresá una señal distintiva de entre 3 y 24 caracteres.');
+    const divisionMatch = clean.match(/^(\\d{1,3})[A-Z]{1,4}\\d{1,4}$/);
+    const valid11m = Boolean(divisionMatch && Number(divisionMatch[1]) >= 1 && Number(divisionMatch[1]) <= 99);
+    const validHam = /^[A-Z0-9]{1,3}\\d[A-Z]{1,4}(\\/[A-Z0-9]{1,4})?$/.test(clean);
+    if (!valid11m && !validHam) {
+      setError('Solo se admiten indicativos de radioaficionado con formato de estación o señales de 11 metros con división internacional válida (por ejemplo LU1TSB, 4RC978 o 34RC879). No se permiten nombres, apodos ni códigos aleatorios.');
       return;
     }
     const token = localStorage.getItem('community_chat_identity_token') || crypto.randomUUID();
@@ -205,7 +208,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         {helpChoice && <div className="mt-4">
           <label htmlFor="initial-sd" className="mb-1 block text-sm font-semibold"> {helpChoice === 'radio' ? 'Ingresá tu SD para validarla' : 'Ingresá el indicativo que usarás en la app'} </label>
           <input id="initial-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1ABC" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-sky-400" />
-          <p className="mt-2 text-xs text-slate-400">El sistema comprobará que el indicativo pueda registrarse y que no esté asignado a otra identidad. Esto no sustituye una comprobación oficial de licencia.</p>
+          <p className="mt-2 text-xs text-slate-400">Solo se admiten indicativos de radioaficionado con formato de estación o SD de 11 metros con división internacional válida. No se admiten nombres ni códigos aleatorios.</p>
         </div>}
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-950 p-3 text-sm text-red-200">{error}</p>}
         <button type="button" disabled={!helpChoice || busy || !callsign.trim()} onClick={() => { void validate(); }} className="mt-4 w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Validando…' : 'Validar y continuar'}</button>
