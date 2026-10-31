@@ -28,11 +28,17 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       // Una SD guardada identifica la instalación habitual para el acceso general.
       // Si falta el token, no inventamos uno nuevo: podría crear un conflicto de titularidad.
       if (savedCall && !token) {
-        if (active) {
-          setCallsign(savedCall);
-          setIdentityNotice('Tu señal distintiva está guardada en este dispositivo, pero falta recuperar el vínculo seguro de identidad para usar el chat y los mensajes privados. Contactá con administración para verificarlo.');
-          setReady(true);
+        if (!supabase) {
+          if (active) { setCallsign(savedCall); setBlockCheckFailed(true); setReady(true); }
+          return;
         }
+        const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: savedCall });
+        if (!active) return;
+        if (blockError) { setCallsign(savedCall); setBlockCheckFailed(true); setReady(true); return; }
+        if (isBlocked === true) { setCallsign(savedCall); setBlocked(true); setReady(true); return; }
+        setCallsign(savedCall);
+        setIdentityNotice('Tu señal distintiva está guardada en este dispositivo, pero falta recuperar el vínculo seguro de identidad para usar el chat y los mensajes privados. Contactá con administración para verificarlo.');
+        setReady(true);
         return;
       }
 
