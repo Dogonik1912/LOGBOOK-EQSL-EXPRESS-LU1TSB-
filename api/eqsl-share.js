@@ -1,16 +1,32 @@
 import { randomBytes } from 'node:crypto';
-import { get, put } from '@vercel/blob';
+import { createClient } from '@supabase/supabase-js';
 
-// Shared eQSL cards live in private Vercel Blob storage.
+// eQSL share objects are stored in the private Supabase Storage bucket.
+const BUCKET = 'eqsl-private';
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
 const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 
-function getToken() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) throw new Error('EQSL_SHARE_NOT_CONFIGURED');
-  return token;
+function getStorage() {
+  const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+  if (!url || !key) throw new Error('EQSL_SHARE_NOT_CONFIGURED');
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }).storage.from(BUCKET);
+}
+
+async function readRecord(storage, path) {
+  const { data, error } = await storage.download(path);
+  if (error || !data) return null;
+  return JSON.parse(await data.text());
+}
+
+async function writeRecord(storage, path, record) {
+  const { error } = await storage.upload(path, JSON.stringify(record), {
+    contentType: 'application/json',
+    upsert: true,
+  });
+  if (error) throw error;
 }
 
 function validateCard(body) {
@@ -50,21 +66,15 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   try {
-    const token = getToken();
+    const storage = getStorage();
 
     if (req.method === 'POST') {
       const card = validateCard(req.body || {});
       if (!card) return json(res, 400, { error: 'Datos de la eQSL incompletos o inválidos.' });
 
-      const id = randomBytes(9).toString('hex'); // Solo caracteres hexadecimales para evitar problemas en enlaces compartidos.
+      const id = randomBytes(9).toString('hex');
       const expiresAt = new Date(Date.now() + LIFETIME_MS).toISOString();
-      const pathname = `eqsl-shares/${id}.json`;
-      await put(pathname, JSON.stringify({ id, card, expiresAt }), {
-        access: 'private',
-        token,
-        contentType: 'application/json; charset=utf-8',
-        addRandomSuffix: false,
-      });
+      await writeRecord(storage, `eqsl-shares/${id}.json`, { id, card, expiresAt });
       return json(res, 201, { id, expiresAt });
     }
 
@@ -73,11 +83,7 @@ export default async function handler(req, res) {
       if (!/^[a-z0-9_-]{6,24}$/i.test(id)) {
         return json(res, 400, { error: 'Enlace eQSL inválido.' });
       }
-      const stored = await get(`eqsl-shares/${id}.json`, { access: 'private', token });
-      if (!stored || stored.statusCode !== 200 || !stored.stream) {
-        return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
-      }
-      const record = await new Response(stored.stream).json();
+      const record = await readRecord(storage, `eqsl-shares/${id}.json`);
       if (!record?.expiresAt || Date.parse(record.expiresAt) <= Date.now() || !record.card) {
         return json(res, 404, { error: 'La tarjeta no existe o el enlace ha caducado.' });
       }
@@ -85,23 +91,10 @@ export default async function handler(req, res) {
       if (!alreadyViewed) {
         record.firstViewedAt = new Date().toISOString();
         record.viewCount = 1;
-        await put(`eqsl-shares/${id}.json`, JSON.stringify(record), {
-          access: 'private',
-          token,
-          contentType: 'application/json; charset=utf-8',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        });
       } else {
         record.viewCount = Number(record.viewCount || 1) + 1;
-        await put(`eqsl-shares/${id}.json`, JSON.stringify(record), {
-          access: 'private',
-          token,
-          contentType: 'application/json; charset=utf-8',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        });
       }
+      await writeRecord(storage, `eqsl-shares/${id}.json`, record);
       return json(res, 200, { card: record.card, expiresAt: record.expiresAt, alreadyViewed });
     }
 
@@ -113,7 +106,7 @@ export default async function handler(req, res) {
     const notConfigured = message.includes('EQSL_SHARE_NOT_CONFIGURED');
     return json(res, notConfigured ? 503 : 500, {
       error: notConfigured
-        ? 'Los enlaces cortos eQSL necesitan configurar el almacenamiento del servidor.'
+        ? 'Los enlaces cortos eQSL necesitan configurar el almacenamiento privado del servidor.'
         : 'No se pudo recuperar la tarjeta eQSL. Pedile al colega que vuelva a compartirla.',
     });
   }
