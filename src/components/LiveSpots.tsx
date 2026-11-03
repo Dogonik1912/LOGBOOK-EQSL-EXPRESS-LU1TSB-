@@ -91,9 +91,8 @@ export const LiveSpots: React.FC = () => {
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
   const [gridLocators, setGridLocators] = useState<Record<string, string>>({});
 
-  // Catálogos amplios: no dependen de los 50 spots visibles.
-  const allSpotBands = ['2200m','630m','560m','160m','80m','60m','40m','30m','20m','17m','15m','12m','11 metros','10m','8m','6m','5m','4m','2m','1.25m','70cm','33cm','23cm','13cm','9cm','6cm','3cm','1.25cm','6mm'];
-  const bandOptions=Array.from(new Set([...allSpotBands, ...HAM_BANDS.map(item=>item.name), ...spots.map(spot=>spot.band).filter(Boolean)])).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  // Las bandas del filtro Live Spot son exactamente las del Libro de Guardia.
+  const bandOptions=HAM_BANDS.map(item=>item.name);
   // Los modos del filtro Live Spot son exactamente los disponibles en Libro de Guardia.
   const modeOptions=HAM_MODES;
   const continentOptions=['África','América','Asia','Europa','Oceanía','Antártida','Otros'];
