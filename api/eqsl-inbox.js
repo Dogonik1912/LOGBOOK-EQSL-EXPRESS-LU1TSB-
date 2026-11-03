@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { get, put } from '@vercel/blob';
+import { createClient } from '@supabase/supabase-js';
+
+const BUCKET = 'eqsl-private';
 import { sendEqslPush } from './push-subscription.js';
 
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
@@ -7,12 +9,13 @@ const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9][A-Z0-9/ _-]{2,39}$/;
 
 function config() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
   const supabaseUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
-  if (!token) throw new Error('EQSL_SHARE_NOT_CONFIGURED');
   if (!supabaseUrl || !supabaseKey) throw new Error('EQSL_INBOX_AUTH_NOT_CONFIGURED');
-  return { token, supabaseUrl, supabaseKey };
+  if (!secretKey) throw new Error('EQSL_INBOX_STORAGE_NOT_CONFIGURED');
+  const client = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  return { supabaseUrl, supabaseKey, storage: client.storage.from(BUCKET) };
 }
 
 async function resolveIdentity(identityToken, cfg) {
@@ -42,10 +45,10 @@ function inboxPath(callsign) {
 
 async function readInboxExact(callsign, cfg) {
   try {
-    const stored = await get(inboxPath(callsign), { access: 'private', token: cfg.token });
-    if (!stored || stored.statusCode !== 200 || !stored.stream) return [];
-    const data = await new Response(stored.stream).json();
-    return Array.isArray(data?.items) ? data.items : [];
+    const { data, error } = await cfg.storage.download(inboxPath(callsign));
+    if (error || !data) return [];
+    const value = JSON.parse(await data.text());
+    return Array.isArray(value?.items) ? value.items : [];
   } catch { return []; }
 }
 
@@ -61,10 +64,10 @@ async function readInbox(callsign, cfg) {
 }
 
 async function writeInbox(callsign, items, cfg) {
-  await put(inboxPath(callsign), JSON.stringify({ callsign, items: items.slice(0, 250) }), {
-    access: 'private', token: cfg.token, contentType: 'application/json; charset=utf-8',
-    addRandomSuffix: false, allowOverwrite: true,
+  const { error } = await cfg.storage.upload(inboxPath(callsign), JSON.stringify({ callsign, items: items.slice(0, 250) }), {
+    contentType: 'application/json', upsert: true,
   });
+  if (error) throw error;
 }
 
 export default async function handler(req, res) {
