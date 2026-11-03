@@ -17,7 +17,12 @@ export const PatentSharePage: React.FC = () => {
     }
     fetch('/api/patent-share?id=' + encodeURIComponent(id), { cache: 'no-store' })
       .then(async response => {
-        const result = await response.json();
+        const raw = await response.text();
+        let result: any;
+        try { result = JSON.parse(raw); }
+        catch {
+          throw new Error(`El servidor no devolvió una respuesta válida (HTTP ${response.status}). Volvé a abrir el enlace más tarde.`);
+        }
         if (!response.ok || typeof result.imageDataUrl !== 'string') {
           throw new Error(result.error || 'La patente no existe o el enlace venció.');
         }
