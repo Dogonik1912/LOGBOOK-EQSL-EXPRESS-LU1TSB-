@@ -57,7 +57,24 @@ export const PatentSharePage: React.FC = () => {
 
 export const PatentDownloadedPage: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showPage, setShowPage] = useState(false);
+
   useEffect(() => {
+    // Si ya usa la app o tiene una SD validada/guardada, no mostrar el flujo de instalación.
+    // Esto también cubre enlaces abiertos desde WhatsApp en el navegador externo.
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    const existingIdentity = Boolean(
+      localStorage.getItem('logbook_sd_validated') === '1'
+      || localStorage.getItem('community_chat_sd')
+      || localStorage.getItem('user_callsign')
+    );
+    if (standalone || existingIdentity) {
+      window.location.replace('/');
+      return;
+    }
+    setShowPage(true);
+
     const handler = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as any);
@@ -75,12 +92,14 @@ export const PatentDownloadedPage: React.FC = () => {
     window.alert('En Chrome, abrí el menú ⋮ y elegí “Instalar aplicación” o “Agregar a pantalla principal”. Luego validá tu SD para acceder a las funciones.');
   };
 
+  if (!showPage) return <main className="min-h-screen bg-gradient-to-br from-sky-100 via-white to-cyan-100"/>;
+
   return <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-100 via-white to-cyan-100 px-4 py-8 text-slate-900">
     <section className="mx-auto w-full max-w-xl rounded-2xl border border-sky-200 bg-white p-6 text-center shadow-xl sm:p-8">
       <RadioTower className="mx-auto text-sky-800" size={42}/>
       <h1 className="mt-3 text-2xl font-black">LogBook eQSL EXPRESS</h1>
       <p className="mt-4 rounded-xl bg-emerald-50 p-4 font-bold text-emerald-900">¡Tu patente se descargó!</p>
-      <p className="mt-4 text-base leading-relaxed">Instalá LogBook eQSL EXPRESS y validá tu SD para enviar y recibir eQSL y utilizar el resto de las funciones de la aplicación.</p>
+      <p className="mt-4 text-base leading-relaxed">Si todavía no tenés LogBook eQSL EXPRESS instalado, podés instalarlo y validar tu SD para acceder a todas las funciones.</p>
       <div className="mt-6 grid gap-3">
         <button type="button" onClick={() => void install()} className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-black text-white"><Smartphone size={20}/> INSTALAR LOGBOOK eQSL EXPRESS</button>
         <button type="button" onClick={() => window.location.replace('/')} className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-black text-white"><ShieldCheck size={20}/> VALIDAR MI SD Y ACCEDER</button>
