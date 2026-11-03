@@ -276,12 +276,25 @@ export const LiveSpots: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-700 pt-3"><label className="flex min-h-8 items-center gap-2 text-sm font-bold text-cyan-200"><input type="checkbox" checked={showAllActivity} onChange={event=>enableShowAll(event.target.checked)} className="h-4 w-4 accent-cyan-400"/>Ver todo</label><button type="button" onClick={()=>setFilterOpen(false)} className="ml-auto rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white">Cerrar</button></div>
       </div>}
     </div>
-    {weeklyWinner && <div className="flex min-w-0 items-center gap-2 overflow-hidden border-b border-amber-700/60 bg-amber-950/50 px-2 py-1.5 text-xs">
-      <span className="flex shrink-0 items-center gap-1 font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-3.5 w-3.5" /> CONCURSO DX SEMANAL</span>
-      <span className="min-w-0 flex-1 truncate font-mono font-bold text-white" title={`${weeklyWinner.callsign} ↔ ${weeklyWinner.station_callsign} · ${weeklyWinner.frequency} MHz · ${weeklyWinner.band} · ${weeklyWinner.mode}`}>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign} ↔ {weeklyWinner.station_callsign} · {weeklyWinner.frequency} MHz</span>
-      <span className="shrink-0 font-bold text-cyan-200">{distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, is11MeterStationIdentifier(adminCallsign))))}</span>
-      <span className="flex shrink-0 items-center gap-1 font-bold text-amber-300"><Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />{weeklyWinner.votes}</span>
-    </div>}
+    {weeklyWinner && <section aria-label="Spot ganador semanal" className="w-full border-b border-amber-700/60 bg-amber-950/60 px-3 py-3 text-sm">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 font-bold uppercase tracking-wide text-amber-300"><Trophy className="h-4 w-4 shrink-0" /> SPOT GANADOR DE LA SEMANA</span>
+        <span className="inline-flex items-center gap-1 font-bold text-amber-300"><Heart className="h-4 w-4 fill-rose-500 text-rose-500" /> {weeklyWinner.votes} votos</span>
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-base font-extrabold leading-snug text-white">
+        <span>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign}</span>
+        <span className="text-amber-300">↔</span>
+        <span>{flagForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.station_callsign}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-amber-100">
+        <span>Frecuencia: {weeklyWinner.frequency} MHz</span>
+        <span>Banda: {weeklyWinner.band}</span>
+        <span>Modo: {weeklyWinner.mode}</span>
+        <span>Fecha: {weeklyWinner.qso_date}</span>
+        <span>Hora: {weeklyWinner.qso_time} UTC</span>
+        <span>Distancia: {distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, is11MeterStationIdentifier(adminCallsign)))}</span>
+      </div>
+    </section>}
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
     {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-200">{adminStatus}</p>}
     {voteMessage && <p role="status" className="px-4 py-2 text-sm text-cyan-200">{voteMessage}</p>}
