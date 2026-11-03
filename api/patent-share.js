@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { get, list, put } from '@vercel/blob';
+import { get, put } from '@vercel/blob';
 
 const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 const json = (res, status, body) => res.status(status).json(body);
@@ -34,12 +34,8 @@ export default async function handler(req, res) {
       const id = String(req.query?.id || '').trim();
       if (!/^[a-f0-9]{20}$/i.test(id)) return json(res, 400, { error: 'Enlace de patente inválido.' });
       const pathname = `patent-shares/${id}.json`;
-      // El SDK de Blob recupera archivos privados mediante su URL, no mediante pathname.
-      // Buscamos el blob por su ruta y luego usamos la URL real devuelta por el almacenamiento.
-      const { blobs } = await list({ prefix: pathname, token, limit: 10 });
-      const blob = blobs.find(item => item.pathname === pathname);
-      if (!blob?.url) return json(res, 404, { error: 'La patente no existe o el enlace venció.' });
-      const stored = await get(blob.url, { access: 'private', token });
+      // get() admite recuperar directamente por pathname en Blob privado.
+      const stored = await get(pathname, { access: 'private', token });
       if (!stored || stored.statusCode !== 200 || !stored.stream) {
         return json(res, 404, { error: 'La patente no existe o el enlace venció.' });
       }
