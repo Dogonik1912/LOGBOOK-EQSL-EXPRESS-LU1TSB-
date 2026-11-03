@@ -291,7 +291,7 @@ export const LiveSpots: React.FC = () => {
         <span>Modo: {weeklyWinner.mode}</span>
         <span>Fecha: {weeklyWinner.qso_date}</span>
         <span>Hora: {weeklyWinner.qso_time} UTC</span>
-        <span>Distancia: {distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, is11MeterStationIdentifier(adminCallsign)))}</span>
+        <span>Distancia: {distanceForSpot(weeklyWinner.callsign, gridLocators[weeklyWinner.callsign], weeklyWinner.country || countryForCallsign(weeklyWinner.callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), weeklyWinner.station_callsign, gridLocators[weeklyWinner.station_callsign], countryForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, is11MeterStationIdentifier(adminCallsign))))}</span>
       </div>
     </section>}
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
