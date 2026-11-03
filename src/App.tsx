@@ -26,6 +26,7 @@ import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
 import { PropagationReport } from './components/PropagationReport';
 import { PatentGenerator } from './components/PatentGenerator';
+import { PatentDownloadedPage, PatentSharePage } from './components/PatentSharePage';
 
 
 interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
@@ -413,6 +414,8 @@ export default function App() {
   }
 
   const sharedParams = new URLSearchParams(window.location.search);
+  if (sharedParams.has('patent')) return <PatentSharePage />;
+  if (sharedParams.has('patentDownloaded')) return <PatentDownloadedPage />;
   if (!returningAfterReply && (sharedParams.has('e') || sharedParams.has('view_eqsl'))) return <EQSLViewErrorBoundary><ReceivedEQSLPage /></EQSLViewErrorBoundary>;
   return <InitialSdValidation><MainApp /></InitialSdValidation>;
 }
