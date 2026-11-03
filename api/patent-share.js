@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { get, put } from '@vercel/blob';
+import { get, list, put } from '@vercel/blob';
 
 const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 const json = (res, status, body) => res.status(status).json(body);
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     const token = getToken();
     if (req.method === 'POST') {
       const imageDataUrl = typeof req.body?.imageDataUrl === 'string' ? req.body.imageDataUrl : '';
-      if (imageDataUrl.length > 3600000 || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(imageDataUrl)) {
+      if (imageDataUrl.length > 3600000 || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(imageDataUrl)) {
         return json(res, 400, { error: 'La imagen de la patente no es válida o es demasiado grande.' });
       }
       const id = randomBytes(10).toString('hex');
@@ -33,10 +33,18 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const id = String(req.query?.id || '').trim();
       if (!/^[a-f0-9]{20}$/i.test(id)) return json(res, 400, { error: 'Enlace de patente inválido.' });
-      const stored = await get(`patent-shares/${id}.json`, { access: 'private', token });
-      if (!stored || stored.statusCode !== 200 || !stored.stream) return json(res, 404, { error: 'La patente no existe o el enlace venció.' });
+      const pathname = `patent-shares/${id}.json`;
+      // El SDK de Blob recupera archivos privados mediante su URL, no mediante pathname.
+      // Buscamos el blob por su ruta y luego usamos la URL real devuelta por el almacenamiento.
+      const { blobs } = await list({ prefix: pathname, token, limit: 10 });
+      const blob = blobs.find(item => item.pathname === pathname);
+      if (!blob?.url) return json(res, 404, { error: 'La patente no existe o el enlace venció.' });
+      const stored = await get(blob.url, { access: 'private', token });
+      if (!stored || stored.statusCode !== 200 || !stored.stream) {
+        return json(res, 404, { error: 'La patente no existe o el enlace venció.' });
+      }
       const record = await new Response(stored.stream).json();
-      if (!record?.expiresAt || Date.parse(record.expiresAt) <= Date.now() || typeof record.imageDataUrl !== 'string') {
+      if (record?.id !== id || !record?.expiresAt || Date.parse(record.expiresAt) <= Date.now() || typeof record.imageDataUrl !== 'string') {
         return json(res, 404, { error: 'La patente no existe o el enlace venció.' });
       }
       return json(res, 200, { imageDataUrl: record.imageDataUrl, expiresAt: record.expiresAt });
