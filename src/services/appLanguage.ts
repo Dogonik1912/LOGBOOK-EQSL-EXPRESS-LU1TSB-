@@ -67,7 +67,7 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
   if (numeric) {
     const divisionLanguages: Record<string, AppLanguage> = {
       '1':'it','2':'en','3':'pt-br','4':'es','5':'es','6':'es','7':'es','8':'es','9':'en',
-      '10':'en','11':'es','12':'es','13':'de','14':'es','15':'fr','16':'fr','17':'en','18':'el',
+      '10':'en','11':'es','12':'es','13':'de','14':'fr','15':'fr','16':'fr','17':'en','18':'el',
       '19':'en','20':'pt','21':'en','22':'fr','23':'fr','24':'en','25':'en','26':'en',
       '27':'no','28':'en','29':'da','30':'es','31':'en','32':'es','33':'en','34':'es',
       '35':'fr','36':'fr','37':'en','38':'en','39':'fr','40':'en','41':'fr','42':'es','43':'en',
