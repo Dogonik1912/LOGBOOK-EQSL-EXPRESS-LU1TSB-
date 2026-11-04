@@ -425,6 +425,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       es: ['HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.', 'Abre la tarjeta y pulsa el botón para responder:'],
       en: ['YOU HAVE AN eQSL! Reply quickly and free with eQSL EXPRESS.', 'Open the card and tap the button to reply:'],
       pt: ['VOCÊ TEM UMA eQSL! Responda de forma rápida e gratuita com eQSL EXPRESS.', 'Abra o cartão e toque no botão para responder:'],
+      'pt-br': ['VOCÊ RECEBEU UMA eQSL! Responda de forma rápida e gratuita pelo eQSL EXPRESS.', 'Abra o cartão e toque no botão para responder:'],
       fr: ['VOUS AVEZ REÇU UNE eQSL ! Répondez rapidement et gratuitement avec eQSL EXPRESS.', 'Ouvrez la carte et appuyez sur le bouton pour répondre :'],
       de: ['DU HAST EINE eQSL! Antworte schnell und kostenlos mit eQSL EXPRESS.', 'Öffne die Karte und tippe zum Antworten auf die Schaltfläche:'],
       it: ['HAI RICEVUTO UNA eQSL! Rispondi rapidamente e gratuitamente con eQSL EXPRESS.', 'Apri la cartolina e premi il pulsante per rispondere:'],
