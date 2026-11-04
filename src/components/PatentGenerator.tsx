@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Award, Download, Share2, X } from 'lucide-react';
 import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
+import { APP_LANGUAGES, languageFromPhone, type AppLanguage } from '../services/appLanguage';
 
 const countries = [
  ['AR','🇦🇷 Argentina'],['BR','🇧🇷 Brasil'],['PT','🇵🇹 Portugal'],['ES','🇪🇸 España'],['US','🇺🇸 Estados Unidos'],['GB','🇬🇧 Reino Unido'],['FR','🇫🇷 Francia'],['DE','🇩🇪 Alemania'],['IT','🇮🇹 Italia'],['NL','🇳🇱 Países Bajos'],['PL','🇵🇱 Polonia'],['RU','🇷🇺 Rusia'],['UA','🇺🇦 Ucrania'],['CN','🇨🇳 China'],['JP','🇯🇵 Japón'],['KR','🇰🇷 Corea del Sur'],['IN','🇮🇳 India'],['TR','🇹🇷 Turquía'],['SE','🇸🇪 Suecia'],['NO','🇳🇴 Noruega'],['DK','🇩🇰 Dinamarca'],['FI','🇫🇮 Finlandia'],['CZ','🇨🇿 Chequia'],['GR','🇬🇷 Grecia'],['RO','🇷🇴 Rumania'],['HU','🇭🇺 Hungría'],['CA','🇨🇦 Canadá'],['AU','🇦🇺 Australia'],['NZ','🇳🇿 Nueva Zelanda'],['CL','🇨🇱 Chile'],['UY','🇺🇾 Uruguay'],['PE','🇵🇪 Perú'],['BO','🇧🇴 Bolivia'],['PY','🇵🇾 Paraguay'],['CO','🇨🇴 Colombia'],['VE','🇻🇪 Venezuela'],['EC','🇪🇨 Ecuador'],['GT','🇬🇹 Guatemala'],['CR','🇨🇷 Costa Rica'],['HN','🇭🇳 Honduras'],['SV','🇸🇻 El Salvador'],['NI','🇳🇮 Nicaragua'],['MX','🇲🇽 México'],['ZA','🇿🇦 Sudáfrica'],['IS','🇮🇸 Islandia'],['IE','🇮🇪 Irlanda'],['CH','🇨🇭 Suiza'],['AT','🇦🇹 Austria'],['BE','🇧🇪 Bélgica'],['BG','🇧🇬 Bulgaria'],['HR','🇭🇷 Croacia'],['SI','🇸🇮 Eslovenia'],['SK','🇸🇰 Eslovaquia'],['LT','🇱🇹 Lituania'],['LV','🇱🇻 Letonia'],['EE','🇪🇪 Estonia'],['BY','🇧🇾 Bielorrusia'],['IL','🇮🇱 Israel'],['TH','🇹🇭 Tailandia'],['ID','🇮🇩 Indonesia'],['PH','🇵🇭 Filipinas'],['SG','🇸🇬 Singapur'],['MY','🇲🇾 Malasia'],['HK','🇭🇰 Hong Kong'],['TW','🇹🇼 Taiwán'],['PK','🇵🇰 Pakistán'],['BD','🇧🇩 Bangladés'],['LK','🇱🇰 Sri Lanka'],['EG','🇪🇬 Egipto'],['MA','🇲🇦 Marruecos'],['TN','🇹🇳 Túnez'],['KE','🇰🇪 Kenia'],['NG','🇳🇬 Nigeria'],['GH','🇬🇭 Ghana']
@@ -32,6 +33,69 @@ const detectCountryFromCallsign = (raw: string): string | null => {
   const match = countries.find((item) => item[1].replace(/^\S+\s+/, '') === detectedCountry);
   return match?.[0] || null;
 };
+
+const patentShareMessages: Record<AppLanguage, string> = {
+ es:'Te comparto esta patente de radio. Pulsa el enlace para verla y descargarla:\n',
+ en:'I am sharing this radio station plate with you. Open the link to view and download it:\n',
+ pt:'Partilho consigo esta patente de rádio. Abra o link para ver e descarregar:\n',
+ 'pt-br':'Estou compartilhando esta patente de rádio com você. Abra o link para visualizar e baixar:\n',
+ fr:'Je vous partage cette plaque de radio. Ouvrez le lien pour la voir et la télécharger :\n',
+ de:'Ich teile dieses Funkstationskennzeichen mit Ihnen. Öffnen Sie den Link, um es anzusehen und herunterzuladen:\n',
+ it:'Ti condivido questa targa radio. Apri il link per visualizzarla e scaricarla:\n',
+ nl:'Ik deel deze radioplaat met je. Open de link om deze te bekijken en te downloaden:\n',
+ pl:'Udostępniam Ci tę tablicę radiową. Otwórz link, aby ją wyświetlić i pobrać:\n',
+ ru:'Делюсь с вами этой радиостанционной табличкой. Откройте ссылку, чтобы посмотреть и скачать её:\n',
+ uk:'Ділюся з вами цією радіотабличкою. Відкрийте посилання, щоб переглянути та завантажити її:\n',
+ zh:'与您分享这张无线电台标牌。打开链接即可查看和下载：\n',
+ ja:'この無線局プレートを共有します。リンクを開いて表示・ダウンロードしてください：\n',
+ ko:'이 무선국 명판을 공유합니다. 링크를 열어 확인하고 다운로드하세요:\n',
+ ar:'أشاركك لوحة محطة الراديو هذه. افتح الرابط لعرضها وتنزيلها:\n',
+ hi:'मैं आपके साथ यह रेडियो स्टेशन प्लेट साझा कर रहा हूँ। इसे देखने और डाउनलोड करने के लिए लिंक खोलें:\n',
+ tr:'Bu telsiz istasyonu plakasını sizinle paylaşıyorum. Görüntülemek ve indirmek için bağlantıyı açın:\n',
+ sv:'Jag delar denna radioskylt med dig. Öppna länken för att visa och ladda ner den:\n',
+ no:'Jeg deler dette radioskiltet med deg. Åpne lenken for å se og laste det ned:\n',
+ da:'Jeg deler denne radioplade med dig. Åbn linket for at se og downloade den:\n',
+ fi:'Jaan tämän radioaseman kilven kanssasi. Avaa linkki nähdäksesi ja ladataksesi sen:\n',
+ cs:'Sdílím s vámi tuto tabulku radiostanice. Otevřete odkaz pro zobrazení a stažení:\n',
+ el:'Μοιράζομαι μαζί σας αυτή την πινακίδα ραδιοσταθμού. Ανοίξτε τον σύνδεσμο για προβολή και λήψη:\n',
+ ro:'Îți trimit această plăcuță de radio. Deschide linkul pentru a o vedea și descărca:\n',
+ hu:'Megosztom Önnel ezt a rádiós táblát. Nyissa meg a linket a megtekintéshez és letöltéshez:\n',
+ id:'Saya membagikan pelat stasiun radio ini kepada Anda. Buka tautan untuk melihat dan mengunduhnya:\n',
+ th:'ฉันแชร์ป้ายสถานีวิทยุนี้ให้คุณ เปิดลิงก์เพื่อดูและดาวน์โหลด:\n',
+};
+const buildPatentShareText=(language:AppLanguage,patentUrl:string)=>{
+ const after={
+  es:'\n\nDespués de descargarla, podés instalar LogBook eQSL EXPRESS y validar tu SD para acceder a todas las funciones.',
+  en:'\n\nAfter downloading it, you can install LogBook eQSL EXPRESS and verify your callsign to access all features.',
+  pt:'\n\nDepois de a descarregar, pode instalar o LogBook eQSL EXPRESS e validar o seu indicativo para aceder a todas as funcionalidades.',
+  'pt-br':'\n\nDepois de baixar, você pode instalar o LogBook eQSL EXPRESS e validar sua SD para acessar todos os recursos.',
+  fr:'\n\nAprès le téléchargement, vous pouvez installer LogBook eQSL EXPRESS et valider votre indicatif pour accéder à toutes les fonctionnalités.',
+  de:'\n\nNach dem Download können Sie LogBook eQSL EXPRESS installieren und Ihr Rufzeichen verifizieren, um alle Funktionen zu nutzen.',
+  it:'\n\nDopo averla scaricata, puoi installare LogBook eQSL EXPRESS e verificare il tuo nominativo per accedere a tutte le funzioni.',
+  nl:'\n\nNa het downloaden kun je LogBook eQSL EXPRESS installeren en je roepnaam verifiëren om alle functies te gebruiken.',
+  pl:'\n\nPo pobraniu możesz zainstalować LogBook eQSL EXPRESS i zweryfikować swój znak wywoławczy, aby uzyskać dostęp do wszystkich funkcji.',
+  ru:'\n\nПосле загрузки вы можете установить LogBook eQSL EXPRESS и подтвердить свой позывной, чтобы получить доступ ко всем функциям.',
+  uk:'\n\nПісля завантаження ви можете встановити LogBook eQSL EXPRESS і підтвердити свій позивний, щоб отримати доступ до всіх функцій.',
+  zh:'\n\n下载后，您可以安装 LogBook eQSL EXPRESS 并验证您的呼号，以使用所有功能。',
+  ja:'\n\nダウンロード後、LogBook eQSL EXPRESSをインストールし、コールサインを認証するとすべての機能を利用できます。',
+  ko:'\n\n다운로드 후 LogBook eQSL EXPRESS를 설치하고 호출부호를 인증하면 모든 기능을 사용할 수 있습니다.',
+  ar:'\n\nبعد التنزيل، يمكنك تثبيت LogBook eQSL EXPRESS والتحقق من نداء المحطة للوصول إلى جميع الميزات.',
+  hi:'\n\nडाउनलोड करने के बाद, सभी सुविधाओं का उपयोग करने के लिए LogBook eQSL EXPRESS इंस्टॉल करें और अपना कॉलसाइन सत्यापित करें।',
+  tr:'\n\nİndirdikten sonra LogBook eQSL EXPRESS uygulamasını yükleyebilir ve tüm özelliklere erişmek için çağrı işaretinizi doğrulayabilirsiniz.',
+  sv:'\n\nEfter nedladdningen kan du installera LogBook eQSL EXPRESS och verifiera din anropssignal för att få tillgång till alla funktioner.',
+  no:'\n\nEtter nedlasting kan du installere LogBook eQSL EXPRESS og bekrefte kallesignalet ditt for å få tilgang til alle funksjoner.',
+  da:'\n\nEfter download kan du installere LogBook eQSL EXPRESS og bekræfte dit kaldesignal for at få adgang til alle funktioner.',
+  fi:'\n\nLataamisen jälkeen voit asentaa LogBook eQSL EXPRESSin ja vahvistaa kutsumerkkisi käyttääksesi kaikkia toimintoja.',
+  cs:'\n\nPo stažení můžete nainstalovat LogBook eQSL EXPRESS a ověřit svou volací značku, abyste získali přístup ke všem funkcím.',
+  el:'\n\nΜετά τη λήψη, μπορείτε να εγκαταστήσετε το LogBook eQSL EXPRESS και να επαληθεύσετε το διακριτικό κλήσης σας για πρόσβαση σε όλες τις λειτουργίες.',
+  ro:'\n\nDupă descărcare, poți instala LogBook eQSL EXPRESS și îți poți valida indicativul pentru a accesa toate funcțiile.',
+  hu:'\n\nA letöltés után telepítheti a LogBook eQSL EXPRESS alkalmazást, és ellenőrizheti hívójelét az összes funkció eléréséhez.',
+  id:'\n\nSetelah mengunduh, Anda dapat memasang LogBook eQSL EXPRESS dan memverifikasi tanda panggil untuk mengakses semua fitur.',
+  th:'\n\nหลังจากดาวน์โหลดแล้ว คุณสามารถติดตั้ง LogBook eQSL EXPRESS และยืนยันเครื่องหมายเรียกขานเพื่อใช้งานฟีเจอร์ทั้งหมดได้',
+ };
+ return patentShareMessages[language]+patentUrl+(after[language]||after.en);
+};
+
 const W=1800, H=1200;
 const APP_URL='https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
 const GENERATOR_URL=APP_URL+'?generador=patentes';
@@ -217,7 +281,7 @@ export const PatentGenerator:React.FC=()=>{
  const generate=async()=>{const v=call.trim().toUpperCase().replace(/[^A-Z0-9/.-]/g,'').slice(0,18);if(!v){alert('Introducí tu indicativo o SD.');return;}setCall(v);try{canvas.current=format==='narrow'?await narrowPlate(v,code,customText):await plate(v,code);setPreview(canvas.current.toDataURL('image/png'));}catch(e){alert(e instanceof Error?e.message:'No se pudo generar la patente.');}};
  const returnHome=()=>{setOpen(false);setPreview(null);window.location.assign(APP_URL);};
  const download=()=>{if(!canvas.current)return;const a=document.createElement('a');a.download='patente-radio-'+call.toLowerCase()+'.png';a.href=canvas.current.toDataURL('image/png');a.click();window.setTimeout(returnHome,900);};
- const share=async()=>{if(!canvas.current){alert('Primero generá la patente.');return;}const imageDataUrl=canvas.current.toDataURL('image/png');try{const response=await fetch('/api/patent-share',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageDataUrl})});const raw=await response.text();let result:any;try{result=JSON.parse(raw);}catch{throw new Error(`El servidor de patentes respondió de forma inesperada (HTTP ${response.status}). Probá nuevamente en unos minutos.`);}if(!response.ok||!result.id)throw new Error(result.error||'No se pudo preparar el enlace de la patente.');const patentUrl=APP_URL+'?patent='+encodeURIComponent(result.id);const shareText='Te comparto esta patente de radio. Pulsa el enlace para verla y descargarla:\n'+patentUrl+'\n\nDespués de descargarla, podés instalar LogBook eQSL EXPRESS y validar tu SD para acceder a todas las funciones.';window.location.assign('https://wa.me/?text='+encodeURIComponent(shareText));}catch(e){alert(e instanceof Error?e.message:'No se pudo compartir la patente. Volvé a intentarlo.');}};
+ const share=async()=>{if(!canvas.current){alert('Primero generá la patente.');return;}try{const contactPicker=(navigator as Navigator & {contacts?:{select:(properties:string[],options?:{multiple?:boolean})=>Promise<Array<{tel?:string[]}>>}}).contacts;if(!contactPicker?.select){alert('Este navegador no permite seleccionar contactos desde LogBook. Para traducir correctamente el mensaje, abrí LogBook en Chrome para Android y volvé a intentarlo.');return;}const selected=await contactPicker.select(['tel'],{multiple:false});const rawPhone=selected?.[0]?.tel?.[0];if(!rawPhone){alert('El contacto seleccionado no tiene un número de teléfono disponible.');return;}const normalizedPhone=rawPhone.trim().replace(/[\\s().-]/g,'');const language=languageFromPhone(normalizedPhone);if(!language){alert('No pude identificar el país del número seleccionado. Revisá que el contacto tenga el prefijo internacional (por ejemplo, +66). No se abrió WhatsApp para evitar enviar el mensaje en un idioma incorrecto.');return;}const imageDataUrl=canvas.current.toDataURL('image/png');const response=await fetch('/api/patent-share',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageDataUrl})});const raw=await response.text();let result:any;try{result=JSON.parse(raw);}catch{throw new Error(`El servidor de patentes respondió de forma inesperada (HTTP ${response.status}). Probá nuevamente en unos minutos.`);}if(!response.ok||!result.id)throw new Error(result.error||'No se pudo preparar el enlace de la patente.');const patentUrl=APP_URL+'?patent='+encodeURIComponent(result.id);const shareText=buildPatentShareText(language,patentUrl);const phoneDigits=normalizedPhone.replace(/[^0-9]/g,'');window.location.assign('https://wa.me/'+phoneDigits+'?text='+encodeURIComponent(shareText));}catch(e){if(e instanceof DOMException&&e.name==='AbortError')return;alert(e instanceof Error?e.message:'No se pudo compartir la patente. Volvé a intentarlo.');}};
  return <section className="w-full px-3 sm:px-6 lg:px-8 pb-5">
   <button type="button" onClick={()=>setOpen(true)} className="w-full min-h-[56px] rounded-xl border border-sky-300 bg-slate-900 px-4 py-3 text-center font-extrabold tracking-wide text-white shadow-md hover:bg-slate-800"><span className="inline-flex items-center justify-center gap-2"><Award size={20}/> GENERADOR DE PATENTES</span></button>
   {open&&<div className="mt-3 rounded-2xl border border-sky-200 bg-white p-4 shadow-lg">
