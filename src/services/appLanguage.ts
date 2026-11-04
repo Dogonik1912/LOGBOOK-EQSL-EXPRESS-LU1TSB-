@@ -69,7 +69,7 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
       '1':'it','2':'en','3':'pt-br','4':'es','5':'es','6':'es','7':'es','8':'es','9':'en',
       '10':'en','11':'es','12':'es','13':'de','14':'es','15':'fr','16':'fr','17':'en','18':'el',
       '19':'en','20':'pt','21':'en','22':'fr','23':'fr','24':'en','25':'en','26':'en',
-      '27':'no','28':'en','29':'da','30':'es','31':'en','32':'en','33':'en','34':'es',
+      '27':'no','28':'en','29':'da','30':'es','31':'en','32':'es','33':'en','34':'es',
       '35':'fr','36':'fr','37':'en','38':'en','39':'fr','40':'en','41':'fr','42':'es','43':'en',
       '44':'en','45':'en','46':'en','47':'en','48':'ar','49':'es','50':'en','51':'en','52':'en',
       '53':'es','54':'es','55':'es','56':'es','57':'nl','58':'es','59':'es','60':'en',
@@ -281,8 +281,9 @@ export function startAutomaticUiTranslation(): () => void {
   };
 }
 
-export function getRecipientLanguage(phone?: string | null, callsign?: string | null): AppLanguage {
-  return languageFromPhone(phone) || languageFromCallsign(callsign) || detectBrowserLanguage();
+export function getRecipientLanguage(_phone?: string | null, callsign?: string | null): AppLanguage {
+  // En eQSL manda siempre la SD/indicativo del destinatario; el teléfono no determina el idioma.
+  return languageFromCallsign(callsign) || detectBrowserLanguage();
 }
 
 export function getLocalizedShareText(language: AppLanguage): string {
