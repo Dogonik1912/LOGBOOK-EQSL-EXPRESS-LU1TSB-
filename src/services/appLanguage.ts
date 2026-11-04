@@ -42,6 +42,12 @@ export function detectBrowserLanguage(): AppLanguage {
   return 'es';
 }
 
+export function languageFromCountry(countryCode?: string | null): AppLanguage {
+  const code = String(countryCode || '').trim().toUpperCase();
+  if (code === 'IC' || code === 'IC-ESCUDO') return 'es';
+  return COUNTRY_LANGUAGE[code] || 'en';
+}
+
 export function languageFromPhone(phone?: string | null): AppLanguage | null {
   const digits = String(phone || '').replace(/[^0-9]/g, '');
   if (!digits) return null;
