@@ -5,7 +5,7 @@
  */
 export const APP_LANGUAGES = [
   'es','en','pt','pt-br','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi',
-  'tr','sv','no','da','fi','cs','el','ro','hu','id',
+  'tr','sv','no','da','fi','cs','el','ro','hu','id','th',
 ] as const;
 export type AppLanguage = typeof APP_LANGUAGES[number];
 
@@ -15,14 +15,14 @@ const COUNTRY_LANGUAGE: Record<string, AppLanguage> = {
   UY:'es', VE:'es', US:'en', CA:'en', GB:'en', AU:'en', NZ:'en', IE:'en', IT:'it',
   BR:'pt-br', PT:'pt', FR:'fr', BE:'fr', DE:'de', AT:'de', CH:'de', NL:'nl', PL:'pl',
   RU:'ru', UA:'uk', CN:'zh', TW:'zh', JP:'ja', KR:'ko', IN:'hi', TR:'tr', SE:'sv',
-  NO:'no', DK:'da', FI:'fi', CZ:'cs', GR:'el', RO:'ro', HU:'hu', ID:'id',
+  NO:'no', DK:'da', FI:'fi', CZ:'cs', GR:'el', RO:'ro', HU:'hu', ID:'id', TH:'th',
 };
 
 const PHONE_LANGUAGE: Array<[string, AppLanguage]> = [
   ['39','it'],['54','es'],['55','pt-br'],['351','pt'],['34','es'],['33','fr'],['49','de'],
   ['31','nl'],['32','fr'],['44','en'],['1','en'],['48','pl'],['7','ru'],['380','uk'],
   ['86','zh'],['81','ja'],['82','ko'],['91','hi'],['90','tr'],['46','sv'],['47','no'],
-  ['45','da'],['358','fi'],['420','cs'],['30','el'],['40','ro'],['36','hu'],['62','id'],
+  ['45','da'],['358','fi'],['420','cs'],['30','el'],['40','ro'],['36','hu'],['62','id'],['66','th'],
 ];
 
 export function normalizeLanguage(value?: string | null): AppLanguage | null {
@@ -305,6 +305,7 @@ export function getLocalizedShareText(language: AppLanguage): string {
     ro: 'Distribuie LogBook eQSL EXPRESS: înregistrează legăturile radio și trimite ușor eQSL.',
     hu: 'Oszd meg a LogBook eQSL EXPRESS alkalmazást, rögzítsd rádiós kapcsolataidat és küldj eQSL-t egyszerűen.',
     id: 'Bagikan LogBook eQSL EXPRESS: catat kontak radio Anda dan kirim kartu eQSL dengan mudah.',
+    th: 'แชร์ LogBook eQSL EXPRESS: บันทึกการติดต่อทางวิทยุและส่งการ์ด eQSL ได้อย่างง่ายดาย',
   };
   return messages[language] || messages.en;
 }
@@ -337,6 +338,7 @@ export function getLocalizedEQSLNotification(language: AppLanguage, kind: 'recei
     ro:{received:'📻 Ați primit o eQSL!',reply:'📻 Ați primit un răspuns la eQSL!',view:'Vezi și descarcă felicitarea'},
     hu:{received:'📻 eQSL-t kaptál!',reply:'📻 Válasz érkezett az eQSL-edre!',view:'Kártya megtekintése és letöltése'},
     id:{received:'📻 Anda menerima eQSL!',reply:'📻 Ada balasan untuk eQSL Anda!',view:'Lihat dan unduh kartu'},
+    th:{received:'📻 คุณได้รับ eQSL แล้ว!',reply:'📻 มีการตอบกลับ eQSL ของคุณแล้ว!',view:'ดูและดาวน์โหลดการ์ด'},
   };
   const item = messages[language] || messages.en;
   return kind === 'received'
@@ -373,6 +375,7 @@ export function getLocalizedWelcome(language: AppLanguage) {
     ro: { title: 'Bine ați venit la LogBook eQSL EXPRESS!', body: 'Aici veți găsi instrumente care facilitează comunicațiile radio.', close: 'ÎNCHIDE ȘI DESCHIDE APLICAȚIA' },
     hu: { title: 'Üdvözöljük a LogBook eQSL EXPRESS alkalmazásban!', body: 'Itt a rádiókapcsolatokat megkönnyítő eszközöket talál.', close: 'BEZÁRÁS ÉS ALKALMAZÁS MEGNYITÁSA' },
     id: { title: 'Selamat datang di LogBook eQSL EXPRESS!', body: 'Di sini Anda akan menemukan alat untuk memudahkan komunikasi radio.', close: 'TUTUP DAN BUKA APLIKASI' },
+    th: { title: 'ยินดีต้อนรับสู่ LogBook eQSL EXPRESS!', body: 'ที่นี่คุณจะพบเครื่องมือที่ช่วยให้การสื่อสารทางวิทยุง่ายขึ้น', close: 'ปิดและเข้าสู่แอป' },
   };
   return messages[language] || messages.en;
 }
