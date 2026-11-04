@@ -78,7 +78,7 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
       '74':'fr','75':'en','76':'en','77':'fr','78':'en','79':'en','80':'en','81':'en',
       '82':'zh','83':'zh','84':'en','85':'en','86':'hi','87':'en',
       '88':'zh','89':'ja','90':'en','91':'fr','92':'en','93':'en','94':'en','95':'en','96':'en',
-      '97':'en','98':'en','99':'fr'
+      '97':'en','98':'en','99':'fr','153':'th'
     };
     for (let size = numeric.length; size >= 1; size--) {
       const language = divisionLanguages[numeric.slice(0, size)];
