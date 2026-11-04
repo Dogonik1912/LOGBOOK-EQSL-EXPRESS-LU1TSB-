@@ -80,6 +80,8 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
     }
   }
   if (/^(LU|LW|AY|AZ|LO|LP|LQ|LS|LT|LR)/.test(call)) return 'es';
+  // Prefijos oficiales HS/H​​S0... corresponden a Tailandia; no depender del idioma del navegador.
+  if (/^HS[0-9]/.test(call)) return 'th';
   if (/^(I[0-9]|IK|IZ|IW|IN|IS|IT|IU|IV|IX)/.test(call)) return 'it';
   if (/^PY|^PP|^PR|^PS|^PT|^PU|^PV|^PW|^PX|^ZV|^ZW|^ZX/.test(call)) return 'pt-br';
   if (/^(F[0-9]|TM|TO|TK)/.test(call)) return 'fr';
