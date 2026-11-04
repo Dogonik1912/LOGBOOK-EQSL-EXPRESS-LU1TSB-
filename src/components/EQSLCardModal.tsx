@@ -451,6 +451,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       ar: ['لقد تلقيت بطاقة eQSL! يمكنك الرد بسرعة ومجانًا عبر eQSL EXPRESS.', 'افتح البطاقة واضغط على زر الرد:'],
       hi: ['आपको eQSL मिला है! eQSL EXPRESS से जल्दी और मुफ्त जवाब दें।', 'कार्ड खोलें और जवाब देने के लिए बटन दबाएँ:'],
       id: ['ANDA MENERIMA eQSL! Balas dengan cepat dan gratis melalui eQSL EXPRESS.', 'Buka kartu dan tekan tombol balas:'],
+      th: ['คุณได้รับ eQSL แล้ว! ตอบกลับได้อย่างรวดเร็วและฟรีผ่าน eQSL EXPRESS', 'เปิดการ์ดแล้วแตะปุ่มตอบกลับ:'],
     };
     const messageLanguage = lang === 'pt-br' ? 'pt' : lang;
     return copy[messageLanguage] || copy.en;
