@@ -48,6 +48,41 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   }>>([]);
   const [weeklyHistoryLoading, setWeeklyHistoryLoading] = useState(false);
   const [weeklyHistoryError, setWeeklyHistoryError] = useState('');
+  const [deviceRecoveryCode, setDeviceRecoveryCode] = useState('');
+  const [deviceRecoveryStatus, setDeviceRecoveryStatus] = useState('');
+  const [deviceRecoveryBusy, setDeviceRecoveryBusy] = useState(false);
+
+  const generateDeviceRecoveryCode = async () => {
+    const token = localStorage.getItem('community_chat_identity_token') || '';
+    const currentCall = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (!supabase || !token || !currentCall) {
+      setDeviceRecoveryStatus('Este dispositivo no tiene una identidad verificada disponible.');
+      return;
+    }
+    setDeviceRecoveryBusy(true);
+    setDeviceRecoveryCode('');
+    setDeviceRecoveryStatus('');
+    try {
+      const { data, error } = await supabase.rpc('issue_community_device_recovery', {
+        p_callsign: currentCall,
+        p_authorized_token: token,
+      });
+      if (error || !data?.ok) {
+        const reason = String(data?.reason || '');
+        setDeviceRecoveryStatus(reason === 'not_authorized'
+          ? 'Solo el teléfono que conserva la autorización principal puede generar el código.'
+          : reason === 'rate_limited'
+            ? 'Se alcanzó el límite de códigos. Esperá una hora antes de solicitar otro.'
+            : 'No se pudo generar el código. Verificá la conexión e intentá nuevamente.');
+        return;
+      }
+      setDeviceRecoveryCode(String(data.code || ''));
+      setDeviceRecoveryStatus('Código válido durante 10 minutos. Usalo una sola vez en la PC.');
+    } finally {
+      setDeviceRecoveryBusy(false);
+    }
+  };
+
 
   useEffect(() => {
     if (isOpen) {
@@ -406,6 +441,26 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
 
           
+
+          {isVerifiedCallsign && (
+            <section className="rounded-xl border border-emerald-500/35 bg-emerald-950/25 p-3.5 space-y-3" aria-labelledby="device-recovery-title">
+              <div>
+                <h3 id="device-recovery-title" className="text-xs font-bold uppercase tracking-wider text-emerald-300">Recuperar acceso en otra PC</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">Desde tu teléfono con la autorización principal, generá un código temporal para recuperar una computadora que perdió sus datos de acceso. El teléfono seguirá autorizado.</p>
+              </div>
+              <button type="button" onClick={() => { void generateDeviceRecoveryCode(); }} disabled={deviceRecoveryBusy} className="w-full rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">
+                {deviceRecoveryBusy ? 'Generando código…' : 'Generar código para recuperar PC'}
+              </button>
+              {deviceRecoveryCode && (
+                <div className="rounded-lg border border-emerald-400/40 bg-slate-950 p-3 text-center">
+                  <p className="text-[11px] font-semibold text-emerald-200">CÓDIGO TEMPORAL</p>
+                  <p className="my-2 font-mono text-2xl font-black tracking-[0.2em] text-white">{deviceRecoveryCode}</p>
+                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(deviceRecoveryCode).then(() => setDeviceRecoveryStatus('Código copiado.')).catch(() => setDeviceRecoveryStatus('Seleccioná el código y copialo manualmente.')); }} className="rounded-lg border border-emerald-400/50 px-3 py-1.5 text-xs font-bold text-emerald-200">Copiar código</button>
+                </div>
+              )}
+              {deviceRecoveryStatus && <p role="status" className="text-xs leading-relaxed text-emerald-100">{deviceRecoveryStatus}</p>}
+            </section>
+          )}
 
           <section className="rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="grid-locator-title">
             <h3 id="grid-locator-title" className="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Locator para distancia DX</h3>
