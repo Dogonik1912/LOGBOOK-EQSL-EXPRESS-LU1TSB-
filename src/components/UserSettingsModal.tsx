@@ -51,6 +51,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [deviceRecoveryCode, setDeviceRecoveryCode] = useState('');
   const [deviceRecoveryStatus, setDeviceRecoveryStatus] = useState('');
   const [deviceRecoveryBusy, setDeviceRecoveryBusy] = useState(false);
+  const [deviceRecoveryOpen, setDeviceRecoveryOpen] = useState(false);
 
   const generateDeviceRecoveryCode = async () => {
     const token = localStorage.getItem('community_chat_identity_token') || '';
@@ -443,22 +444,33 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           
 
           {isVerifiedCallsign && (
-            <section className="rounded-xl border border-emerald-500/35 bg-emerald-950/25 p-3.5 space-y-3" aria-labelledby="device-recovery-title">
-              <div>
-                <h3 id="device-recovery-title" className="text-xs font-bold uppercase tracking-wider text-emerald-300">Recuperar acceso en otra PC</h3>
-                <p className="mt-1 text-xs leading-relaxed text-slate-300">Desde tu teléfono con la autorización principal, generá un código temporal para recuperar una computadora que perdió sus datos de acceso. El teléfono seguirá autorizado.</p>
-              </div>
-              <button type="button" onClick={() => { void generateDeviceRecoveryCode(); }} disabled={deviceRecoveryBusy} className="w-full rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">
-                {deviceRecoveryBusy ? 'Generando código…' : 'Generar código para recuperar PC'}
+            <section className="overflow-hidden rounded-xl border border-emerald-500/35 bg-emerald-950/25" aria-labelledby="device-recovery-title">
+              <button
+                type="button"
+                onClick={() => setDeviceRecoveryOpen((open) => !open)}
+                aria-expanded={deviceRecoveryOpen}
+                aria-controls="device-recovery-panel"
+                className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-emerald-900/25"
+              >
+                <span className="flex-1 text-xs font-bold uppercase tracking-wider text-emerald-300">Recuperar acceso en otra PC</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-emerald-300 transition-transform ${deviceRecoveryOpen ? 'rotate-180' : ''}`} />
               </button>
-              {deviceRecoveryCode && (
-                <div className="rounded-lg border border-emerald-400/40 bg-slate-950 p-3 text-center">
-                  <p className="text-[11px] font-semibold text-emerald-200">CÓDIGO TEMPORAL</p>
-                  <p className="my-2 font-mono text-2xl font-black tracking-[0.2em] text-white">{deviceRecoveryCode}</p>
-                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(deviceRecoveryCode).then(() => setDeviceRecoveryStatus('Código copiado.')).catch(() => setDeviceRecoveryStatus('Seleccioná el código y copialo manualmente.')); }} className="rounded-lg border border-emerald-400/50 px-3 py-1.5 text-xs font-bold text-emerald-200">Copiar código</button>
+              {deviceRecoveryOpen && (
+                <div id="device-recovery-panel" className="space-y-3 border-t border-emerald-500/20 p-3.5">
+                  <p className="text-xs leading-relaxed text-slate-300">Desde tu teléfono con la autorización principal, generá un código temporal para recuperar una computadora que perdió sus datos de acceso. El teléfono seguirá autorizado.</p>
+                  <button type="button" onClick={() => { void generateDeviceRecoveryCode(); }} disabled={deviceRecoveryBusy} className="w-full rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">
+                    {deviceRecoveryBusy ? 'Generando código…' : 'Generar código para recuperar PC'}
+                  </button>
+                  {deviceRecoveryCode && (
+                    <div className="rounded-lg border border-emerald-400/40 bg-slate-950 p-3 text-center">
+                      <p className="text-[11px] font-semibold text-emerald-200">CÓDIGO TEMPORAL</p>
+                      <p className="my-2 font-mono text-2xl font-black tracking-[0.2em] text-white">{deviceRecoveryCode}</p>
+                      <button type="button" onClick={() => { void navigator.clipboard?.writeText(deviceRecoveryCode).then(() => setDeviceRecoveryStatus('Código copiado.')).catch(() => setDeviceRecoveryStatus('Seleccioná el código y copialo manualmente.')); }} className="rounded-lg border border-emerald-400/50 px-3 py-1.5 text-xs font-bold text-emerald-200">Copiar código</button>
+                    </div>
+                  )}
+                  {deviceRecoveryStatus && <p role="status" className="text-xs leading-relaxed text-emerald-100">{deviceRecoveryStatus}</p>}
                 </div>
               )}
-              {deviceRecoveryStatus && <p role="status" className="text-xs leading-relaxed text-emerald-100">{deviceRecoveryStatus}</p>}
             </section>
           )}
 
