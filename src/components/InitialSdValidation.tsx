@@ -17,6 +17,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [blockCheckFailed, setBlockCheckFailed] = useState(false);
   const [identityNotice, setIdentityNotice] = useState('');
   const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [welcome, setWelcome] = useState<{ callsign: string; name: string; language: ReturnType<typeof getRecipientLanguage> } | null>(null);
 
   useEffect(() => {
@@ -104,6 +107,45 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     void initialize();
     return () => { active = false; };
   }, []);
+
+  const recoverDevice = async () => {
+    if (!supabase) { setError('La recuperación no está disponible ahora. Volvé a intentarlo más tarde.'); return; }
+    const clean = callsign.trim().toUpperCase();
+    const code = recoveryCode.trim().toUpperCase();
+    if (!clean || !/^[A-F0-9]{8}$/.test(code)) {
+      setError('Ingresá tu SD y el código de 8 caracteres que generaste desde el teléfono.');
+      return;
+    }
+    const token = localStorage.getItem('community_chat_identity_token') || crypto.randomUUID();
+    localStorage.setItem('community_chat_identity_token', token);
+    setRecoveryBusy(true);
+    setError('');
+    try {
+      const { data, error: recoveryError } = await supabase.rpc('redeem_community_device_recovery', {
+        p_callsign: clean,
+        p_code: code,
+        p_new_token: token,
+      });
+      if (recoveryError || !data?.ok) {
+        const reason = String(data?.reason || '');
+        setError(reason === 'expired_or_invalid' ? 'El código venció o ya no es válido. Generá uno nuevo desde el teléfono.'
+          : reason === 'device_in_use' ? 'Este identificador ya está vinculado a otro indicativo. Cerrá y volvé a intentar.'
+          : reason === 'device_state' ? 'No se pudo confirmar el estado de los dispositivos. Contactá con administración.'
+          : 'No se pudo recuperar el acceso. Comprobá la SD y el código e intentá nuevamente.');
+        return;
+      }
+      localStorage.setItem('community_chat_identity_token', token);
+      localStorage.setItem('community_chat_sd', clean);
+      localStorage.setItem('user_callsign', clean);
+      localStorage.setItem('logbook_sd_validated', '1');
+      window.dispatchEvent(new Event('user-profile-updated'));
+      setIdentityNotice('');
+      setCallsign(clean);
+      setRequired(false);
+    } finally {
+      setRecoveryBusy(false);
+    }
+  };
 
   const validate = async () => {
     if (!supabase) {
@@ -208,13 +250,24 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           <button type="button" onClick={() => setHelpChoice('radio')} className={`rounded-xl border px-3 py-3 text-sm font-bold ${helpChoice === 'radio' ? 'border-sky-300 bg-sky-800' : 'border-slate-600 bg-slate-800'}`}>Tengo SD de radioaficionado</button>
           <button type="button" onClick={() => setHelpChoice('other')} className={`rounded-xl border px-3 py-3 text-sm font-bold ${helpChoice === 'other' ? 'border-sky-300 bg-sky-800' : 'border-slate-600 bg-slate-800'}`}>No tengo SD de radioaficionado</button>
         </div>
-        {helpChoice && <div className="mt-4">
+        <button type="button" onClick={() => { setRecoveryMode((value) => !value); setError(''); }} className="mt-3 w-full rounded-xl border border-emerald-400/60 bg-emerald-950/60 px-3 py-2.5 text-sm font-bold text-emerald-200">
+          {recoveryMode ? 'Volver al registro inicial' : 'Recuperar acceso de una PC con código del teléfono'}
+        </button>
+        {recoveryMode && <div className="mt-4 space-y-3 rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-3">
+          <p className="text-sm text-emerald-100">Desde tu teléfono autorizado, abrí Perfil del usuario y generá un código de recuperación. El código vence a los 10 minutos y se usa una sola vez.</p>
+          <label htmlFor="recovery-sd" className="block text-sm font-semibold">Tu SD o indicativo</label>
+          <input id="recovery-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1TSB" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-emerald-400" />
+          <label htmlFor="recovery-code" className="block text-sm font-semibold">Código de recuperación</label>
+          <input id="recovery-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 8))} autoComplete="off" maxLength={8} placeholder="8 caracteres" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-lg tracking-widest uppercase text-white outline-none focus:border-emerald-400" />
+          <button type="button" disabled={recoveryBusy || !callsign.trim() || recoveryCode.length !== 8} onClick={() => { void recoverDevice(); }} className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-black text-slate-950 disabled:opacity-50">{recoveryBusy ? 'Recuperando…' : 'Recuperar este dispositivo'}</button>
+        </div>}
+        {!recoveryMode && helpChoice && <div className="mt-4">
           <label htmlFor="initial-sd" className="mb-1 block text-sm font-semibold"> {helpChoice === 'radio' ? 'Ingresá tu SD para validarla' : 'Ingresá el indicativo que usarás en la app'} </label>
           <input id="initial-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1ABC" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-sky-400" />
           <p className="mt-2 text-xs text-slate-400">Debés ingresar una SD o indicativo válido. Los nombres, apodos y códigos aleatorios no permiten el ingreso.</p>
         </div>}
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-950 p-3 text-sm text-red-200">{error}</p>}
-        <button type="button" disabled={!helpChoice || busy || !callsign.trim()} onClick={() => { void validate(); }} className="mt-4 w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Validando…' : 'Validar y continuar'}</button>
+        {!recoveryMode && <button type="button" disabled={!helpChoice || busy || !callsign.trim()} onClick={() => { void validate(); }} className="mt-4 w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Validando…' : 'Validar y continuar'}</button>}
         <p className="mt-3 text-center text-xs text-slate-400">Este aviso no volverá a aparecer en este dispositivo una vez validada la identidad.</p>
       </section>
     </div>
