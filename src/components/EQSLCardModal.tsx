@@ -20,7 +20,8 @@ import {
   Anchor,
 
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Music2
 } from 'lucide-react';
 
 const EQSL_THEMES = [
@@ -584,6 +585,55 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     returnToHome();
   };
 
+
+  // Compartir por TikTok: únicamente la imagen eQSL y el enlace público de la tarjeta.
+  const handleShareTikTok = async () => {
+    if (!isQsoValidForEQSL() || !canvasRef.current) return;
+    trackEQSLActivity();
+
+    let receivedCardLink = '';
+    try {
+      receivedCardLink = await getReceivedCardUrl();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace corto. Intentá nuevamente.');
+      return;
+    }
+
+    const blob = await new Promise<Blob | null>((resolve) => canvasRef.current?.toBlob(resolve, 'image/png'));
+    if (!blob) {
+      window.alert('No se pudo preparar la imagen eQSL. Intentá nuevamente.');
+      return;
+    }
+
+    const imageFile = new File([blob], `eQSL_${myCallsign}_${qso.callsign}.png`, { type: 'image/png' });
+    if (typeof navigator.share === 'function' &&
+        (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [imageFile] }))) {
+      try {
+        // El único texto compartido es el enlace de la app; no se agrega ningún mensaje.
+        await navigator.share({ files: [imageFile], text: receivedCardLink });
+        returnToHome();
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+
+    // Alternativa para navegadores sin compartir archivos: descargar la eQSL y copiar solo el enlace.
+    try {
+      await navigator.clipboard.writeText(receivedCardLink);
+    } catch {
+      window.prompt('Copiá el enlace de la eQSL:', receivedCardLink);
+    }
+    const downloadLink = document.createElement('a');
+    downloadLink.download = imageFile.name;
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.click();
+    window.setTimeout(() => URL.revokeObjectURL(downloadLink.href), 15000);
+    window.open('https://www.tiktok.com/', '_blank', 'noopener,noreferrer');
+    window.alert('La eQSL se descargó y el enlace quedó copiado. En TikTok, adjuntá la imagen y pegá únicamente el enlace.');
+    returnToHome();
+  };
+
   const handleShareTelegram = async () => {
     if (!isQsoValidForEQSL()) return;
     trackEQSLActivity();
@@ -881,6 +931,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
             </button>
 
             <button type="button" onClick={handleShareTelegram} className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"><MessageSquare className="w-4 h-4" /> Telegram</button>
+
+            <button
+              type="button"
+              onClick={handleShareTikTok}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+            >
+              <Music2 className="w-4 h-4" />
+              TikTok
+            </button>
             {/* Compartir por WhatsApp con firma dinámica y link para responder */}
             <button
               type="button"
