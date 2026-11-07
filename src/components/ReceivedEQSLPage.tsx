@@ -224,8 +224,12 @@ export const ReceivedEQSLPage: React.FC = () => {
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
         <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={card.isResponse ? 'Tarjeta eQSL de respuesta' : t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
         <div className="mt-4 flex flex-col gap-3">
-          {!card.isResponse && <a href={getReplyAppUrl()} className="block rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{t.open}</a>}
           <button onClick={download} className="rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{card.isResponse ? 'Descargar' : t.download}</button>
+          {!card.isResponse && downloadAttempted && <div className="space-y-3 rounded-xl border border-emerald-500/50 bg-emerald-950/30 p-4 text-center">
+            <p className="text-base font-semibold text-white">Would you like to reply to this eQSL?</p>
+            <p className="text-sm text-slate-200">Accept the invitation to open LogBook eQSL EXPRESS, enter your callsign (SD), choose your language and reply using any available method.</p>
+            <a href={getReplyAppUrl()} className="block rounded-xl bg-emerald-400 px-5 py-4 text-center text-base font-extrabold text-slate-950 shadow-lg hover:bg-emerald-300">YES, I WANT TO REPLY</a>
+          </div>}
           {card.isResponse && downloadAttempted && <div className="space-y-3 rounded-xl border border-slate-700 p-3 text-center">
             <p role="status" className="text-sm text-slate-200">La descarga web se inició. Si la imagen no quedó guardada en tu Galería, podés intentar la alternativa disponible.</p>
             {hasAndroidGalleryBridge && <button onClick={saveToAndroidGallery} className="w-full rounded-xl border border-amber-300 px-4 py-3 font-bold text-amber-200 hover:bg-slate-800">Guardar en la Galería del dispositivo</button>}
