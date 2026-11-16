@@ -14,6 +14,35 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
+    <script>
+      // Some privacy browsers deny the Window.localStorage getter entirely.
+      // Install a synchronous in-memory fallback before React modules are loaded.
+      (function () {
+        try {
+          var storage = window.localStorage;
+          var probe = "__logbook_storage_probe__";
+          storage.setItem(probe, "1");
+          storage.removeItem(probe);
+          return;
+        } catch (error) {
+          var memory = Object.create(null);
+          var fallback = {
+            getItem: function (key) { key = String(key); return Object.prototype.hasOwnProperty.call(memory, key) ? memory[key] : null; },
+            setItem: function (key, value) { memory[String(key)] = String(value); },
+            removeItem: function (key) { delete memory[String(key)]; },
+            clear: function () { memory = Object.create(null); },
+            key: function (index) { return Object.keys(memory)[index] || null; }
+          };
+          Object.defineProperty(fallback, "length", { get: function () { return Object.keys(memory).length; } });
+          try {
+            Object.defineProperty(window, "localStorage", { configurable: true, value: fallback });
+          } catch (defineError) {
+            console.warn("LogBook: no se pudo habilitar almacenamiento alternativo", defineError);
+          }
+          console.warn("LogBook: almacenamiento persistente bloqueado; se usa memoria temporal", error);
+        }
+      })();
+    </script>
     <meta property="og:title" content="LOGBOOK eQSL EXPRESS" />
     <meta property="og:description" content="LOGBOOK eQSL EXPRESS" />
     <meta property="og:image" content="https://logbook-eqsl-express-lu-1-tsb.vercel.app/icon.svg" />
