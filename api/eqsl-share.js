@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 // eQSL share objects are stored in the private Supabase Storage bucket.
@@ -72,9 +72,18 @@ export default async function handler(req, res) {
       const card = validateCard(req.body || {});
       if (!card) return json(res, 400, { error: 'Datos de la eQSL incompletos o inválidos.' });
 
-      const id = randomBytes(9).toString('hex');
+      const clientDeliveryId = clean(req.body?.clientDeliveryId, 100);
+      const id = /^[a-zA-Z0-9_-]{8,100}$/.test(clientDeliveryId)
+        ? createHash('sha256').update(clientDeliveryId).digest('hex').slice(0, 24)
+        : randomBytes(9).toString('hex');
+      const path = `eqsl-shares/${id}.json`;
+      const existing = await readRecord(storage, path);
+      if (existing?.card) {
+        if (JSON.stringify(existing.card) !== JSON.stringify(card)) return json(res, 409, { error: 'El identificador de entrega ya está asociado a otra tarjeta.' });
+        return json(res, 200, { id, expiresAt: existing.expiresAt, reused: true });
+      }
       const expiresAt = new Date(Date.now() + LIFETIME_MS).toISOString();
-      await writeRecord(storage, `eqsl-shares/${id}.json`, { id, card, expiresAt });
+      await writeRecord(storage, path, { id, card, expiresAt });
       return json(res, 201, { id, expiresAt });
     }
 
