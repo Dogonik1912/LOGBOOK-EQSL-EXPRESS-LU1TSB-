@@ -56,12 +56,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [adminRecoveryCode, setAdminRecoveryCode] = useState('');
   const [adminRecoveryStatus, setAdminRecoveryStatus] = useState('');
   const [adminRecoveryBusy, setAdminRecoveryBusy] = useState(false);
+  const [adminRecoveryTarget, setAdminRecoveryTarget] = useState('');
 
-  const generateAdminRecoveryCodeForLU6EAE = async () => {
+  const generateAdminRecoveryCode = async () => {
     const token = localStorage.getItem('community_chat_identity_token') || '';
     const currentCall = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const target = adminRecoveryTarget.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
     if (!supabase || !token || currentCall !== 'LU1TSB' || !isAdminActor) {
       setAdminRecoveryStatus('Esta operación requiere la sesión administradora LU1TSB.');
+      return;
+    }
+    if (!target || target.length < 3 || target.length > 24) {
+      setAdminRecoveryStatus('Ingresá un indicativo válido para autorizar la recuperación.');
       return;
     }
     setAdminRecoveryBusy(true);
@@ -70,21 +76,21 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     try {
       const { data, error } = await supabase.rpc('admin_issue_community_device_recovery', {
         p_admin_token: token,
-        p_target_callsign: 'LU6EAE',
+        p_target_callsign: target,
       });
       if (error || !data?.ok) {
         const reason = String(data?.reason || '');
         setAdminRecoveryStatus(reason === 'not_authorized'
           ? 'La sesión LU1TSB no pudo verificarse como administradora.'
           : reason === 'callsign_not_found'
-            ? 'No se encontró el indicativo LU6EAE.'
+            ? `No se encontró el indicativo ${target}.`
             : reason === 'rate_limited'
-              ? 'Se alcanzó el límite de códigos para LU6EAE. Esperá una hora.'
+              ? 'El sistema limitó temporalmente la emisión de códigos. Esperá unos minutos y volvé a intentarlo.'
               : 'No se pudo emitir el código. Revisá la conexión e intentá nuevamente.');
         return;
       }
       setAdminRecoveryCode(String(data.code || ''));
-      setAdminRecoveryStatus('Código de un solo uso para LU6EAE. Vence en 10 minutos; entregalo únicamente al titular.');
+      setAdminRecoveryStatus(`Código de un solo uso para ${target}. Vence en 10 minutos; entregalo únicamente al titular.`);
     } finally {
       setAdminRecoveryBusy(false);
     }
@@ -525,13 +531,15 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           {isVerifiedCallsign && isAdminActor && (
             <section className="space-y-3 rounded-xl border border-amber-400/40 bg-amber-950/20 p-3.5" aria-labelledby="admin-device-recovery-title">
               <h3 id="admin-device-recovery-title" className="text-xs font-black uppercase tracking-wider text-amber-300">Recuperación administrativa de dispositivo</h3>
-              <p className="text-xs leading-relaxed text-slate-200">Emití un código temporal para que el titular de LU6EAE recupere su acceso en este teléfono. No cambia ni elimina el indicativo registrado.</p>
-              <button type="button" onClick={() => { void generateAdminRecoveryCodeForLU6EAE(); }} disabled={adminRecoveryBusy} className="w-full rounded-lg bg-amber-400 px-3 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">
-                {adminRecoveryBusy ? 'Autorizando…' : 'Autorizar recuperación de LU6EAE'}
+              <p className="text-xs leading-relaxed text-slate-200">Emití un código temporal para el titular del indicativo que necesite recuperar el acceso. No cambia ni elimina el indicativo registrado.</p>
+              <label htmlFor="admin-recovery-target" className="block text-xs font-semibold text-amber-100">Indicativo del usuario</label>
+              <input id="admin-recovery-target" value={adminRecoveryTarget} onChange={(event) => { setAdminRecoveryTarget(event.target.value.toUpperCase()); setAdminRecoveryCode(''); }} maxLength={24} autoComplete="off" placeholder="Ej.: LU6EAE" className="w-full rounded-lg border border-amber-400/40 bg-slate-950 px-3 py-2 font-mono text-sm uppercase text-white" />
+              <button type="button" onClick={() => { void generateAdminRecoveryCode(); }} disabled={adminRecoveryBusy || !adminRecoveryTarget.trim()} className="w-full rounded-lg bg-amber-400 px-3 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">
+                {adminRecoveryBusy ? 'Autorizando…' : 'Autorizar recuperación'}
               </button>
               {adminRecoveryCode && (
                 <div className="rounded-lg border border-amber-400/40 bg-slate-950 p-3 text-center">
-                  <p className="text-[11px] font-bold text-amber-200">CÓDIGO TEMPORAL · LU6EAE</p>
+                  <p className="text-[11px] font-bold text-amber-200">CÓDIGO TEMPORAL · {adminRecoveryTarget.trim().toUpperCase()}</p>
                   <p className="my-2 font-mono text-2xl font-black tracking-[0.2em] text-white">{adminRecoveryCode}</p>
                   <button type="button" onClick={() => { void navigator.clipboard?.writeText(adminRecoveryCode).then(() => setAdminRecoveryStatus('Código copiado.')).catch(() => setAdminRecoveryStatus('Seleccioná el código y copialo manualmente.')); }} className="rounded-lg border border-amber-400/50 px-3 py-1.5 text-xs font-bold text-amber-200">Copiar código</button>
                 </div>
