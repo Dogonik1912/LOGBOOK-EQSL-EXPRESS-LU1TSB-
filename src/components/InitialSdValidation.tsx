@@ -109,15 +109,22 @@ const persistIdentity = async (callsign: string, token: string) => {
     console.warn('No se pudo guardar la identidad en IndexedDB:', error);
   }
   const cookieSaved = saveIdentityCookie(identity);
+  let localStorageSaved = false;
   try {
     localStorage.setItem('community_chat_sd', callsign);
     localStorage.setItem('user_callsign', callsign);
     localStorage.setItem('community_chat_identity_token', token);
     localStorage.setItem('logbook_sd_validated', '1');
+    localStorageSaved =
+      localStorage.getItem('community_chat_sd') === callsign &&
+      localStorage.getItem('community_chat_identity_token') === token &&
+      localStorage.getItem('logbook_sd_validated') === '1';
   } catch (error) {
     console.warn('localStorage no está disponible; se conserva el respaldo persistente alternativo:', error);
   }
-  if (!indexedDbSaved && !cookieSaved) {
+  // localStorage is a valid browser-persistent fallback too. Some Android
+  // WebViews block IndexedDB and Secure cookies while still allowing it.
+  if (!indexedDbSaved && !cookieSaved && !localStorageSaved) {
     throw new Error('El navegador no confirmó ningún almacenamiento persistente para la identidad.');
   }
 };
