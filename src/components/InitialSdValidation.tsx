@@ -419,7 +419,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           {recoveryMode ? 'Volver al registro inicial' : 'Ingresar código de recuperación autorizado por administración'}
         </button>
         {recoveryMode && <div className="mt-4 space-y-3 rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-3">
-          <p className="text-sm text-emerald-100">LU6EAE: si el administrador ya autorizó tu recuperación, pegá aquí el código de 8 caracteres que te entregó. No pulses «Generar código» en este dispositivo. El código vence a los 10 minutos y se usa una sola vez.</p>
+          <p className="text-sm text-emerald-100">Si el administrador ya autorizó tu recuperación, pegá aquí el código de 8 caracteres que te entregó. No generes un código desde este dispositivo. El código vence a los 10 minutos y se usa una sola vez.</p>
           <label htmlFor="recovery-sd" className="block text-sm font-semibold">Tu SD o indicativo</label>
           <input id="recovery-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1TSB" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-emerald-400" />
           <label htmlFor="recovery-code" className="block text-sm font-semibold">Código de recuperación</label>
