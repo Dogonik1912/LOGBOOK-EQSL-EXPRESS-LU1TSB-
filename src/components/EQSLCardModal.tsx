@@ -8,6 +8,7 @@ import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
 import { getRecipientLanguage } from '../services/appLanguage';
+import { enqueueEqslDelivery, deliverEqslJob } from '../services/offlineEqslQueue';
 import { 
   X, 
   Download, 
@@ -65,7 +66,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   onOpenReply,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const inboxDeliveryStatus = useRef<boolean | null>(null);
+  const inboxDeliveryStatus = useRef<boolean | 'queued' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
   const [customBgImage, setCustomBgImage] = useState<string | null>(() => localStorage.getItem('eqsl_custom_bg') || null);
@@ -477,29 +478,24 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       // Compartir la tarjeta ya renderizada: conserva imagen, recorte, posición y diseño exactos.
       imageDataUrl: canvasRef.current?.toDataURL('image/jpeg', 0.9) || '',
     };
+    if (registerInAppInbox) {
+      const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (!identityCallsign) {
+        inboxDeliveryStatus.current = false;
+        throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
+      }
+      const job = await enqueueEqslDelivery(cardData, {
+        from: identityCallsign, to: String(cardData.to), isResponse: false,
+        date: String(cardData.date), band: String(cardData.band), mode: String(cardData.mode),
+      });
+      inboxDeliveryStatus.current = navigator.onLine && await deliverEqslJob(job.id, true) ? true : 'queued';
+      return '';
+    }
     const response = await fetch('/api/eqsl-share', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cardData),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cardData),
     });
     const result = await response.json();
-    if (!response.ok || !result.id) {
-      throw new Error(result.error || 'No se pudo crear el enlace corto de la eQSL.');
-    }
-    // Si esta estación ya verificó su SD en el chat, registra la tarjeta en el buzón del destinatario.
-    inboxDeliveryStatus.current = null;
-    const identityToken = localStorage.getItem('community_chat_identity_token') || '';
-    const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-    if (registerInAppInbox && identityToken && identityCallsign) {
-      try {
-        const inboxResponse = await fetch('/api/eqsl-inbox', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: cardData.from, to: cardData.to, isResponse: false, date: cardData.date, band: cardData.band, mode: cardData.mode }),
-        });
-        inboxDeliveryStatus.current = inboxResponse.ok;
-      } catch { inboxDeliveryStatus.current = false; /* El enlace externo sigue disponible aunque el buzón no responda. */ }
-    }
+    if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo crear el enlace corto de la eQSL.');
     return `${window.location.origin}/?e=${encodeURIComponent(result.id)}`;
   };
 
@@ -516,6 +512,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       if (inboxDeliveryStatus.current === true) {
         // Confirmación visual en el propio botón: sin cartel y sin segundo envío del mismo QSO.
         setEqslPostSent(true);
+        returnToHome();
+      } else if (inboxDeliveryStatus.current === 'queued') {
+        window.alert(navigator.onLine ? 'La eQSL quedó guardada. El envío automático no pudo confirmarse; autorizá el reintento desde el aviso de eQSL pendientes.' : 'La eQSL quedó guardada en este dispositivo. Se enviará al recuperar la conexión.');
         returnToHome();
       } else if (inboxDeliveryStatus.current === false) {
         window.alert('No se pudo entregar al buzón. Podés usar WhatsApp, Telegram o correo como alternativa.');
