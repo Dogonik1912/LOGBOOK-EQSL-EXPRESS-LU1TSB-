@@ -46,31 +46,34 @@ const loadIdentityBackup = async (): Promise<SavedIdentity | null> => {
 };
 
 const loadSavedIdentity = async (): Promise<{ callsign: string; token: string }> => {
-  let callsign = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
-  let token = localStorage.getItem('community_chat_identity_token') || '';
-  if (!callsign || !token || localStorage.getItem('logbook_sd_validated') !== '1') {
-    const backup = await loadIdentityBackup();
-    if (backup?.validated) {
-      callsign = callsign || backup.callsign;
-      token = token || backup.token;
-      if (callsign) {
-        localStorage.setItem('community_chat_sd', callsign);
-        localStorage.setItem('user_callsign', callsign);
-      }
-      if (token) localStorage.setItem('community_chat_identity_token', token);
-      localStorage.setItem('logbook_sd_validated', '1');
-    }
+  // The IndexedDB record is the durable backup written after a successful
+  // validation/recovery. Prefer it over stale localStorage values so an older
+  // token cannot make an already recovered device look unregistered.
+  const backup = await loadIdentityBackup();
+  if (backup?.validated && backup.callsign?.trim() && backup.token?.trim()) {
+    const callsign = backup.callsign.trim().toUpperCase();
+    const token = backup.token.trim();
+    localStorage.setItem('community_chat_sd', callsign);
+    localStorage.setItem('user_callsign', callsign);
+    localStorage.setItem('community_chat_identity_token', token);
+    localStorage.setItem('logbook_sd_validated', '1');
+    return { callsign, token };
   }
+
+  const callsign = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+  const token = localStorage.getItem('community_chat_identity_token') || '';
   return { callsign, token };
 };
 
 const persistIdentity = async (callsign: string, token: string) => {
+  // Save the durable copy first. If the app closes immediately afterwards,
+  // the next launch can restore the exact same authorized identity.
+  try { await saveIdentityBackup({ callsign, token, validated: true }); }
+  catch (error) { console.warn('No se pudo crear el respaldo secundario de identidad:', error); }
   localStorage.setItem('community_chat_sd', callsign);
   localStorage.setItem('user_callsign', callsign);
   localStorage.setItem('community_chat_identity_token', token);
   localStorage.setItem('logbook_sd_validated', '1');
-  try { await saveIdentityBackup({ callsign, token, validated: true }); }
-  catch (error) { console.warn('No se pudo crear el respaldo secundario de identidad:', error); }
 };
 
 /**
@@ -187,8 +190,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       setError('Ingresá tu SD y el código de 8 caracteres que te entregó el administrador.');
       return;
     }
-    const token = localStorage.getItem('community_chat_identity_token') || crypto.randomUUID();
-    localStorage.setItem('community_chat_identity_token', token);
+    // A recovery must register a fresh device identity. Reusing a stale token
+    // from this browser can make the next launch fall back into validation.
+    const token = crypto.randomUUID();
     setRecoveryBusy(true);
     setError('');
     try {
