@@ -52,6 +52,43 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [deviceRecoveryStatus, setDeviceRecoveryStatus] = useState('');
   const [deviceRecoveryBusy, setDeviceRecoveryBusy] = useState(false);
   const [deviceRecoveryOpen, setDeviceRecoveryOpen] = useState(false);
+  const [isAdminActor, setIsAdminActor] = useState(false);
+  const [adminRecoveryCode, setAdminRecoveryCode] = useState('');
+  const [adminRecoveryStatus, setAdminRecoveryStatus] = useState('');
+  const [adminRecoveryBusy, setAdminRecoveryBusy] = useState(false);
+
+  const generateAdminRecoveryCodeForLU6EAE = async () => {
+    const token = localStorage.getItem('community_chat_identity_token') || '';
+    const currentCall = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    if (!supabase || !token || currentCall !== 'LU1TSB' || !isAdminActor) {
+      setAdminRecoveryStatus('Esta operación requiere la sesión administradora LU1TSB.');
+      return;
+    }
+    setAdminRecoveryBusy(true);
+    setAdminRecoveryCode('');
+    setAdminRecoveryStatus('');
+    try {
+      const { data, error } = await supabase.rpc('admin_issue_community_device_recovery', {
+        p_admin_token: token,
+        p_target_callsign: 'LU6EAE',
+      });
+      if (error || !data?.ok) {
+        const reason = String(data?.reason || '');
+        setAdminRecoveryStatus(reason === 'not_authorized'
+          ? 'La sesión LU1TSB no pudo verificarse como administradora.'
+          : reason === 'callsign_not_found'
+            ? 'No se encontró el indicativo LU6EAE.'
+            : reason === 'rate_limited'
+              ? 'Se alcanzó el límite de códigos para LU6EAE. Esperá una hora.'
+              : 'No se pudo emitir el código. Revisá la conexión e intentá nuevamente.');
+        return;
+      }
+      setAdminRecoveryCode(String(data.code || ''));
+      setAdminRecoveryStatus('Código de un solo uso para LU6EAE. Vence en 10 minutos; entregalo únicamente al titular.');
+    } finally {
+      setAdminRecoveryBusy(false);
+    }
+  };
 
   const generateDeviceRecoveryCode = async () => {
     const token = localStorage.getItem('community_chat_identity_token') || '';
@@ -91,6 +128,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       const identityToken = localStorage.getItem('community_chat_identity_token') || '';
       const verifiedOnThisDevice = Boolean(verifiedCallsign && identityToken);
       setIsVerifiedCallsign(verifiedOnThisDevice);
+      setIsAdminActor(false);
+      setAdminRecoveryCode('');
+      setAdminRecoveryStatus('');
+      if (supabase && verifiedOnThisDevice) {
+        void supabase.rpc('community_actor_role', {
+          p_callsign: verifiedCallsign,
+          p_token: identityToken,
+        }).then(({ data, error }) => {
+          setIsAdminActor(!error && verifiedCallsign === 'LU1TSB' && data === 'admin');
+        }).catch(() => setIsAdminActor(false));
+      }
       setGridLocator((localStorage.getItem('user_grid_locator') || '').trim().toUpperCase());
       setProfilePhoto(localStorage.getItem('user_profile_photo') || null);
       setCallsign(verifiedOnThisDevice ? verifiedCallsign : (localStorage.getItem('user_callsign') || ''));
@@ -471,6 +519,24 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   {deviceRecoveryStatus && <p role="status" className="text-xs leading-relaxed text-emerald-100">{deviceRecoveryStatus}</p>}
                 </div>
               )}
+            </section>
+          )}
+
+          {isVerifiedCallsign && isAdminActor && (
+            <section className="space-y-3 rounded-xl border border-amber-400/40 bg-amber-950/20 p-3.5" aria-labelledby="admin-device-recovery-title">
+              <h3 id="admin-device-recovery-title" className="text-xs font-black uppercase tracking-wider text-amber-300">Recuperación administrativa de dispositivo</h3>
+              <p className="text-xs leading-relaxed text-slate-200">Emití un código temporal para que el titular de LU6EAE recupere su acceso en este teléfono. No cambia ni elimina el indicativo registrado.</p>
+              <button type="button" onClick={() => { void generateAdminRecoveryCodeForLU6EAE(); }} disabled={adminRecoveryBusy} className="w-full rounded-lg bg-amber-400 px-3 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">
+                {adminRecoveryBusy ? 'Autorizando…' : 'Autorizar recuperación de LU6EAE'}
+              </button>
+              {adminRecoveryCode && (
+                <div className="rounded-lg border border-amber-400/40 bg-slate-950 p-3 text-center">
+                  <p className="text-[11px] font-bold text-amber-200">CÓDIGO TEMPORAL · LU6EAE</p>
+                  <p className="my-2 font-mono text-2xl font-black tracking-[0.2em] text-white">{adminRecoveryCode}</p>
+                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(adminRecoveryCode).then(() => setAdminRecoveryStatus('Código copiado.')).catch(() => setAdminRecoveryStatus('Seleccioná el código y copialo manualmente.')); }} className="rounded-lg border border-amber-400/50 px-3 py-1.5 text-xs font-bold text-amber-200">Copiar código</button>
+                </div>
+              )}
+              {adminRecoveryStatus && <p role="status" className="text-xs leading-relaxed text-amber-100">{adminRecoveryStatus}</p>}
             </section>
           )}
 
