@@ -485,7 +485,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
       }
       const job = await enqueueEqslDelivery(cardData, {
-        from: identityCallsign, to: String(cardData.to), isResponse: false,
+        from: String(cardData.from), senderIdentity: identityCallsign, to: String(cardData.to), isResponse: false,
         date: String(cardData.date), band: String(cardData.band), mode: String(cardData.mode),
       });
       inboxDeliveryStatus.current = navigator.onLine && await deliverEqslJob(job.id, true) ? true : 'queued';
