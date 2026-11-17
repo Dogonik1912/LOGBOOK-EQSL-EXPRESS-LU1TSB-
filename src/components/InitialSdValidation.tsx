@@ -45,18 +45,49 @@ const loadIdentityBackup = async (): Promise<SavedIdentity | null> => {
   }
 };
 
+const IDENTITY_COOKIE_NAME = 'logbook_identity_backup';
+
+const readIdentityCookie = (): SavedIdentity | null => {
+  try {
+    const prefix = IDENTITY_COOKIE_NAME + '=';
+    const item = document.cookie.split('; ').find((entry) => entry.startsWith(prefix));
+    if (!item) return null;
+    const parsed = JSON.parse(decodeURIComponent(item.slice(prefix.length))) as SavedIdentity;
+    return parsed?.validated === true && parsed.callsign?.trim() && parsed.token?.trim() ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveIdentityCookie = (identity: SavedIdentity): boolean => {
+  try {
+    const value = encodeURIComponent(JSON.stringify(identity));
+    document.cookie = IDENTITY_COOKIE_NAME + '=' + value + '; Max-Age=31536000; Path=/; SameSite=Lax; Secure';
+    const saved = readIdentityCookie();
+    return Boolean(saved && saved.callsign === identity.callsign && saved.token === identity.token);
+  } catch {
+    return false;
+  }
+};
+
 const loadSavedIdentity = async (): Promise<{ callsign: string; token: string }> => {
   // The IndexedDB record is the durable backup written after a successful
   // validation/recovery. Prefer it over stale localStorage values so an older
   // token cannot make an already recovered device look unregistered.
   const backup = await loadIdentityBackup();
-  if (backup?.validated && backup.callsign?.trim() && backup.token?.trim()) {
-    const callsign = backup.callsign.trim().toUpperCase();
-    const token = backup.token.trim();
-    localStorage.setItem('community_chat_sd', callsign);
-    localStorage.setItem('user_callsign', callsign);
-    localStorage.setItem('community_chat_identity_token', token);
-    localStorage.setItem('logbook_sd_validated', '1');
+  const saved = backup?.validated && backup.callsign?.trim() && backup.token?.trim()
+    ? backup
+    : readIdentityCookie();
+
+  if (saved?.validated && saved.callsign?.trim() && saved.token?.trim()) {
+    const callsign = saved.callsign.trim().toUpperCase();
+    const token = saved.token.trim();
+    try {
+      localStorage.setItem('community_chat_sd', callsign);
+      localStorage.setItem('user_callsign', callsign);
+      localStorage.setItem('community_chat_identity_token', token);
+      localStorage.setItem('logbook_sd_validated', '1');
+    } catch { /* La cookie persistente conserva la identidad si localStorage está bloqueado. */ }
     return { callsign, token };
   }
 
@@ -66,14 +97,29 @@ const loadSavedIdentity = async (): Promise<{ callsign: string; token: string }>
 };
 
 const persistIdentity = async (callsign: string, token: string) => {
-  // Save the durable copy first. If the app closes immediately afterwards,
-  // the next launch can restore the exact same authorized identity.
-  try { await saveIdentityBackup({ callsign, token, validated: true }); }
-  catch (error) { console.warn('No se pudo crear el respaldo secundario de identidad:', error); }
-  localStorage.setItem('community_chat_sd', callsign);
-  localStorage.setItem('user_callsign', callsign);
-  localStorage.setItem('community_chat_identity_token', token);
-  localStorage.setItem('logbook_sd_validated', '1');
+  // Keep two durable browser-side copies. Some Android browser configurations
+  // deny localStorage; the first-party cookie is an independent fallback.
+  const identity: SavedIdentity = { callsign, token, validated: true };
+  let indexedDbSaved = false;
+  try {
+    await saveIdentityBackup(identity);
+    const check = await loadIdentityBackup();
+    indexedDbSaved = Boolean(check?.validated && check.callsign === callsign && check.token === token);
+  } catch (error) {
+    console.warn('No se pudo guardar la identidad en IndexedDB:', error);
+  }
+  const cookieSaved = saveIdentityCookie(identity);
+  try {
+    localStorage.setItem('community_chat_sd', callsign);
+    localStorage.setItem('user_callsign', callsign);
+    localStorage.setItem('community_chat_identity_token', token);
+    localStorage.setItem('logbook_sd_validated', '1');
+  } catch (error) {
+    console.warn('localStorage no está disponible; se conserva el respaldo persistente alternativo:', error);
+  }
+  if (!indexedDbSaved && !cookieSaved) {
+    throw new Error('El navegador no confirmó ningún almacenamiento persistente para la identidad.');
+  }
 };
 
 /**
