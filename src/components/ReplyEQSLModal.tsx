@@ -8,6 +8,7 @@ import { QSO, DEFAULT_CALLSIGN } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
 import { getRecipientLanguage, getLocalizedEQSLNotification } from '../services/appLanguage';
+import { enqueueEqslDelivery, deliverEqslJob } from '../services/offlineEqslQueue';
 import {
   X,
   Download,
@@ -366,45 +367,25 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) throw new Error('La vista previa de la eQSL todavía no está lista.');
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
+    const cardData = { from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.72) };
+    if (sendToInbox) {
+      const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (!identityCallsign) throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
+      const job = await enqueueEqslDelivery(cardData, {
+        from: identityCallsign, to: replyToCall.trim().toUpperCase(), isResponse: true,
+        date, band, mode, originalEqslId: initialData?.originalEqslId,
+      });
+      const delivered = navigator.onLine ? await deliverEqslJob(job.id, true) : false;
+      if (!delivered) setEqslPostStatus(navigator.onLine
+        ? 'La respuesta quedó guardada. El envío automático falló; autorizá el reintento desde el aviso de eQSL pendientes.'
+        : 'La respuesta quedó guardada en este dispositivo y se enviará al recuperar la conexión.');
+      return '';
+    }
     const response = await fetch('/api/eqsl-share', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.72) }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cardData),
     });
     const result = await response.json();
     if (!response.ok || !result.id) throw new Error(result.error || 'No se pudo preparar el enlace de la respuesta eQSL.');
-    // Si la respuesta nace de una eQSL recibida en el casillero, entregarla automáticamente
-    // al casillero del corresponsal. Las respuestas a eQSL externas no generan avisos de app.
-    if (sendToInbox || initialData?.originalEqslId) {
-      const identityToken = localStorage.getItem('community_chat_identity_token') || '';
-      const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-      if (identityToken && identityCallsign) {
-        try {
-          const inboxResponse = await fetch('/api/eqsl-inbox', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: result.id, token: identityToken, callsign: identityCallsign, from: activeMyCall, to: replyToCall.trim().toUpperCase(), isResponse: true, date, band, mode }),
-          });
-          if (!inboxResponse.ok) {
-            const deliveryError = await inboxResponse.json().catch(() => ({}));
-            if (sendToInbox) throw new Error(deliveryError.error || 'El servidor no pudo entregar la respuesta al buzón eQSL POST.');
-          }
-          if (inboxResponse.ok && initialData?.originalEqslId) {
-            await fetch('/api/eqsl-inbox', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'mark-answered', id: initialData.originalEqslId, token: identityToken, callsign: identityCallsign }),
-            });
-            window.dispatchEvent(new Event('eqsl-pending-count-updated'));
-          }
-        } catch (error) {
-          if (sendToInbox) throw error;
-          /* El enlace de respuesta se mantiene disponible si el buzón no responde. */
-        }
-      } else if (sendToInbox) {
-        throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
-      }
-  
-    }
     return window.location.origin + '/?e=' + encodeURIComponent(result.id);
   };
   const returnToHome = () => {
