@@ -116,7 +116,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         setDeviceRecoveryStatus(reason === 'not_authorized'
           ? 'Solo el teléfono que conserva la autorización principal puede generar el código.'
           : reason === 'rate_limited'
-            ? 'Se alcanzó el límite de códigos. Esperá una hora antes de solicitar otro.'
+            ? 'El servicio rechazó temporalmente la solicitud. Verificá la conexión y volvé a intentarlo.'
             : 'No se pudo generar el código. Verificá la conexión e intentá nuevamente.');
         return;
       }
