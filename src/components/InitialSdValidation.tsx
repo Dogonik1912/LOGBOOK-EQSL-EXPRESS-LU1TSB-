@@ -289,9 +289,16 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       setError('Ingresá tu SD y el código de 8 caracteres que te entregó el administrador.');
       return;
     }
-    // A recovery must register a fresh device identity. Reusing a stale token
-    // from this browser can make the next launch fall back into validation.
-    const token = crypto.randomUUID();
+    // Persist the new device token before contacting Supabase. If the response
+    // is interrupted, the next attempt reuses the same token and redemption is idempotent.
+    let token = '';
+    try {
+      token = localStorage.getItem('logbook_recovery_pending_token') || crypto.randomUUID();
+      localStorage.setItem('logbook_recovery_pending_token', token);
+    } catch {
+      setError('El navegador no permite guardar la identidad de este dispositivo. Habilitá el almacenamiento del sitio y volvé a intentarlo.');
+      return;
+    }
     setRecoveryBusy(true);
     setError('');
     try {
@@ -308,11 +315,28 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           : 'No se pudo recuperar el acceso. Comprobá la SD y el código e intentá nuevamente.');
         return;
       }
+      // Read back the server-side device registration before confirming success.
+      const { data: resolvedCall, error: resolveError } = await supabase.rpc('resolve_community_callsign', { p_token: token });
+      if (resolveError || String(resolvedCall || '').trim().toUpperCase() !== clean) {
+        setError('El servidor recibió la autorización, pero todavía no confirmó el registro de este dispositivo. No cierres esta pantalla; volvé a intentar con el mismo código.');
+        return;
+      }
       await persistIdentity(clean, token);
+      const saved = await loadSavedIdentity();
+      if (saved.callsign !== clean || saved.token !== token) {
+        setError('El acceso fue autorizado, pero el navegador no confirmó que guardó la identidad. Habilitá el almacenamiento del sitio y volvé a intentar.');
+        return;
+      }
+      try { localStorage.removeItem('logbook_recovery_pending_token'); } catch { /* La copia IndexedDB/cookie ya conserva el token. */ }
       window.dispatchEvent(new Event('user-profile-updated'));
       setIdentityNotice('');
       setCallsign(clean);
+      setRecoveryCode('');
+      setRecoveryMode(false);
       setRequired(false);
+    } catch (recoveryFailure) {
+      console.error('Error al persistir la recuperación del dispositivo:', recoveryFailure);
+      setError('No se pudo confirmar y guardar la identidad en este dispositivo. Volvé a intentar; se conservará el mismo identificador para no duplicar el registro.');
     } finally {
       setRecoveryBusy(false);
     }
