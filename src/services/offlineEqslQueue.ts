@@ -1,7 +1,7 @@
 export type EqslDeliveryJob = {
   id: string;
   cardData: Record<string, unknown>;
-  inboxData: { from: string; to: string; isResponse: boolean; date: string; band: string; mode: string; originalEqslId?: string };
+  inboxData: { from: string; senderIdentity: string; to: string; isResponse: boolean; date: string; band: string; mode: string; originalEqslId?: string };
   status: 'pending' | 'needs_confirmation';
   attempts: number;
   lastError?: string;
@@ -71,7 +71,7 @@ export const deliverEqslJob = async (id: string, manual = false): Promise<boolea
   if (!job || (!manual && job.status !== 'pending')) return false;
   const token = localStorage.getItem('community_chat_identity_token') || '';
   const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-  if (!token || !callsign || callsign !== job.inboxData.from.trim().toUpperCase()) {
+  if (!token || !callsign || callsign !== job.inboxData.senderIdentity.trim().toUpperCase()) {
     job.status = 'needs_confirmation';
     job.lastError = 'La identidad verificada de esta estación no está disponible en este dispositivo.';
     await updateJob(job); changed(); return false;
