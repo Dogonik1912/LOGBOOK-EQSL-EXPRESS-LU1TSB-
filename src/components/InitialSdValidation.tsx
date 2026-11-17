@@ -2,6 +2,77 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { getLocalizedWelcome, getRecipientLanguage } from '../services/appLanguage';
 
+const IDENTITY_DB_NAME = 'logbook-identity-backup';
+const IDENTITY_STORE_NAME = 'identity';
+
+type SavedIdentity = { callsign: string; token: string; validated: true };
+
+const openIdentityDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
+  if (!('indexedDB' in window)) { reject(new Error('IndexedDB no disponible')); return; }
+  const request = indexedDB.open(IDENTITY_DB_NAME, 1);
+  request.onupgradeneeded = () => {
+    const db = request.result;
+    if (!db.objectStoreNames.contains(IDENTITY_STORE_NAME)) db.createObjectStore(IDENTITY_STORE_NAME);
+  };
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error || new Error('No se pudo abrir el respaldo local'));
+});
+
+const saveIdentityBackup = async (identity: SavedIdentity) => {
+  const db = await openIdentityDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IDENTITY_STORE_NAME, 'readwrite');
+    tx.objectStore(IDENTITY_STORE_NAME).put(identity, 'current');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('No se pudo guardar el respaldo'));
+    tx.onabort = () => reject(tx.error || new Error('Se canceló el respaldo'));
+  });
+  db.close();
+};
+
+const loadIdentityBackup = async (): Promise<SavedIdentity | null> => {
+  try {
+    const db = await openIdentityDb();
+    const result = await new Promise<SavedIdentity | null>((resolve, reject) => {
+      const request = db.transaction(IDENTITY_STORE_NAME, 'readonly').objectStore(IDENTITY_STORE_NAME).get('current');
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error('No se pudo leer el respaldo'));
+    });
+    db.close();
+    return result;
+  } catch {
+    return null;
+  }
+};
+
+const loadSavedIdentity = async (): Promise<{ callsign: string; token: string }> => {
+  let callsign = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+  let token = localStorage.getItem('community_chat_identity_token') || '';
+  if (!callsign || !token || localStorage.getItem('logbook_sd_validated') !== '1') {
+    const backup = await loadIdentityBackup();
+    if (backup?.validated) {
+      callsign = callsign || backup.callsign;
+      token = token || backup.token;
+      if (callsign) {
+        localStorage.setItem('community_chat_sd', callsign);
+        localStorage.setItem('user_callsign', callsign);
+      }
+      if (token) localStorage.setItem('community_chat_identity_token', token);
+      localStorage.setItem('logbook_sd_validated', '1');
+    }
+  }
+  return { callsign, token };
+};
+
+const persistIdentity = async (callsign: string, token: string) => {
+  localStorage.setItem('community_chat_sd', callsign);
+  localStorage.setItem('user_callsign', callsign);
+  localStorage.setItem('community_chat_identity_token', token);
+  localStorage.setItem('logbook_sd_validated', '1');
+  try { await saveIdentityBackup({ callsign, token, validated: true }); }
+  catch (error) { console.warn('No se pudo crear el respaldo secundario de identidad:', error); }
+};
+
 /**
  * Initial one-time SD identity check. Existing devices with a saved community
  * identity are grandfathered in; new identities are registered server-side.
@@ -26,8 +97,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     let active = true;
     const initialize = async () => {
-      const savedCall = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
-      let token = localStorage.getItem('community_chat_identity_token') || '';
+      const savedIdentity = await loadSavedIdentity();
+      const savedCall = savedIdentity.callsign;
+      let token = savedIdentity.token;
 
       // Una SD guardada identifica la instalación habitual para el acceso general.
       // Si falta el token, no inventamos uno nuevo: podría crear un conflicto de titularidad.
@@ -73,9 +145,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
             p_token: token,
           });
           if (!registrationError && registration?.ok) {
-            localStorage.setItem('community_chat_sd', canonicalCall);
-            localStorage.setItem('user_callsign', canonicalCall);
-            localStorage.setItem('logbook_sd_validated', '1');
+            await persistIdentity(canonicalCall, token);
             if (active) { setCallsign(canonicalCall); setReady(true); }
             return;
           }
@@ -135,10 +205,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           : 'No se pudo recuperar el acceso. Comprobá la SD y el código e intentá nuevamente.');
         return;
       }
-      localStorage.setItem('community_chat_identity_token', token);
-      localStorage.setItem('community_chat_sd', clean);
-      localStorage.setItem('user_callsign', clean);
-      localStorage.setItem('logbook_sd_validated', '1');
+      await persistIdentity(clean, token);
       window.dispatchEvent(new Event('user-profile-updated'));
       setIdentityNotice('');
       setCallsign(clean);
@@ -193,9 +260,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
             : 'No se pudo validar el indicativo. Comprobá la conexión e intentá nuevamente.');
         return;
       }
-      localStorage.setItem('community_chat_sd', clean);
-      localStorage.setItem('logbook_sd_validated', '1');
-      localStorage.setItem('user_callsign', clean);
+      await persistIdentity(clean, token);
       window.dispatchEvent(new Event('user-profile-updated'));
       // The official Argentine license-holder lookup is not connected yet.
       // Use a saved verified holder name only when one is already available; never invent it.
