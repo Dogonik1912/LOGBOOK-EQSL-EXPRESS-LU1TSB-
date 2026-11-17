@@ -150,16 +150,36 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       const savedCall = savedIdentity.callsign;
       let token = savedIdentity.token;
 
+      // Una identidad ya validada permite abrir el Libro de Guardia sin conexión.
+      // La comprobación de restricciones se reintenta al recuperar internet.
+      if (savedCall && !navigator.onLine) {
+        if (active) {
+          setCallsign(savedCall);
+          setIdentityNotice('Estás sin conexión. El Libro de Guardia y tus QSO guardados siguen disponibles en este dispositivo. La comprobación de restricciones y los servicios en línea se reanudarán al recuperar internet.');
+          setReady(true);
+        }
+        return;
+      }
+
       // Una SD guardada identifica la instalación habitual para el acceso general.
       // Si falta el token, no inventamos uno nuevo: podría crear un conflicto de titularidad.
       if (savedCall && !token) {
         if (!supabase) {
-          if (active) { setCallsign(savedCall); setBlockCheckFailed(true); setReady(true); }
+          if (active) {
+            setCallsign(savedCall);
+            setIdentityNotice('No hay conexión con el servicio de verificación. Podés seguir usando el Libro de Guardia y tus contactos guardados; el chat y las funciones en línea pueden no estar disponibles hasta recuperar la conexión.');
+            setReady(true);
+          }
           return;
         }
         const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: savedCall });
         if (!active) return;
-        if (blockError) { setCallsign(savedCall); setBlockCheckFailed(true); setReady(true); return; }
+        if (blockError) {
+          setCallsign(savedCall);
+          setIdentityNotice('No se pudo consultar ahora el estado de esta SD. El Libro de Guardia y los contactos guardados siguen disponibles; la verificación se reintentará cuando vuelva la conexión.');
+          setReady(true);
+          return;
+        }
         if (isBlocked === true) { setCallsign(savedCall); setBlocked(true); setReady(true); return; }
         setCallsign(savedCall);
         setIdentityNotice('Tu señal distintiva está guardada en este dispositivo, pero falta recuperar el vínculo seguro de identidad para usar el chat y los mensajes privados. Contactá con administración para verificarlo.');
@@ -182,7 +202,11 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         if (canonicalCall) {
           const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: canonicalCall });
           if (blockError) {
-            if (active) { setCallsign(canonicalCall); setBlockCheckFailed(true); setReady(true); }
+            if (active) {
+              setCallsign(savedCall || canonicalCall);
+              setIdentityNotice('No se pudo consultar ahora el estado de esta SD. El Libro de Guardia y los contactos guardados siguen disponibles; la verificación se reintentará cuando vuelva la conexión.');
+              setReady(true);
+            }
             return;
           }
           if (isBlocked === true) {
@@ -227,6 +251,35 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     void initialize();
     return () => { active = false; };
   }, []);
+
+  // Al volver internet, comprobar restricciones de nuevo sin bloquear el acceso
+  // al Libro de Guardia por errores transitorios de red.
+  useEffect(() => {
+    if (!ready || !callsign || !supabase) return;
+    let active = true;
+    const recheckRestrictions = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const { data, error: checkError } = await supabase.rpc('community_is_blocked', { p_callsign: callsign });
+        if (!active || checkError) return;
+        setBlocked(data === true);
+        if (data !== true) {
+          setBlockCheckFailed(false);
+          setIdentityNotice((current) => current.includes('sin conexión') || current.includes('No se pudo consultar')
+            ? ''
+            : current);
+        }
+      } catch {
+        // La caída del servicio no debe cerrar el Libro de Guardia.
+      }
+    };
+    window.addEventListener('online', recheckRestrictions);
+    void recheckRestrictions();
+    return () => {
+      active = false;
+      window.removeEventListener('online', recheckRestrictions);
+    };
+  }, [ready, callsign]);
 
   const recoverDevice = async () => {
     if (!supabase) { setError('La recuperación no está disponible ahora. Volvé a intentarlo más tarde.'); return; }
