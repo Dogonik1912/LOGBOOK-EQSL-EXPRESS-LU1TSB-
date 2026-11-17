@@ -372,7 +372,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
       if (!identityCallsign) throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
       const job = await enqueueEqslDelivery(cardData, {
-        from: identityCallsign, to: replyToCall.trim().toUpperCase(), isResponse: true,
+        from: activeMyCall, senderIdentity: identityCallsign, to: replyToCall.trim().toUpperCase(), isResponse: true,
         date, band, mode, originalEqslId: initialData?.originalEqslId,
       });
       const delivered = navigator.onLine ? await deliverEqslJob(job.id, true) : false;
