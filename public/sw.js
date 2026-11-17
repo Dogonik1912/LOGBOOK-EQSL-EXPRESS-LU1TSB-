@@ -19,7 +19,7 @@ self.addEventListener('install', (event) => {
       const response = await fetch('/index.html', { cache: 'reload' });
       if (response.ok) {
         const html = await response.clone().text();
-        const assets = [...html.matchAll(/(?:src|href)="([^"]+\\.(?:js|css)(?:\\?[^"]*)?)"/g)]
+        const assets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css)(?:\?[^"]*)?)"/g)]
           .map((match) => new URL(match[1], self.location.origin).href)
           .filter((url) => new URL(url).origin === self.location.origin);
         await Promise.all(assets.map(async (url) => {
