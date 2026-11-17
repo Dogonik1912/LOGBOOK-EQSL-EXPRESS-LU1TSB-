@@ -15,6 +15,7 @@ import { ReplyEQSLModal } from './components/ReplyEQSLModal';
 import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
 import { EQSLViewErrorBoundary } from './components/EQSLViewErrorBoundary';
 import { EQSLMailbox } from './components/EQSLMailbox';
+import { PendingEqslDeliveries } from './components/PendingEqslDeliveries';
 import { Send } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
 import { MorseDecoder } from './components/MorseDecoder';
@@ -393,6 +394,7 @@ function MainApp() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <PendingEqslDeliveries />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <EQSLMailbox />
           <PrivateMessages />
