@@ -244,13 +244,9 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-labelledby="sd-validation-title">
-      <section className="w-full max-w-md rounded-2xl border border-sky-400 bg-slate-900 p-5 text-white shadow-2xl">
+      <section className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-sky-400 bg-slate-900 p-5 text-white shadow-2xl">
         <h2 id="sd-validation-title" className="text-lg font-black">Validación inicial de SD</h2>
         <p className="mt-2 text-sm text-slate-200">Para ingresar a LogBook eQSL EXPRESS, ingresá una SD o indicativo válido de radioaficionado o de 11 metros. Si no cumple los requisitos, no podrás acceder.</p>
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <button type="button" onClick={() => setHelpChoice('radio')} className={`rounded-xl border px-3 py-3 text-sm font-bold ${helpChoice === 'radio' ? 'border-sky-300 bg-sky-800' : 'border-slate-600 bg-slate-800'}`}>Tengo SD de radioaficionado</button>
-          <button type="button" onClick={() => setHelpChoice('other')} className={`rounded-xl border px-3 py-3 text-sm font-bold ${helpChoice === 'other' ? 'border-sky-300 bg-sky-800' : 'border-slate-600 bg-slate-800'}`}>No tengo SD de radioaficionado</button>
-        </div>
         <button type="button" onClick={() => { setRecoveryMode((value) => !value); setError(''); }} className="mt-3 w-full rounded-xl border border-emerald-400/60 bg-emerald-950/60 px-3 py-2.5 text-sm font-bold text-emerald-200">
           {recoveryMode ? 'Volver al registro inicial' : 'Recuperar acceso de una PC con código del teléfono'}
         </button>
@@ -262,13 +258,13 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           <input id="recovery-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 8))} autoComplete="off" maxLength={8} placeholder="8 caracteres" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-lg tracking-widest uppercase text-white outline-none focus:border-emerald-400" />
           <button type="button" disabled={recoveryBusy || !callsign.trim() || recoveryCode.length !== 8} onClick={() => { void recoverDevice(); }} className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-black text-slate-950 disabled:opacity-50">{recoveryBusy ? 'Recuperando…' : 'Recuperar este dispositivo'}</button>
         </div>}
-        {!recoveryMode && helpChoice && <div className="mt-4">
-          <label htmlFor="initial-sd" className="mb-1 block text-sm font-semibold"> {helpChoice === 'radio' ? 'Ingresá tu SD para validarla' : 'Ingresá el indicativo que usarás en la app'} </label>
+        {!recoveryMode && <div className="mt-4">
+          <label htmlFor="initial-sd" className="mb-1 block text-sm font-semibold">Ingresá tu SD o indicativo</label>
           <input id="initial-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1ABC" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-sky-400" />
-          <p className="mt-2 text-xs text-slate-400">Debés ingresar una SD o indicativo válido. Los nombres, apodos y códigos aleatorios no permiten el ingreso.</p>
+          <p className="mt-2 text-xs text-slate-400">Ingresá una SD o indicativo válido de radioaficionado o de 11 metros.</p>
         </div>}
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-950 p-3 text-sm text-red-200">{error}</p>}
-        {!recoveryMode && <button type="button" disabled={!helpChoice || busy || !callsign.trim()} onClick={() => { void validate(); }} className="mt-4 w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Validando…' : 'Validar y continuar'}</button>}
+        {!recoveryMode && <button type="button" disabled={busy || !callsign.trim()} onClick={() => { void validate(); }} className="mt-4 w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Validando…' : 'Validar y continuar'}</button>}
         <p className="mt-3 text-center text-xs text-slate-400">Este aviso no volverá a aparecer en este dispositivo una vez validada la identidad.</p>
       </section>
     </div>
