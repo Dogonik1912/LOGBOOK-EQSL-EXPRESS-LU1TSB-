@@ -30,6 +30,46 @@ import { PatentDownloadedPage, PatentSharePage } from './components/PatentShareP
 
 
 interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
+
+const QSO_BACKUP_DB = 'logbook-offline-qso';
+const QSO_BACKUP_STORE = 'qsos';
+
+const openQsoBackupDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
+  if (!('indexedDB' in window)) { reject(new Error('IndexedDB no disponible')); return; }
+  const request = indexedDB.open(QSO_BACKUP_DB, 1);
+  request.onupgradeneeded = () => {
+    if (!request.result.objectStoreNames.contains(QSO_BACKUP_STORE)) {
+      request.result.createObjectStore(QSO_BACKUP_STORE);
+    }
+  };
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error || new Error('No se pudo abrir el respaldo del Libro de Guardia'));
+});
+
+const saveQsoBackup = async (qsos: QSO[]) => {
+  const db = await openQsoBackupDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(QSO_BACKUP_STORE, 'readwrite');
+    tx.objectStore(QSO_BACKUP_STORE).put(qsos, 'current');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('No se pudo guardar el respaldo de QSO'));
+    tx.onabort = () => reject(tx.error || new Error('Se canceló el respaldo de QSO'));
+  });
+  db.close();
+};
+
+const loadQsoBackup = async (): Promise<QSO[] | null> => {
+  const db = await openQsoBackupDb();
+  try {
+    return await new Promise<QSO[] | null>((resolve, reject) => {
+      const request = db.transaction(QSO_BACKUP_STORE, 'readonly').objectStore(QSO_BACKUP_STORE).get('current');
+      request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result as QSO[] : null);
+      request.onerror = () => reject(request.error || new Error('No se pudo leer el respaldo de QSO'));
+    });
+  } finally {
+    db.close();
+  }
+};
 function MainApp() {
   const [qsos, setQsos] = useState<QSO[]>(() => {
     const saved = localStorage.getItem('logbook_qsos');
@@ -42,6 +82,30 @@ function MainApp() {
     }
     return [];
   });
+
+  // IndexedDB mantiene una segunda copia persistente del log para poder
+  // recuperarlo si localStorage se borra, se corrompe o el navegador lo bloquea.
+  useEffect(() => {
+    let active = true;
+    let localLogIsValid = false;
+    try {
+      const raw = localStorage.getItem('logbook_qsos');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        localLogIsValid = Array.isArray(parsed);
+      }
+    } catch { /* Intentar recuperar la copia durable de IndexedDB. */ }
+
+    if (!localLogIsValid) {
+      void loadQsoBackup().then((backup) => {
+        if (!active || !backup) return;
+        const safeBackup = backup.filter((q) => q && typeof q.id === 'string' && typeof q.callsign === 'string');
+        setQsos(safeBackup);
+        try { localStorage.setItem('logbook_qsos', JSON.stringify(safeBackup)); } catch { /* IndexedDB conserva la copia. */ }
+      }).catch((error) => console.warn('No se pudo recuperar el respaldo local de QSO:', error));
+    }
+    return () => { active = false; };
+  }, []);
 
   const [contestLogs, setContestLogs] = useState<ContestLogRecord[]>(() => {
     try { return JSON.parse(localStorage.getItem('logbook_contest_logs') || '[]') as ContestLogRecord[]; }
@@ -187,7 +251,16 @@ function MainApp() {
   // Guardar QSOs en localStorage cada vez que cambien
   const handleSaveQsos = (newQsos: QSO[]) => {
     setQsos(newQsos);
-    localStorage.setItem('logbook_qsos', JSON.stringify(newQsos));
+    const serialized = JSON.stringify(newQsos);
+    try {
+      localStorage.setItem('logbook_qsos', serialized);
+    } catch (error) {
+      console.warn('No se pudo actualizar localStorage; se conserva el respaldo IndexedDB:', error);
+    }
+    // Guardar también en IndexedDB antes de depender de cualquier servicio remoto.
+    void saveQsoBackup(newQsos).catch((error) => {
+      console.error('No se pudo guardar la segunda copia local de QSO:', error);
+    });
   };
 
   const handleAddQSO = (qso: QSO, openEQSL = true, publishSpot = true) => {
