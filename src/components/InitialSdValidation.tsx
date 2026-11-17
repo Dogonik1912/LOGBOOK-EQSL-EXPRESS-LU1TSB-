@@ -16,7 +16,8 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   const [blocked, setBlocked] = useState(false);
   const [blockCheckFailed, setBlockCheckFailed] = useState(false);
   const [identityNotice, setIdentityNotice] = useState('');
-  const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>(null);
+  // Mostrar directamente el campo SD y permitir continuar sin exigir un paso previo de selección.
+  const [helpChoice, setHelpChoice] = useState<'radio' | 'other' | null>('radio');
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState('');
   const [recoveryBusy, setRecoveryBusy] = useState(false);
