@@ -43,6 +43,18 @@ export const listEqslDeliveryJobs = () => transact<EqslDeliveryJob[]>('readonly'
 });
 
 export const enqueueEqslDelivery = async (cardData: Record<string, unknown>, inboxData: EqslDeliveryJob['inboxData'], status: EqslDeliveryJob['status'] = 'pending') => {
+  const existing = (await listEqslDeliveryJobs()).find(job =>
+    job.inboxData.from === inboxData.from &&
+    job.inboxData.to === inboxData.to &&
+    job.inboxData.date === inboxData.date &&
+    job.inboxData.band === inboxData.band &&
+    job.inboxData.mode === inboxData.mode &&
+    job.inboxData.isResponse === inboxData.isResponse &&
+    job.inboxData.originalEqslId === inboxData.originalEqslId &&
+    job.cardData.time === cardData.time &&
+    job.cardData.frequency === cardData.frequency
+  );
+  if (existing) return existing;
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `eqsl-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const job: EqslDeliveryJob = { id, cardData, inboxData, status, attempts: 0, createdAt: new Date().toISOString() };
   await transact<void>('readwrite', (store, resolve, reject) => {
