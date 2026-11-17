@@ -114,7 +114,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     const clean = callsign.trim().toUpperCase();
     const code = recoveryCode.trim().toUpperCase();
     if (!clean || !/^[A-F0-9]{8}$/.test(code)) {
-      setError('Ingresá tu SD y el código de 8 caracteres que generaste desde el teléfono.');
+      setError('Ingresá tu SD y el código de 8 caracteres que te entregó el administrador.');
       return;
     }
     const token = localStorage.getItem('community_chat_identity_token') || crypto.randomUUID();
@@ -129,7 +129,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
       });
       if (recoveryError || !data?.ok) {
         const reason = String(data?.reason || '');
-        setError(reason === 'expired_or_invalid' ? 'El código venció o ya no es válido. Generá uno nuevo desde el teléfono.'
+        setError(reason === 'expired_or_invalid' ? 'El código venció o ya no es válido. Pedile al administrador que autorice uno nuevo.'
           : reason === 'device_in_use' ? 'Este identificador ya está vinculado a otro indicativo. Cerrá y volvé a intentar.'
           : reason === 'device_state' ? 'No se pudo confirmar el estado de los dispositivos. Contactá con administración.'
           : 'No se pudo recuperar el acceso. Comprobá la SD y el código e intentá nuevamente.');
@@ -248,15 +248,15 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
         <h2 id="sd-validation-title" className="text-lg font-black">Validación inicial de SD</h2>
         <p className="mt-2 text-sm text-slate-200">Para ingresar a LogBook eQSL EXPRESS, ingresá una SD o indicativo válido de radioaficionado o de 11 metros. Si no cumple los requisitos, no podrás acceder.</p>
         <button type="button" onClick={() => { setRecoveryMode((value) => !value); setError(''); }} className="mt-3 w-full rounded-xl border border-emerald-400/60 bg-emerald-950/60 px-3 py-2.5 text-sm font-bold text-emerald-200">
-          {recoveryMode ? 'Volver al registro inicial' : 'Recuperar acceso de una PC con código del teléfono'}
+          {recoveryMode ? 'Volver al registro inicial' : 'Ingresar código de recuperación autorizado por administración'}
         </button>
         {recoveryMode && <div className="mt-4 space-y-3 rounded-xl border border-emerald-500/40 bg-emerald-950/30 p-3">
-          <p className="text-sm text-emerald-100">Desde tu teléfono autorizado, abrí Perfil del usuario y generá un código de recuperación. El código vence a los 10 minutos y se usa una sola vez.</p>
+          <p className="text-sm text-emerald-100">LU6EAE: si el administrador ya autorizó tu recuperación, pegá aquí el código de 8 caracteres que te entregó. No pulses «Generar código» en este dispositivo. El código vence a los 10 minutos y se usa una sola vez.</p>
           <label htmlFor="recovery-sd" className="block text-sm font-semibold">Tu SD o indicativo</label>
           <input id="recovery-sd" value={callsign} onChange={(event) => setCallsign(event.target.value.toUpperCase())} autoComplete="off" maxLength={24} placeholder="Ej.: LU1TSB" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-base uppercase text-white outline-none focus:border-emerald-400" />
           <label htmlFor="recovery-code" className="block text-sm font-semibold">Código de recuperación</label>
-          <input id="recovery-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 8))} autoComplete="off" maxLength={8} placeholder="8 caracteres" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-lg tracking-widest uppercase text-white outline-none focus:border-emerald-400" />
-          <button type="button" disabled={recoveryBusy || !callsign.trim() || recoveryCode.length !== 8} onClick={() => { void recoverDevice(); }} className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-black text-slate-950 disabled:opacity-50">{recoveryBusy ? 'Recuperando…' : 'Recuperar este dispositivo'}</button>
+          <input id="recovery-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 8))} autoComplete="off" maxLength={8} placeholder="Pegá aquí el código de 8 caracteres" className="w-full rounded-lg border border-slate-500 bg-slate-950 px-3 py-3 font-mono text-lg tracking-widest uppercase text-white outline-none focus:border-emerald-400" />
+          <button type="button" disabled={recoveryBusy || !callsign.trim() || recoveryCode.length !== 8} onClick={() => { void recoverDevice(); }} className="w-full rounded-xl bg-emerald-400 px-4 py-3 font-black text-slate-950 disabled:opacity-50">{recoveryBusy ? 'Recuperando…' : 'Confirmar recuperación autorizada'}</button>
         </div>}
         {!recoveryMode && <div className="mt-4">
           <label htmlFor="initial-sd" className="mb-1 block text-sm font-semibold">Ingresá tu SD o indicativo</label>
