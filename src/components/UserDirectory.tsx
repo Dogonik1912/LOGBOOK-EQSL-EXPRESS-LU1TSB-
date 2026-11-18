@@ -80,7 +80,11 @@ export const UserDirectory: React.FC = () => {
       current.push(entry);
       result.set(entry.country, current);
     });
-    return Array.from(result.entries()).sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }));
+    return Array.from(result.entries()).sort((a, b) => {
+      if (a[0] === 'País no identificado') return b[0] === 'País no identificado' ? 0 : 1;
+      if (b[0] === 'País no identificado') return -1;
+      return a[0].localeCompare(b[0], 'es', { sensitivity: 'base' });
+    });
   }, [filteredEntries]);
 
   const exactMatch = normalizedQuery.length > 0
