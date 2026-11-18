@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { 
   PlusCircle, 
@@ -164,6 +164,43 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
 
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
+
+  // Acceso directo desde el Directorio: reutiliza este mismo formulario y sus vías de envío.
+  useEffect(() => {
+    const handleDirectoryEQSL = (event: Event) => {
+      const detail = (event as CustomEvent<{ callsign?: string }>).detail;
+      const targetCallsign = String(detail?.callsign || '').trim().toUpperCase();
+      if (!targetCallsign) return;
+      setIsExpanded(true);
+      setCallsign(targetCallsign);
+      setValidationError('');
+      setEmail('');
+      setWhatsapp('');
+      setWhatsappUsername('');
+      setTelegram('');
+      setCountry('');
+      setGrid('');
+      const requestId = ++lookupRequestId.current;
+      const contactBook = getContactBook();
+      const contact = contactBook[targetCallsign];
+      if (contact) {
+        setEmail(String(contact.email || ''));
+        setWhatsapp(String(contact.whatsapp || contact.whatsappRaw || ''));
+        setWhatsappUsername(String(contact.whatsappUsername || ''));
+        setTelegram(String(contact.telegram || ''));
+        setCountry(String(contact.country || ''));
+        setGrid(String(contact.grid || '').toUpperCase());
+      }
+      void applyPrefixDetails(targetCallsign, requestId);
+      window.setTimeout(() => {
+        const formElement = callsignInputRef.current;
+        formElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        formElement?.focus({ preventScroll: true });
+      }, 120);
+    };
+    window.addEventListener('logbook-prefill-correspondent', handleDirectoryEQSL);
+    return () => window.removeEventListener('logbook-prefill-correspondent', handleDirectoryEQSL);
+  }, []);
   const lookupRequestId = useRef(0);
 
   // Sincronizar banda y frecuencia sugerida al cambiar banda
