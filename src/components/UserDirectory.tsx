@@ -40,6 +40,7 @@ export const UserDirectory: React.FC = () => {
       }
       const cleanUsers = result.users
         .map((item: unknown) => String((item as DirectoryUser)?.callsign || '').trim().toUpperCase())
+        .filter((callsign: string) => callsign !== 'DOGON1K')
         .filter((callsign: string) => /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign))
         .filter((callsign: string, index: number, all: string[]) => all.indexOf(callsign) === index)
         .map((callsign: string) => ({ callsign }));
