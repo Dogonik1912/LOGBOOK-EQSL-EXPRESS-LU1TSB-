@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     const { data: blocked, error: blockedError } = await supabase.rpc('community_is_blocked', { p_callsign: callsign });
     if (blockedError) return json(res, 503, { error: 'No se pudo comprobar el estado de acceso. Volvé a intentarlo.' });
     if (blocked === true) return json(res, 403, { error: 'Este indicativo no tiene acceso al directorio.' });
-
+ 
     const users = [];
     const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
@@ -62,7 +62,9 @@ export default async function handler(req, res) {
         .range(offset, offset + pageSize - 1);
       if (error) throw error;
       const page = Array.isArray(data) ? data : [];
-      users.push(...page.map((row) => ({ callsign: String(row.callsign || '').trim().toUpperCase() })).filter((row) => row.callsign));
+      users.push(...page
+        .map((row) => ({ callsign: String(row.callsign || '').trim().toUpperCase() }))
+        .filter((row) => row.callsign && row.callsign !== 'DOGON1K'));
       if (page.length < pageSize) break;
     }
 
