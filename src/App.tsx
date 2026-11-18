@@ -27,6 +27,7 @@ import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
 import { PropagationReport } from './components/PropagationReport';
 import { PatentGenerator } from './components/PatentGenerator';
+import { UserDirectory } from './components/UserDirectory';
 import { PatentDownloadedPage, PatentSharePage } from './components/PatentSharePage';
 
 
@@ -430,6 +431,7 @@ function MainApp() {
       {/* Informe de propagación al final del contenido, antes del pie de página. */}
       <PropagationReport />
       <PatentGenerator />
+      <UserDirectory />
 
       {/* Pie de página al final de la aplicación. */}
       <Footer />
