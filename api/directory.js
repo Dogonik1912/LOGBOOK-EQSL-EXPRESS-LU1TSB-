@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       const page = Array.isArray(data) ? data : [];
       users.push(...page
         .map((row) => ({ callsign: String(row.callsign || '').trim().toUpperCase() }))
-        .filter((row) => row.callsign && !['DOGON1K', 'LU1TSB/4RC978'].includes(row.callsign)));
+        .filter((row) => row.callsign && !['DOGON1K', 'LU1TSB/4RC978', 'PRONTO'].includes(row.callsign)));
       if (page.length < pageSize) break;
     }
 
