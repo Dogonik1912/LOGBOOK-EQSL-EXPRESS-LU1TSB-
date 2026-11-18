@@ -153,8 +153,10 @@ export const UserDirectory: React.FC = () => {
               )}
               {filteredEntries.length === 0 ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-950">
-                  {normalizedQuery.length >= 3
-                    ? <>No hay coincidencias. <strong>{normalizedQuery}</strong> todavía no figura registrado en este directorio.</>
+                  {normalizedQuery
+                    ? normalizedQuery.length >= 3
+                      ? <>No hay coincidencias. <strong>{normalizedQuery}</strong> todavía no figura registrado en este directorio.</>
+                      : 'No hay coincidencias con las letras ingresadas todavía.'
                     : 'Todavía no hay usuarios registrados en esta categoría.'}
                 </div>
               ) : (
