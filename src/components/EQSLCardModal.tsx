@@ -908,7 +908,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={handleSendEQSLPost} disabled={eqslPostSent || eqslPostSending} className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg shadow-sm transition-colors ${eqslPostSent ? 'bg-red-600 text-white cursor-not-allowed' : eqslPostSending ? 'bg-amber-300 text-slate-950 cursor-wait' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer'}`}><Mail className="w-4 h-4" /> {eqslPostSent ? 'eQSL ENVIADA' : eqslPostSending ? 'ENVIANDO…' : 'eQSL POST'}</button>
+            {(qso as (QSO & { recipientRegistered?: boolean }) | null)?.recipientRegistered === true && <button type="button" onClick={handleSendEQSLPost} disabled={eqslPostSent || eqslPostSending} className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg shadow-sm transition-colors ${eqslPostSent ? 'bg-red-600 text-white cursor-not-allowed' : eqslPostSending ? 'bg-amber-300 text-slate-950 cursor-wait' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer'}`}><Mail className="w-4 h-4" /> {eqslPostSent ? 'eQSL ENVIADA' : eqslPostSending ? 'ENVIANDO…' : 'eQSL POST'}</button>}
             {/* Descargar PNG */}
             <button
               type="button"
