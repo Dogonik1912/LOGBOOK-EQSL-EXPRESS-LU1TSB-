@@ -21,7 +21,8 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Método no permitido' });
   }
 
-  if (String(req.query?.action || '') !== 'lookup') {
+  const action = String(req.query?.action || '');
+  if (!['lookup', 'check'].includes(action)) {
     return json(res, 400, { error: 'Acción no válida' });
   }
 
@@ -30,14 +31,16 @@ export default async function handler(req, res) {
     return json(res, 401, { error: 'Validá tu indicativo para consultar el directorio.' });
   }
 
-  const lastLookup = recentLookups.get(token) || 0;
-  if (Date.now() - lastLookup < 2000) {
-    return json(res, 429, { error: 'Esperá un instante antes de actualizar el directorio.' });
-  }
-  recentLookups.set(token, Date.now());
-  if (recentLookups.size > 2000) {
-    const cutoff = Date.now() - 60000;
-    for (const [identity, timestamp] of recentLookups) if (timestamp < cutoff) recentLookups.delete(identity);
+  if (action === 'lookup') {
+    const lastLookup = recentLookups.get(token) || 0;
+    if (Date.now() - lastLookup < 2000) {
+      return json(res, 429, { error: 'Esperá un instante antes de actualizar el directorio.' });
+    }
+    recentLookups.set(token, Date.now());
+    if (recentLookups.size > 2000) {
+      const cutoff = Date.now() - 60000;
+      for (const [identity, timestamp] of recentLookups) if (timestamp < cutoff) recentLookups.delete(identity);
+    }
   }
 
   try {
@@ -52,6 +55,26 @@ export default async function handler(req, res) {
     if (blockedError) return json(res, 503, { error: 'No se pudo comprobar el estado de acceso. Volvé a intentarlo.' });
     if (blocked === true) return json(res, 403, { error: 'Este indicativo no tiene acceso al directorio.' });
  
+    if (action === 'check') {
+      const target = String(req.query?.callsign || '').trim().toUpperCase();
+      if (!/^[A-Z0-9][A-Z0-9/ -]{1,39}$/.test(target)) {
+        return json(res, 200, { registered: false });
+      }
+      if (['DOGON1K', 'LU1TSB/4RC978', 'PRONTO'].includes(target)) {
+        return json(res, 200, { registered: false });
+      }
+      const { data: targetUser, error: targetError } = await supabase
+        .from('community_call_signs')
+        .select('callsign')
+        .eq('callsign', target)
+        .maybeSingle();
+      if (targetError) throw targetError;
+      if (!targetUser) return json(res, 200, { registered: false });
+      const { data: targetBlocked, error: targetBlockedError } = await supabase.rpc('community_is_blocked', { p_callsign: target });
+      if (targetBlockedError) throw targetBlockedError;
+      return json(res, 200, { registered: targetBlocked !== true });
+    }
+
     const users = [];
     const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
