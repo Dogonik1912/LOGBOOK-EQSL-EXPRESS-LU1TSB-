@@ -161,9 +161,26 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
   const [validationError, setValidationError] = useState('');
-
+  const [recipientRegistration, setRecipientRegistration] = useState<'idle' | 'checking' | 'registered' | 'not_registered'>('idle');
+  const recipientCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recipientCheckRequestId = useRef(0);
 
   const callsignInputRef = useRef<HTMLInputElement>(null);
+  const checkRecipientRegistration = async (targetCallsign: string): Promise<boolean | null> => {
+    const cleanTarget = targetCallsign.trim().toUpperCase();
+    const token = (localStorage.getItem('community_chat_identity_token') || '').trim();
+    if (!token || cleanTarget.length < 3) return null;
+    try {
+      const response = await fetch(`/api/directory?action=check&callsign=${encodeURIComponent(cleanTarget)}`, {
+        method: 'GET', cache: 'no-store', headers: { 'x-identity-token': token },
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      return result.registered === true;
+    } catch {
+      return null;
+    }
+  };
 
   // Acceso directo desde el Directorio: reutiliza este mismo formulario y sus vías de envío.
   useEffect(() => {
@@ -173,6 +190,13 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       if (!targetCallsign) return;
       setIsExpanded(true);
       setCallsign(targetCallsign);
+      setRecipientRegistration('checking');
+      const recipientRequest = ++recipientCheckRequestId.current;
+      void checkRecipientRegistration(targetCallsign).then((registered) => {
+        if (recipientRequest === recipientCheckRequestId.current) {
+          setRecipientRegistration(registered === null ? 'idle' : registered ? 'registered' : 'not_registered');
+        }
+      });
       setValidationError('');
       setEmail('');
       setWhatsapp('');
@@ -288,6 +312,18 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const handleCallsignChange = (val: string) => {
     const upper = val.toUpperCase().trim();
     setCallsign(upper);
+    setRecipientRegistration(upper.length >= 3 ? 'checking' : 'idle');
+    const recipientRequest = ++recipientCheckRequestId.current;
+    if (recipientCheckTimer.current) clearTimeout(recipientCheckTimer.current);
+    if (upper.length >= 3) {
+      recipientCheckTimer.current = setTimeout(() => {
+        void checkRecipientRegistration(upper).then((registered) => {
+          if (recipientRequest === recipientCheckRequestId.current) {
+            setRecipientRegistration(registered === null ? 'idle' : registered ? 'registered' : 'not_registered');
+          }
+        });
+      }, 450);
+    }
     // En móvil, cerrar el teclado cuando la carga del indicativo se detiene.
     // Si el usuario continúa escribiendo, el temporizador se reinicia en cada tecla.
     if (callsignKeyboardTimer.current) clearTimeout(callsignKeyboardTimer.current);
@@ -351,7 +387,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const shouldOpenEQSL = submitter?.value === 'send';
@@ -380,10 +416,18 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       return;
     }
 
+    let recipientRegistered = recipientRegistration === 'registered';
+    if (shouldOpenEQSL) {
+      const confirmedRegistration = await checkRecipientRegistration(cleanCall);
+      recipientRegistered = confirmedRegistration === true;
+      setRecipientRegistration(confirmedRegistration === null ? 'idle' : confirmedRegistration ? 'registered' : 'not_registered');
+    }
+
     const qsoUtc = timeMode === 'UTC' ? { date, time } : convertDateTime(date, time, 'LOCAL', 'UTC');
-    const newQSO: QSO = {
+    const newQSO: QSO & { recipientRegistered?: boolean } = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       callsign: cleanCall,
+      recipientRegistered,
       ...(band === '11 metros' ? { stationCallsign: cleanCBStationCallsign || getSavedCbStationCallsign() } : {}),
       date: qsoUtc.date,
       time: qsoUtc.time,
@@ -613,7 +657,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
                 placeholder={band === '11 metros' ? 'Ej. móvil 23, estación Sol' : 'ej. LU7YS, EA1EXP'}
                 className="w-full px-3 py-2 bg-slate-950 border border-amber-500/40 rounded-xl text-lg font-mono font-black text-amber-300 uppercase tracking-widest placeholder:text-slate-600 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
               />
-
+              {recipientRegistration === 'registered' && <p className="mt-1 text-[11px] font-semibold text-emerald-400">Usuario registrado en la app</p>}
+              {recipientRegistration === 'not_registered' && <p className="mt-1 text-[11px] font-semibold text-rose-400">Usuario no registrado en la app</p>}
+              {recipientRegistration === 'checking' && <p className="mt-1 text-[10px] text-slate-400">Comprobando registro…</p>}
             </div>
           </div>
 
