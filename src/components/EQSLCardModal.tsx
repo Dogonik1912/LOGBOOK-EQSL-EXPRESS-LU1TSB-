@@ -508,6 +508,15 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (eqslPostSent || eqslPostSending || !isQsoValidForEQSL()) return;
     setEqslPostSending(true);
     try {
+      const identityToken = (localStorage.getItem('community_chat_identity_token') || '').trim();
+      if (!identityToken) throw new Error('No se pudo verificar el registro del corresponsal. Volvé a validar tu indicativo.');
+      const recipientCheck = await fetch(`/api/directory?action=check&callsign=${encodeURIComponent(String(qso.callsign || '').trim().toUpperCase())}`, {
+        method: 'GET', cache: 'no-store', headers: { 'x-identity-token': identityToken },
+      });
+      const recipientResult = recipientCheck.ok ? await recipientCheck.json() : null;
+      if (recipientResult?.registered !== true) {
+        throw new Error('El corresponsal ya no figura como usuario registrado en la app. Podés utilizar Telegram, WhatsApp o correo electrónico.');
+      }
       await getReceivedCardUrl(true);
       if (inboxDeliveryStatus.current === true) {
         // Confirmación visual en el propio botón: sin cartel y sin segundo envío del mismo QSO.
