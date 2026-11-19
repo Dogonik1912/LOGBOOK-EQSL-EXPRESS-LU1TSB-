@@ -416,7 +416,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       return;
     }
 
-    let recipientRegistered = recipientRegistration === 'registered';
+    let recipientRegistered = false;
     if (shouldOpenEQSL) {
       const confirmedRegistration = await checkRecipientRegistration(cleanCall);
       recipientRegistered = confirmedRegistration === true;
@@ -491,6 +491,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
 
     // Limpiar indicativo, RST, correo y detalles al guardar
     setCallsign('');
+    setRecipientRegistration('idle');
+    recipientCheckRequestId.current += 1;
+    if (recipientCheckTimer.current) clearTimeout(recipientCheckTimer.current);
     setRstSent('59');
     setRstRcvd('59');
     // El enviado queda preestablecido hasta que el operador lo cambie manualmente.
