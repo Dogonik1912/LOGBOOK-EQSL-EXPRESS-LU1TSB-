@@ -131,12 +131,12 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   EA:'España',EB:'España',EC:'España',ED:'España',EE:'España',EF:'España',EG:'España',EH:'España',AM:'España',AN:'España',AO:'España',
   CT:'Portugal',CR:'Portugal',CS:'Portugal',CU:'Portugal',
   PY:'Brasil',PP:'Brasil',PR:'Brasil',PS:'Brasil',PT:'Brasil',PU:'Brasil',PV:'Brasil',PW:'Brasil',PX:'Brasil',PZ:'Brasil',ZV:'Brasil',ZW:'Brasil',ZX:'Brasil',ZY:'Brasil',ZZ:'Brasil',
-  CX:'Uruguay',CV:'Uruguay',CW:'Uruguay',CE:'Chile',CA:'Chile',CB:'Chile',XQ:'Chile',XR:'Chile','3G':'Chile',
+  CX:'Uruguay',CV:'Uruguay',CW:'Uruguay',CE:'Chile',CA:'Chile',CB:'Chile',CD:'Chile',XQ:'Chile',XR:'Chile','3G':'Chile',
   HK:'Colombia',HJ:'Colombia','5J':'Colombia','5K':'Colombia',
   OA:'Perú',OB:'Perú',OC:'Perú',CP:'Bolivia',ZP:'Paraguay',YV:'Venezuela',YW:'Venezuela',YX:'Venezuela',YY:'Venezuela','4M':'Venezuela',
   HC:'Ecuador',HD:'Ecuador',XE:'México',XB:'México',XC:'México',XD:'México',XF:'México',XG:'México',XH:'México',
   '4A':'México','4B':'México','4C':'México','6D':'México','6E':'México','6F':'México','6G':'México','6H':'México','6I':'México','6J':'México',
-  W:'Estados Unidos',K:'Estados Unidos',N:'Estados Unidos',AA:'Estados Unidos',AB:'Estados Unidos',AC:'Estados Unidos',AD:'Estados Unidos',AE:'Estados Unidos',AF:'Estados Unidos',AG:'Estados Unidos',AI:'Estados Unidos',AJ:'Estados Unidos',AK:'Estados Unidos',
+  W:'Estados Unidos',K:'Estados Unidos',N:'Estados Unidos',AA:'Estados Unidos',AB:'Estados Unidos',AC:'Estados Unidos',AD:'Estados Unidos',AE:'Estados Unidos',AF:'Estados Unidos',AG:'Estados Unidos',AH:'Estados Unidos',AI:'Estados Unidos',AJ:'Estados Unidos',AK:'Estados Unidos',
   VE:'Canadá',VA:'Canadá',VO:'Canadá',VY:'Canadá',VZ:'Canadá',CF:'Canadá',CG:'Canadá',CH:'Canadá',CI:'Canadá',CJ:'Canadá',CK:'Canadá',CY:'Canadá',CZ:'Canadá',
   G:'Reino Unido',M:'Reino Unido',GM:'Reino Unido',GW:'Reino Unido',GI:'Reino Unido',GD:'Reino Unido',GJ:'Reino Unido',GU:'Reino Unido',
   F:'Francia',TM:'Francia',TO:'Francia',TK:'Francia',DL:'Alemania',DA:'Alemania',DB:'Alemania',DC:'Alemania',DD:'Alemania',DF:'Alemania',DG:'Alemania',DH:'Alemania',DJ:'Alemania',DK:'Alemania',DM:'Alemania',DN:'Alemania',DO:'Alemania',DP:'Alemania',DQ:'Alemania',DR:'Alemania',
@@ -148,7 +148,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   SV:'Grecia',SW:'Grecia',SX:'Grecia',SY:'Grecia',SZ:'Grecia',J4:'Grecia',
   SP:'Polonia',SQ:'Polonia',SO:'Polonia',SN:'Polonia',SR:'Polonia',HF:'Polonia','3Z':'Polonia',
   YO:'Rumania',YP:'Rumania',YQ:'Rumania',YR:'Rumania',HA:'Hungría',HG:'Hungría',OK:'Chequia',OL:'Chequia',
-  HS:'Tailandia',E2:'Tailandia',HL:'Corea del Sur',DS:'Corea del Sur',D7:'Corea del Sur',D8:'Corea del Sur',D9:'Corea del Sur',
+  HS:'Tailandia',E2:'Tailandia',HP:'Panamá',HL:'Corea del Sur',DS:'Corea del Sur',D7:'Corea del Sur',D8:'Corea del Sur',D9:'Corea del Sur',
   YB:'Indonesia',YC:'Indonesia',YD:'Indonesia',YE:'Indonesia',YF:'Indonesia',YG:'Indonesia',YH:'Indonesia','8A':'Indonesia','8B':'Indonesia','8E':'Indonesia','8I':'Indonesia',
   UA:'Rusia',RA:'Rusia',RZ:'Rusia',UR:'Ucrania',UT:'Ucrania',UU:'Ucrania',UV:'Ucrania',UW:'Ucrania',UX:'Ucrania',UY:'Ucrania',UZ:'Ucrania'
 };
