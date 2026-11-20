@@ -126,10 +126,11 @@ export const UserDirectory: React.FC = () => {
             </button>
           </div>
 
-          <label htmlFor="logbook-user-directory-search" className="mb-1 block text-sm font-bold text-slate-700">Buscar por SD o indicativo</label>
+          <label htmlFor="logbook-user-directory-search" className="mb-1 block text-sm font-bold text-slate-700">{category === '11m' ? 'Buscar por SD de 11 metros' : 'Buscar por indicativo de radioaficionado'}</label>
           <div className="mb-3 flex items-center gap-2 rounded-xl border border-violet-300 bg-violet-50 px-3 py-2.5 focus-within:border-violet-600 focus-within:ring-2 focus-within:ring-violet-200">
             <Search size={19} className="shrink-0 text-violet-700" />
             <input
+              key={category}
               id="logbook-user-directory-search"
               value={query}
               onChange={(event) => { setQuery(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, '')); setSelected(''); }}
