@@ -20,7 +20,7 @@ revoke all on public.community_account_identities from anon,authenticated;
 
 create or replace function public.community_identity_authorized(p_callsign text,p_token uuid)
 returns boolean language sql stable security definer set search_path=public,pg_temp as $$
- select p_token is not null and upper(btrim(coalesce(p_callsign,''))) <> 'LU1TSB/4RC978'
+ select p_token is not null
  and (
   exists(select 1 from public.community_call_sign_devices d where upper(btrim(d.callsign))=upper(btrim(coalesce(p_callsign,''))) and d.identity_token=p_token)
   or exists(select 1 from public.community_call_sign_devices d
@@ -50,26 +50,61 @@ $$;
 
 create or replace function public.link_community_account_identity(p_primary_callsign text,p_token uuid,p_secondary_callsign text)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_primary text:=upper(btrim(coalesce(p_primary_callsign,''))); v_secondary text:=upper(btrim(coalesce(p_secondary_callsign,''))); v_account uuid; v_division integer;
+declare
+ v_primary text:=upper(btrim(coalesce(p_primary_callsign,'')));
+ v_secondary text:=upper(btrim(coalesce(p_secondary_callsign,'')));
+ v_account uuid;
+ v_existing text;
+ v_division integer;
 begin
- if p_token is null or length(v_primary)<3 or length(v_secondary)<4 or length(v_secondary)>24 then return jsonb_build_object('ok',false,'reason','invalid_format'); end if;
- if not exists(select 1 from public.community_call_sign_devices where callsign=v_primary and identity_token=p_token) then return jsonb_build_object('ok',false,'reason','forbidden'); end if;
- if v_primary !~ '^[A-Z]{1,3}[0-9][A-Z0-9]{1,7}(/[A-Z0-9]{1,5})?$' then return jsonb_build_object('ok',false,'reason','primary_must_be_ham'); end if;
- if v_secondary !~ '^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$' then return jsonb_build_object('ok',false,'reason','invalid_11m_callsign'); end if;
- v_division:=substring(v_secondary from '^([0-9]{1,3})')::integer;
- if v_division<1 or v_division>999 then return jsonb_build_object('ok',false,'reason','invalid_11m_division'); end if;
- perform pg_advisory_xact_lock(hashtext(v_primary));
- select account_id into v_account from public.community_account_identities where callsign=v_primary and identity_type='ham';
- if v_account is null then
-  insert into public.community_accounts(root_callsign) values(v_primary) on conflict(root_callsign) do update set root_callsign=excluded.root_callsign returning account_id into v_account;
-  insert into public.community_account_identities(callsign,account_id,identity_type,is_primary) values(v_primary,v_account,'ham',true) on conflict(callsign) do nothing;
+ if p_token is null or length(v_primary)<3 or length(v_secondary)<4 or length(v_secondary)>24 then
+  return jsonb_build_object('ok',false,'reason','invalid_format');
  end if;
- if exists(select 1 from public.community_account_identities where callsign=v_secondary and account_id=v_account and identity_type='11m') then return jsonb_build_object('ok',true,'callsign',v_secondary,'already_linked',true); end if;
- if exists(select 1 from public.community_call_signs where callsign=v_secondary) or exists(select 1 from public.community_account_identities where account_id=v_account and identity_type='11m') or exists(select 1 from public.community_account_identities where callsign=v_secondary) then return jsonb_build_object('ok',false,'reason','taken'); end if;
+ if not exists(select 1 from public.community_call_sign_devices d where d.callsign=v_primary and d.identity_token=p_token) then
+  return jsonb_build_object('ok',false,'reason','forbidden');
+ end if;
+ if v_primary !~ '^[A-Z]{1,3}[0-9][A-Z0-9]{1,7}(/[A-Z0-9]{1,5})?$' then
+  return jsonb_build_object('ok',false,'reason','primary_must_be_ham');
+ end if;
+ if v_secondary !~ '^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$' then
+  return jsonb_build_object('ok',false,'reason','invalid_11m_callsign');
+ end if;
+ v_division:=substring(v_secondary from '^([0-9]{1,3})')::integer;
+ if v_division<1 or v_division>999 then
+  return jsonb_build_object('ok',false,'reason','invalid_11m_division');
+ end if;
+ perform pg_advisory_xact_lock(hashtext(v_primary));
+ select account_id into v_account from public.community_account_identities
+ where callsign=v_primary and identity_type='ham';
+ if v_account is null then
+  if exists(select 1 from public.community_accounts where root_callsign<>v_primary and root_callsign=v_primary) then
+   return jsonb_build_object('ok',false,'reason','account_conflict');
+  end if;
+  insert into public.community_accounts(root_callsign) values(v_primary)
+  on conflict(root_callsign) do update set root_callsign=excluded.root_callsign
+  returning account_id into v_account;
+  insert into public.community_account_identities(callsign,account_id,identity_type,is_primary)
+  values(v_primary,v_account,'ham',true) on conflict(callsign) do nothing;
+ end if;
+ if exists(select 1 from public.community_account_identities
+  where callsign=v_secondary and account_id=v_account and identity_type='11m') then
+  return jsonb_build_object('ok',true,'callsign',v_secondary,'already_linked',true);
+ end if;
+ if exists(select 1 from public.community_call_signs where callsign=v_secondary) then
+  return jsonb_build_object('ok',false,'reason','taken');
+ end if;
+ if exists(select 1 from public.community_account_identities where account_id=v_account and identity_type='11m') then
+  return jsonb_build_object('ok',false,'reason','11m_identity_already_linked');
+ end if;
+ if exists(select 1 from public.community_account_identities where callsign=v_secondary) then
+  return jsonb_build_object('ok',false,'reason','taken');
+ end if;
  insert into public.community_call_signs(callsign,identity_token) values(v_secondary,gen_random_uuid());
- insert into public.community_account_identities(callsign,account_id,identity_type,is_primary) values(v_secondary,v_account,'11m',false);
+ insert into public.community_account_identities(callsign,account_id,identity_type,is_primary)
+ values(v_secondary,v_account,'11m',false);
  return jsonb_build_object('ok',true,'callsign',v_secondary);
-exception when unique_violation then return jsonb_build_object('ok',false,'reason','taken');
+exception when unique_violation then
+ return jsonb_build_object('ok',false,'reason','taken');
 end;
 $$;
 
