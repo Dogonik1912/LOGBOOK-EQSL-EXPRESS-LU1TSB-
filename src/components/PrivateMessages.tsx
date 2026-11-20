@@ -11,6 +11,8 @@ type PrivateMessage = {
   read_at: string | null;
 };
 
+type AccountIdentity = { callsign: string; identity_type: 'ham' | '11m'; is_primary: boolean };
+
 type PrivateConversation = {
   other_callsign: string;
   last_body: string;
@@ -27,7 +29,8 @@ const getIdentityToken = () => {
 };
 
 export const PrivateMessages: React.FC = () => {
-  const [callsign, setCallsign] = useState(() => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
+  const [callsign, setCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
+  const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
   const [identityToken] = useState(getIdentityToken);
   const [isOpen, setIsOpen] = useState(false);
   const [recipientDraft, setRecipientDraft] = useState('');
@@ -49,6 +52,32 @@ export const PrivateMessages: React.FC = () => {
   const [notice, setNotice] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const privateSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadIdentities = async () => {
+      const root = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (!supabase || !root || !identityToken) return;
+      const { data, error } = await supabase.rpc('community_account_identities', { p_token: identityToken });
+      if (!active || error || !Array.isArray(data)) return;
+      const options = data.filter((item: any) => item && typeof item.callsign === 'string').map((item: any) => ({
+        callsign: String(item.callsign).trim().toUpperCase(),
+        identity_type: item.identity_type === '11m' ? '11m' as const : 'ham' as const,
+        is_primary: item.is_primary === true,
+      }));
+      if (!options.length) return;
+      setAccountIdentities(options);
+      const saved = (localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
+      const selected = options.find((item) => item.callsign === saved) || options.find((item) => item.is_primary) || options[0];
+      localStorage.setItem('community_chat_active_callsign', selected.callsign);
+      setCallsign(selected.callsign);
+    };
+    void loadIdentities();
+    const syncActive = () => setCallsign((localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
+    window.addEventListener('user-profile-updated', loadIdentities);
+    window.addEventListener('community-active-identity-changed', syncActive);
+    return () => { active = false; window.removeEventListener('user-profile-updated', loadIdentities); window.removeEventListener('community-active-identity-changed', syncActive); };
+  }, [identityToken]);
 
   const refreshConversations = useCallback(async () => {
     if (!supabase || !callsign || !identityToken) return;
@@ -226,7 +255,7 @@ export const PrivateMessages: React.FC = () => {
   };
 
   useEffect(() => {
-    const syncCallsign = () => setCallsign((localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
+    const syncCallsign = () => setCallsign((localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
     window.addEventListener('user-profile-updated', syncCallsign);
     window.addEventListener('storage', syncCallsign);
     return () => {
@@ -446,6 +475,17 @@ export const PrivateMessages: React.FC = () => {
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Tu señal distintiva se valida al instalar LogBook eQSL EXPRESS. Si todavía no aparece, recargá la aplicación para sincronizar tu identidad.</p>
             ) : (
               <>
+                {accountIdentities.length > 1 && <label className="mb-2 block text-xs font-semibold text-violet-200">Identidad activa
+                  <select value={callsign} onChange={(event) => {
+                    const next = accountIdentities.find((item) => item.callsign === event.target.value);
+                    if (!next) return;
+                    localStorage.setItem('community_chat_active_callsign', next.callsign);
+                    setCallsign(next.callsign); setActiveRecipient(''); setMessages([]); setConversations([]); setUnreadTotal(0);
+                    window.dispatchEvent(new CustomEvent('community-active-identity-changed', { detail: { callsign: next.callsign } }));
+                  }} className="mt-1 block w-full rounded-lg border border-violet-500 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-amber-300">
+                    {accountIdentities.map((identity) => <option key={identity.callsign} value={identity.callsign}>{identity.identity_type === '11m' ? '11 metros · ' : 'Radioaficionado · '}{identity.callsign}</option>)}
+                  </select>
+                </label>}
                 <p className="mb-2 rounded-lg border border-amber-400/60 bg-slate-950 px-3 py-2 text-xs text-slate-200">TU INDICATIVO <strong className="ml-2 inline-block font-mono text-base font-black tracking-wider text-amber-300">{callsign}</strong></p>
                 <form onSubmit={(event) => { event.preventDefault(); openConversation(recipientDraft); }} className="mb-3 flex gap-1.5">
                   <input value={recipientDraft} onChange={(event) => setRecipientDraft(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, ''))} maxLength={24} placeholder="Indicativo destino" aria-label="Indicativo destinatario" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-2 font-mono text-xs text-slate-950 placeholder:text-slate-500 outline-none focus:border-violet-500" />

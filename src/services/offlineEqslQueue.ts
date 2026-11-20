@@ -82,7 +82,7 @@ export const deliverEqslJob = async (id: string, manual = false): Promise<boolea
   const job = (await listEqslDeliveryJobs()).find(item => item.id === id);
   if (!job || (!manual && job.status !== 'pending')) return false;
   const token = localStorage.getItem('community_chat_identity_token') || '';
-  const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+  const callsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
   if (!token || !callsign || callsign !== job.inboxData.senderIdentity.trim().toUpperCase()) {
     job.status = 'needs_confirmation';
     job.lastError = 'La identidad verificada de esta estación no está disponible en este dispositivo.';

@@ -5,6 +5,7 @@ import { supabase } from '../services/supabaseClient';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type OnlineUser = { callsign: string; identityToken?: string };
+type AccountIdentity = { callsign: string; identity_type: 'ham' | '11m'; is_primary: boolean };
 
 const openPrivateMessage = (rawCallsign: string) => {
   const callsign = String(rawCallsign || '').trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
@@ -50,6 +51,8 @@ export const CommunityChat: React.FC = () => {
   const translationPending = useRef<Set<string>>(new Set());
   const [draft, setDraft] = useState('');
   const [callsign, setCallsign] = useState(() => localStorage.getItem('community_chat_sd')?.trim().toUpperCase() || '');
+  const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
+  const [activeCallsign, setActiveCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
   const [identityToken] = useState(() => {
     const existing = localStorage.getItem('community_chat_identity_token');
@@ -106,6 +109,52 @@ export const CommunityChat: React.FC = () => {
     void recoverCallsign();
     return () => { active = false; };
   }, [identityToken]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAccountIdentities = async () => {
+      if (!supabase || !identityToken || !callsign) return;
+      const { data, error } = await supabase.rpc('community_account_identities', { p_token: identityToken });
+      if (!active || error || !Array.isArray(data)) return;
+      const options = data.filter((item: any) => item && typeof item.callsign === 'string').map((item: any) => ({
+        callsign: String(item.callsign).trim().toUpperCase(),
+        identity_type: item.identity_type === '11m' ? '11m' as const : 'ham' as const,
+        is_primary: item.is_primary === true,
+      }));
+      if (!options.length) return;
+      setAccountIdentities(options);
+      const saved = (localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
+      const selected = options.find((item) => item.callsign === saved) || options.find((item) => item.is_primary) || options[0];
+      setActiveCallsign(selected.callsign);
+      localStorage.setItem('community_chat_active_callsign', selected.callsign);
+    };
+    void loadAccountIdentities();
+    const onIdentityUpdate = () => { void loadAccountIdentities(); };
+    const onActiveChange = (event: Event) => {
+      const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || '').trim().toUpperCase();
+      if (next) setActiveCallsign(next);
+    };
+    window.addEventListener('user-profile-updated', onIdentityUpdate);
+    window.addEventListener('community-active-identity-changed', onActiveChange);
+    return () => {
+      active = false;
+      window.removeEventListener('user-profile-updated', onIdentityUpdate);
+      window.removeEventListener('community-active-identity-changed', onActiveChange);
+    };
+  }, [callsign, identityToken]);
+
+  const chooseActiveIdentity = (next: string) => {
+    const selected = accountIdentities.find((item) => item.callsign === next);
+    if (!selected) return;
+    setActiveCallsign(selected.callsign);
+    localStorage.setItem('community_chat_active_callsign', selected.callsign);
+    window.dispatchEvent(new CustomEvent('community-active-identity-changed', { detail: { callsign: selected.callsign } }));
+  };
+
+  const activeIdentityType = accountIdentities.find((item) => item.callsign === activeCallsign)?.identity_type
+    || (is11MeterStationIdentifier(activeCallsign || callsign) ? '11m' : 'ham');
+  const visibleMessages = messages.filter((message) => is11MeterStationIdentifier(message.callsign) === (activeIdentityType === '11m'));
+  const visibleOnlineUsers = onlineUsers.filter((user) => is11MeterStationIdentifier(user.callsign) === (activeIdentityType === '11m'));
 
   // Public chat identities use a device token, not Supabase Auth. Resolve moderation
   // privileges against the server-side role table so public users cannot impersonate staff.
@@ -222,7 +271,7 @@ export const CommunityChat: React.FC = () => {
   // Publish presence only while the visitor has a saved callsign. Supabase Realtime
   // Presence provides a shared online roster without adding a registration flow.
   useEffect(() => {
-    if (!supabase || !callsign.trim() || !identityToken) {
+    if (!supabase || !(activeCallsign || callsign).trim() || !identityToken) {
       setOnlineUsers([]);
       return;
     }
@@ -245,7 +294,7 @@ export const CommunityChat: React.FC = () => {
     presenceChannel.on('presence', { event: 'leave' }, refreshOnlineUsers);
     presenceChannel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED' && active) {
-        await presenceChannel.track({ callsign: callsign.trim().toUpperCase(), identityToken });
+        await presenceChannel.track({ callsign: (activeCallsign || callsign).trim().toUpperCase(), identityToken });
         refreshOnlineUsers();
       }
     });
@@ -254,7 +303,7 @@ export const CommunityChat: React.FC = () => {
       void presenceChannel.untrack();
       void supabase?.removeChannel(presenceChannel);
     };
-  }, [callsign, identityToken]);
+  }, [activeCallsign, callsign, identityToken]);
 
   // Load shared profile photos for the callsigns visible in the community chat.
   const profileCallsignKey = Array.from(new Set(messages.map((message) => message.callsign.trim().toUpperCase()).filter(Boolean))).join('|');
@@ -357,7 +406,9 @@ export const CommunityChat: React.FC = () => {
         }
       }
       localStorage.setItem('community_chat_sd', cleanCallsign);
+      localStorage.setItem('community_chat_active_callsign', cleanCallsign);
       setCallsign(cleanCallsign);
+      setActiveCallsign(cleanCallsign);
       setSdLocked(true);
       window.dispatchEvent(new Event('user-profile-updated'));
       setNotice('Señal distintiva guardada en este dispositivo.');
@@ -369,29 +420,24 @@ export const CommunityChat: React.FC = () => {
   const sendMessage = async () => {
     if (!supabase || busy) return;
     const body = draft.trim();
-    const cleanCallsign = (localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
+    const cleanCallsign = (activeCallsign || localStorage.getItem('community_chat_sd') || callsign).trim().toUpperCase();
     if (!body) return;
     if (cleanCallsign.length < 3 || cleanCallsign.length > 24) { setError('Ingresá tu SD/indicativo antes de enviar.'); return; }
     setBusy(true); setError('');
     try {
       const previousCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-      if (previousCallsign && previousCallsign !== cleanCallsign) {
-        const { data: changeData, error: changeError } = await supabase.rpc('change_community_callsign', {
-          p_current_callsign: previousCallsign,
-          p_new_callsign: cleanCallsign,
-          p_token: identityToken,
-        });
-        if (changeError || !changeData?.ok) {
-          setError(changeData?.reason === 'taken' ? 'Ese indicativo ya está registrado por otra persona.' : 'No se pudo cambiar el indicativo. Verificá que la migración de corrección de indicativo esté aplicada.');
-          return;
-        }
-      } else {
+      if (cleanCallsign === previousCallsign) {
         const { data: identityData, error: identityError } = await supabase.rpc('register_community_callsign', { p_callsign: cleanCallsign, p_token: identityToken });
         if (identityError || !identityData?.ok) { setError(identityData?.reason === 'taken' ? 'Ese SD ya está registrado por otra persona. No se permiten duplicados.' : identityData?.reason === 'locked' ? 'Este dispositivo ya tiene un SD registrado. Usá «Cambiar indicativo» para corregirlo.' : 'No se pudo registrar tu SD. Revisá que las migraciones del chat estén aplicadas en Supabase.'); return; }
+      } else if (!accountIdentities.some((item) => item.callsign === cleanCallsign)) {
+        setError('La identidad seleccionada no está vinculada a esta cuenta. Registrala desde el Libro de Guardia.');
+        return;
       }
-      localStorage.setItem('community_chat_sd', cleanCallsign);
-      setCallsign(cleanCallsign);
-      setSdLocked(true);
+      if (cleanCallsign === previousCallsign) {
+        localStorage.setItem('community_chat_sd', cleanCallsign);
+        setCallsign(cleanCallsign);
+        setSdLocked(true);
+      }
       const { data, error: sendError } = await supabase.rpc('post_community_message', { p_callsign: cleanCallsign, p_token: identityToken, p_body: body, p_reply_to_callsign: replyTo?.callsign || null });
       if (sendError || !data?.ok) {
         console.error('[LogBook chat] public message insert error:', sendError || data);
@@ -568,7 +614,7 @@ export const CommunityChat: React.FC = () => {
           <div className="min-w-0">
             <h2 className="font-bold leading-tight">CHAT eQSL EXPRESS</h2>
             <p className="mt-1 text-xs font-semibold leading-snug text-sky-200">ESCRIBE EN TU IDIOMA · TRADUCCIÓN AUTOMÁTICA</p>
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{onlineUsers.length} {onlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300" aria-live="polite"><span className="h-2 w-2 rounded-full bg-emerald-400" />{visibleOnlineUsers.length} {visibleOnlineUsers.length === 1 ? 'usuario en línea' : 'usuarios en línea'}</span>
           </div>
         </div>
         <div className="flex items-center gap-1"><button type="button" onClick={toggleChatTheme} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={darkChat ? "Cambiar a fondo claro" : "Cambiar a fondo oscuro"} title={darkChat ? "Fondo claro" : "Fondo oscuro"}>{darkChat ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button><button type="button" onClick={toggleCommunityChat} className="rounded-lg p-2 text-slate-100 hover:bg-slate-800" aria-label={chatCollapsed ? "Desplegar chat comunitario" : "Replegar chat comunitario"} title={chatCollapsed ? "Desplegar chat" : "Replegar chat"} aria-expanded={!chatCollapsed}>{chatCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}</button></div>
@@ -596,6 +642,13 @@ export const CommunityChat: React.FC = () => {
         </div>
       ) : (
         <>
+          {accountIdentities.length > 1 && <div className="border-b border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white">
+            <label className="flex flex-wrap items-center gap-2"><span className="font-semibold text-sky-200">Identidad activa:</span>
+              <select value={activeCallsign} onChange={(event) => chooseActiveIdentity(event.target.value)} className="min-w-0 rounded-lg border border-sky-500/50 bg-slate-950 px-3 py-2 font-mono font-bold text-amber-300">
+                {accountIdentities.map((identity) => <option key={identity.callsign} value={identity.callsign}>{identity.identity_type === '11m' ? '11 metros · ' : 'Radioaficionado · '}{identity.callsign}</option>)}
+              </select>
+            </label>
+          </div>}
           <article className={`border-b-2 border-sky-500 px-4 py-4 shadow-sm ${darkChat ? "bg-slate-900 text-slate-100" : "bg-sky-50 text-slate-950"}`} aria-label="Mensaje de bienvenida fijado">
             <div className="flex items-start gap-3">
               <strong className="shrink-0 pt-0.5 font-mono text-sm font-extrabold uppercase text-red-600">LU1TSB</strong>
@@ -603,8 +656,8 @@ export const CommunityChat: React.FC = () => {
             </div>
           </article>
           <div ref={messagesContainerRef} className={`max-h-[min(48vh,420px)] min-h-[180px] space-y-1.5 overflow-y-auto scroll-smooth px-3 py-2 sm:px-4 ${darkChat ? "bg-black text-white" : "bg-white text-slate-950"}`} aria-live="polite">
-            {messages.length === 0 && <p className="py-5 text-center text-sm text-slate-500">Todavía no hay mensajes. ¡Podés iniciar la conversación!</p>}
-            {messages.map((message) => (
+            {visibleMessages.length === 0 && <p className="py-5 text-center text-sm text-slate-500">Todavía no hay mensajes en esta identidad. ¡Podés iniciar la conversación!</p>}
+            {visibleMessages.map((message) => (
               <article key={message.id} className={`rounded-lg border px-2.5 py-1 hover:border-sky-200 ${darkChat ? "border-slate-700 bg-slate-900 text-slate-100" : "border-slate-100 bg-white text-slate-950"}`}>
                 <div className="flex items-start gap-2.5">
                   <div role="button" tabIndex={0} onClick={() => isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase()) : openPrivateMessage(message.callsign)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); isAdmin && message.callsign.trim().toUpperCase() !== 'LU1TSB' ? setModeratorTargetSelected((current) => current === message.callsign.trim().toUpperCase() ? null : message.callsign.trim().toUpperCase()) : openPrivateMessage(message.callsign); } }} className="mt-0.5 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 hover:ring-2 hover:ring-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400" aria-label={isAdmin ? `Opciones de administrador para ${message.callsign}` : `Abrir mensaje privado a ${message.callsign}`} title={isAdmin ? `Opciones de administrador para ${message.callsign}` : `Abrir mensaje privado a ${message.callsign}`}>
@@ -665,10 +718,10 @@ export const CommunityChat: React.FC = () => {
       {supabase && <div className={`border-t px-4 py-3 sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`} aria-label="Indicativos en línea">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className={`text-xs font-bold ${darkChat ? 'text-slate-100' : 'text-slate-700'}`}>Indicativos en línea</h3>
-          <span className={`text-[10px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>{onlineUsers.length}</span>
+          <span className={`text-[10px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>{visibleOnlineUsers.length}</span>
         </div>
         {onlineUsers.length > 0 ? <ul className="flex flex-wrap gap-2">
-          {onlineUsers.map((user) => <li key={user.identityToken || user.callsign}><button type="button" onClick={() => openPrivateMessage(user.callsign)} aria-label={`Escribir mensaje privado a ${user.callsign}`} title={`Escribir mensaje privado a ${user.callsign}`} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold transition hover:border-sky-400 hover:ring-2 hover:ring-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</button></li>)}
+          {visibleOnlineUsers.map((user) => <li key={user.identityToken || user.callsign}><button type="button" onClick={() => openPrivateMessage(user.callsign)} aria-label={`Escribir mensaje privado a ${user.callsign}`} title={`Escribir mensaje privado a ${user.callsign}`} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold transition hover:border-sky-400 hover:ring-2 hover:ring-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</button></li>)}
         </ul> : <p className={`text-xs ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>No hay indicativos conectados en este momento.</p>}
       </div>}
       </>}

@@ -15,7 +15,7 @@ function config() {
   if (!supabaseUrl || !supabaseKey) throw new Error('EQSL_INBOX_AUTH_NOT_CONFIGURED');
   if (!secretKey) throw new Error('EQSL_INBOX_STORAGE_NOT_CONFIGURED');
   const client = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  return { supabaseUrl, supabaseKey, storage: client.storage.from(BUCKET) };
+  return { supabaseUrl, supabaseKey, admin: client, storage: client.storage.from(BUCKET) };
 }
 
 async function resolveIdentity(identityToken, cfg) {
@@ -30,12 +30,14 @@ async function resolveIdentity(identityToken, cfg) {
   return typeof value === 'string' ? value.trim().toUpperCase() : '';
 }
 
-// These three spellings are explicitly linked for the app owner only.
-function inboxAliases(callsign) {
-  const normalized = callsign.trim().toUpperCase();
-  return ['LU1TSB', 'LU1TSB/4RC978', '4RC978'].includes(normalized)
-    ? ['LU1TSB', 'LU1TSB/4RC978', '4RC978']
-    : [normalized];
+async function resolveActiveIdentity(identityToken, requestedCallsign, cfg) {
+  const root = await resolveIdentity(identityToken, cfg);
+  if (!root || root === 'LU1TSB/4RC978') return '';
+  const { data, error } = await cfg.admin.rpc('community_account_identities', { p_token: identityToken });
+  if (error || !Array.isArray(data)) return '';
+  const allowed = data.map((item) => String(item?.callsign || '').trim().toUpperCase()).filter(Boolean);
+  const requested = clean(requestedCallsign, 40).toUpperCase();
+  return requested && allowed.includes(requested) ? requested : (allowed.includes(root) ? root : '');
 }
 
 function inboxPath(callsign) {
@@ -53,14 +55,7 @@ async function readInboxExact(callsign, cfg) {
 }
 
 async function readInbox(callsign, cfg) {
-  const groups = await Promise.all(inboxAliases(callsign).map(alias => readInboxExact(alias, cfg)));
-  const seen = new Set();
-  return groups.flat().filter(item => {
-    const id = String(item?.id || '');
-    if (!id || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return readInboxExact(callsign, cfg);
 }
 
 async function writeInbox(callsign, items, cfg) {
@@ -77,9 +72,9 @@ export default async function handler(req, res) {
     const cfg = config();
     if (req.method === 'GET') {
       const identityToken = clean(req.headers['x-identity-token'], 64);
-      const callsign = await resolveIdentity(identityToken, cfg);
+      const callsign = await resolveActiveIdentity(identityToken, req.headers['x-active-callsign'], cfg);
       if (!callsign) return json(res, 401, { error: 'Verificá primero tu señal distintiva en este dispositivo.' });
-      const mailbox = inboxAliases(callsign)[0];
+      const mailbox = callsign;
       const items = await readInbox(callsign, cfg);
       const unread = items.filter(item => !item.readAt).length;
       const pendingReplies = unread;
@@ -90,13 +85,13 @@ export default async function handler(req, res) {
       return json(res, 200, { callsign, items: marked.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))), unread: 0, pendingReplies: 0 });
     }
     if (req.method === 'POST') {
-      const sender = await resolveIdentity(clean(req.body?.token, 64), cfg);
-      if (!sender || sender !== clean(req.body?.callsign, 40).toUpperCase()) {
+      const sender = await resolveActiveIdentity(clean(req.body?.token, 64), req.body?.callsign, cfg);
+      if (!sender || sender !== clean(req.body?.callsign, 40).toUpperCase() || sender === 'LU1TSB/4RC978') {
         return json(res, 401, { error: 'La identidad de este dispositivo no pudo verificarse.' });
       }
       const action = clean(req.body?.action, 32);
       if (action === 'delete' || action === 'delete-all') {
-        const aliases = inboxAliases(sender);
+        const aliases = [sender];
         const targetId = clean(req.body?.id, 24);
         if (action === 'delete' && !/^[a-f0-9]{12,24}$/i.test(targetId)) {
           return json(res, 400, { error: 'Identificador eQSL inválido.' });
@@ -123,14 +118,15 @@ export default async function handler(req, res) {
         if (!original) return json(res, 404, { error: 'No se encontró la eQSL original en tu buzón.' });
         if (!original.answeredAt) {
           original.answeredAt = new Date().toISOString();
-          await writeInbox(inboxAliases(sender)[0], ownItems, cfg);
+          await writeInbox(sender, ownItems, cfg);
         }
         return json(res, 200, { ok: true, pendingReplies: ownItems.filter(item => !item.isResponse && !item.answeredAt).length });
       }
       const recipient = clean(req.body?.to, 40).toUpperCase();
       const id = clean(req.body?.id, 24);
       if (!CALL_RE.test(recipient) || !/^[a-f0-9]{12,24}$/i.test(id)) return json(res, 400, { error: 'Destinatario o identificador eQSL inválido.' });
-      const mailbox = inboxAliases(recipient)[0];
+      if (recipient === 'LU1TSB/4RC978') return json(res, 403, { error: 'La identidad técnica no recibe eQSL ordinarias.' });
+      const mailbox = recipient;
       const items = await readInbox(recipient, cfg);
       if (!items.some(item => item.id === id)) {
         items.unshift({
@@ -148,7 +144,7 @@ export default async function handler(req, res) {
         });
         await writeInbox(mailbox, items, cfg);
         // Best-effort push to subscriptions under the explicitly linked identifiers.
-        try { await Promise.all(inboxAliases(recipient).map(alias => sendEqslPush(alias, { ...items[0], unreadCount: items.filter(item => !item.readAt).length }))); } catch { /* No interrumpir la entrega de la eQSL si falla el push. */ }
+        try { await sendEqslPush(recipient, { ...items[0], unreadCount: items.filter(item => !item.readAt).length }); } catch { /* No interrumpir la entrega de la eQSL si falla el push. */ }
       }
       return json(res, 201, { ok: true });
     }

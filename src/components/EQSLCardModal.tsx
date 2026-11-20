@@ -479,7 +479,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       imageDataUrl: canvasRef.current?.toDataURL('image/jpeg', 0.9) || '',
     };
     if (registerInAppInbox) {
-      const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
       if (!identityCallsign) {
         inboxDeliveryStatus.current = false;
         throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');

@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
+import { supabase } from '../services/supabaseClient';
 import { 
   PlusCircle, 
   Search, 
@@ -395,6 +396,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     const cleanCall = callsign.trim().toUpperCase();
     const cleanCBStationCallsign = cbStationCallsign.trim().toUpperCase();
     const validCall = band === '11 metros' ? /^[A-Z0-9][A-Z0-9 /-]{0,19}$/.test(cleanCall) : /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
+    const validStation11m = band !== '11 metros' || /^\d{1,3}[A-Z]{1,4}\d{1,4}$/.test(cleanCBStationCallsign || getSavedCbStationCallsign());
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
     const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
     const normalizedFrequency = frequency.trim().replace(',', '.');
@@ -404,6 +406,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     const missing = [
       !validCall ? (band === '11 metros' ? 'identificador de estación de 11 metros' : 'indicativo válido') : '',
       band === '11 metros' && !cleanCBStationCallsign && !getSavedCbStationCallsign() ? 'tu señal distintiva de 11 metros' : '',
+      !validStation11m ? 'una SD válida de 11 metros (división, letras y números)' : '',
       !validDate ? 'fecha válida' : '',
       !validTime ? (timeMode === 'UTC' ? 'hora válida en UTC' : 'hora local válida') : '',
       !validFrequency ? 'frecuencia válida en MHz' : '',
@@ -414,6 +417,38 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       if (!validCall) callsignInputRef.current?.focus();
       if (band === '11 metros' && !cleanCBStationCallsign) document.getElementById('cb-station-callsign')?.focus();
       return;
+    }
+
+    if (band === '11 metros') {
+      const station11m = (cleanCBStationCallsign || getSavedCbStationCallsign()).trim().toUpperCase();
+      const rootCallsign = getRegisteredStationIdentity();
+      if (station11m) {
+        localStorage.setItem('cb_station_callsign', station11m);
+        if (rootCallsign && isAmateurRadioCallsign(rootCallsign)) {
+          if (!supabase) {
+            setValidationError('No se pudo vincular la SD de 11 metros porque no hay conexión con Supabase. El QSO no se guardó.');
+            return;
+          }
+          const identityToken = (localStorage.getItem('community_chat_identity_token') || '').trim();
+          const { data, error } = await supabase.rpc('link_community_account_identity', {
+            p_primary_callsign: rootCallsign,
+            p_token: identityToken,
+            p_secondary_callsign: station11m,
+          });
+          if (error || !data?.ok) {
+            const reason = String(data?.reason || '');
+            setValidationError(reason === 'taken'
+              ? 'Esa SD de 11 metros ya está registrada por otra cuenta.'
+              : reason === '11m_identity_already_linked'
+                ? 'Esta cuenta ya tiene otra identidad de 11 metros vinculada.'
+                : 'No se pudo validar y vincular tu SD de 11 metros. No se guardó el QSO.');
+            return;
+          }
+          localStorage.setItem('community_chat_active_callsign', station11m);
+          window.dispatchEvent(new CustomEvent('community-active-identity-changed', { detail: { callsign: station11m } }));
+          window.dispatchEvent(new Event('user-profile-updated'));
+        }
+      }
     }
 
     let recipientRegistered = false;

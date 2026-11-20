@@ -42,6 +42,7 @@ export const EQSLMailbox: React.FC = () => {
   }, []);
 
   const token = () => localStorage.getItem('community_chat_identity_token') || '';
+  const activeIdentity = () => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
 
   const updateAppBadge = (count: number) => {
     localStorage.setItem('eqsl_unread_count', String(count));
@@ -83,7 +84,7 @@ export const EQSLMailbox: React.FC = () => {
     if (!identityToken) return;
     try {
       const response = await fetch('/api/eqsl-inbox?peek=1', {
-        headers: { 'x-identity-token': identityToken },
+        headers: { 'x-identity-token': identityToken, 'x-active-callsign': activeIdentity() },
         cache: 'no-store',
       });
       const result = await response.json();
@@ -159,7 +160,7 @@ export const EQSLMailbox: React.FC = () => {
 
   const deleteMailboxItems = async (ids?: string[]) => {
     const identityToken = token();
-    const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const callsign = activeIdentity();
     if (!identityToken || !callsign) {
       setError('No se pudo verificar la identidad de este dispositivo para borrar eQSL.');
       return;
@@ -210,7 +211,7 @@ export const EQSLMailbox: React.FC = () => {
   const activateNotifications = async () => {
     setPushStatus('');
     const identityToken = token();
-    const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const callsign = activeIdentity();
     const publicKey = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env.VITE_VAPID_PUBLIC_KEY || '';
     if (!identityToken || !callsign) {
       setPushStatus('Primero guardá y verificá tu señal distintiva en el chat comunitario.');
@@ -289,7 +290,7 @@ export const EQSLMailbox: React.FC = () => {
         const registration = await navigator.serviceWorker.ready;
         const publicKey = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env.VITE_VAPID_PUBLIC_KEY || '';
         const identityToken = token();
-        const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+        const callsign = activeIdentity();
         let subscription = await registration.pushManager.getSubscription();
         const decodeKey = (value: string) => {
           const normalized = value.replace(/-/g, '+').replace(/_/g, '/');

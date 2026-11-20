@@ -369,7 +369,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     const cardData = { from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.72) };
     if (sendToInbox) {
-      const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
       if (!identityCallsign) throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
       const job = await enqueueEqslDelivery(cardData, {
         from: activeMyCall, senderIdentity: identityCallsign, to: replyToCall.trim().toUpperCase(), isResponse: true,
