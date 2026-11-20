@@ -108,6 +108,31 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [cbStationCallsign, setCbStationCallsign] = useState(() => getSavedCbStationCallsign());
   const [hasSavedCbStationCallsign, setHasSavedCbStationCallsign] = useState(() => Boolean(getSavedCbStationCallsign()));
   const [showCbStationCallsignPrompt, setShowCbStationCallsignPrompt] = useState(false);
+
+  // Preload the already-linked 11m identity so the operator is not asked to type it again.
+  useEffect(() => {
+    let active = true;
+    const syncLinked11mIdentity = async () => {
+      const rootCallsign = getRegisteredStationIdentity();
+      const identityToken = (localStorage.getItem('community_chat_identity_token') || '').trim();
+      if (!supabase || !identityToken || !isAmateurRadioCallsign(rootCallsign)) return;
+      const { data, error } = await supabase.rpc('community_account_identities', { p_token: identityToken });
+      if (!active || error || !Array.isArray(data)) return;
+      const linked = data.find((item: any) => item?.identity_type === '11m' && typeof item.callsign === 'string');
+      if (!linked) return;
+      const callsign11m = String(linked.callsign).trim().toUpperCase();
+      localStorage.setItem('cb_station_callsign', callsign11m);
+      setCbStationCallsign(callsign11m);
+      setHasSavedCbStationCallsign(true);
+      setShowCbStationCallsignPrompt(false);
+    };
+    void syncLinked11mIdentity();
+    window.addEventListener('user-profile-updated', syncLinked11mIdentity);
+    return () => {
+      active = false;
+      window.removeEventListener('user-profile-updated', syncLinked11mIdentity);
+    };
+  }, []);
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
   // El intercambio enviado es un valor preestablecido del operador: persiste entre QSOs y sesiones hasta cambiarlo manualmente.
