@@ -153,7 +153,7 @@ export const CommunityChat: React.FC = () => {
 
   const activeIdentityType = accountIdentities.find((item) => item.callsign === activeCallsign)?.identity_type
     || (is11MeterStationIdentifier(activeCallsign || callsign) ? '11m' : 'ham');
-  const visibleMessages = messages.filter((message) => is11MeterStationIdentifier(message.callsign) === (activeIdentityType === '11m'));
+  const visibleMessages = messages.filter((message) => message.callsign.trim().toUpperCase() !== 'LU1TSB/4RC978' && is11MeterStationIdentifier(message.callsign) === (activeIdentityType === '11m'));
   const visibleOnlineUsers = onlineUsers.filter((user) => is11MeterStationIdentifier(user.callsign) === (activeIdentityType === '11m'));
 
   // Public chat identities use a device token, not Supabase Auth. Resolve moderation
@@ -720,7 +720,7 @@ export const CommunityChat: React.FC = () => {
           <h3 className={`text-xs font-bold ${darkChat ? 'text-slate-100' : 'text-slate-700'}`}>Indicativos en línea</h3>
           <span className={`text-[10px] ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>{visibleOnlineUsers.length}</span>
         </div>
-        {onlineUsers.length > 0 ? <ul className="flex flex-wrap gap-2">
+        {visibleOnlineUsers.length > 0 ? <ul className="flex flex-wrap gap-2">
           {visibleOnlineUsers.map((user) => <li key={user.identityToken || user.callsign}><button type="button" onClick={() => openPrivateMessage(user.callsign)} aria-label={`Escribir mensaje privado a ${user.callsign}`} title={`Escribir mensaje privado a ${user.callsign}`} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold transition hover:border-sky-400 hover:ring-2 hover:ring-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 ${darkChat ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}><span aria-label="Bandera del país" title="País estimado por prefijo de indicativo">{callsignCountryFlag(user.callsign)}</span>{user.callsign}</button></li>)}
         </ul> : <p className={`text-xs ${darkChat ? 'text-slate-300' : 'text-slate-500'}`}>No hay indicativos conectados en este momento.</p>}
       </div>}

@@ -117,7 +117,7 @@ export const EQSLMailbox: React.FC = () => {
     }
     try {
       const response = await fetch('/api/eqsl-inbox?count=1', {
-        headers: { 'x-identity-token': identityToken },
+        headers: { 'x-identity-token': identityToken, 'x-active-callsign': activeIdentity() },
         cache: 'no-store',
       });
       const result = await response.json();
@@ -140,7 +140,7 @@ export const EQSLMailbox: React.FC = () => {
     setError('');
     try {
       const response = await fetch('/api/eqsl-inbox', {
-        headers: { 'x-identity-token': identityToken },
+        headers: { 'x-identity-token': identityToken, 'x-active-callsign': activeIdentity() },
         cache: 'no-store',
       });
       const result = await response.json();
@@ -338,6 +338,7 @@ export const EQSLMailbox: React.FC = () => {
       void checkForNewIncoming();
     };
     window.addEventListener('user-profile-updated', onIdentityUpdated);
+    window.addEventListener('community-active-identity-changed', onIdentityUpdated);
     window.addEventListener('eqsl-pending-count-updated', onIdentityUpdated);
     window.addEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
     window.addEventListener('storage', onIdentityUpdated);
@@ -351,6 +352,7 @@ export const EQSLMailbox: React.FC = () => {
       cancelled = true;
       window.clearInterval(refreshTimer);
       window.removeEventListener('user-profile-updated', onIdentityUpdated);
+      window.removeEventListener('community-active-identity-changed', onIdentityUpdated);
       window.removeEventListener('eqsl-pending-count-updated', onIdentityUpdated);
       window.removeEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
       window.removeEventListener('storage', onIdentityUpdated);

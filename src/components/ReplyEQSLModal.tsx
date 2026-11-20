@@ -397,7 +397,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const handleSendReplyByEQSLPost = async () => {
     if (eqslPostSending) return;
     const identityToken = localStorage.getItem('community_chat_identity_token') || '';
-    const identityCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
     if (!identityToken || !identityCallsign) {
       setEqslPostStatus('Para enviar por eQSL POST, primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
       return;

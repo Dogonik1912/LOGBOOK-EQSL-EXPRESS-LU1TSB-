@@ -143,7 +143,7 @@ export default async function handler(req, res) {
           readAt: null,
         });
         await writeInbox(mailbox, items, cfg);
-        // Best-effort push to subscriptions under the explicitly linked identifiers.
+        // Best-effort push only to the exact recipient identity mailbox.
         try { await sendEqslPush(recipient, { ...items[0], unreadCount: items.filter(item => !item.readAt).length }); } catch { /* No interrumpir la entrega de la eQSL si falla el push. */ }
       }
       return json(res, 201, { ok: true });
