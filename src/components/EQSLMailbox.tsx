@@ -338,7 +338,6 @@ export const EQSLMailbox: React.FC = () => {
       void checkForNewIncoming();
     };
     window.addEventListener('user-profile-updated', onIdentityUpdated);
-    window.addEventListener('community-active-identity-changed', onIdentityUpdated);
     window.addEventListener('eqsl-pending-count-updated', onIdentityUpdated);
     window.addEventListener('eqsl-sound-setting-updated', onIdentityUpdated);
     window.addEventListener('storage', onIdentityUpdated);
@@ -359,6 +358,18 @@ export const EQSLMailbox: React.FC = () => {
       window.removeEventListener('community-private-unread-count-updated', onPrivateCountUpdated);
     };
   }, [refreshCount, checkForNewIncoming]);
+
+  useEffect(() => {
+    const onActiveIdentityChanged = () => {
+      knownInboxIds.current = null;
+      setItems([]);
+      setSelectedIds([]);
+      setPendingReplies(0);
+      if (open) void loadInbox();
+    };
+    window.addEventListener('community-active-identity-changed', onActiveIdentityChanged);
+    return () => window.removeEventListener('community-active-identity-changed', onActiveIdentityChanged);
+  }, [open]);
 
   const toggle = () => {
     const next = !open;
