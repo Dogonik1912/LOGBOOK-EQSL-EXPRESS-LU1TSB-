@@ -265,7 +265,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         { label: 'SOTA', code: qso.sotaReference, name: qso.sotaReferenceName },
         { label: 'IOTA', code: qso.iotaReference, name: qso.iotaReferenceName },
       ].filter((item) => Boolean(item.code?.trim()));
-      const footerH = activityReferences.length ? 180 + Math.max(0, activityReferences.length - 1) * 22 : 150;
+      // Reservar espacio suficiente para identificar la actividad, el lugar y el código
+      // en líneas independientes dentro de la imagen final de la eQSL.
+      const footerH = activityReferences.length ? 205 + Math.max(0, activityReferences.length - 1) * 58 : 150;
       const footerY = height - footerH;
 
       ctx.save();
@@ -318,12 +320,18 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       });
 
       activityReferences.forEach((activity, index) => {
+        const activityY = footerY + 145 + index * 58;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = 'bold 14px sans-serif';
         ctx.fillStyle = '#0f766e';
-        const activityText = `${activity.label} · REFERENCIA: ${activity.code}${activity.name ? ` — ${activity.name}` : ''}`;
-        ctx.fillText(activityText, width / 2, footerY + 145 + index * 22, width - 32);
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`TIPO DE ACTIVIDAD: ${activity.label}`, width / 2, activityY, width - 32);
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`LUGAR: ${activity.name?.trim() || 'NO INDICADO'}`, width / 2, activityY + 18, width - 32);
+        ctx.fillStyle = '#0f766e';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(`REFERENCIA: ${activity.code}`, width / 2, activityY + 36, width - 32);
       });
       // Marca de agua obligatoria, discreta, en la esquina inferior derecha.
       ctx.textAlign = 'right';
