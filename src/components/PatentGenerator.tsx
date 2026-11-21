@@ -138,7 +138,7 @@ async function plate(call:string, code:string) {
  x.fillStyle='#fff'; x.font='800 104px system-ui'; x.fillText('RADIO STATION',W/2,285);
  if(code==='IC' || code==='IC-ESCUDO') {
    x.fillStyle='#fff'; x.fillRect(715,350,123,220); x.fillStyle='#55bce8'; x.fillRect(838,350,123,220); x.fillStyle='#f6d331'; x.fillRect(961,350,124,220);
-   if(code==='IC') { x.fillStyle='#087b43'; for(let i=0;i<7;i++){const a=-Math.PI/2+i*Math.PI*2/7;x.beginPath();x.arc(900+Math.cos(a)*52,460+Math.sin(a)*52,9,0,Math.PI*2);x.fill();} } else { x.fillStyle='#fff'; x.fillRect(715,350,123,220); x.fillStyle='#0066a1'; x.fillRect(838,350,123,220); x.fillStyle='#f6d331'; x.fillRect(961,350,124,220); const crest=new Image(); crest.crossOrigin='anonymous'; crest.src='https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg'; await new Promise<void>((resolve,reject)=>{crest.onload=()=>resolve();crest.onerror=()=>reject(new Error('No se pudo cargar el escudo oficial de Canarias.'));}); x.drawImage(crest,820,365,160,190); }
+   if(code==='IC') { x.fillStyle='#087b43'; for(let i=0;i<7;i++){const a=-Math.PI/2+i*Math.PI*2/7;x.beginPath();x.arc(900+Math.cos(a)*52,460+Math.sin(a)*52,9,0,Math.PI*2);x.fill();} } else { x.fillStyle='#fff'; x.fillRect(715,350,123,220); x.fillStyle='#0066a1'; x.fillRect(838,350,123,220); x.fillStyle='#f6d331'; x.fillRect(961,350,124,220); try{const crest=await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg');x.drawImage(crest,820,365,160,190);}catch{ /* La patente sigue siendo exportable aunque el servidor del escudo no permita cargarlo. */ } }
  } else {
    x.font='220px system-ui, Apple Color Emoji, Segoe UI Emoji'; x.textBaseline='middle'; x.fillText(countries.find(v=>v[0]===code)?.[1].split(' ')[0]||'🌐',W/2,460);
  }
@@ -151,17 +151,26 @@ async function plate(call:string, code:string) {
 }
 
 async function loadCanvasImage(url:string):Promise<HTMLImageElement>{
- const image=new Image();
- image.crossOrigin='anonymous';
- image.referrerPolicy='no-referrer';
- image.decoding='async';
- image.src=url;
- await new Promise<void>((resolve,reject)=>{
+ // Descargar explícitamente en modo CORS y dibujar desde un Blob local.
+ // Así el canvas nunca incorpora una imagen remota sin autorización de exportación.
+ const response=await fetch(url,{mode:'cors',credentials:'omit',cache:'force-cache'});
+ if(!response.ok) throw new Error('No se pudo descargar un recurso gráfico de la patente (HTTP '+response.status+').');
+ const blob=await response.blob();
+ if(!blob.type.startsWith('image/')) throw new Error('El recurso gráfico recibido no es una imagen válida.');
+ const objectUrl=URL.createObjectURL(blob);
+ try{
+  const image=new Image();
+  image.decoding='async';
+  image.src=objectUrl;
+  await new Promise<void>((resolve,reject)=>{
    image.onload=()=>resolve();
-   image.onerror=()=>reject(new Error('No se pudo preparar la imagen oficial de la patente. El recurso gráfico no respondió correctamente; volvé a generar la patente.'));
- });
- if(!image.naturalWidth||!image.naturalHeight) throw new Error('La imagen oficial recibida está vacía o no es válida.');
- return image;
+   image.onerror=()=>reject(new Error('No se pudo preparar la imagen oficial de la patente.'));
+  });
+  if(!image.naturalWidth||!image.naturalHeight) throw new Error('La imagen oficial recibida está vacía o no es válida.');
+  return image;
+ }finally{
+  URL.revokeObjectURL(objectUrl);
+ }
 }
 const commonsCountryNames:Record<string,string>={
  AR:'Argentina',BR:'Brazil',PT:'Portugal',ES:'Spain',US:'United States',GB:'United Kingdom',FR:'France',DE:'Germany',IT:'Italy',NL:'Netherlands',PL:'Poland',RU:'Russia',UA:'Ukraine',CN:'China',JP:'Japan',KR:'South Korea',IN:'India',TR:'Turkey',SE:'Sweden',NO:'Norway',DK:'Denmark',FI:'Finland',CZ:'Czech Republic',GR:'Greece',RO:'Romania',HU:'Hungary',CA:'Canada',AU:'Australia',NZ:'New Zealand',CL:'Chile',UY:'Uruguay',PE:'Peru',BO:'Bolivia',PY:'Paraguay',CO:'Colombia',VE:'Venezuela',EC:'Ecuador',GT:'Guatemala',CR:'Costa Rica',HN:'Honduras',SV:'El Salvador',NI:'Nicaragua',MX:'Mexico',ZA:'South Africa',IS:'Iceland',IE:'Ireland',CH:'Switzerland',AT:'Austria',BE:'Belgium',BG:'Bulgaria',HR:'Croatia',SI:'Slovenia',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',BY:'Belarus',IL:'Israel',TH:'Thailand',ID:'Indonesia',PH:'Philippines',SG:'Singapore',MY:'Malaysia',HK:'Hong Kong',TW:'Taiwan',PK:'Pakistan',BD:'Bangladesh',LK:'Sri Lanka',EG:'Egypt',MA:'Morocco',TN:'Tunisia',KE:'Kenya',NG:'Nigeria',GH:'Ghana'
@@ -205,9 +214,15 @@ async function narrowPlate(call:string,code:string,customText:string){
  const flag=code.startsWith('IC')
   ? null
   : await loadCanvasImage('https://flagcdn.com/w1600/'+flagCode+'.png');
- const emblem=(code==='IC'||code==='IC-ESCUDO')
-  ? await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg')
-  : await officialNationalEmblem(code);
+ let emblem:HTMLImageElement|null=null;
+ try{
+  emblem=(code==='IC'||code==='IC-ESCUDO')
+   ? await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg')
+   : await officialNationalEmblem(code);
+ }catch{
+  // Un escudo externo inaccesible no debe impedir generar ni exportar la patente.
+  emblem=null;
+ }
  const t=(customText.trim().slice(0,42)||'LOGBOOK eQSL EXPRESS').toUpperCase();
  const text=(value:string,px:number,py:number,size:number,color:string,weight=900,align:CanvasTextAlign='center')=>{
   x.textAlign=align;x.textBaseline='middle';x.font=weight+' '+size+'px system-ui,sans-serif';x.fillStyle=color;x.fillText(value,px,py);
