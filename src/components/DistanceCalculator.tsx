@@ -156,6 +156,7 @@ export const DistanceCalculator: React.FC = () => {
   const [originLabel, setOriginLabel] = useState('');
   const [originLoading, setOriginLoading] = useState(false);
   const [originError, setOriginError] = useState('');
+  const [needsGridLocator, setNeedsGridLocator] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
   const [selected, setSelected] = useState<Place | null>(null);
@@ -175,9 +176,10 @@ export const DistanceCalculator: React.FC = () => {
         const localGrid = String(localStorage.getItem('user_grid_locator') || '').trim().toUpperCase();
         const localGridPoint = isValidMaidenheadLocator(localGrid) ? maidenheadToPoint(localGrid) : null;
         if (localGridPoint) {
-          if (active) { setOrigin(localGridPoint); setOriginLabel('Tu estación · ' + localGrid); }
+          if (active) { setOrigin(localGridPoint); setOriginLabel('Tu estación · ' + localGrid); setNeedsGridLocator(false); }
           return;
         }
+        if (active) setNeedsGridLocator(true);
 
         // La capital está precargada localmente: no se espera a servicios geográficos externos.
         const capital = capitalPointForCountry(country);
@@ -198,7 +200,9 @@ export const DistanceCalculator: React.FC = () => {
           if (active && remotePoint) {
             setOrigin(remotePoint);
             setOriginLabel('Tu estación · ' + remoteGrid);
-          }
+            setNeedsGridLocator(false);
+            try { localStorage.setItem('user_grid_locator', remoteGrid); } catch { /* El dato remoto sigue siendo válido. */ }
+          } else if (active) setNeedsGridLocator(true);
         }
       } catch (e) {
         if (active) setOriginError(e instanceof Error ? e.message : 'No se pudo determinar tu ubicación inicial.');
@@ -231,6 +235,11 @@ export const DistanceCalculator: React.FC = () => {
       <section className="flex max-h-[95dvh] w-full max-w-4xl flex-col overflow-y-auto rounded-2xl border border-cyan-500/50 bg-slate-900 p-4 text-white shadow-2xl">
         <header className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-black">CALCULADOR DE DISTANCIA</h2><p className="text-xs text-slate-400">Medición en línea recta entre dos lugares del mundo.</p></div><button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar"><X className="h-5 w-5" /></button></header>
         <div className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm"><p className="mb-1 font-bold text-cyan-200">Tu ubicación de origen</p>{originLoading ? <span className="flex items-center gap-2 text-slate-300"><Loader2 className="h-4 w-4 animate-spin" />Localizando tu Grid Locator o la capital de tu país…</span> : origin ? <><p>{originLabel}</p><p className="mt-1 text-[11px] text-slate-400">Si tenés un Grid Locator guardado se utiliza el centro de esa cuadrícula; de lo contrario se usa la capital de tu país.</p></> : <p className="text-amber-300">{originError || 'No se pudo determinar la ubicación de origen.'}</p>}</div>
+        {needsGridLocator && <div className="mt-3 rounded-xl border border-amber-400/50 bg-amber-950/40 p-3">
+          <p className="text-sm font-bold text-amber-200">Completá tu Grid Locator para obtener mediciones de distancia más exactas.</p>
+          <p className="mt-1 text-xs text-slate-300">Sin este dato, la ubicación de origen se estima usando la capital de tu país.</p>
+          <button type="button" onClick={() => { localStorage.setItem('focus_user_grid_locator', '1'); window.dispatchEvent(new Event('open-user-settings-grid')); }} className="mt-2 rounded-lg bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300">Completar mi Grid Locator</button>
+        </div>}
         <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={e => { e.preventDefault(); void runSearch(); }}>
           <label className="sr-only" htmlFor="distance-place-search">Lugar de destino</label><input id="distance-place-search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Escribí una ciudad, localidad o lugar del mundo…" className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-3 text-sm text-white placeholder:text-slate-500" />
           <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Buscar lugar</button>
