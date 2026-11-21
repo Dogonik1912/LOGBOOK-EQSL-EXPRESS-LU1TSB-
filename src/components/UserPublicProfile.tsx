@@ -4,7 +4,7 @@ import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 
-type PublicProfile = { callsign: string; photo: string; grid: string; location: string; elevation: number | null; loading: boolean };
+type PublicProfile = { callsign: string; photo: string; qraOperator: string; grid: string; location: string; elevation: number | null; loading: boolean };
 type GridPoint = { latitude: number; longitude: number };
 const localityCache = new Map<string, string>();
 
@@ -253,7 +253,7 @@ export const UserPublicProfile: React.FC = () => {
       const callsign = String((event as CustomEvent<{callsign?: string}>).detail?.callsign || '').trim().toUpperCase();
       if (callsign.length < 3) return;
       setMapOpen(false);
-      setProfile({ callsign, photo: '', grid: '', location: '', elevation: null, loading: true });
+      setProfile({ callsign, photo: '', qraOperator: '', grid: '', location: '', elevation: null, loading: true });
     };
     window.addEventListener('open-user-profile', onOpen);
     return () => window.removeEventListener('open-user-profile', onOpen);
@@ -263,13 +263,17 @@ export const UserPublicProfile: React.FC = () => {
     let active = true;
     const callsign = profile.callsign;
     const load = async () => {
-      let photo = ''; let grid = '';
+      let photo = ''; let qraOperator = ''; let grid = '';
       if (supabase) {
         const [photoResult, gridResult] = await Promise.all([
-          supabase.rpc('community_profile_photos', { p_callsigns: [callsign] }),
+          supabase.rpc('community_profile_details', { p_callsigns: [callsign] }),
           supabase.from('live_spot_grid_locators').select('grid_locator').eq('callsign', callsign).maybeSingle(),
         ]);
-        if (photoResult.data?.length) photo = String(photoResult.data[0]?.photo_data_url || '');
+        if (photoResult.data?.length) {
+          const details = photoResult.data.find((row: any) => String(row.callsign || '').toUpperCase() === callsign) || photoResult.data[0];
+          photo = String(details?.photo_data_url || '');
+          qraOperator = String(details?.qra_operator || '').trim();
+        }
         if (!gridResult.error) grid = String(gridResult.data?.grid_locator || '').trim().toUpperCase();
       }
       const point = maidenheadCenter(grid);
@@ -288,7 +292,7 @@ export const UserPublicProfile: React.FC = () => {
         ]);
         location = place;
       }
-      if (active) setProfile({ callsign, photo, grid, location, elevation, loading: false });
+      if (active) setProfile({ callsign, photo, qraOperator, grid, location, elevation, loading: false });
     };
     void load();
     return () => { active = false; };
@@ -305,6 +309,7 @@ export const UserPublicProfile: React.FC = () => {
       <div className='mt-5 space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm'>
         <p className='flex items-center gap-2'><MapPin className='h-4 w-4 shrink-0 text-sky-300' /><span><strong>Ciudad / pueblo:</strong> {profile.loading ? 'Buscando…' : profile.location || 'No disponible para este Grid Locator'}</span></p>
         <p className='pl-6 text-slate-300'><strong>Grid Locator:</strong> {profile.grid || (profile.loading ? 'Consultando…' : 'No informado')}</p>
+        {profile.qraOperator && <p className='pl-6 break-words text-slate-300'><strong>QRA OPERADOR:</strong> {profile.qraOperator}</p>}
         <p className='pl-6 text-slate-300'><strong>Altitud sobre el nivel del mar:</strong> {profile.loading ? 'Calculando…' : profile.elevation === null ? 'No disponible' : '≈ '+profile.elevation+' m s. n. m.'}</p>
         <p className='pl-6 text-[11px] leading-relaxed text-slate-400'>Ciudad, pueblo y altitud estimados a partir del centro de la cuadrícula Maidenhead. No representan una dirección exacta ni la altura de la antena.</p>
       </div>
