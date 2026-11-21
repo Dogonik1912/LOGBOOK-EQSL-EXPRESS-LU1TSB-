@@ -27,10 +27,10 @@ function readCache():LLOTAReference[]{
   try{const parsed=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(Array.isArray(parsed?.items))return normalize(parsed.items);}catch{}
   return [];
 }
-export async function loadLLOTAReferences():Promise<LLOTAReference[]>{
+export async function loadLLOTAReferences(forceRefresh = false):Promise<LLOTAReference[]>{
   const cached=readCache();let cachedAt=0;
   try{cachedAt=Number(JSON.parse(localStorage.getItem(CACHE_KEY)||'null')?.savedAt||0);}catch{}
-  if(cached.length&&Date.now()-cachedAt<CACHE_TTL_MS)return cached;
+  if(!forceRefresh&&cached.length&&Date.now()-cachedAt<CACHE_TTL_MS)return cached;
   const controller=new AbortController();const timeout=window.setTimeout(()=>controller.abort(),15000);
   try{
     const response=await fetch(API_URL,{method:'GET',headers:{Accept:'application/json'},cache:'no-store',signal:controller.signal});
