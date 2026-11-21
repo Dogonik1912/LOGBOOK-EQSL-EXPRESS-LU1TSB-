@@ -536,9 +536,10 @@ export const PrivateMessages: React.FC = () => {
                 const sender = message.sender_callsign.trim().toUpperCase();
                 const photo = profilePhotos[sender];
                 return <article key={message.id} className={'flex max-w-[100%] items-start gap-2 ' + (mine ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row')}>
-                  <button type="button" onClick={() => { setProfileTarget(sender); setProfileNotice(''); }} aria-label={`Ver perfil de ${sender}`} title={`Ver perfil de ${sender}`} className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-slate-100 hover:ring-2 hover:ring-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                  <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign: sender } }))} aria-label={`Ver perfil de ${sender}`} title={`Ver perfil de ${sender}`} className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-violet-300 bg-slate-100 hover:ring-2 hover:ring-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400">
                     {photo ? <img src={photo} alt={`Foto de ${sender}`} className="h-full w-full object-cover" /> : <span className="font-mono text-[10px] font-bold text-slate-500">{sender.slice(0, 3)}</span>}
                   </button>
+                  {moderationRole === 'admin' && sender !== callsign && <button type="button" onClick={() => { setProfileTarget(sender); setProfileNotice(''); }} className="mt-1 rounded-md p-1 text-rose-300 hover:bg-rose-950" aria-label={`Opciones de bloqueo para ${sender}`} title="Opciones de administración"><ShieldAlert className="h-4 w-4" /></button>}
                   <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
                     <p className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')}>{sender}</p>
                     <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
