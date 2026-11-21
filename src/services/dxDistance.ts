@@ -33,7 +33,7 @@ const CAPITALS: Record<string, Point> = {
   'Suiza':{lat:46.948,lon:7.4474}, 'Austria':{lat:48.2082,lon:16.3738},
   'Suecia':{lat:59.3293,lon:18.0686}, 'Polonia':{lat:52.2297,lon:21.0122},
   'Rusia':{lat:55.7558,lon:37.6173}, 'Croacia':{lat:45.815,lon:15.9819},
-  'Rumania':{lat:44.4268,lon:26.1025}, 'Ucrania':{lat:50.4501,lon:30.5234,
+  'Rumania':{lat:44.4268,lon:26.1025}, 'Ucrania':{lat:50.4501,lon:30.5234},
   'Andorra':{lat:42.5063,lon:1.5218}, 'Angola':{lat:-8.839,lon:13.2894},
   'Arabia Saudita':{lat:24.7136,lon:46.6753}, 'Costa de Marfil':{lat:6.8276,lon:-5.2893},
   'Curazao':{lat:12.1224,lon:-68.8824}, 'Emiratos Árabes Unidos':{lat:24.4539,lon:54.3773},
@@ -56,7 +56,7 @@ const CAPITALS: Record<string, Point> = {
   'Surinam':{lat:5.852,lon:-55.2038}, 'Tanzania':{lat:-6.163,lon:35.7516},
   'Tonga':{lat:-21.1393,lon:-175.2049}, 'Yemen':{lat:15.3694,lon:44.191},
   'Zambia':{lat:-15.3875,lon:28.3228}, 'Zimbabue':{lat:-17.8252,lon:31.0335}
-};};
+};
 
 export function capitalPointForCountry(country: string): Point | null {
   return CAPITALS[String(country || '').trim()] || null;
