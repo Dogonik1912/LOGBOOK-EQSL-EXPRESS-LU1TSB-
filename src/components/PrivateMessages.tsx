@@ -507,7 +507,7 @@ export const PrivateMessages: React.FC = () => {
                                 : <span className="font-mono text-[10px] font-bold text-violet-900">{conversation.other_callsign.slice(0, 3)}</span>}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className={'flex items-center justify-between gap-2 rounded-md px-1.5 py-1 font-mono text-sm font-black tracking-wide ' + (activeRecipient === conversation.other_callsign ? 'bg-violet-700 text-white' : 'bg-slate-950 text-amber-300')}>{conversation.other_callsign}{conversation.unread_count > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">{conversation.unread_count}</span>}</span>
+                              <span className={'flex items-center justify-between gap-2 rounded-md px-1.5 py-1 font-mono text-sm font-black tracking-wide ' + (activeRecipient === conversation.other_callsign ? 'bg-violet-700 text-white' : 'bg-slate-950 text-amber-300')}><button type="button" onClick={(event) => { event.stopPropagation(); window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign: conversation.other_callsign } })); }} className="min-w-0 truncate text-left underline decoration-dotted underline-offset-2 hover:text-cyan-300" aria-label={`Ver perfil de ${conversation.other_callsign}`}>{conversation.other_callsign}</button>{conversation.unread_count > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">{conversation.unread_count}</span>}</span>
                               <span className="mt-1 block truncate text-[11px] font-normal text-slate-500">{conversation.last_body}</span>
                             </span>
                           </span>
@@ -524,7 +524,7 @@ export const PrivateMessages: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2.5">
               <div className="flex items-center gap-2">
                 {activeRecipient && <button type="button" onClick={() => setActiveRecipient('')} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Volver a conversaciones"><ArrowLeft className="h-4 w-4" /></button>}
-                <h3 className="text-sm font-bold">{activeRecipient ? <>Conversación con <span className="ml-1 inline-block rounded-md border border-amber-400/70 bg-slate-950 px-2 py-1 font-mono text-base font-black tracking-wide text-amber-300">{activeRecipient}</span></> : 'Elegí una conversación'}</h3>
+                <h3 className="text-sm font-bold">{activeRecipient ? <>Conversación con <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign: activeRecipient } }))} className="ml-1 inline-block rounded-md border border-amber-400/70 bg-slate-950 px-2 py-1 font-mono text-base font-black tracking-wide text-amber-300 underline decoration-dotted underline-offset-2 hover:text-cyan-300" aria-label={`Ver perfil de ${activeRecipient}`}>{activeRecipient}</button></> : 'Elegí una conversación'}</h3>
               </div>
               {activeRecipient && <button type="button" onClick={() => void refreshMessages(activeRecipient)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Actualizar mensajes"><RefreshCw className="h-4 w-4" /></button>}
             </div>
@@ -541,7 +541,7 @@ export const PrivateMessages: React.FC = () => {
                   </button>
                   {moderationRole === 'admin' && sender !== callsign && <button type="button" onClick={() => { setProfileTarget(sender); setProfileNotice(''); }} className="mt-1 rounded-md p-1 text-rose-300 hover:bg-rose-950" aria-label={`Opciones de bloqueo para ${sender}`} title="Opciones de administración"><ShieldAlert className="h-4 w-4" /></button>}
                   <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
-                    <p className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')}>{sender}</p>
+                    <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign: sender } }))} className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider underline decoration-dotted underline-offset-2 hover:text-cyan-300 ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')} aria-label={`Ver perfil de ${sender}`}>{sender}</button>
                     <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
                     <div className="mt-1 flex items-center justify-end gap-2">
                       <p className={'text-[10px] ' + (mine ? 'text-violet-100' : 'text-slate-300')}>{new Date(message.created_at).toLocaleString()}</p>
