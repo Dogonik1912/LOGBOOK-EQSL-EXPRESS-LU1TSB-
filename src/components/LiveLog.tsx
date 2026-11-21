@@ -35,6 +35,7 @@ interface LiveLogProps {
   onUpdateQSO: (qso: QSO) => void;
   onDeleteQSO: (id: string) => void;
   onDeleteQSOs?: (ids: string[]) => void;
+  onDeleteArchivedLog?: (kind: 'contest' | 'llota', id: string) => void;
   onOpenEQSL: (qso: QSO) => void;
   onImportADIF: (newQsos: QSO[]) => void;
   onOpenReply?: (qso: QSO) => void;
@@ -47,6 +48,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onUpdateQSO,
   onDeleteQSO,
   onDeleteQSOs,
+  onDeleteArchivedLog,
   onOpenEQSL,
   onImportADIF,
   onOpenReply,
@@ -90,12 +92,29 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       : [...new Set([...current, ...visibleQSOs.map((q) => q.id)])]);
   };
   const handleDeleteSelected = () => {
-    const selectedInCurrentLog = categoryQSOs.filter((q) => selectedQsoIds.includes(q.id));
+    const selectedInCurrentLog = logQSOs.filter((q) => selectedQsoIds.includes(q.id));
     if (!selectedInCurrentLog.length) return;
-    if (!window.confirm(`¿Eliminar ${selectedInCurrentLog.length} QSO seleccionados de ${activeLog === 'cb' ? '11 metros' : 'radioafición'}? Esta acción no se puede deshacer.`)) return;
     if (onDeleteQSOs) onDeleteQSOs(selectedInCurrentLog.map((q) => q.id));
     else selectedInCurrentLog.forEach((q) => onDeleteQSO(q.id));
     setSelectedQsoIds((current) => current.filter((id) => !selectedInCurrentLog.some((q) => q.id === id)));
+  };
+
+  const handleDeleteCurrentArchive = () => {
+    if (selectedLLOTALog && onDeleteArchivedLog) {
+      const count = selectedLLOTALog.qsos.filter((q) => q.llotaActivityId === selectedLLOTALog.id).length;
+      if (!window.confirm(`¿Eliminar el archivo LLOTA «${selectedLLOTALog.name} · ${selectedLLOTALog.reference}» y sus ${count} contactos? Solo se eliminarán los QSO de esta actividad. Esta acción no se puede deshacer.`)) return;
+      onDeleteArchivedLog('llota', selectedLLOTALog.id);
+      setSelectedLLOTAId('');
+      setSelectedQsoIds([]);
+      return;
+    }
+    if (selectedContestLog && onDeleteArchivedLog) {
+      const count = exportQSOs.length;
+      if (!window.confirm(`¿Eliminar el archivo «${selectedContestLog.name}» y sus ${count} contactos? Esta acción no se puede deshacer.`)) return;
+      onDeleteArchivedLog('contest', selectedContestLog.id);
+      setSelectedContestLogName('');
+      setSelectedQsoIds([]);
+    }
   };
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   const [tempEmailValue, setTempEmailValue] = useState('');
@@ -438,7 +457,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   };
 
   // Filtrado de QSOs
-  const filteredQSOs = categoryQSOs.filter((q) => {
+  const filteredQSOs = logQSOs.filter((q) => {
     const matchesSearch =
       q.callsign.toLowerCase().includes(searchTerm.toLowerCase()) ||
       q.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -544,9 +563,10 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             aria-label="Escribir nombre del concurso libremente"
             className="min-w-0 max-w-full rounded-lg border border-amber-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-500"
           />
-          {selectedLLOTALog && <span className="text-xs text-teal-300">Exportando actividad LLOTA «{selectedLLOTALog.name} · {selectedLLOTALog.reference}» ({exportQSOs.length} QSO).</span>}
+          {selectedLLOTALog && <span className="text-xs text-teal-300">Actividad LLOTA «{selectedLLOTALog.name} · {selectedLLOTALog.reference}» ({exportQSOs.length} QSO).</span>}
           {selectedContestLog && !selectedLLOTALog && <span className="text-xs text-amber-300">Exportando el registro guardado «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
           {!selectedContestLog && !selectedLLOTALog && <span className="text-xs text-slate-400">Exportación: registro completo por categoría.</span>}
+          {(selectedContestLog || selectedLLOTALog) && onDeleteArchivedLog && <button type="button" onClick={handleDeleteCurrentArchive} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/50 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-300 hover:bg-rose-500/20"><Trash2 className="h-3.5 w-3.5" /> Borrar log completo</button>}
 
           <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar Excel (.xls)</button>
           <button type="button" onClick={handleExportCSV} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar CSV</button>
@@ -599,8 +619,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           <input type="checkbox" checked={visibleQSOs.length > 0 && visibleQSOs.every((q) => selectedQsoIds.includes(q.id))} onChange={toggleSelectAllVisible} disabled={!visibleQSOs.length} className="h-4 w-4 accent-sky-500" />
           Seleccionar todos ({visibleQSOs.length})
         </label>
-        <button type="button" onClick={handleDeleteSelected} disabled={!categoryQSOs.some((q) => selectedQsoIds.includes(q.id))} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
-          <Trash2 className="h-4 w-4" /> Eliminar seleccionados ({categoryQSOs.filter((q) => selectedQsoIds.includes(q.id)).length})
+        <button type="button" onClick={handleDeleteSelected} disabled={!logQSOs.some((q) => selectedQsoIds.includes(q.id))} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+          <Trash2 className="h-4 w-4" /> Eliminar seleccionados ({logQSOs.filter((q) => selectedQsoIds.includes(q.id)).length})
         </button>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-800">
