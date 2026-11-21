@@ -265,16 +265,20 @@ export const UserPublicProfile: React.FC = () => {
     const load = async () => {
       let photo = ''; let qraOperator = ''; let grid = '';
       if (supabase) {
-        const [photoResult, gridResult] = await Promise.all([
-          supabase.rpc('community_profile_details', { p_callsigns: [callsign] }),
-          supabase.from('live_spot_grid_locators').select('grid_locator').eq('callsign', callsign).maybeSingle(),
-        ]);
-        if (photoResult.data?.length) {
-          const details = photoResult.data.find((row: any) => String(row.callsign || '').toUpperCase() === callsign) || photoResult.data[0];
-          photo = String(details?.photo_data_url || '');
-          qraOperator = String(details?.qra_operator || '').trim();
+        // Una única consulta pública devuelve los mismos campos para cualquier
+        // SD/indicativo registrado, sin depender de que sea LU1TSB ni del RLS
+        // de lectura directa de las tablas internas.
+        const { data, error } = await supabase.rpc('community_public_profile_details', { p_callsigns: [callsign] });
+        if (error) {
+          console.warn('[LogBook] No se pudieron cargar los datos públicos del perfil:', error.message);
+        } else if (Array.isArray(data)) {
+          const details = data.find((row: any) => String(row.callsign || '').trim().toUpperCase() === callsign);
+          if (details) {
+            photo = String(details.photo_data_url || '');
+            qraOperator = String(details.qra_operator || '').trim();
+            grid = String(details.grid_locator || '').trim().toUpperCase();
+          }
         }
-        if (!gridResult.error) grid = String(gridResult.data?.grid_locator || '').trim().toUpperCase();
       }
       const point = maidenheadCenter(grid);
       let elevation: number | null = null;
