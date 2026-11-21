@@ -99,16 +99,10 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     const resolvePoint = async (grid: string | undefined, country: string, callsign: string) => {
       const gridPoint = maidenheadToPoint(grid || '');
       if (gridPoint) return { point: gridPoint, source: 'Grid Locator ' + String(grid).toUpperCase() };
-      const knownCapital = capitalPointForCountry(country);
-      if (knownCapital) return { point: knownCapital, source: 'Capital de ' + country };
       if (!country) throw new Error('No se pudo identificar el país de ' + callsign + ' para usar su capital.');
-      const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent('capital of ' + country);
-      const response = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!response.ok) throw new Error('No se pudo consultar la capital de ' + country + '.');
-      const results = await response.json();
-      const item = Array.isArray(results) ? results[0] : null;
-      if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lon))) throw new Error('No se encontró la capital de ' + country + '.');
-      return { point: { lat: Number(item.lat), lon: Number(item.lon) }, source: 'Capital de ' + country };
+      const knownCapital = capitalPointForCountry(country);
+      if (!knownCapital) throw new Error('No hay una coordenada de capital configurada para ' + country + '.');
+      return { point: knownCapital, source: 'Capital de ' + country };
     };
     setPoints(null);
     setMapError('');
