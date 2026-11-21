@@ -69,7 +69,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const exportQSOs = selectedLLOTALog ? selectedLLOTALog.qsos : selectedContestLog
     ? (selectedContestLog.qsos?.length ? selectedContestLog.qsos : qsos.filter((q) => q.contestLogId === selectedContestLog.id || q.contestLogName === selectedContestLog.name))
     : categoryQSOs;
-  const visibleQSOs = categoryQSOs.filter((q) => {
+  const logQSOs = selectedLLOTALog ? selectedLLOTALog.qsos : selectedContestLog ? exportQSOs : categoryQSOs;
+  const visibleQSOs = logQSOs.filter((q) => {
     const term = searchTerm.trim().toLowerCase();
     return (!term || [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.country, q.grid].some((v) => String(v || '').toLowerCase().includes(term))) &&
       (filterBand === 'ALL' || q.band === filterBand) &&
@@ -512,7 +513,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           >
             <option value="ALL">Todas las bandas</option>
             {['160m', '80m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '11 metros', '6m', '2m', '70cm'].map((b) => (
-              <option key={b} value={b}>{b}</option>
+              <option key={b} value={b}>{b === '11 metros' ? '11m' : b}</option>
             ))}
           </select>
 
