@@ -33,16 +33,44 @@ const CAPITALS: Record<string, Point> = {
   'Suiza':{lat:46.948,lon:7.4474}, 'Austria':{lat:48.2082,lon:16.3738},
   'Suecia':{lat:59.3293,lon:18.0686}, 'Polonia':{lat:52.2297,lon:21.0122},
   'Rusia':{lat:55.7558,lon:37.6173}, 'Croacia':{lat:45.815,lon:15.9819},
-  'Rumania':{lat:44.4268,lon:26.1025}, 'Ucrania':{lat:50.4501,lon:30.5234}
-};
+  'Rumania':{lat:44.4268,lon:26.1025}, 'Ucrania':{lat:50.4501,lon:30.5234,
+  'Andorra':{lat:42.5063,lon:1.5218}, 'Angola':{lat:-8.839,lon:13.2894},
+  'Arabia Saudita':{lat:24.7136,lon:46.6753}, 'Costa de Marfil':{lat:6.8276,lon:-5.2893},
+  'Curazao':{lat:12.1224,lon:-68.8824}, 'Emiratos Árabes Unidos':{lat:24.4539,lon:54.3773},
+  'Finlandia':{lat:60.1699,lon:24.9384}, 'Ghana':{lat:5.6037,lon:-0.187},
+  'Gibraltar':{lat:36.1408,lon:-5.3536}, 'Groenlandia':{lat:64.1814,lon:-51.6941},
+  'Guam':{lat:13.4757,lon:144.7489}, 'Guayana Francesa':{lat:4.9224,lon:-52.3135},
+  'Hong Kong':{lat:22.3193,lon:114.1694}, 'Indonesia':{lat:-6.2088,lon:106.8456},
+  'Irlanda':{lat:53.3498,lon:-6.2603}, 'Islandia':{lat:64.1466,lon:-21.9426},
+  'Liberia':{lat:6.3156,lon:-10.8074}, 'Libia':{lat:32.8872,lon:13.1913},
+  'Liechtenstein':{lat:47.141,lon:9.5209}, 'Luxemburgo':{lat:49.6116,lon:6.1319},
+  'Malasia':{lat:3.139,lon:101.6869}, 'Malta':{lat:35.8992,lon:14.5141},
+  'Marruecos':{lat:34.0209,lon:-6.8416}, 'Mauritania':{lat:18.0735,lon:-15.9582},
+  'Mongolia':{lat:47.9184,lon:106.9177}, 'Namibia':{lat:-22.5609,lon:17.0658},
+  'Nepal':{lat:27.7172,lon:85.324}, 'Nigeria':{lat:9.0765,lon:7.3986},
+  'Países Bajos':{lat:52.3676,lon:4.9041}, 'Puerto Rico':{lat:18.4655,lon:-66.1057},
+  'República Dominicana':{lat:18.4861,lon:-69.9312}, 'Samoa Americana':{lat:-14.2756,lon:-170.702},
+  'San Marino':{lat:43.9424,lon:12.4578}, 'Santa Elena':{lat:-15.9387,lon:-5.716},
+  'Senegal':{lat:14.7167,lon:-17.4677}, 'Serbia':{lat:44.7866,lon:20.4489},
+  'Sierra Leona':{lat:8.4657,lon:-13.2317}, 'Sudáfrica':{lat:-25.7479,lon:28.2293},
+  'Surinam':{lat:5.852,lon:-55.2038}, 'Tanzania':{lat:-6.163,lon:35.7516},
+  'Tonga':{lat:-21.1393,lon:-175.2049}, 'Yemen':{lat:15.3694,lon:44.191},
+  'Zambia':{lat:-15.3875,lon:28.3228}, 'Zimbabue':{lat:-17.8252,lon:31.0335}
+};};
 
 export function capitalPointForCountry(country: string): Point | null {
   return CAPITALS[String(country || '').trim()] || null;
 }
 
+
+export function isValidMaidenheadLocator(locator: string): boolean {
+  const grid = String(locator || '').trim().toUpperCase();
+  return /^(?:[A-R]{2}[0-9]{2})(?:[A-X]{2}(?:[0-9]{2}(?:[A-X]{2})?)?)?$/.test(grid);
+}
+
 export function maidenheadToPoint(locator: string): Point | null {
   const grid = String(locator || '').trim().toUpperCase();
-  if (!/^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(grid)) return null;
+  if (!isValidMaidenheadLocator(grid)) return null;
   let lon = -180 + (grid.charCodeAt(0) - 65) * 20;
   let lat = -90 + (grid.charCodeAt(1) - 65) * 10;
   lon += Number(grid[2]) * 2;
