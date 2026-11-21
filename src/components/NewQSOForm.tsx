@@ -194,7 +194,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [selectedLLOTAReference, setSelectedLLOTAReference] = useState<LLOTAReference | null>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('logbook_llota_selected_reference_v1') || 'null');
-      return saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\\d{4,5}$/i.test(saved.code)
+      return saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\d{4,5}$/i.test(saved.code)
         ? { code: saved.code.toUpperCase(), name: String(saved.name || ''), country: String(saved.country || '') }
         : null;
     } catch { return null; }
