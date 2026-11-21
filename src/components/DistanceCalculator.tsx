@@ -51,51 +51,62 @@ function bearingDegrees(a: Point, b: Point) {
 }
 const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const lineRef = useRef<any>(null);
+  const focusRef = useRef<any>(null);
+  const changeRef = useRef(onDestinationChange);
   const [error, setError] = useState('');
+  useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
+  // Mantener una única instancia Leaflet: elegir destino no debe reiniciar el mapa.
   useEffect(() => {
     if (!element.current) return;
-    let map: any, destinationMarker: any, cancelled = false;
+    let cancelled = false; let map: any; let resizeTimer = 0;
     void loadLeaflet().then(L => {
       if (cancelled || !element.current) return;
-      map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-      const a: [number, number] = [origin.lat, origin.lon];
-      L.marker(a).addTo(map).bindPopup('Origen: ' + originLabel);
-      const updateDestination = (point: Point) => onDestinationChange({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lon });
-      if (destination) {
-        const b: [number, number] = [destination.lat, destination.lon];
-        destinationMarker = L.marker(b, { draggable: true }).addTo(map).bindPopup('Destino: ' + destination.name);
-        L.polyline([a, b], { color: '#0891b2', weight: 4, opacity: 0.9 }).addTo(map);
-        destinationMarker.on('dragend', () => {
-          const point = destinationMarker.getLatLng();
-          updateDestination({ lat: point.lat, lon: point.lng });
-        });
-        map.fitBounds(L.latLngBounds([a, b]), { padding: [40, 40], maxZoom: 10 });
-      } else if (focusPlace) {
-        const focus: [number, number] = [focusPlace.lat, focusPlace.lon];
-        L.circleMarker(focus, { radius: 7, color: '#facc15', weight: 2, fillColor: '#facc15', fillOpacity: 0.75 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name);
-        map.setView(focus, 12);
-      } else {
-        map.setView(a, 3);
-      }
-      map.on('click', (event: any) => updateDestination({ lat: event.latlng.lat, lon: event.latlng.lng }));
-      window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
-    }).catch(e => setError(e instanceof Error ? e.message : 'No se pudo abrir el mapa.'));
-    return () => { cancelled = true; if (map) map.remove(); };
-  }, [origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name, focusPlace?.lat, focusPlace?.lon, focusPlace?.name, originLabel, onDestinationChange]);
+      map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true, worldCopyJump: true, minZoom: 2, maxZoom: 19 });
+      mapRef.current = map;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
+      map.setView([20, 0], 2);
+      map.on('click', (ev: any) => {
+        const lat = Math.max(-85.05112878, Math.min(85.05112878, ev.latlng.lat));
+        const lon = Math.max(-180, Math.min(180, ev.latlng.lng));
+        changeRef.current({ name: 'Punto seleccionado en el mapa', lat, lon });
+      });
+      const resize = () => { if (!cancelled && map) map.invalidateSize({ pan: false }); };
+      window.requestAnimationFrame(resize); resizeTimer = window.setTimeout(resize, 300);
+    }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudo abrir el mapa.'); });
+    return () => { cancelled = true; if (resizeTimer) window.clearTimeout(resizeTimer); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
+  }, [origin.lat, origin.lon, originLabel]);
+  useEffect(() => {
+    const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
+    if (focusRef.current) { map.removeLayer(focusRef.current); focusRef.current = null; }
+    if (focusPlace) { focusRef.current = L.circleMarker([focusPlace.lat, focusPlace.lon], { radius: 8, color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.85 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name); map.setView([focusPlace.lat, focusPlace.lon], 12); }
+  }, [focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
+  useEffect(() => {
+    const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
+    if (markerRef.current) { map.removeLayer(markerRef.current); markerRef.current = null; }
+    if (lineRef.current) { map.removeLayer(lineRef.current); lineRef.current = null; }
+    if (!destination) return;
+    const group = L.layerGroup().addTo(map);
+    const marker = L.marker([destination.lat, destination.lon], { draggable: true }).addTo(group).bindPopup('Destino: ' + destination.name);
+    marker.on('dragend', () => { const p = marker.getLatLng(); changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng }); });
+    markerRef.current = group;
+    lineRef.current = L.polyline([[origin.lat, origin.lon], [destination.lat, destination.lon]], { color: '#0891b2', weight: 4, opacity: 0.95 }).addTo(map);
+  }, [origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
   const locator = destination ? pointToMaidenhead(destination) : '';
+  const shareMeasurement = () => { if (!destination || km === null || bearing === null) return; const message = 'LOGBOOK eQSL EXPRESS\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\nRumbo: ' + bearing.toFixed(0) + '°\nGrid Locator destino: ' + locator + '\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5); if (navigator.share) void navigator.share({ title: 'Calculador de distancia', text: message }).catch(() => {}); else if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(message); };
   return <div className="mt-3 overflow-hidden rounded-xl border border-slate-600">
-    <div className="flex flex-wrap gap-x-5 gap-y-1 bg-slate-800 px-3 py-3 text-sm text-white">
-      {destination && km !== null ? <><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span><span>Rumbo: <strong>{bearing!.toFixed(0)}°</strong></span></> : <strong className="text-cyan-200">Tocá cualquier punto del mapa para elegir el destino</strong>}
+    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800 px-3 py-3 text-sm text-white">
+      {destination && km !== null ? <div className="flex flex-wrap gap-x-5 gap-y-1"><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span><span>Rumbo: <strong>{bearing!.toFixed(0)}°</strong></span></div> : <strong className="text-cyan-200">Mapa mundial: tocá cualquier punto para medir</strong>}
+      <button type="button" onClick={() => mapRef.current?.setView([20, 0], 2)} className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-bold hover:bg-slate-700">Ver todo el mundo</button>
     </div>
-    <div ref={element} className="h-[52dvh] min-h-[300px] w-full bg-slate-800" />
-    {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200">
-      <span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span>
-      <button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button>
-    </div>}
-    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Seleccioná cualquier lugar tocando o haciendo clic en el mapa. Podés arrastrar el marcador para ajustar el destino. La distancia se mide en línea recta desde tu estación.</p>
+    <div ref={element} className="h-[58dvh] min-h-[360px] w-full bg-slate-800" />
+    {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><div className="flex gap-2"><button type="button" onClick={shareMeasurement} className="rounded-lg bg-cyan-700 px-3 py-1.5 font-bold text-white hover:bg-cyan-600">Compartir medición</button><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div></div>}
+    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Desplazate por todo el planeta, acercá o alejá y tocá cualquier lugar. También podés arrastrar el marcador. La distancia se mide en línea recta desde tu estación.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
   </div>;
 };
@@ -178,12 +189,14 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; onOpenProfile: (c
     </div>
     {loading ? <p className="text-sm text-slate-300">Buscando estaciones registradas…</p> : error ? <p className="text-sm text-amber-300">{error}</p> : stations.length === 0 ? <p className="text-sm text-slate-400">Todavía no hay estaciones con Grid Locator válido.</p> : <>
       <div ref={mapElement} className="mb-3 h-[38dvh] min-h-[230px] w-full overflow-hidden rounded-lg bg-slate-800" />
-      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-        {stations.map(station => <button key={station.callsign} type="button" onClick={() => onOpenProfile(station.callsign)} className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-left hover:border-cyan-500/60 hover:bg-slate-900">
-          <span className="min-w-0"><strong className="block truncate font-mono text-sm">{station.callsign}</strong><span className="text-xs text-slate-400">Grid: {station.grid_locator}</span></span>
-          <span className="shrink-0 text-xs font-bold text-cyan-300">Ver perfil</span>
-        </button>)}
-      </div>
+      <details className="rounded-lg border border-slate-700 bg-slate-900">
+        <summary className="cursor-pointer list-none px-3 py-3 text-sm font-bold text-cyan-200">Ver estaciones registradas ({stations.length}) <span className="float-right text-slate-400">＋</span></summary>
+        <div className="max-h-64 space-y-1 overflow-y-auto border-t border-slate-700 p-2">
+          {stations.map(station => <button key={station.callsign} type="button" onClick={() => onOpenProfile(station.callsign)} className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-left hover:border-cyan-500/60 hover:bg-slate-950">
+            <span className="min-w-0"><strong className="block truncate font-mono text-sm">{station.callsign}</strong><span className="text-xs text-slate-400">Grid: {station.grid_locator}</span></span><span className="shrink-0 text-xs font-bold text-cyan-300">Ver perfil</span>
+          </button>)}
+        </div>
+      </details>
     </>}
   </div>;
 };
