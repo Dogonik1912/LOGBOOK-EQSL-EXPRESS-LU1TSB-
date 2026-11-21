@@ -123,6 +123,8 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
   })() : null;
   const usesCapitalEstimate = Boolean(points && (points.firstSource.startsWith('Capital de ') || points.secondSource.startsWith('Capital de ')));
+  // Al abrir la distancia desde Live Spot, mostrar directamente las opciones de envío.
+  useEffect(() => { if (points && km !== null) setShareOpen(true); }, [points, km]);
   const currentCallsign = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
   const privateRecipient = currentCallsign === spot.callsign ? spot.station_callsign : spot.callsign;
   useEffect(() => {
