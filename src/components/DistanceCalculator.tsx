@@ -171,29 +171,48 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     if (focusPlace) { focusRef.current = L.circleMarker([focusPlace.lat, focusPlace.lon], { radius: 8, color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.85 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name); map.setView([focusPlace.lat, focusPlace.lon], 12); }
   }, [mapReady, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
   useEffect(() => {
-    const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
+    const map = mapRef.current;
+    // Usar exactamente la instancia Leaflet que creó este mapa; no depender de window.L.
+    const L = leafletRef.current;
+    if (!map || !L || !mapReady) return;
     if (markerRef.current) { map.removeLayer(markerRef.current); markerRef.current = null; }
     if (lineRef.current) { map.removeLayer(lineRef.current); lineRef.current = null; }
     if (!destination) return;
+
     const group = L.layerGroup().addTo(map);
-    const marker = L.marker([destination.lat, destination.lon], { draggable: true }).addTo(group).bindPopup('Destino: ' + destination.name);
-    marker.on('dragend', () => { const p = marker.getLatLng(); changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng }); });
+    const marker = L.marker([destination.lat, destination.lon], { draggable: true })
+      .addTo(group).bindPopup('Destino: ' + destination.name);
+    marker.on('dragend', () => {
+      const p = marker.getLatLng();
+      changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng });
+    });
     markerRef.current = group;
-    // Dibujar la ruta en el pane SVG estándar de Leaflet (sobre las teselas).
-    // Se conserva una referencia directa al motor Leaflet cargado por este mapa.
+
+    // Crear un renderer SVG explícito y asignarlo a la ruta. Así Leaflet no
+    // depende de que detecte automáticamente el renderer/pane en móviles.
+    const renderer = L.svg({ pane: 'overlayPane', padding: 0.5 });
     const route = L.polyline(
       [[origin.lat, origin.lon], [destination.lat, destination.lon]],
-      { pane: 'overlayPane', color: '#facc15', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false, smoothFactor: 1 }
+      { renderer, pane: 'overlayPane', color: '#facc15', opacity: 1, weight: 8,
+        lineCap: 'round', lineJoin: 'round', interactive: false, smoothFactor: 1 }
     );
     route.addTo(map);
-    route.setStyle({ color: '#facc15', weight: 7, opacity: 1 });
-    route.bringToFront();
     lineRef.current = route;
-    // Forzar el repintado después de que el modal haya terminado de mostrar el mapa.
-    window.requestAnimationFrame(() => { if (mapRef.current === map && map.hasLayer(route)) route.redraw(); });
-    // Al elegir un resultado, mostrar simultáneamente origen, destino y recorrido.
-    // Evita que el zoom de la zona buscada deje el origen fuera de pantalla.
-    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]), { padding: [48, 48], maxZoom: 8, animate: false });
+
+    // Encajar ambos extremos y volver a pintar cuando el contenedor modal ya
+    // tenga dimensiones reales. El repintado se repite tras el primer layout.
+    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
+      { padding: [48, 48], maxZoom: 8, animate: false });
+    const repaint = () => {
+      if (mapRef.current !== map || !map.hasLayer(route)) return;
+      map.invalidateSize({ pan: false });
+      route.setStyle({ color: '#facc15', opacity: 1, weight: 8 });
+      route.redraw();
+      route.bringToFront();
+    };
+    window.requestAnimationFrame(repaint);
+    window.setTimeout(repaint, 180);
+    window.setTimeout(repaint, 500);
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
