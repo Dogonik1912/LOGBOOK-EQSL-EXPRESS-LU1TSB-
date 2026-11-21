@@ -332,10 +332,25 @@ function MainApp() {
     handleSaveQsos(updated);
   };
 
+  const syncArchivedSnapshotsAfterQsoDeletion = (ids: string[]) => {
+    const idSet = new Set(ids);
+    const nextContestLogs = contestLogs.map((log) => ({ ...log, qsos: log.qsos?.filter((q) => !idSet.has(q.id)) }));
+    const nextLLOTALogs = llotaLogs.map((log) => ({ ...log, qsos: log.qsos.filter((q) => !idSet.has(q.id)) }));
+    try {
+      localStorage.setItem('logbook_contest_logs', JSON.stringify(nextContestLogs));
+      localStorage.setItem('logbook_llota_activity_logs', JSON.stringify(nextLLOTALogs));
+      setContestLogs(nextContestLogs);
+      setLLOTALogs(nextLLOTALogs);
+    } catch (error) {
+      console.error('No se pudieron sincronizar los archivos después de borrar QSO:', error);
+      window.alert('Los contactos se quitaron del Libro de Guardia, pero no se pudo actualizar algún archivo guardado. Revisá el almacenamiento local antes de continuar.');
+    }
+  };
+
   const handleDeleteQSO = (id: string) => {
     if (window.confirm('¿Seguro que deseás eliminar este contacto del libro de guardia?')) {
-      const updated = qsos.filter((q) => q.id !== id);
-      handleSaveQsos(updated);
+      handleSaveQsos(qsos.filter((q) => q.id !== id));
+      syncArchivedSnapshotsAfterQsoDeletion([id]);
     }
   };
 
@@ -344,6 +359,41 @@ function MainApp() {
     if (window.confirm(`¿Eliminar definitivamente ${ids.length} QSO seleccionados? Esta acción no se puede deshacer.`)) {
       const idSet = new Set(ids);
       handleSaveQsos(qsos.filter((q) => !idSet.has(q.id)));
+      syncArchivedSnapshotsAfterQsoDeletion(ids);
+    }
+  };
+
+  const handleDeleteArchivedLog = (kind: 'contest' | 'llota', id: string) => {
+    if (kind === 'llota') {
+      const log = llotaLogs.find((item) => item.id === id);
+      if (!log) return;
+      const activityQsoIds = new Set(qsos.filter((q) => q.llotaActivityId === id).map((q) => q.id));
+      handleSaveQsos(qsos.filter((q) => q.llotaActivityId !== id));
+      const updated = llotaLogs.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem('logbook_llota_activity_logs', JSON.stringify(updated));
+        setLLOTALogs(updated);
+      } catch (error) {
+        console.error('No se pudo eliminar el archivo LLOTA:', error);
+        window.alert('No se pudo actualizar el archivo LLOTA. Los contactos no fueron borrados del Libro de Guardia.');
+        return;
+      }
+      return;
+    }
+
+    const log = contestLogs.find((item) => item.id === id);
+    if (!log) return;
+    const archivedIds = new Set((log.qsos || []).map((q) => q.id));
+    const updatedQSOs = qsos.filter((q) => !archivedIds.has(q.id) && !(q.contestLogId === id || (!q.contestLogId && q.contestLogName === log.name)));
+    const updatedLogs = contestLogs.filter((item) => item.id !== id);
+    try {
+      localStorage.setItem('logbook_contest_logs', JSON.stringify(updatedLogs));
+      setContestLogs(updatedLogs);
+      handleSaveQsos(updatedQSOs);
+      syncArchivedSnapshotsAfterQsoDeletion([...archivedIds]);
+    } catch (error) {
+      console.error('No se pudo eliminar el archivo del concurso:', error);
+      window.alert('No se pudo actualizar el archivo. No se confirmó la eliminación.');
     }
   };
 
@@ -468,6 +518,7 @@ function MainApp() {
           onUpdateQSO={handleUpdateQSO}
           onDeleteQSO={handleDeleteQSO}
           onDeleteQSOs={handleDeleteQSOs}
+          onDeleteArchivedLog={handleDeleteArchivedLog}
           onOpenEQSL={(qso) => setActiveEQSLQSO(qso)}
           onImportADIF={handleImportADIF}
           onOpenReply={handleOpenReplyForQSO}
