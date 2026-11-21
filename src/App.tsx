@@ -169,6 +169,12 @@ function MainApp() {
     setIsSettingsModalOpen(true);
   };
 
+  useEffect(() => {
+    const openGridSettings = () => handleOpenSettings();
+    window.addEventListener('open-user-settings-grid', openGridSettings);
+    return () => window.removeEventListener('open-user-settings-grid', openGridSettings);
+  }, []);
+
   const handleCloseSettings = () => {
     setIsSettingsModalOpen(false);
     if (settingsHistoryEntry.current) {
