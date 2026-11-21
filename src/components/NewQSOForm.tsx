@@ -636,6 +636,22 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     }
   };
 
+  // Si el operador pega o escribe el código completo, reconocerlo directamente
+  // contra el catálogo oficial ya cargado, sin exigir que toque una sugerencia.
+  const handleLLOTAReferenceInput = (value: string) => {
+    const normalized = value.trim().toUpperCase().replace(/\\s+/g, '');
+    setLLOTAsearch(value.toUpperCase());
+    if (!/^LL[A-Z]{2}-\\d{4,5}$/.test(normalized)) return;
+    const official = llotaReferences.find((item) => item.code.trim().toUpperCase() === normalized);
+    if (!official) return;
+    setSelectedLLOTAReference({
+      ...official,
+      activityId: `llota-${official.code}-${Date.now()}`,
+      startedAt: new Date().toISOString(),
+    });
+    setLLOTAsearch('');
+  };
+
   const filteredLLOTAReferences = llotaSearch.trim().length >= 2
     ? llotaReferences.filter((item) => `${item.code} ${item.name} ${item.country}`.toLocaleLowerCase().includes(llotaSearch.trim().toLocaleLowerCase())).slice(0, 25)
     : [];
@@ -876,7 +892,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
               <button type="button" onClick={() => { const active = selectedLLOTAReference; if (!active) return; const ok = onFinishLLOTA({ id: active.activityId, name: active.name, reference: active.code, activityType: 'LLOTA', startedAt: active.startedAt, finishedAt: new Date().toISOString() }); if (ok) setSelectedLLOTAReference(null); }} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white">Finalizar y archivar</button>
             </div>
           ) : <>
-            <input type="search" value={llotaSearch} onChange={(e) => setLLOTAsearch(e.target.value)} placeholder="Buscar código, lago, laguna o país…" autoComplete="off" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal-400 focus:outline-none" />
+            <input type="search" value={llotaSearch} onChange={(e) => handleLLOTAReferenceInput(e.target.value)} placeholder="Pegá o escribí el código LLOTA o buscá por lugar…" autoComplete="off" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal-400 focus:outline-none" />
             {llotaLoading && <p className="text-xs text-slate-400">Cargando referencias oficiales de LLOTA…</p>}
             {!llotaLoading && llotaLoadError && <p role="status" className="text-xs text-amber-300">{llotaLoadError}</p>}
             {!llotaLoading && !llotaLoadError && llotaSearch.trim().length < 2 && <p className="text-xs text-slate-400">Escribí al menos 2 caracteres para buscar en el catálogo mundial oficial ({llotaReferences.length.toLocaleString()} referencias).</p>}
