@@ -97,6 +97,19 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
   const is11m = isElevenMeterSpot(spot.band, spot.frequency);
   const firstCountry = countryForCallsign(spot.callsign, spot.country || undefined, is11m);
   const secondCountry = countryForCallsign(spot.station_callsign, undefined, is11m);
+  // El grid local solo se aplica a la estación propia del usuario que está viendo el spot.
+  // Esto cubre las dos identidades del administrador (LU1TSB y 4RC978) sin asignar
+  // accidentalmente la ubicación del visitante a la estación remota.
+  const ownIdentifiers = new Set([
+    localStorage.getItem('community_chat_active_callsign'),
+    localStorage.getItem('community_chat_sd'),
+    localStorage.getItem('cb_station_callsign'),
+    getUserCallsign(),
+  ].map(value => String(value || '').trim().toUpperCase()).filter(Boolean));
+  const savedOwnGrid = String(localStorage.getItem('user_grid_locator') || '').trim().toUpperCase();
+  const ownGridIsValid = Boolean(maidenheadToPoint(savedOwnGrid));
+  const resolvedFirstGrid = firstGrid || (ownIdentifiers.has(spot.callsign.trim().toUpperCase()) && ownGridIsValid ? savedOwnGrid : undefined);
+  const resolvedSecondGrid = secondGrid || (ownIdentifiers.has(spot.station_callsign.trim().toUpperCase()) && ownGridIsValid ? savedOwnGrid : undefined);
   useEffect(() => {
     let cancelled = false;
     const resolvePoint = async (grid: string | undefined, country: string, callsign: string) => {
@@ -110,12 +123,12 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     setPoints(null);
     setMapError('');
     void Promise.all([
-      resolvePoint(firstGrid, firstCountry, spot.callsign),
-      resolvePoint(secondGrid, secondCountry, spot.station_callsign),
+      resolvePoint(resolvedFirstGrid, firstCountry, spot.callsign),
+      resolvePoint(resolvedSecondGrid, secondCountry, spot.station_callsign),
     ]).then(([a,b]) => { if (!cancelled) setPoints({ first:a.point, second:b.point, firstSource:a.source, secondSource:b.source }); })
       .catch(error => { if (!cancelled) setMapError(error instanceof Error ? error.message : 'No se pudieron resolver las ubicaciones.'); });
     return () => { cancelled = true; };
-  }, [spot.callsign, spot.station_callsign, spot.band, spot.frequency, firstGrid, secondGrid, firstCountry, secondCountry]);
+  }, [spot.callsign, spot.station_callsign, spot.band, spot.frequency, resolvedFirstGrid, resolvedSecondGrid, firstCountry, secondCountry]);
   const km = points ? (() => {
     const rad = (v: number) => v * Math.PI / 180;
     const dLat = rad(points.second.lat-points.first.lat), dLon = rad(points.second.lon-points.first.lon);
@@ -135,10 +148,10 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
       map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       const a: [number,number] = [points.first.lat,points.first.lon], b: [number,number] = [points.second.lat,points.second.lon];
-      L.marker(a).addTo(map).bindPopup('Estación '+spot.callsign+' · '+points.firstSource);
-      L.marker(b).addTo(map).bindPopup('Estación '+spot.station_callsign+' · '+points.secondSource);
+      L.marker(a).addTo(map).bindPopup('Estación '+spot.callsign+' · '+points.firstSource).bindTooltip(spot.callsign+' · '+points.firstSource, { permanent:true, direction:'top', offset:[0,-10], opacity:0.95 });
+      L.marker(b).addTo(map).bindPopup('Estación '+spot.station_callsign+' · '+points.secondSource).bindTooltip(spot.station_callsign+' · '+points.secondSource, { permanent:true, direction:'top', offset:[0,-10], opacity:0.95 });
       L.polyline([a,b], { color:'#06b6d4', weight:4, opacity:0.9 }).addTo(map);
-      map.fitBounds(L.latLngBounds([a,b]), { padding:[35,35], maxZoom:10 });
+      map.fitBounds(L.latLngBounds([a,b]), { padding:[55,55], maxZoom:12 });
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
     }).catch(error => setMapError(error instanceof Error ? error.message : 'No se pudo cargar el mapa.'));
     return () => { cancelled = true; if (map) map.remove(); };
@@ -147,7 +160,7 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     <section ref={shareCaptureRef} className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || firstCountry || 'Capital pendiente'}) ↔ {spot.station_callsign} ({secondGrid || secondCountry || 'Capital pendiente'})</p></div><button type="button" data-share-ignore onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
       <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-700 px-4 py-3 text-sm"><span><strong>{km === null ? 'Calculando…' : km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km'}</strong></span><span><strong>{km === null ? '—' : (km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})+' mi'}</strong></span></div>
-      {points ? <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Ubicación por {points.firstSource} ↔ {points.secondSource}. Línea recta entre ambos puntos. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>{usesCapitalEstimate && <p className="mx-4 mb-3 rounded-lg border border-amber-500/40 bg-amber-950/50 px-3 py-2 text-xs font-bold text-amber-200">DISTANCIA APROXIMADA: se utilizó la capital del país donde falta el Grid Locator. La ubicación real puede variar.</p>}</> : <div className="p-6 text-sm text-amber-200">{mapError || 'Buscando el Grid Locator o, si falta, la capital de cada país…'}</div>}
+      {points ? <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><div className="grid grid-cols-1 gap-2 border-t border-slate-700 bg-slate-950 px-4 py-3 text-xs sm:grid-cols-2"><div className="rounded-lg border border-slate-700 p-2"><strong className="block text-cyan-200">{spot.callsign}</strong><span className="text-slate-300">{points.firstSource}</span><span className="mt-1 block font-mono text-[10px] text-slate-500">{points.first.lat.toFixed(4)}, {points.first.lon.toFixed(4)}</span></div><div className="rounded-lg border border-slate-700 p-2"><strong className="block text-cyan-200">{spot.station_callsign}</strong><span className="text-slate-300">{points.secondSource}</span><span className="mt-1 block font-mono text-[10px] text-slate-500">{points.second.lat.toFixed(4)}, {points.second.lon.toFixed(4)}</span></div></div><p className="px-4 py-2 text-[11px] text-slate-400">Las etiquetas de ambas estaciones permanecen visibles al ampliar el mapa. Tocá cada marcador para ver sus detalles. Línea recta entre ambos puntos.</p>{usesCapitalEstimate && <p className="mx-4 mb-3 rounded-lg border border-amber-500/40 bg-amber-950/50 px-3 py-2 text-xs font-bold text-amber-200">DISTANCIA APROXIMADA: se utilizó la capital del país donde falta el Grid Locator. La ubicación real puede variar.</p>}</> : <div className="p-6 text-sm text-amber-200">{mapError || 'Buscando el Grid Locator o, si falta, la capital de cada país…'}</div>}
       <footer data-share-ignore className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 px-4 py-3">
         <div className="min-w-0 flex-1">{usesCapitalEstimate && <p className="text-[11px] text-amber-300">Se compartirá una distancia aproximada usando la capital para la estación sin Grid Locator. Para mayor precisión, registrá el locator en Ajustes.</p>}</div>
         <div className="flex gap-2"><button type="button" disabled={!points || km === null} onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"><Share2 className="h-4 w-4" />Compartir distancia</button><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></div>
