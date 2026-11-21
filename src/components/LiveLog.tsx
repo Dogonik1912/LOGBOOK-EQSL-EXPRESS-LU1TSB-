@@ -62,8 +62,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const selectedLLOTALog = llotaLogs.find(log => log.id === selectedLLOTAId);
   const [importCabrilloInputKey, setImportCabrilloInputKey] = useState(0);
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.965 && f <= 27.999; })();
-  const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
-  const cbQSOs = qsos.filter(isCitizenBand);
+  const hamQSOs = qsos.filter((q) => !q.llotaActivityId && !isCitizenBand(q));
+  const cbQSOs = qsos.filter((q) => !q.llotaActivityId && isCitizenBand(q));
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
   const selectedContestLog = contestLogs.find((log) => log.name.trim().toLocaleLowerCase() === selectedContestLogName.trim().toLocaleLowerCase());
   const exportQSOs = selectedLLOTALog ? selectedLLOTALog.qsos : selectedContestLog
