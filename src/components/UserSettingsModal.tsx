@@ -6,7 +6,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { isValidMaidenheadLocator } from '../services/dxDistance';
-import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
+import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon, MapPin, Search, LocateFixed, Crosshair } from 'lucide-react';
+
+function gridPointToMaidenhead(latitude: number, longitude: number): string | null {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  const lon = Math.min(179.999999, Math.max(-180, longitude)) + 180;
+  const lat = Math.min(89.999999, Math.max(-90, latitude)) + 90;
+  const fieldLon = Math.floor(lon / 20);
+  const fieldLat = Math.floor(lat / 10);
+  const remainderLon = lon - fieldLon * 20;
+  const remainderLat = lat - fieldLat * 10;
+  const squareLon = Math.floor(remainderLon / 2);
+  const squareLat = Math.floor(remainderLat);
+  const subLon = Math.min(23, Math.floor(((remainderLon - squareLon * 2) / 2) * 24));
+  const subLat = Math.min(23, Math.floor((remainderLat - squareLat) * 24));
+  return String.fromCharCode(65 + fieldLon, 65 + fieldLat) +
+    String(squareLon) + String(squareLat) +
+    String.fromCharCode(97 + subLon, 97 + subLat).toUpperCase();
+}
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -23,6 +40,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
   const [gridLocator, setGridLocator] = useState('');
+  const gridMapRef = useRef<HTMLDivElement>(null);
+  const gridMapInstanceRef = useRef<any>(null);
+  const gridMapMarkerRef = useRef<any>(null);
+  const [gridPlaceQuery, setGridPlaceQuery] = useState('');
+  const [gridPlaceResults, setGridPlaceResults] = useState<Array<{ name: string; lat: number; lon: number }>>([]);
+  const [gridSearchBusy, setGridSearchBusy] = useState(false);
+  const [gridSearchError, setGridSearchError] = useState('');
+  const [gridGpsBusy, setGridGpsBusy] = useState(false);
+  const [gridLatitude, setGridLatitude] = useState('');
+  const [gridLongitude, setGridLongitude] = useState('');
+
   const [qraOperator, setQraOperator] = useState('');
   const [qraOperatorSaved, setQraOperatorSaved] = useState(false);
   const [qraOperatorBusy, setQraOperatorBusy] = useState(false);
@@ -182,6 +210,147 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setSavedSuccess(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !gridMapRef.current) return;
+    let cancelled = false;
+    const initializeMap = async () => {
+      const w = window as any;
+      const ensureLeaflet = async () => {
+        if (w.L) return w.L;
+        if (!document.querySelector('link[data-grid-leaflet]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.dataset.gridLeaflet = 'true';
+          document.head.appendChild(link);
+        }
+        await new Promise<void>((resolve, reject) => {
+          const existing = document.querySelector('script[data-grid-leaflet]') as HTMLScriptElement | null;
+          if (existing) {
+            if (w.L) return resolve();
+            existing.addEventListener('load', () => resolve(), { once: true });
+            existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa.')), { once: true });
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+          script.async = true;
+          script.dataset.gridLeaflet = 'true';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('No se pudo cargar el mapa.'));
+          document.head.appendChild(script);
+        });
+        return w.L;
+      };
+      try {
+        const L = await ensureLeaflet();
+        if (cancelled || !gridMapRef.current || gridMapInstanceRef.current) return;
+        const currentPoint = maidenheadToPoint(gridLocator);
+        const center: [number, number] = currentPoint ? [currentPoint.lat, currentPoint.lon] : [-34.6037, -58.3816];
+        const map = L.map(gridMapRef.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true }).setView(center, currentPoint ? 8 : 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+        gridMapInstanceRef.current = map;
+        const placeMarker = (lat: number, lon: number) => {
+          if (!gridMapInstanceRef.current) return;
+          if (gridMapMarkerRef.current) gridMapMarkerRef.current.setLatLng([lat, lon]);
+          else gridMapMarkerRef.current = L.marker([lat, lon]).addTo(map);
+        };
+        if (currentPoint) placeMarker(currentPoint.lat, currentPoint.lon);
+        map.on('click', (event: any) => {
+          const lat = Number(event.latlng.lat);
+          const lon = Number(event.latlng.lng);
+          const locator = gridPointToMaidenhead(lat, lon);
+          if (!locator) return;
+          setGridLocator(locator);
+          setGridLatitude(lat.toFixed(6));
+          setGridLongitude(lon.toFixed(6));
+          placeMarker(lat, lon);
+          setGridSearchError('');
+        });
+        window.setTimeout(() => { if (!cancelled && gridMapInstanceRef.current) map.invalidateSize(); }, 120);
+      } catch (error) {
+        if (!cancelled) setGridSearchError(error instanceof Error ? error.message : 'No se pudo abrir el mapa.');
+      }
+    };
+    void initializeMap();
+    return () => {
+      cancelled = true;
+      if (gridMapInstanceRef.current) gridMapInstanceRef.current.remove();
+      gridMapInstanceRef.current = null;
+      gridMapMarkerRef.current = null;
+    };
+  }, [isOpen]);
+
+  const applyGridCoordinates = (lat: number, lon: number) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      setGridSearchError('Coordenadas inválidas. Latitud: −90 a 90; longitud: −180 a 180.');
+      return;
+    }
+    const locator = gridPointToMaidenhead(lat, lon);
+    if (!locator) return;
+    setGridLocator(locator);
+    setGridLatitude(lat.toFixed(6));
+    setGridLongitude(lon.toFixed(6));
+    setGridSearchError('');
+    const map = gridMapInstanceRef.current;
+    const L = (window as any).L;
+    if (map && L) {
+      map.setView([lat, lon], Math.max(map.getZoom(), 8));
+      if (gridMapMarkerRef.current) gridMapMarkerRef.current.setLatLng([lat, lon]);
+      else gridMapMarkerRef.current = L.marker([lat, lon]).addTo(map);
+    }
+  };
+
+  const detectGridGps = () => {
+    if (!navigator.geolocation) {
+      setGridSearchError('Este dispositivo no ofrece geolocalización.');
+      return;
+    }
+    setGridGpsBusy(true);
+    setGridSearchError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        applyGridCoordinates(position.coords.latitude, position.coords.longitude);
+        setGridGpsBusy(false);
+      },
+      (error) => {
+        setGridSearchError(error.code === error.PERMISSION_DENIED
+          ? 'No se concedió permiso de ubicación. Podés buscar el lugar en el mapa o introducir coordenadas.'
+          : 'No se pudo obtener la ubicación GPS. Comprobá que esté activada e intentá nuevamente.');
+        setGridGpsBusy(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+    );
+  };
+
+  const searchGridPlaces = async () => {
+    const term = gridPlaceQuery.trim();
+    if (term.length < 2) {
+      setGridSearchError('Escribí una localidad o dirección para buscar.');
+      return;
+    }
+    setGridSearchBusy(true);
+    setGridSearchError('');
+    setGridPlaceResults([]);
+    try {
+      const params = new URLSearchParams({ q: term, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'es' });
+      const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('El buscador de localidades no está disponible. Intentá nuevamente.');
+      const rows = await response.json();
+      const places = (Array.isArray(rows) ? rows : []).map((row: any) => ({
+        name: String(row.display_name || '').split(',').slice(0, 4).join(', '),
+        lat: Number(row.lat),
+        lon: Number(row.lon),
+      })).filter((place: { name: string; lat: number; lon: number }) => place.name && Number.isFinite(place.lat) && Number.isFinite(place.lon));
+      setGridPlaceResults(places);
+      if (!places.length) setGridSearchError('No se encontraron lugares. Probá agregando ciudad y país.');
+    } catch (error) {
+      setGridSearchError(error instanceof Error ? error.message : 'No se pudo buscar la localidad.');
+    } finally {
+      setGridSearchBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || localStorage.getItem('focus_user_grid_locator') !== '1') return;
@@ -613,11 +782,42 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </section>
           )}
 
-          <section className="rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="grid-locator-title">
-            <h3 id="grid-locator-title" className="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Locator para distancia DX</h3>
-            <label htmlFor="user-grid-locator" className="block text-xs text-slate-300">Tu locator Maidenhead</label>
-            <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" spellCheck={false} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
-            <p className={gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>{gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'Formato no válido. Usá 4, 6, 8 o 10 caracteres Maidenhead.' : 'Válido para cuentas de radioaficionado y de 11 metros. Ejemplos: IN83 · IN83KA · IN83KA12 · IN83KA12AB.'}</p>
+          <section className="rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3.5 space-y-3" aria-labelledby="grid-locator-title">
+            <div>
+              <h3 id="grid-locator-title" className="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Locator para distancia DX</h3>
+              <label htmlFor="user-grid-locator" className="mt-2 block text-xs text-slate-300">Tu locator Maidenhead actual o nuevo</label>
+              <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" spellCheck={false} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
+              <p className={gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>{gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'Formato no válido. Usá 4, 6, 8 o 10 caracteres Maidenhead.' : 'Podés conservarlo o reemplazarlo cuando operes desde otra ubicación. Se guarda solo al pulsar Guardar cambios.'}</p>
+            </div>
+            <button type="button" onClick={detectGridGps} disabled={gridGpsBusy} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
+              <LocateFixed size={17} /> {gridGpsBusy ? 'Detectando ubicación…' : 'DETECTAR MI UBICACIÓN GPS'}
+            </button>
+            <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void searchGridPlaces(); }}>
+              <input value={gridPlaceQuery} onChange={(event) => setGridPlaceQuery(event.target.value)} placeholder="Buscar ciudad, localidad o dirección…" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white placeholder:text-slate-500" />
+              <button type="submit" disabled={gridSearchBusy} className="flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+                <Search size={16} /> {gridSearchBusy ? 'Buscando…' : 'BUSCAR LUGAR'}
+              </button>
+            </form>
+            {gridPlaceResults.length > 0 && <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2">
+              {gridPlaceResults.map((place, index) => <button key={place.name + index} type="button" onClick={() => { applyGridCoordinates(place.lat, place.lon); setGridPlaceResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"><MapPin size={15} className="mt-0.5 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}
+            </div>}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs text-slate-300">Latitud
+                <input inputMode="decimal" value={gridLatitude} onChange={(event) => setGridLatitude(event.target.value)} placeholder="-34.603700" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm text-white" />
+              </label>
+              <label className="text-xs text-slate-300">Longitud
+                <input inputMode="decimal" value={gridLongitude} onChange={(event) => setGridLongitude(event.target.value)} placeholder="-58.381600" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm text-white" />
+              </label>
+            </div>
+            <button type="button" onClick={() => applyGridCoordinates(Number(gridLatitude.replace(',', '.')), Number(gridLongitude.replace(',', '.')))} className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/50 bg-slate-900 px-3 py-2 text-sm font-bold text-cyan-200 hover:bg-slate-800">
+              <Crosshair size={16} /> CALCULAR GRID DESDE COORDENADAS
+            </button>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-slate-300">Mapa: tocá el punto exacto donde estás para calcular el locator.</p>
+              <div ref={gridMapRef} className="h-[250px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
+            </div>
+            {gridSearchError && <p role="status" className="text-xs text-amber-300">{gridSearchError}</p>}
+            {gridLocator.trim() && isValidMaidenheadLocator(gridLocator) && <p className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-sm font-bold text-emerald-200">Grid Locator calculado: {gridLocator.toUpperCase()}</p>}
           </section>
 
           {!qraOperatorSaved && isVerifiedCallsign && (
