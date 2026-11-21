@@ -1063,6 +1063,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           <div className="flex justify-end pt-4 border-t border-slate-800">
             <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">Cerrar</button>
           </div>
+        </div>
       </div>
     </div>
   );
