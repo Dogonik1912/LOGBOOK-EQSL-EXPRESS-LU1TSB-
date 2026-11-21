@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle2, Mail, MessageCircle, RefreshCw, Search, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, Mail, MessageCircle, RefreshCw, Search, Users, UserRound } from 'lucide-react';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type DirectoryCategory = 'ham' | '11m';
@@ -182,6 +182,9 @@ export const UserDirectory: React.FC = () => {
                             </button>
                             {selected === entry.callsign && (
                               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign: entry.callsign } }))} className="flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-sky-700 px-3 py-2 text-sm font-bold text-white hover:bg-sky-800">
+                                  <UserRound size={17} /> VER PERFIL
+                                </button>
                                 <button type="button" onClick={() => startPrivateMessage(entry.callsign)} disabled={entry.callsign === (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase()} className="flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-violet-800 px-3 py-2 text-sm font-bold text-white hover:bg-violet-900 disabled:cursor-not-allowed disabled:opacity-50">
                                   <MessageCircle size={17} /> ENVIAR MENSAJE PRIVADO
                                 </button>
