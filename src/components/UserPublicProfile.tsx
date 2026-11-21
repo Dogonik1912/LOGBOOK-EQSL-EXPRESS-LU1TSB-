@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, MessageCircle, X } from 'lucide-react';
+import { MapPin, MessageCircle, X, Map as MapIcon } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
+import { isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 
 type PublicProfile = { callsign: string; photo: string; grid: string; location: string; elevation: number | null; loading: boolean };
 type GridPoint = { latitude: number; longitude: number };
@@ -96,12 +97,144 @@ export const openUserProfile = (rawCallsign: string) => {
   if (callsign.length >= 3) window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign } }));
 };
 
+
+type GridStation = { callsign: string; grid_locator: string };
+type GridStationPoint = GridStation & { lat: number; lon: number; distanceKm: number };
+
+const loadProfileLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
+  const w = window as any;
+  if (w.L) { resolve(w.L); return; }
+  if (!document.querySelector('link[data-profile-leaflet]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.dataset.profileLeaflet = 'true';
+    document.head.appendChild(link);
+  }
+  const existing = document.querySelector('script[data-profile-leaflet]') as HTMLScriptElement | null;
+  if (existing) {
+    existing.addEventListener('load', () => resolve((window as any).L), { once: true });
+    existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa.')), { once: true });
+    if (w.L) resolve(w.L);
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  script.async = true;
+  script.dataset.profileLeaflet = 'true';
+  script.onload = () => w.L ? resolve(w.L) : reject(new Error('Leaflet no está disponible.'));
+  script.onerror = () => reject(new Error('No se pudo cargar el mapa.'));
+  document.head.appendChild(script);
+});
+
+const distanceKmBetween = (a: {lat:number;lon:number}, b: {lat:number;lon:number}) => {
+  const rad = (value: number) => value * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
+const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () => void }> = ({ callsign, grid, onClose }) => {
+  const mapElement = React.useRef<HTMLDivElement>(null);
+  const [stations, setStations] = useState<GridStationPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [mapError, setMapError] = useState('');
+  const origin = maidenheadToPoint(grid);
+
+  useEffect(() => {
+    let active = true;
+    const loadStations = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const token = localStorage.getItem('community_chat_identity_token') || '';
+        if (!token) throw new Error('Tenés que validar tu indicativo para consultar las estaciones del mapa.');
+        const response = await fetch('/api/directory?action=grid-map', { headers: { 'x-identity-token': token }, cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'No se pudo consultar el mapa de estaciones.');
+        const byCall = new Map<string, GridStation>();
+        for (const item of Array.isArray(payload?.stations) ? payload.stations : []) {
+          const stationCall = String(item?.callsign || '').trim().toUpperCase();
+          const stationGrid = String(item?.grid_locator || '').trim().toUpperCase();
+          if (stationCall && isValidMaidenheadLocator(stationGrid)) byCall.set(stationCall, { callsign: stationCall, grid_locator: stationGrid });
+        }
+        byCall.set(callsign, { callsign, grid_locator: grid.toUpperCase() });
+        if (!origin) throw new Error('El Grid Locator del perfil no es válido.');
+        const mapped: GridStationPoint[] = [];
+        for (const item of byCall.values()) {
+          const point = maidenheadToPoint(item.grid_locator);
+          if (!point) continue;
+          mapped.push({ ...item, lat: point.lat, lon: point.lon, distanceKm: distanceKmBetween(origin, point) });
+        }
+        mapped.sort((a, b) => a.distanceKm - b.distanceKm);
+        if (active) setStations(mapped);
+      } catch (reason) {
+        if (active) setError(reason instanceof Error ? reason.message : 'No se pudieron cargar las estaciones.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void loadStations();
+    return () => { active = false; };
+  }, [callsign, grid]);
+
+  useEffect(() => {
+    if (!stations.length || !mapElement.current) return;
+    let map: any;
+    let cancelled = false;
+    void loadProfileLeaflet().then((L) => {
+      if (cancelled || !mapElement.current) return;
+      map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      const bounds: Array<[number, number]> = [];
+      const reference = stations.find((item) => item.callsign === callsign);
+      if (reference) {
+        const originCoords: [number, number] = [reference.lat, reference.lon];
+        bounds.push(originCoords);
+        L.marker(originCoords).addTo(map).bindPopup('<strong>Estación de referencia: ' + reference.callsign + '</strong><br>Grid: ' + reference.grid_locator);
+      }
+      for (const station of stations) {
+        if (station.callsign === callsign) continue;
+        const coords: [number, number] = [station.lat, station.lon];
+        bounds.push(coords);
+        L.marker(coords).addTo(map).bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br>Distancia: ' + station.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' km');
+        if (reference) L.polyline([[reference.lat, reference.lon], coords], { color: '#06b6d4', weight: 2, opacity: 0.72 }).addTo(map);
+      }
+      if (bounds.length > 1) map.fitBounds(L.latLngBounds(bounds), { padding: [35, 35], maxZoom: 8 });
+      else if (reference) map.setView([reference.lat, reference.lon], 7);
+      window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 120);
+    }).catch((reason) => { if (!cancelled) setMapError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
+    return () => { cancelled = true; if (map) map.remove(); };
+  }, [stations, callsign]);
+
+  return <div className="fixed inset-0 z-[11050] flex items-center justify-center bg-slate-950/90 p-2 sm:p-5" role="dialog" aria-modal="true" aria-label="Mapa de estaciones con Grid Locator" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
+      <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
+        <div><h3 className="font-black">Estaciones con Grid Locator</h3><p className="text-xs text-slate-300">Distancias desde {callsign} · {grid.toUpperCase()}</p></div>
+        <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button>
+      </header>
+      {loading ? <div className="p-5 text-sm text-slate-200">Buscando estaciones con Grid Locator…</div> : error ? <div className="p-5 text-sm text-rose-300">{error}</div> : <>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-4 py-2 text-sm"><span><strong>{stations.length}</strong> estaciones con Grid Locator válido</span><span className="text-xs text-slate-300">Distancias en línea recta desde {callsign}</span></div>
+        {mapError ? <div className="p-4 text-sm text-rose-300">{mapError}</div> : <div ref={mapElement} className="h-[48dvh] min-h-[260px] w-full bg-slate-800" />}
+        <div className="max-h-[24dvh] overflow-y-auto border-t border-slate-700 px-4 py-2">
+          {stations.map((station) => <div key={station.callsign} className="flex items-center justify-between gap-3 border-b border-slate-800 py-2 text-sm last:border-0"><span className="min-w-0"><strong className="font-mono">{station.callsign}</strong><span className="ml-2 text-xs text-slate-400">{station.grid_locator}{station.callsign === callsign ? ' · referencia' : ''}</span></span><strong className="shrink-0 tabular-nums">{station.callsign === callsign ? '0 km' : station.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' km'}</strong></div>)}
+        </div>
+      </>}
+      <footer className="flex justify-end border-t border-slate-700 px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></footer>
+    </section>
+    {mapOpen && isValidMaidenheadLocator(profile.grid) && <GridStationsMap callsign={profile.callsign} grid={profile.grid} onClose={() => setMapOpen(false)} />}
+  </div>;
+};
+
 export const UserPublicProfile: React.FC = () => {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   useEffect(() => {
     const onOpen = (event: Event) => {
       const callsign = String((event as CustomEvent<{callsign?: string}>).detail?.callsign || '').trim().toUpperCase();
       if (callsign.length < 3) return;
+      setMapOpen(false);
       setProfile({ callsign, photo: '', grid: '', location: '', elevation: null, loading: true });
     };
     window.addEventListener('open-user-profile', onOpen);
@@ -157,6 +290,7 @@ export const UserPublicProfile: React.FC = () => {
         <p className='pl-6 text-slate-300'><strong>Altitud sobre el nivel del mar:</strong> {profile.loading ? 'Calculando…' : profile.elevation === null ? 'No disponible' : '≈ '+profile.elevation+' m s. n. m.'}</p>
         <p className='pl-6 text-[11px] leading-relaxed text-slate-400'>Ciudad, pueblo y altitud estimados a partir del centro de la cuadrícula Maidenhead. No representan una dirección exacta ni la altura de la antena.</p>
       </div>
+      {isValidMaidenheadLocator(profile.grid) && <button type='button' onClick={() => setMapOpen(true)} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-3 font-bold text-white hover:bg-cyan-600'><MapIcon className='h-4 w-4' />VER EN EL MAPA</button>}
       <button type='button' disabled={profile.callsign === (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase()} onClick={() => { const target = profile.callsign; setProfile(null); window.dispatchEvent(new CustomEvent('open-private-message', { detail: { callsign: target } })); }} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white hover:bg-sky-600 disabled:opacity-40'><MessageCircle className='h-4 w-4' />Enviar mensaje privado</button>
       <button type='button' onClick={() => setProfile(null)} className='mt-2 w-full rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200'>Cerrar</button>
     </section>
