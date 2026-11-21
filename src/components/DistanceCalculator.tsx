@@ -272,7 +272,9 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
     void loadLeaflet().then(L => {
       if (cancelled || !mapElement.current) return;
       map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true });
+      mapRef.current = map;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+      routeLayerRef.current = L.layerGroup().addTo(map);
       const bounds: [number, number][] = [];
       for (const station of stations) {
         const coords: [number, number] = [station.lat, station.lon];
@@ -294,22 +296,6 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
         bounds.push(originCoords);
         L.marker(originCoords).addTo(map).bindPopup('Tu estación (origen)');
       }
-      if (origin && destination) {
-        const destinationCoords: [number, number] = [destination.lat, destination.lon];
-        bounds.push(destinationCoords);
-        L.marker(destinationCoords).addTo(map)
-          .bindPopup('Destino seleccionado: ' + destination.name);
-        // Dibujar la medición también en el mapa de estaciones registradas.
-        // Se añade después de los marcadores y se fuerza al frente para que destaque.
-        L.polyline([origin, destinationCoords], {
-          color: '#ffea00',
-          weight: 7,
-          opacity: 1,
-          lineCap: 'round',
-          lineJoin: 'round',
-          interactive: false,
-        }).addTo(map).bringToFront();
-      }
       if (bounds.length > 1) {
         map.fitBounds(L.latLngBounds(bounds), { padding: [45,45], maxZoom: 8 });
       } else if (bounds.length === 1) {
@@ -319,13 +305,31 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
     }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
     return () => {
       cancelled = true;
+      mapRef.current = null;
+      routeLayerRef.current = null;
       if (map) {
         try { map.off(); map.remove(); } catch (cleanupError) {
           console.warn('Leaflet cleanup (registered stations map):', cleanupError);
         }
       }
     };
-  }, [stations, origin?.lat, origin?.lon, destination?.lat, destination?.lon, destination?.name]);
+  }, [stations]);
+
+
+  // La ruta se actualiza en su propia capa; no se desmonta el mapa de estaciones.
+  useEffect(() => {
+    const map = mapRef.current;
+    const routeLayer = routeLayerRef.current;
+    const L = (window as any).L;
+    if (!map || !routeLayer || !L) return;
+    routeLayer.clearLayers();
+    if (!origin || !destination) return;
+    const a: [number, number] = [origin.lat, origin.lon];
+    const b: [number, number] = [destination.lat, destination.lon];
+    L.marker(b).addTo(routeLayer).bindPopup('Destino seleccionado: ' + destination.name);
+    L.polyline([a, b], { color: '#ffea00', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(routeLayer).bringToFront();
+    map.fitBounds(L.latLngBounds([a, b]), { padding: [45, 45], maxZoom: 8 });
+  }, [origin?.lat, origin?.lon, destination?.lat, destination?.lon, destination?.name]);
 
   return <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
