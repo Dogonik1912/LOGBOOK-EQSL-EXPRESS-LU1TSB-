@@ -5,27 +5,10 @@ import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { capitalPointForCountry, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 import { openUserProfile } from './UserPublicProfile';
+import { loadLeaflet } from '../services/leaflet';
 
 type Point = { lat: number; lon: number };
 type Place = { name: string; lat: number; lon: number; type?: string };
-const loadLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
-  const w = window as any;
-  if (w.L) { resolve(w.L); return; }
-  if (!document.querySelector('link[data-distance-leaflet]')) {
-    const link = document.createElement('link'); link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.dataset.distanceLeaflet = 'true'; document.head.appendChild(link);
-  }
-  const existing = document.querySelector('script[data-distance-leaflet]') as HTMLScriptElement | null;
-  if (existing) {
-    existing.addEventListener('load', () => resolve((window as any).L), { once: true });
-    existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa.')), { once: true });
-    if (w.L) resolve(w.L); return;
-  }
-  const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-  script.async = true; script.dataset.distanceLeaflet = 'true';
-  script.onload = () => w.L ? resolve(w.L) : reject(new Error('Leaflet no disponible.'));
-  script.onerror = () => reject(new Error('No se pudo cargar el mapa.')); document.head.appendChild(script);
-});
 async function searchPlaces(query: string): Promise<Place[]> {
   const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'es' });
   const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), { headers: { Accept: 'application/json' } });
