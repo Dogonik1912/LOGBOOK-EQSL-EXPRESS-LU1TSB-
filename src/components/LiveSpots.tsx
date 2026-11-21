@@ -4,7 +4,7 @@ import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
-import { countryUsesMiles, distanceForSpot, maidenheadToPoint } from '../services/dxDistance';
+import { capitalPointForCountry, countryUsesMiles, distanceForSpot, maidenheadToPoint } from '../services/dxDistance';
 
 // Los indicativos del feed abren la conversación privada del usuario correspondiente.
 const openPrivateMessage = (rawCallsign: string) => {
