@@ -12,45 +12,81 @@ type Place = { name: string; lat: number; lon: number; type?: string };
 async function searchPlaces(query: string): Promise<Place[]> {
   const clean = query.trim();
   if (!clean) return [];
-  const parseRows = (rows: any[], nameKey: string, latKey: string, lonKey: string): Place[] =>
-    rows.map((row: any) => ({
-      name: String(row[nameKey] || '').split(',').slice(0, 4).join(', '),
-      lat: Number(row[latKey]), lon: Number(row[lonKey]), type: String(row.type || ''),
-    })).filter((p: Place) => p.name && Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
-
-  // Cada proveedor tiene su propio límite de espera. Un fallo lento del primero
-  // nunca debe dejar abortada también la consulta de respaldo.
-  const requestJson = async (url: string, timeoutMs = 9000) => {
+  const requestJson = async (url: string, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store' });
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json', 'Accept-Language': 'es,es-419;q=0.9,en;q=0.7' },
+        signal: controller.signal,
+        cache: 'no-store',
+      });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       return await response.json();
     } finally { window.clearTimeout(timer); }
   };
 
-  const params = new URLSearchParams({ q: clean, format: 'jsonv2', limit: '8', addressdetails: '1', 'accept-language': 'es' });
-  try {
-    const rows = await requestJson('https://nominatim.openstreetmap.org/search?' + params.toString());
-    const places = parseRows(Array.isArray(rows) ? rows : [], 'display_name', 'lat', 'lon');
-    if (places.length) return places;
-  } catch { /* Consultar el proveedor alternativo. */ }
+  const nominatimParams = new URLSearchParams({
+    q: clean, format: 'jsonv2', limit: '10', addressdetails: '1',
+    'accept-language': 'es',
+  });
+  const photonParams = new URLSearchParams({ q: clean, limit: '10', lang: 'es' });
 
-  const photonParams = new URLSearchParams({ q: clean, limit: '8', lang: 'es' });
-  try {
-    const payload = await requestJson('https://photon.komoot.io/api/?' + photonParams.toString());
-    const features = Array.isArray(payload?.features) ? payload.features : [];
-    const places = features.map((feature: any) => {
+  // Consultar ambos geocodificadores en paralelo evita que un proveedor lento
+  // impida obtener resultados del otro y amplía las coincidencias mundiales.
+  const [nomResult, photonResult] = await Promise.allSettled([
+    requestJson('https://nominatim.openstreetmap.org/search?' + nominatimParams.toString()),
+    requestJson('https://photon.komoot.io/api/?' + photonParams.toString()),
+  ]);
+
+  const places: Place[] = [];
+  if (nomResult.status === 'fulfilled' && Array.isArray(nomResult.value)) {
+    for (const row of nomResult.value) {
+      const address = row.address || {};
+      const primary = row.name || row.namedetails?.name || String(row.display_name || '').split(',')[0];
+      const locality = address.city || address.town || address.village || address.municipality || address.county;
+      const region = address.state || address.region || address.province;
+      const country = address.country;
+      const label = [primary, locality && locality !== primary ? locality : '', region, country]
+        .filter(Boolean).filter((part, index, all) => all.indexOf(part) === index).join(', ');
+      const lat = Number(row.lat), lon = Number(row.lon);
+      if (label && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+        places.push({ name: label, lat, lon, type: String(row.type || row.class || '') });
+      }
+    }
+  }
+  if (photonResult.status === 'fulfilled' && Array.isArray(photonResult.value?.features)) {
+    for (const feature of photonResult.value.features) {
       const props = feature?.properties || {};
       const coords = feature?.geometry?.coordinates || [];
-      const parts = [props.name, props.city, props.state, props.country].filter(Boolean);
-      return { name: [...new Set(parts)].join(', ') || clean, lat: Number(coords[1]), lon: Number(coords[0]), type: String(props.type || '') };
-    }).filter((p: Place) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
-    if (places.length) return places;
-  } catch { /* Mostrar un error claro si ambos proveedores fallan. */ }
+      const primary = props.name || props.street || props.locality || clean;
+      const label = [primary, props.city, props.state, props.country]
+        .filter(Boolean).filter((part, index, all) => all.indexOf(part) === index).join(', ');
+      const lat = Number(coords[1]), lon = Number(coords[0]);
+      if (label && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+        places.push({ name: label, lat, lon, type: String(props.type || '') });
+      }
+    }
+  }
 
-  throw new Error('No se pudo conectar con los buscadores de lugares. Probá nuevamente; el mapa sigue disponible para seleccionar el punto manualmente.');
+  // Quitar duplicados entre proveedores, conservando nombres con país y región.
+  const unique = new Map<string, Place>();
+  for (const place of places) {
+    const key = place.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ').trim() + ':' +
+      place.lat.toFixed(3) + ':' + place.lon.toFixed(3);
+    if (!unique.has(key)) unique.set(key, place);
+  }
+  const normalizedQuery = clean.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
+  return [...unique.values()]
+    .sort((a, b) => {
+      const score = (place: Place) => {
+        const name = place.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
+        return name.split(',')[0].trim() === normalizedQuery ? 0 : name.startsWith(normalizedQuery) ? 1 : name.includes(normalizedQuery) ? 2 : 3;
+      };
+      return score(a) - score(b) || a.name.localeCompare(b.name);
+    })
+    .slice(0, 15);
 }
 function distanceKm(a: Point, b: Point) {
   const rad = (v: number) => v * Math.PI / 180;
@@ -315,13 +351,15 @@ export const DistanceCalculator: React.FC = () => {
     try {
       const found = await searchPlaces(term);
       setResults(found);
-      if (found.length) {
-        // La búsqueda ya define un destino válido y medible; el mapa también
-        // se centra allí para que el usuario pueda ajustar el punto manualmente.
+      if (found.length === 1) {
+        // Si hay una sola coincidencia inequívoca, seleccionarla permite medir
+        // inmediatamente. Si hay varias, nunca elegir una ubicación por el usuario.
         setMapFocus(found[0]);
         setSelected(found[0]);
-        setResults(found.length > 1 ? found : []);
-      } else setSearchError('No se encontraron lugares. Probá con ciudad y país.');
+      } else if (found.length > 1) {
+        setSelected(null);
+        setMapFocus(null);
+      } else setSearchError('No se encontraron coincidencias para «' + term + '». Probá agregando el país o una región.');
     } catch (e) { setSearchError(e instanceof Error ? e.message : 'No se pudo realizar la búsqueda.'); }
     finally { setSearching(false); }
   };
@@ -347,7 +385,10 @@ export const DistanceCalculator: React.FC = () => {
           <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}{searching ? 'Buscando…' : 'Buscar lugar'}</button>
         </form>
         {searching && <p role="status" className="mt-2 text-xs text-cyan-200">Buscando el lugar en el mapa mundial…</p>}{searchError && <p role="alert" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2 text-xs text-amber-200">{searchError}</p>}
-        {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setMapFocus(place); setSelected(null); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
+        {results.length > 0 && <div className="mt-2 rounded-lg border border-cyan-500/40 bg-slate-950 p-2">
+          <p className="px-2 pb-2 text-xs font-bold text-cyan-200">{results.length} coincidencias encontradas. Elegí el lugar correcto:</p>
+          <div className="max-h-52 space-y-1 overflow-y-auto">{results.map((place, index) => <button type="button" key={place.name + place.lat + place.lon + index} onClick={() => { setMapFocus(place); setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-2 text-left text-sm hover:border-cyan-500/50 hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span className="min-w-0"><strong className="block">{place.name}</strong><span className="text-[11px] text-slate-400">{place.lat.toFixed(4)}, {place.lon.toFixed(4)}</span></span></button>)}</div>
+        </div>}
         {origin && <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} />}
         <RegisteredGridStations origin={origin} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
       </section>
