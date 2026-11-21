@@ -28,6 +28,31 @@ const getIdentityToken = () => {
   return created;
 };
 
+const syncWeeklyPrivateConversationReset = () => {
+  const now = new Date();
+  const daysSinceMonday = (now.getUTCDay() + 6) % 7;
+  const scheduled = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() - daysSinceMonday,
+    0,
+    5,
+  ));
+  if (now.getTime() < scheduled.getTime()) scheduled.setUTCDate(scheduled.getUTCDate() - 7);
+  const cycle = scheduled.toISOString().slice(0, 10);
+  if (localStorage.getItem('community_chat_cleanup_cycle') === cycle) return;
+
+  // These keys only remember locally hidden conversation entries; message bodies
+  // are never persisted in localStorage. Reset the hidden entries each cleanup cycle.
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith('community_private_hidden_')) localStorage.removeItem(key);
+  }
+  localStorage.setItem('community_chat_cleanup_cycle', cycle);
+  localStorage.setItem('community_private_unread_count', '0');
+  window.dispatchEvent(new CustomEvent('community-private-unread-count-updated', { detail: { count: 0 } }));
+};
+
 export const PrivateMessages: React.FC = () => {
   const [callsign, setCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
   const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
@@ -80,6 +105,7 @@ export const PrivateMessages: React.FC = () => {
   }, [identityToken]);
 
   const refreshConversations = useCallback(async () => {
+    syncWeeklyPrivateConversationReset();
     if (!supabase || !callsign || !identityToken) return;
     const { data, error: rpcError } = await supabase.rpc('community_private_conversations', {
       p_callsign: callsign,
@@ -149,6 +175,7 @@ export const PrivateMessages: React.FC = () => {
   }, [callsign, identityToken]);
 
   const refreshMessages = useCallback(async (otherCallsign: string) => {
+    syncWeeklyPrivateConversationReset();
     if (!supabase || !callsign || !identityToken || !otherCallsign) return;
     const { data, error: rpcError } = await supabase.rpc('community_private_messages', {
       p_callsign: callsign,
