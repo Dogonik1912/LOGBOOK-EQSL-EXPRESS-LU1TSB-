@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 interface NewQSOFormProps {
-  onAddQSO: (qso: QSO, openEQSL?: boolean) => void;
+  onAddQSO: (qso: QSO, openEQSL?: boolean, publishSpot?: boolean, allowDuplicate?: boolean) => void;
   onFinishContest: (log: { id: string; name: string; type: string; finishedAt: string }) => boolean;
   onFinishLLOTA: (log: { id: string; name: string; reference: string; activityType: string; startedAt: string; finishedAt: string }) => boolean;
   hasDuplicateQSO: (qso: QSO) => boolean;
