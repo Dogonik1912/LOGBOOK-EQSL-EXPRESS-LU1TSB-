@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck, X } from 'lucide-react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
@@ -90,35 +90,62 @@ const loadLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
 const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, onClose }) => {
   const mapElement = useRef<HTMLDivElement>(null);
   const [mapError, setMapError] = useState('');
-  const first = maidenheadToPoint(firstGrid || ''), second = maidenheadToPoint(secondGrid || '');
-  const km = (() => {
-    if (!first || !second) return null;
-    const rad = (v: number) => v * Math.PI / 180;
-    const dLat = rad(second.lat-first.lat), dLon = rad(second.lon-first.lon);
-    const h = Math.sin(dLat/2)**2 + Math.cos(rad(first.lat))*Math.cos(rad(second.lat))*Math.sin(dLon/2)**2;
-    return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
-  })();
+  const [points, setPoints] = useState<{ first: {lat:number;lon:number}; second: {lat:number;lon:number}; firstSource:string; secondSource:string } | null>(null);
+  const is11m = isElevenMeterSpot(spot.band, spot.frequency);
+  const firstCountry = countryForCallsign(spot.callsign, spot.country || undefined, is11m);
+  const secondCountry = countryForCallsign(spot.station_callsign, undefined, is11m);
   useEffect(() => {
-    if (!first || !second || !mapElement.current) return;
+    let cancelled = false;
+    const resolvePoint = async (grid: string | undefined, country: string, callsign: string) => {
+      const gridPoint = maidenheadToPoint(grid || '');
+      if (gridPoint) return { point: gridPoint, source: 'Grid Locator ' + String(grid).toUpperCase() };
+      const knownCapital = capitalPointForCountry(country);
+      if (knownCapital) return { point: knownCapital, source: 'Capital de ' + country };
+      if (!country) throw new Error('No se pudo identificar el país de ' + callsign + ' para usar su capital.');
+      const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent('capital of ' + country);
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('No se pudo consultar la capital de ' + country + '.');
+      const results = await response.json();
+      const item = Array.isArray(results) ? results[0] : null;
+      if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lon))) throw new Error('No se encontró la capital de ' + country + '.');
+      return { point: { lat: Number(item.lat), lon: Number(item.lon) }, source: 'Capital de ' + country };
+    };
+    setPoints(null);
+    setMapError('');
+    void Promise.all([
+      resolvePoint(firstGrid, firstCountry, spot.callsign),
+      resolvePoint(secondGrid, secondCountry, spot.station_callsign),
+    ]).then(([a,b]) => { if (!cancelled) setPoints({ first:a.point, second:b.point, firstSource:a.source, secondSource:b.source }); })
+      .catch(error => { if (!cancelled) setMapError(error instanceof Error ? error.message : 'No se pudieron resolver las ubicaciones.'); });
+    return () => { cancelled = true; };
+  }, [spot.callsign, spot.station_callsign, spot.band, spot.frequency, firstGrid, secondGrid, firstCountry, secondCountry]);
+  const km = points ? (() => {
+    const rad = (v: number) => v * Math.PI / 180;
+    const dLat = rad(points.second.lat-points.first.lat), dLon = rad(points.second.lon-points.first.lon);
+    const h = Math.sin(dLat/2)**2 + Math.cos(rad(points.first.lat))*Math.cos(rad(points.second.lat))*Math.sin(dLon/2)**2;
+    return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+  })() : null;
+  useEffect(() => {
+    if (!points || !mapElement.current) return;
     let map: any, cancelled = false;
     void loadLeaflet().then((L) => {
       if (cancelled || !mapElement.current) return;
       map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-      const a: [number,number] = [first.lat,first.lon], b: [number,number] = [second.lat,second.lon];
-      L.marker(a).addTo(map).bindPopup('Estación '+spot.callsign+' · '+firstGrid);
-      L.marker(b).addTo(map).bindPopup('Estación '+spot.station_callsign+' · '+secondGrid);
+      const a: [number,number] = [points.first.lat,points.first.lon], b: [number,number] = [points.second.lat,points.second.lon];
+      L.marker(a).addTo(map).bindPopup('Estación '+spot.callsign+' · '+points.firstSource);
+      L.marker(b).addTo(map).bindPopup('Estación '+spot.station_callsign+' · '+points.secondSource);
       L.polyline([a,b], { color:'#06b6d4', weight:4, opacity:0.9 }).addTo(map);
       map.fitBounds(L.latLngBounds([a,b]), { padding:[35,35], maxZoom:10 });
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
     }).catch(error => setMapError(error instanceof Error ? error.message : 'No se pudo cargar el mapa.'));
     return () => { cancelled = true; if (map) map.remove(); };
-  }, [spot.callsign, spot.station_callsign, firstGrid, secondGrid]);
+  }, [points, spot.callsign, spot.station_callsign]);
   return <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-slate-950/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Mapa de distancia del QSO" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
-      <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || 'Grid no informado'}) ↔ {spot.station_callsign} ({secondGrid || 'Grid no informado'})</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
-      <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-700 px-4 py-3 text-sm"><span><strong>{km === null ? '—' : km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km'}</strong></span><span><strong>{km === null ? '—' : (km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})+' mi'}</strong></span></div>
-      {(!first || !second) ? <div className="p-6 text-sm text-amber-200">No se puede trazar la línea: falta el Grid Locator de {(!first && !second) ? 'ambas estaciones' : !first ? spot.callsign : spot.station_callsign}. No se inventará una ubicación aproximada.</div> : <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Línea recta entre los centros de las cuadrículas Maidenhead. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>{mapError && <p className="px-4 pb-3 text-xs text-amber-300">{mapError}</p>}</>}
+      <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || firstCountry || 'Capital pendiente'}) ↔ {spot.station_callsign} ({secondGrid || secondCountry || 'Capital pendiente'})</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
+      <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-700 px-4 py-3 text-sm"><span><strong>{km === null ? 'Calculando…' : km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km'}</strong></span><span><strong>{km === null ? '—' : (km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})+' mi'}</strong></span></div>
+      {points ? <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Ubicación por {points.firstSource} ↔ {points.secondSource}. Línea recta entre ambos puntos. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p></> : <div className="p-6 text-sm text-amber-200">{mapError || 'Buscando el Grid Locator o, si falta, la capital de cada país…'}</div>}
       <footer className="flex justify-end border-t border-slate-700 px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></footer>
     </section>
   </div>;
