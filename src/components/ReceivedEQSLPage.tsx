@@ -232,8 +232,12 @@ export const ReceivedEQSLPage: React.FC = () => {
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
         <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={card.isResponse ? 'Tarjeta eQSL de respuesta' : t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
         {activityReferences.length > 0 && <div className="mt-3 rounded-xl border border-teal-500/50 bg-teal-950/40 p-3">
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-teal-200">Actividad / referencia</p>
-          <div className="space-y-1">{activityReferences.map((activity) => <p key={activity.label} className="text-sm font-semibold text-white"><span className="text-teal-200">{activity.label} · REFERENCIA:</span> {activity.code}{activity.name ? ` — ${activity.name}` : ''}</p>)}</div>
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-teal-200">Datos de actividad</p>
+          <div className="space-y-2">{activityReferences.map((activity) => <div key={activity.label} className="space-y-0.5 text-sm font-semibold text-white">
+            <p><span className="text-teal-200">TIPO DE ACTIVIDAD:</span> {activity.label}</p>
+            <p><span className="text-teal-200">NOMBRE DEL LUGAR:</span> {activity.name?.trim() || 'NO INDICADO EN EL CATÁLOGO'}</p>
+            <p><span className="text-teal-200">REFERENCIA:</span> {activity.code}</p>
+          </div>)}</div>
         </div>}
         <div className="mt-4 flex flex-col gap-3">
           <button onClick={download} className="rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{card.isResponse ? 'Descargar' : t.download}</button>
