@@ -88,7 +88,28 @@ export const CommunityChat: React.FC = () => {
   const [error, setError] = useState('');
   const [moderationBusy, setModerationBusy] = useState(false);
   const [moderationDialog, setModerationDialog] = useState<{ title: string; body: string; callsign: string } | null>(null);
-  const [accountBlockedNotice, setAccountBlockedNotice] = useState(false);
+  const [accountBlockedNotice, setAccountBlockedNotice] = useState(false);\n  const [blockedCallsign, setBlockedCallsign] = useState('');
+
+  // Comprobar el bloqueo al recuperar la identidad o al entrar con una SD guardada.
+  useEffect(() => {
+    let active = true;
+    const checkBlockedIdentity = async () => {
+      const candidate = String(callsign || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+      if (!supabase || !candidate) return;
+      const { data, error: checkError } = await supabase.rpc('community_is_blocked', { p_callsign: candidate });
+      if (!active) return;
+      if (checkError) {
+        console.warn('[LogBook chat] No se pudo comprobar el bloqueo de la identidad:', checkError);
+        return;
+      }
+      if (data === true) {
+        setBlockedCallsign(candidate);
+        setAccountBlockedNotice(true);
+      }
+    };
+    void checkBlockedIdentity();
+    return () => { active = false; };
+  }, [callsign]);
 
   // Recover a previously registered callsign from this device token if local storage
   // lost the callsign value. Never ask the user to invent a replacement in that case.
@@ -381,6 +402,17 @@ export const CommunityChat: React.FC = () => {
       return;
     }
     const previousCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+    const { data: blockedStatus, error: blockedCheckError } = await supabase.rpc('community_is_blocked', { p_callsign: cleanCallsign });
+    if (blockedCheckError) {
+      setError('No se pudo verificar el estado de acceso. Volvé a intentarlo.');
+      return;
+    }
+    if (blockedStatus === true) {
+      setBlockedCallsign(cleanCallsign);
+      setAccountBlockedNotice(true);
+      setError('');
+      return;
+    }
     setBusy(true);
     setError('');
     setNotice('');
@@ -709,7 +741,7 @@ export const CommunityChat: React.FC = () => {
       {isAdmin && adminNotice && <div role="status" className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{adminNotice}</div>}
 
 
-      {(moderationDialog || accountBlockedNotice) && <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/80 p-4" role="alertdialog" aria-modal="true" aria-labelledby="chat-moderation-dialog-title"><section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl"><h2 id="chat-moderation-dialog-title" className="text-xl font-black text-red-300">{accountBlockedNotice ? 'No podés enviar mensajes' : moderationDialog?.title}</h2><p className="mt-3 text-sm leading-relaxed text-slate-200">{accountBlockedNotice ? 'Tu cuenta tiene una restricción activa para participar en el chat. Si considerás que se trata de un error o deseás solicitar una revisión, comunicate con la administración y exponé tu caso.' : moderationDialog?.body}</p><p className="mt-4 text-sm font-semibold">Correo de administración:</p><a className="block break-all text-sky-300 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a><p className="mt-4 text-sm font-semibold">Atentamente,<br/>La Administración de LogBook eQSL EXPRESS.</p><button type="button" onClick={() => { setModerationDialog(null); setAccountBlockedNotice(false); }} className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 font-bold text-white">Cerrar</button></section></div>}
+      {(moderationDialog || accountBlockedNotice) && <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/80 p-4" role="alertdialog" aria-modal="true" aria-labelledby="chat-moderation-dialog-title"><section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl"><h2 id="chat-moderation-dialog-title" className="text-xl font-black text-red-300">{accountBlockedNotice ? 'Acceso bloqueado' : moderationDialog?.title}</h2><p className="mt-3 text-sm leading-relaxed text-slate-200">{accountBlockedNotice ? <>La SD/indicativo <strong>{blockedCallsign || callsign}</strong> está bloqueada y no puede ingresar a LogBook. Para regularizar la situación y solicitar la modificación de tu SD/indicativo, comunicate con la administración por correo.</> : moderationDialog?.body}</p><p className="mt-4 text-sm font-semibold">Correo de administración:</p><a className="block break-all text-sky-300 underline" href="mailto:lu1tsb.4rc978@gmail.com">lu1tsb.4rc978@gmail.com</a><p className="mt-4 text-sm font-semibold">Atentamente,<br/>La Administración de LogBook eQSL EXPRESS.</p><button type="button" onClick={() => { setModerationDialog(null); setAccountBlockedNotice(false); }} className="mt-5 w-full rounded-xl bg-sky-600 px-4 py-3 font-bold text-white">Cerrar</button></section></div>}
       <div className={`flex justify-end border-t px-4 py-3 sm:px-5 ${darkChat ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'}`}>
         <button type="button" onClick={() => setChatCollapsed(true)} className="inline-flex items-center gap-2 rounded-lg border border-sky-500 bg-slate-800 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-300" aria-label="Cerrar chat comunitario">
           Cerrar chat
