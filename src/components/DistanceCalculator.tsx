@@ -25,30 +25,73 @@ function distanceKm(a: Point, b: Point) {
   const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
   return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
-const DistanceMap: React.FC<{ origin: Point; destination: Place; originLabel: string }> = ({ origin, destination, originLabel }) => {
+function pointToMaidenhead(point: Point): string {
+  let lon = point.lon + 180;
+  let lat = point.lat + 90;
+  const fieldLon = Math.floor(lon / 20);
+  const fieldLat = Math.floor(lat / 10);
+  let locator = String.fromCharCode(65 + fieldLon, 65 + fieldLat);
+  lon -= fieldLon * 20;
+  lat -= fieldLat * 10;
+  const squareLon = Math.floor(lon / 2);
+  const squareLat = Math.floor(lat);
+  locator += String(squareLon) + String(squareLat);
+  lon -= squareLon * 2;
+  lat -= squareLat;
+  const subLon = Math.min(23, Math.floor(lon * 12));
+  const subLat = Math.min(23, Math.floor(lat * 24));
+  locator += String.fromCharCode(97 + subLon, 97 + subLat);
+  return locator.toUpperCase();
+}
+function bearingDegrees(a: Point, b: Point) {
+  const rad = (v: number) => v * Math.PI / 180;
+  const y = Math.sin(rad(b.lon-a.lon)) * Math.cos(rad(b.lat));
+  const x = Math.cos(rad(a.lat))*Math.sin(rad(b.lat)) - Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
+  return (Math.atan2(y,x) * 180 / Math.PI + 360) % 360;
+}
+const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLabel: string; onDestinationChange: (place: Place) => void }> = ({ origin, destination, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     if (!element.current) return;
-    let map: any, cancelled = false;
+    let map: any, destinationMarker: any, cancelled = false;
     void loadLeaflet().then(L => {
       if (cancelled || !element.current) return;
       map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-      const a: [number, number] = [origin.lat, origin.lon], b: [number, number] = [destination.lat, destination.lon];
+      const a: [number, number] = [origin.lat, origin.lon];
       L.marker(a).addTo(map).bindPopup('Origen: ' + originLabel);
-      L.marker(b).addTo(map).bindPopup('Destino: ' + destination.name);
-      L.polyline([a, b], { color: '#0891b2', weight: 4, opacity: 0.9 }).addTo(map);
-      map.fitBounds(L.latLngBounds([a, b]), { padding: [40, 40], maxZoom: 10 });
+      const updateDestination = (point: Point) => onDestinationChange({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lon });
+      if (destination) {
+        const b: [number, number] = [destination.lat, destination.lon];
+        destinationMarker = L.marker(b, { draggable: true }).addTo(map).bindPopup('Destino: ' + destination.name);
+        L.polyline([a, b], { color: '#0891b2', weight: 4, opacity: 0.9 }).addTo(map);
+        destinationMarker.on('dragend', () => {
+          const point = destinationMarker.getLatLng();
+          updateDestination({ lat: point.lat, lon: point.lng });
+        });
+        map.fitBounds(L.latLngBounds([a, b]), { padding: [40, 40], maxZoom: 10 });
+      } else {
+        map.setView(a, 3);
+      }
+      map.on('click', (event: any) => updateDestination({ lat: event.latlng.lat, lon: event.latlng.lng }));
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
     }).catch(e => setError(e instanceof Error ? e.message : 'No se pudo abrir el mapa.'));
     return () => { cancelled = true; if (map) map.remove(); };
-  }, [origin.lat, origin.lon, destination.lat, destination.lon, destination.name, originLabel]);
-  const km = distanceKm(origin, destination);
+  }, [origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name, originLabel, onDestinationChange]);
+  const km = destination ? distanceKm(origin, destination) : null;
+  const bearing = destination ? bearingDegrees(origin, destination) : null;
+  const locator = destination ? pointToMaidenhead(destination) : '';
   return <div className="mt-3 overflow-hidden rounded-xl border border-slate-600">
-    <div className="flex flex-wrap gap-x-5 gap-y-1 bg-slate-800 px-3 py-3 text-sm text-white"><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span></div>
-    <div ref={element} className="h-[52dvh] min-h-[280px] w-full bg-slate-800" />
-    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Distancia en línea recta entre ambas ubicaciones. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>
+    <div className="flex flex-wrap gap-x-5 gap-y-1 bg-slate-800 px-3 py-3 text-sm text-white">
+      {destination && km !== null ? <><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span><span>Rumbo: <strong>{bearing!.toFixed(0)}°</strong></span></> : <strong className="text-cyan-200">Tocá cualquier punto del mapa para elegir el destino</strong>}
+    </div>
+    <div ref={element} className="h-[52dvh] min-h-[300px] w-full bg-slate-800" />
+    {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200">
+      <span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span>
+      <button type="button" onClick={() => onDestinationChange({ name: 'Punto seleccionado en el mapa', lat: origin.lat, lon: origin.lon })} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button>
+    </div>}
+    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Seleccioná cualquier lugar tocando o haciendo clic en el mapa. Podés arrastrar el marcador para ajustar el destino. La distancia se mide en línea recta desde tu estación.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
   </div>;
 };
@@ -237,7 +280,7 @@ export const DistanceCalculator: React.FC = () => {
         </form>
         {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
         {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
-        {origin && selected && <DistanceMap origin={origin} destination={selected} originLabel={originLabel} />}
+        {origin && <DistanceMap origin={origin} destination={selected} originLabel={originLabel} onDestinationChange={setSelected} />}
         <RegisteredGridStations origin={origin} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
       </section>
     </div>}
