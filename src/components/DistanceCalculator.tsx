@@ -170,7 +170,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       if (current) {
         try {
           current.off();
-          if (current.getContainer?.()?. _leaflet_id) current.remove();
+          if (current.getContainer?.()) current.remove();
         } catch (cleanupError) {
           console.warn('Leaflet cleanup (distance map):', cleanupError);
         }
@@ -235,6 +235,7 @@ type RegisteredStation = { callsign: string; grid_locator: string; lat: number; 
 const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Place | null; onOpenProfile: (callsign: string) => void }> = ({ origin, destination, onOpenProfile }) => {
   const mapElement = useRef<HTMLDivElement>(null);
   const [stations, setStations] = useState<RegisteredStation[]>([]);
+  const [mapReady, setMapReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -275,6 +276,7 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
       mapRef.current = map;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
       routeLayerRef.current = L.layerGroup().addTo(map);
+      setMapReady(true);
       const bounds: [number, number][] = [];
       for (const station of stations) {
         const coords: [number, number] = [station.lat, station.lon];
@@ -307,6 +309,7 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
       cancelled = true;
       mapRef.current = null;
       routeLayerRef.current = null;
+      setMapReady(false);
       if (map) {
         try { map.off(); map.remove(); } catch (cleanupError) {
           console.warn('Leaflet cleanup (registered stations map):', cleanupError);
@@ -329,7 +332,7 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
     L.marker(b).addTo(routeLayer).bindPopup('Destino seleccionado: ' + destination.name);
     L.polyline([a, b], { color: '#ffea00', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(routeLayer).bringToFront();
     map.fitBounds(L.latLngBounds([a, b]), { padding: [45, 45], maxZoom: 8 });
-  }, [origin?.lat, origin?.lon, destination?.lat, destination?.lon, destination?.name]);
+  }, [mapReady, origin?.lat, origin?.lon, destination?.lat, destination?.lon, destination?.name]);
 
   return <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
