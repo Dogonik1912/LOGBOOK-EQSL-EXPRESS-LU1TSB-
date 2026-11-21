@@ -217,7 +217,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
 };
 
 type RegisteredStation = { callsign: string; grid_locator: string; lat: number; lon: number };
-const RegisteredGridStations: React.FC<{ origin: Point | null; onOpenProfile: (callsign: string) => void }> = ({ origin, onOpenProfile }) => {
+const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Place | null; onOpenProfile: (callsign: string) => void }> = ({ origin, destination, onOpenProfile }) => {
   const mapElement = useRef<HTMLDivElement>(null);
   const [stations, setStations] = useState<RegisteredStation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,13 +278,32 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; onOpenProfile: (c
         const originCoords: [number, number] = [origin.lat, origin.lon];
         bounds.push(originCoords);
         L.marker(originCoords).addTo(map).bindPopup('Tu estación (origen)');
-        if (bounds.length > 1) map.fitBounds(L.latLngBounds(bounds), { padding: [35,35], maxZoom: 8 });
-        else map.setView(originCoords, 6);
-      } else if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [35,35], maxZoom: 8 });
+      }
+      if (origin && destination) {
+        const destinationCoords: [number, number] = [destination.lat, destination.lon];
+        bounds.push(destinationCoords);
+        L.marker(destinationCoords).addTo(map)
+          .bindPopup('Destino seleccionado: ' + destination.name);
+        // Dibujar la medición también en el mapa de estaciones registradas.
+        // Se añade después de los marcadores y se fuerza al frente para que destaque.
+        L.polyline([origin, destinationCoords], {
+          color: '#ffea00',
+          weight: 7,
+          opacity: 1,
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: false,
+        }).addTo(map).bringToFront();
+      }
+      if (bounds.length > 1) {
+        map.fitBounds(L.latLngBounds(bounds), { padding: [45,45], maxZoom: 8 });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 6);
+      }
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 120);
     }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
     return () => { cancelled = true; if (map) map.remove(); };
-  }, [stations, origin?.lat, origin?.lon]);
+  }, [stations, origin?.lat, origin?.lon, destination?.lat, destination?.lon, destination?.name]);
 
   return <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -431,7 +450,7 @@ export const DistanceCalculator: React.FC = () => {
           <div className="max-h-52 space-y-1 overflow-y-auto">{results.map((place, index) => <button type="button" key={place.name + place.lat + place.lon + index} onClick={() => { setMapFocus(place); setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-2 text-left text-sm hover:border-cyan-500/50 hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span className="min-w-0"><strong className="block">{place.name}</strong><span className="text-[11px] text-slate-400">{place.lat.toFixed(4)}, {place.lon.toFixed(4)}</span></span></button>)}</div>
         </div>}
         {origin && <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} />}
-        <RegisteredGridStations origin={origin} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
+        <RegisteredGridStations origin={origin} destination={selected} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
       </section>
     </div>}
   </>;
