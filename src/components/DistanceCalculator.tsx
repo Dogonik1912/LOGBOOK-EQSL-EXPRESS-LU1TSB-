@@ -10,14 +10,41 @@ import { loadLeaflet } from '../services/leaflet';
 type Point = { lat: number; lon: number };
 type Place = { name: string; lat: number; lon: number; type?: string };
 async function searchPlaces(query: string): Promise<Place[]> {
-  const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'es' });
-  const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), { headers: { Accept: 'application/json' } });
-  if (!response.ok) throw new Error('El buscador geográfico no está disponible. Intentá nuevamente.');
-  const rows = await response.json();
-  return (Array.isArray(rows) ? rows : []).map((row: any) => ({
-    name: String(row.display_name || '').split(',').slice(0, 4).join(', '),
-    lat: Number(row.lat), lon: Number(row.lon), type: String(row.type || ''),
-  })).filter((p: Place) => p.name && Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  const clean = query.trim();
+  if (!clean) return [];
+  const parseRows = (rows: any[], nameKey: string, latKey: string, lonKey: string): Place[] =>
+    rows.map((row: any) => ({
+      name: String(row[nameKey] || '').split(',').slice(0, 4).join(', '),
+      lat: Number(row[latKey]), lon: Number(row[lonKey]), type: String(row.type || ''),
+    })).filter((p: Place) => p.name && Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 10000);
+  try {
+    const params = new URLSearchParams({ q: clean, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'es' });
+    try {
+      const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), {
+        headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store',
+      });
+      if (response.ok) {
+        const rows = await response.json();
+        const places = parseRows(Array.isArray(rows) ? rows : [], 'display_name', 'lat', 'lon');
+        if (places.length) return places;
+      }
+    } catch { /* Se intenta el proveedor geográfico alternativo. */ }
+    const photonParams = new URLSearchParams({ q: clean, limit: '6', lang: 'en' });
+    const fallback = await fetch('https://photon.komoot.io/api/?' + photonParams.toString(), {
+      headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store',
+    });
+    if (!fallback.ok) throw new Error('El servicio de búsqueda no respondió. Revisá tu conexión e intentá nuevamente.');
+    const payload = await fallback.json();
+    const features = Array.isArray(payload?.features) ? payload.features : [];
+    return features.map((feature: any) => {
+      const props = feature?.properties || {};
+      const coords = feature?.geometry?.coordinates || [];
+      const parts = [props.name, props.city, props.state, props.country].filter(Boolean);
+      return { name: [...new Set(parts)].join(', ') || clean, lat: Number(coords[1]), lon: Number(coords[0]), type: String(props.type || '') };
+    }).filter((p: Place) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
+  } finally { window.clearTimeout(timeout); }
 }
 function distanceKm(a: Point, b: Point) {
   const rad = (v: number) => v * Math.PI / 180;
@@ -70,6 +97,17 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
       map.setView([20, 0], 2);
+      // Capturar el click nativo del contenedor además del sistema de eventos
+      // de Leaflet mejora la selección en navegadores móviles dentro del modal.
+      const handleMapClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('.leaflet-control')) return;
+        const point = map.mouseEventToLatLng(event);
+        const lat = Math.max(-85.05112878, Math.min(85.05112878, point.lat));
+        const lon = Math.max(-180, Math.min(180, point.lng));
+        changeRef.current({ name: 'Punto seleccionado en el mapa', lat, lon });
+      };
+      element.current.addEventListener('click', handleMapClick);
       map.on('click', (ev: any) => {
         const lat = Math.max(-85.05112878, Math.min(85.05112878, ev.latlng.lat));
         const lon = Math.max(-180, Math.min(180, ev.latlng.lng));
@@ -81,7 +119,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       // de cargar. Este estado los vuelve a ejecutar cuando el mapa ya está disponible.
       setMapReady(true);
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudo abrir el mapa.'); });
-    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
+    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (element.current && map) element.current.removeEventListener('click', handleMapClick); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
   }, [origin.lat, origin.lon, originLabel]);
   useEffect(() => {
     const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
@@ -276,8 +314,11 @@ export const DistanceCalculator: React.FC = () => {
       const found = await searchPlaces(term);
       setResults(found);
       if (found.length) {
+        // La búsqueda ya define un destino válido y medible; el mapa también
+        // se centra allí para que el usuario pueda ajustar el punto manualmente.
         setMapFocus(found[0]);
-        setSelected(null);
+        setSelected(found[0]);
+        setResults(found.length > 1 ? found : []);
       } else setSearchError('No se encontraron lugares. Probá con ciudad y país.');
     } catch (e) { setSearchError(e instanceof Error ? e.message : 'No se pudo realizar la búsqueda.'); }
     finally { setSearching(false); }
@@ -300,8 +341,8 @@ export const DistanceCalculator: React.FC = () => {
           <button type="button" onClick={() => { localStorage.setItem('focus_user_grid_locator', '1'); window.dispatchEvent(new Event('open-user-settings-grid')); }} className="mt-2 rounded-lg bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300">Completar mi Grid Locator</button>
         </div>}
         <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={e => { e.preventDefault(); void runSearch(); }}>
-          <label className="sr-only" htmlFor="distance-place-search">Lugar de destino</label><input id="distance-place-search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Escribí una ciudad, localidad o lugar del mundo…" className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-3 text-sm text-white placeholder:text-slate-500" />
-          <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Buscar lugar</button>
+          <label className="sr-only" htmlFor="distance-place-search">Lugar de destino</label><input id="distance-place-search" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void runSearch(); } }} placeholder="Escribí una ciudad, localidad o lugar del mundo…" className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-3 text-sm text-white placeholder:text-slate-500" />
+          <button type="button" disabled={searching} onClick={() => { void runSearch(); }} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Buscar lugar</button>
         </form>
         {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
         {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setMapFocus(place); setSelected(null); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
