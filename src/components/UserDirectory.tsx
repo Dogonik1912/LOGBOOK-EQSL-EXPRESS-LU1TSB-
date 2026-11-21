@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, CheckCircle2, Mail, MessageCircle, RefreshCw, S
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type DirectoryCategory = 'ham' | '11m';
-type DirectoryUser = { callsign: string };
+type DirectoryUser = { callsign: string; has_grid_locator?: boolean };
 type DirectoryEntry = DirectoryUser & { country: string; flag: string };
 
 const countryFor = (callsign: string, category: DirectoryCategory) =>
@@ -39,11 +39,13 @@ export const UserDirectory: React.FC = () => {
         throw new Error(result.error || 'No se pudo cargar el directorio de usuarios.');
       }
       const cleanUsers = result.users
-        .map((item: unknown) => String((item as DirectoryUser)?.callsign || '').trim().toUpperCase())
-        .filter((callsign: string) => !['DOGON1K', 'LU1TSB/4RC978', 'PRONTO', 'ERC001'].includes(callsign))
-        .filter((callsign: string) => /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign))
-        .filter((callsign: string, index: number, all: string[]) => all.indexOf(callsign) === index)
-        .map((callsign: string) => ({ callsign }));
+        .map((item: unknown) => ({
+          callsign: String((item as DirectoryUser)?.callsign || '').trim().toUpperCase(),
+          has_grid_locator: (item as DirectoryUser)?.has_grid_locator === true,
+        }))
+        .filter((user: DirectoryUser) => !['DOGON1K', 'LU1TSB/4RC978', 'PRONTO', 'ERC001'].includes(user.callsign))
+        .filter((user: DirectoryUser) => /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(user.callsign))
+        .filter((user: DirectoryUser, index: number, all: DirectoryUser[]) => all.findIndex((entry) => entry.callsign === user.callsign) === index);
       setUsers(cleanUsers);
       setLoaded(true);
     } catch (loadError) {
@@ -177,7 +179,7 @@ export const UserDirectory: React.FC = () => {
                         {countryUsers.map((entry) => (
                           <div key={entry.callsign} className="p-2">
                             <button type="button" onClick={() => setSelected((current) => current === entry.callsign ? '' : entry.callsign)} className={'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left font-mono text-sm font-black tracking-wide ' + (selected === entry.callsign ? 'bg-violet-100 text-violet-950' : 'text-slate-900 hover:bg-slate-50')}>
-                              <span>{entry.callsign}</span>
+                              <span className="inline-flex min-w-0 items-center gap-2"><span>{entry.callsign}</span>{entry.has_grid_locator && <span aria-label="Tiene Grid Locator cargado" title="Tiene Grid Locator cargado" className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />}</span>
                               <span className="text-xs font-sans font-semibold text-violet-700">{selected === entry.callsign ? 'Cerrar opción' : 'Ver opciones'}</span>
                             </button>
                             {selected === entry.callsign && (
