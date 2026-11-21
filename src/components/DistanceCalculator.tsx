@@ -72,7 +72,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place; originLabel: st
 
 
 type RegisteredStation = { callsign: string; grid_locator: string; lat: number; lon: number };
-const RegisteredGridStations: React.FC<{ origin: Point | null }> = ({ origin }) => {
+const RegisteredGridStations: React.FC<{ origin: Point | null; onOpenProfile: (callsign: string) => void }> = ({ origin, onOpenProfile }) => {
   const mapElement = useRef<HTMLDivElement>(null);
   const [stations, setStations] = useState<RegisteredStation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,11 +121,12 @@ const RegisteredGridStations: React.FC<{ origin: Point | null }> = ({ origin }) 
         marker.bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br><button type="button" class="grid-station-profile">Ver perfil</button>');
         marker.on('popupopen', (event: any) => {
           const button = event.popup?.getElement()?.querySelector('.grid-station-profile') as HTMLButtonElement | null;
-          if (button) button.onclick = (clickEvent) => {
+          if (!button) return;
+          button.addEventListener('click', (clickEvent) => {
             clickEvent.preventDefault();
             clickEvent.stopPropagation();
-            openUserProfile(station.callsign);
-          };
+            onOpenProfile(station.callsign);
+          }, { once: true });
         });
       }
       if (origin) {
@@ -148,7 +149,7 @@ const RegisteredGridStations: React.FC<{ origin: Point | null }> = ({ origin }) 
     {loading ? <p className="text-sm text-slate-300">Buscando estaciones registradas…</p> : error ? <p className="text-sm text-amber-300">{error}</p> : stations.length === 0 ? <p className="text-sm text-slate-400">Todavía no hay estaciones con Grid Locator válido.</p> : <>
       <div ref={mapElement} className="mb-3 h-[38dvh] min-h-[230px] w-full overflow-hidden rounded-lg bg-slate-800" />
       <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-        {stations.map(station => <button key={station.callsign} type="button" onClick={() => openUserProfile(station.callsign)} className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-left hover:border-cyan-500/60 hover:bg-slate-900">
+        {stations.map(station => <button key={station.callsign} type="button" onClick={() => onOpenProfile(station.callsign)} className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-left hover:border-cyan-500/60 hover:bg-slate-900">
           <span className="min-w-0"><strong className="block truncate font-mono text-sm">{station.callsign}</strong><span className="text-xs text-slate-400">Grid: {station.grid_locator}</span></span>
           <span className="shrink-0 text-xs font-bold text-cyan-300">Ver perfil</span>
         </button>)}
@@ -254,7 +255,7 @@ export const DistanceCalculator: React.FC = () => {
         {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
         {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
         {origin && selected && <DistanceMap origin={origin} destination={selected} originLabel={originLabel} />}
-        <RegisteredGridStations origin={origin} />
+        <RegisteredGridStations origin={origin} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
       </section>
     </div>}
   </>;
