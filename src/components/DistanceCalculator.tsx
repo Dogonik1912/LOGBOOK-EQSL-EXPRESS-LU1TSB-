@@ -138,6 +138,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true, worldCopyJump: true, minZoom: 2, maxZoom: 19 });
       mapRef.current = map;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      // Pane dedicado: la ruta queda siempre por encima de las teselas y los marcadores.
+      const routePane = map.createPane('distanceRoutePane');
+      routePane.style.zIndex = '650';
+      routePane.style.pointerEvents = 'none';
       L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
       map.setView([20, 0], 2);
       // Capturar el click nativo del contenedor además del sistema de eventos
@@ -173,7 +177,12 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     const marker = L.marker([destination.lat, destination.lon], { draggable: true }).addTo(group).bindPopup('Destino: ' + destination.name);
     marker.on('dragend', () => { const p = marker.getLatLng(); changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng }); });
     markerRef.current = group;
-    lineRef.current = L.polyline([[origin.lat, origin.lon], [destination.lat, destination.lon]], { color: '#0891b2', weight: 4, opacity: 0.95 }).addTo(map);
+    // Dibujar la unión origen-destino en un pane superior para que nunca quede oculta.
+    lineRef.current = L.polyline(
+      [[origin.lat, origin.lon], [destination.lat, destination.lon]],
+      { pane: 'distanceRoutePane', color: '#facc15', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }
+    ).addTo(map);
+    lineRef.current.bringToFront();
     // Al elegir un resultado, mostrar simultáneamente origen, destino y recorrido.
     // Evita que el zoom de la zona buscada deje el origen fuera de pantalla.
     map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]), { padding: [48, 48], maxZoom: 8, animate: false });
