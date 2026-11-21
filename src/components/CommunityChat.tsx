@@ -88,7 +88,8 @@ export const CommunityChat: React.FC = () => {
   const [error, setError] = useState('');
   const [moderationBusy, setModerationBusy] = useState(false);
   const [moderationDialog, setModerationDialog] = useState<{ title: string; body: string; callsign: string } | null>(null);
-  const [accountBlockedNotice, setAccountBlockedNotice] = useState(false);\n  const [blockedCallsign, setBlockedCallsign] = useState('');
+  const [accountBlockedNotice, setAccountBlockedNotice] = useState(false);
+  const [blockedCallsign, setBlockedCallsign] = useState('');
 
   // Comprobar el bloqueo al recuperar la identidad o al entrar con una SD guardada.
   useEffect(() => {
