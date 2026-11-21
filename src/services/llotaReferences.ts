@@ -3,7 +3,7 @@
  * La lista se obtiene del endpoint público de llota.app y se cachea localmente.
  */
 export interface LLOTAReference { code: string; name: string; country: string; }
-const API_URL = 'https://llota.app/api/public/references?version=lite';
+const API_URL = '/api/llota-references';
 const CACHE_KEY = 'logbook_llota_reference_catalog_v1';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const OFFICIAL_REFERENCE_PATTERN = /^LL[A-Z]{2}-\d{4,5}$/i;
