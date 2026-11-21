@@ -30,6 +30,8 @@ async function writeRecord(storage, path, record) {
 }
 
 function validateCard(body) {
+  const llotaReference = clean(body?.llotaReference, 20).toUpperCase();
+  if (llotaReference && !/^LL[A-Z]{2}-\d{4,5}$/.test(llotaReference)) return null;
   const card = {
     from: clean(body?.from, 40).toUpperCase(),
     to: clean(body?.to, 40).toUpperCase(),
@@ -43,6 +45,7 @@ function validateCard(body) {
     rstRcvd: clean(body?.rstRcvd || '59', 8),
     qth: clean(body?.qth, 80),
     grid: clean(body?.grid, 12),
+    ...(llotaReference ? { llotaReference, llotaReferenceName: clean(body?.llotaReferenceName, 120) } : {}),
     imageDataUrl: typeof body?.imageDataUrl === 'string' ? body.imageDataUrl : '',
   };
   if (card.imageDataUrl && (

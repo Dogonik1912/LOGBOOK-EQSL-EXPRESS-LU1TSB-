@@ -148,6 +148,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       `📡 Banda: ${qso.band} (${qso.frequency} MHz) - Modo: ${qso.mode}\n` +
       `📶 RST: ${qso.rstSent} / ${qso.rstRcvd}\n` +
       (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
+      (qso.llotaReference ? `🌊 LLOTA: ${qso.llotaReference}\n` : '') +
       `\n${firma}\nLogBook eQSL Express`;
 
     const cleanPhone = qso.whatsapp ? qso.whatsapp.replace(/[^0-9]/g, '') : '';
@@ -177,6 +178,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       `• Modo: ${qso.mode}\n` +
       `• RST Enviada: ${qso.rstSent} | RST Recibida: ${qso.rstRcvd}\n` +
       (qso.grid ? `• Grid Locator: ${qso.grid}\n` : '') +
+      (qso.llotaReference ? `• LLOTA: ${qso.llotaReference}\n` : '') +
       `\n¡Gracias por el QSO y nos encontramos en las bandas!\n\n` +
       `${firma}`
     );
@@ -214,6 +216,10 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       if (q.country) adif += `<COUNTRY:${q.country.length}>${q.country}`;
       if (q.grid) adif += `<GRIDSQUARE:${q.grid.length}>${q.grid}`;
       if (q.notes) adif += `<COMMENT:${q.notes.length}>${q.notes}`;
+      if (q.llotaReference) {
+        adif += `<STATION_CALLSIGN:${myCallsign.length}>${myCallsign}`;
+        adif += `<MY_SIG:5>LLOTA<MY_SIG_INFO:${q.llotaReference.length}>${q.llotaReference}`;
+      }
       adif += `<OPERATOR:${myCallsign.length}>${myCallsign}`;
       adif += `<EOR>\n`;
     });
@@ -284,8 +290,9 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const handleExportExcel = () => {
     if (!exportQSOs.length) return;
     const escapeCell = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas'];
-    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent, q.rstRcvd, q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes]);
+    const hasLLOTA = exportQSOs.some((q) => Boolean(q.llotaReference));
+    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas', ...(hasLLOTA ? ['Programa', 'Referencia LLOTA'] : [])];
+    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent, q.rstRcvd, q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes, ...(hasLLOTA ? [q.llotaReference ? 'LLOTA' : '', q.llotaReference || ''] : [])]);
     const html = '<html><head><meta charset="utf-8"></head><body><table><thead><tr>' + columns.map((c) => '<th>' + escapeCell(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.map((row) => '<tr>' + row.map((v) => '<td>' + escapeCell(v) + '</td>').join('') + '</tr>').join('') + '</tbody></table></body></html>';
     const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -300,12 +307,13 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   // Exportar el archivo seleccionado como CSV para volver a descargarlo cuando se necesite.
   const handleExportCSV = () => {
     if (!exportQSOs.length) return;
-    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas'];
+    const hasLLOTA = exportQSOs.some((q) => Boolean(q.llotaReference));
+    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas', ...(hasLLOTA ? ['Programa', 'Referencia LLOTA'] : [])];
     const cell = (value: unknown) => {
       const raw = String(value ?? '');
       return '"' + raw.replace(/"/g, '""') + '"';
     };
-    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent || '59', q.rstRcvd || '59', q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes]);
+    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent || '59', q.rstRcvd || '59', q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes, ...(hasLLOTA ? [q.llotaReference ? 'LLOTA' : '', q.llotaReference || ''] : [])]);
     const csv = '\\ufeff' + [columns, ...rows].map((row) => row.map(cell).join(',')).join('\\r\\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -374,6 +382,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
 
         const call = getField('CALL');
         if (!call) return;
+        const llotaReference = (getField('MY_SIG').toUpperCase() === 'LLOTA' ? getField('MY_SIG_INFO') : (getField('MY_LLOTA_REF') || (getField('SIG').toUpperCase() === 'LLOTA' ? getField('SIG_INFO') : ''))).toUpperCase();
 
         const rawDate = getField('QSO_DATE');
         const formattedDate = rawDate.length === 8 
@@ -402,6 +411,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
           country: getField('COUNTRY') || '',
           grid: getField('GRIDSQUARE') || '',
           notes: getField('COMMENT') || '',
+          ...(llotaReference ? { llotaReference } : {}),
           qslSent: false,
           qslRcvd: false,
         });
@@ -648,6 +658,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                       <span className="px-1.5 py-0.5 rounded-sm bg-slate-800 text-slate-200 text-[11px] font-semibold border border-slate-700">
                         {q.mode}
                       </span>
+                      {q.llotaReference && <div className="mt-1 text-[10px] font-mono font-semibold text-teal-300">LLOTA · {q.llotaReference}</div>}
                     </td>
 
                     {/* RST Enviada / Recibida */}

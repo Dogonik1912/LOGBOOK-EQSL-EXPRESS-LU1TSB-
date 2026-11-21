@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
+import { loadLLOTAReferences, LLOTAReference } from '../services/llotaReferences';
 import { supabase } from '../services/supabaseClient';
 import { 
   PlusCircle, 
@@ -186,6 +187,24 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [country, setCountry] = useState('');
   const [grid, setGrid] = useState('');
   const [notes, setNotes] = useState('');
+  const [llotaReferences, setLLOTAReferences] = useState<LLOTAReference[]>([]);
+  const [llotaLoading, setLLOTAloading] = useState(true);
+  const [llotaLoadError, setLLOTAloadError] = useState('');
+  const [llotaSearch, setLLOTAsearch] = useState('');
+  const [selectedLLOTAReference, setSelectedLLOTAReference] = useState<LLOTAReference | null>(null);
+  useEffect(() => {
+    let active = true;
+    loadLLOTAReferences().then((references) => {
+      if (!active) return;
+      setLLOTAReferences(references);
+      setLLOTAloadError('');
+    }).catch((error) => {
+      if (!active) return;
+      console.warn('No se pudo cargar el catálogo oficial LLOTA:', error);
+      setLLOTAloadError('No se pudo cargar el catálogo oficial. Comprobá tu conexión o consultá la página oficial.');
+    }).finally(() => { if (active) setLLOTAloading(false); });
+    return () => { active = false; };
+  }, []);
   const [validationError, setValidationError] = useState('');
   const [recipientRegistration, setRecipientRegistration] = useState<'idle' | 'checking' | 'registered' | 'not_registered'>('idle');
   const recipientCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -262,6 +281,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     // El campo CB solo se pide a quien tiene una SD de radioafición y aún no
     // guardó su identificación de 11 metros. Al cambiar de banda se oculta.
     if (newBand === '11 metros') {
+      setSelectedLLOTAReference(null);
+      setLLOTAsearch('');
       const savedCB = getSavedCbStationCallsign();
       if (savedCB) {
         setCbStationCallsign(savedCB);
@@ -499,6 +520,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       exchangeSent: exchangeSent.trim(),
       exchangeReceived: exchangeReceived.trim(),
       ...(contestMode ? { contestLogId, contestLogName: contestLogName.trim(), contestType } : {}),
+      ...(selectedLLOTAReference ? { llotaReference: selectedLLOTAReference.code, llotaReferenceName: selectedLLOTAReference.name } : {}),
       email: email.trim(),
       whatsapp: whatsapp.trim(),
       whatsappRaw: whatsapp.trim(),
@@ -565,6 +587,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setCountry('');
     setGrid('');
     setNotes('');
+    setSelectedLLOTAReference(null);
+    setLLOTAsearch('');
 
     // Asegurar que el teclado siga cerrado después de que React monte el editor.
     // Se repite el blur tras el cambio de pantalla porque algunos navegadores móviles
@@ -588,6 +612,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     }
   };
 
+  const filteredLLOTAReferences = llotaSearch.trim().length >= 2
+    ? llotaReferences.filter((item) => `${item.code} ${item.name} ${item.country}`.toLocaleLowerCase().includes(llotaSearch.trim().toLocaleLowerCase())).slice(0, 25)
+    : [];
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl mb-6 overflow-hidden">
       <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 py-2.5 sm:px-4 text-left hover:bg-slate-800/70 transition-colors">
@@ -819,6 +846,34 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           </div>
         </div>
 
+        {band !== '11 metros' && <section className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-teal-200">Actividad LLOTA (opcional)</label>
+            <a href="https://llota.app/referencias.html" target="_blank" rel="noreferrer" className="text-[11px] text-teal-300 underline">Catálogo oficial</a>
+          </div>
+          {selectedLLOTAReference ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-teal-400/40 bg-slate-950 px-3 py-2">
+              <div className="min-w-0">
+                <div className="font-mono text-sm font-bold text-teal-200">{selectedLLOTAReference.code}</div>
+                <div className="text-xs text-slate-300">{selectedLLOTAReference.name}{selectedLLOTAReference.country ? ` · ${selectedLLOTAReference.country}` : ''}</div>
+              </div>
+              <button type="button" onClick={() => setSelectedLLOTAReference(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Quitar</button>
+            </div>
+          ) : <>
+            <input type="search" value={llotaSearch} onChange={(e) => setLLOTAsearch(e.target.value)} placeholder="Buscar código, lago, laguna o país…" autoComplete="off" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal-400 focus:outline-none" />
+            {llotaLoading && <p className="text-xs text-slate-400">Cargando referencias oficiales de LLOTA…</p>}
+            {!llotaLoading && llotaLoadError && <p role="status" className="text-xs text-amber-300">{llotaLoadError}</p>}
+            {!llotaLoading && !llotaLoadError && llotaSearch.trim().length < 2 && <p className="text-xs text-slate-400">Escribí al menos 2 caracteres para buscar en el catálogo mundial oficial ({llotaReferences.length.toLocaleString()} referencias).</p>}
+            {filteredLLOTAReferences.length > 0 && <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950">
+              {filteredLLOTAReferences.map((reference) => <button key={reference.code} type="button" onClick={() => { setSelectedLLOTAReference(reference); setLLOTAsearch(''); }} className="block w-full border-b border-slate-800 px-3 py-2 text-left last:border-b-0 hover:bg-teal-900/40">
+                <span className="block font-mono text-xs font-bold text-teal-200">{reference.code}</span>
+                <span className="block text-xs text-slate-200">{reference.name || 'Referencia LLOTA'}{reference.country ? ` · ${reference.country}` : ''}</span>
+              </button>)}
+            </div>}
+            {!llotaLoading && !llotaLoadError && llotaSearch.trim().length >= 2 && filteredLLOTAReferences.length === 0 && <p className="text-xs text-slate-400">No hay coincidencias en el catálogo oficial. Revisá el código o consultá la página de LLOTA.</p>}
+          </>}
+          <p className="text-[11px] text-slate-500">La referencia se aplica solo a este QSO. Si no seleccionás ninguna, el registro y la eQSL no incluirán datos de actividad.</p>
+        </section>}
         {/* Los datos adicionales se ocultan durante el concurso: quedan los datos esenciales y los dos intercambios. */}
         {!contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           <div>

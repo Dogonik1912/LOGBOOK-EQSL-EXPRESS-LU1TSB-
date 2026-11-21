@@ -260,7 +260,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
     const drawCardContent = () => {
       // Franja inferior blanca: primero identifica ambos corresponsales y luego los datos técnicos.
-      const footerH = 150;
+      const footerH = qso.llotaReference ? 180 : 150;
       const footerY = height - footerH;
 
       ctx.save();
@@ -312,6 +312,14 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         }
       });
 
+      if (qso.llotaReference) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillStyle = '#0f766e';
+        const activityText = `LLOTA · ${qso.llotaReference}${qso.llotaReferenceName ? ` — ${qso.llotaReferenceName}` : ''}`;
+        ctx.fillText(activityText, width / 2, footerY + 145, width - 32);
+      }
       // Marca de agua obligatoria, discreta, en la esquina inferior derecha.
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
@@ -477,6 +485,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       grid: myGrid,
       // Compartir la tarjeta ya renderizada: conserva imagen, recorte, posición y diseño exactos.
       imageDataUrl: canvasRef.current?.toDataURL('image/jpeg', 0.9) || '',
+      ...(qso.llotaReference ? { llotaReference: qso.llotaReference, llotaReferenceName: qso.llotaReferenceName || '' } : {}),
     };
     if (registerInAppInbox) {
       const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();

@@ -31,6 +31,8 @@ export interface QSO {
   contestLogName?: string; // Nombre del log de concurso
   contestType?: string; // Tipo/código del concurso para exportación Cabrillo
   mapActivityAt?: number; // Marca temporal local para mostrar actividad en el mapamundi durante 30 minutos
+  llotaReference?: string; // Referencia LLOTA oficial asociada únicamente a este QSO
+  llotaReferenceName?: string; // Nombre del lugar según el catálogo oficial LLOTA
 }
 
 export interface UserSettings {
