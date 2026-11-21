@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck, X } from 'lucide-react';
+import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck, X, Share2 } from 'lucide-react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
-import { capitalPointForCountry, countryUsesMiles, distanceForSpot, maidenheadToPoint } from '../services/dxDistance';
+import { capitalPointForCountry, countryUsesMiles, distanceForSpot, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
+import { DistanceShareModal } from './DistanceShareModal';
 
 // Los indicativos del feed abren la conversación privada del usuario correspondiente.
 const openPrivateMessage = (rawCallsign: string) => {
@@ -89,6 +90,8 @@ const loadLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
 });
 const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, onClose }) => {
   const mapElement = useRef<HTMLDivElement>(null);
+  const shareCaptureRef = useRef<HTMLElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [mapError, setMapError] = useState('');
   const [points, setPoints] = useState<{ first: {lat:number;lon:number}; second: {lat:number;lon:number}; firstSource:string; secondSource:string } | null>(null);
   const is11m = isElevenMeterSpot(spot.band, spot.frequency);
@@ -119,13 +122,17 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     const h = Math.sin(dLat/2)**2 + Math.cos(rad(points.first.lat))*Math.cos(rad(points.second.lat))*Math.sin(dLon/2)**2;
     return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
   })() : null;
+  const canShareExactDistance = isValidMaidenheadLocator(firstGrid || '') && isValidMaidenheadLocator(secondGrid || '');
+  const missingGridCallsigns = [!isValidMaidenheadLocator(firstGrid || '') ? spot.callsign : '', !isValidMaidenheadLocator(secondGrid || '') ? spot.station_callsign : ''].filter(Boolean);
+  const currentCallsign = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+  const privateRecipient = currentCallsign === spot.callsign ? spot.station_callsign : spot.callsign;
   useEffect(() => {
     if (!points || !mapElement.current) return;
     let map: any, cancelled = false;
     void loadLeaflet().then((L) => {
       if (cancelled || !mapElement.current) return;
       map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       const a: [number,number] = [points.first.lat,points.first.lon], b: [number,number] = [points.second.lat,points.second.lon];
       L.marker(a).addTo(map).bindPopup('Estación '+spot.callsign+' · '+points.firstSource);
       L.marker(b).addTo(map).bindPopup('Estación '+spot.station_callsign+' · '+points.secondSource);
@@ -135,14 +142,19 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     }).catch(error => setMapError(error instanceof Error ? error.message : 'No se pudo cargar el mapa.'));
     return () => { cancelled = true; if (map) map.remove(); };
   }, [points, spot.callsign, spot.station_callsign]);
-  return <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-slate-950/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Mapa de distancia del QSO" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
-      <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || firstCountry || 'Capital pendiente'}) ↔ {spot.station_callsign} ({secondGrid || secondCountry || 'Capital pendiente'})</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
+  return <><div className="fixed inset-0 z-[11000] flex items-center justify-center bg-slate-950/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Mapa de distancia del QSO" onMouseDown={event => { if (event.target === event.currentTarget && !shareOpen) onClose(); }}>
+    <section ref={shareCaptureRef} className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
+      <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || firstCountry || 'Capital pendiente'}) ↔ {spot.station_callsign} ({secondGrid || secondCountry || 'Capital pendiente'})</p></div><button type="button" data-share-ignore onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
       <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-700 px-4 py-3 text-sm"><span><strong>{km === null ? 'Calculando…' : km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km'}</strong></span><span><strong>{km === null ? '—' : (km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})+' mi'}</strong></span></div>
       {points ? <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Ubicación por {points.firstSource} ↔ {points.secondSource}. Línea recta entre ambos puntos. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p></> : <div className="p-6 text-sm text-amber-200">{mapError || 'Buscando el Grid Locator o, si falta, la capital de cada país…'}</div>}
-      <footer className="flex justify-end border-t border-slate-700 px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></footer>
+      <footer data-share-ignore className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 px-4 py-3">
+        <div className="min-w-0 flex-1">{!canShareExactDistance && <p className="text-[11px] text-amber-300">Para compartir la distancia exacta falta el Grid Locator de: {missingGridCallsigns.join(', ')}. Completalo en Ajustes; no se compartirá una ubicación estimada por capital.</p>}</div>
+        <div className="flex gap-2"><button type="button" disabled={!canShareExactDistance || !points || km === null} onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"><Share2 className="h-4 w-4" />Compartir distancia</button><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></div>
+      </footer>
     </section>
-  </div>;
+  </div>
+  {shareOpen && points && km !== null && <DistanceShareModal onClose={() => setShareOpen(false)} captureElement={() => shareCaptureRef.current} firstCallsign={spot.callsign} secondCallsign={spot.station_callsign} distanceKm={km} privateRecipients={[privateRecipient]} defaultPrivateRecipient={privateRecipient} />}
+  </>;
 };
 
 export const LiveSpots: React.FC = () => {

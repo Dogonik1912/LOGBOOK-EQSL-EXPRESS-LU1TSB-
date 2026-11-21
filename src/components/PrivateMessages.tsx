@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, MessageCircle, RefreshCw, Send, Inbox, Trash2, ShieldAlert, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { parseDistanceShareImage } from '../services/distanceShare';
+import { DistanceShareMessage } from './DistanceShareMessage';
 
 type PrivateMessage = {
   id: string;
@@ -569,7 +571,7 @@ export const PrivateMessages: React.FC = () => {
                   {moderationRole === 'admin' && sender !== callsign && <button type="button" onClick={() => { setProfileTarget(sender); setProfileNotice(''); }} className="mt-1 rounded-md p-1 text-rose-300 hover:bg-rose-950" aria-label={`Opciones de bloqueo para ${sender}`} title="Opciones de administración"><ShieldAlert className="h-4 w-4" /></button>}
                   <div className={'min-w-0 max-w-[85%] rounded-xl px-3 py-2 ' + (mine ? 'bg-violet-800 text-white' : 'bg-slate-800 text-slate-100')}>
                     <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-user-profile', { detail: { callsign: sender } }))} className={'mb-2 inline-block rounded-md border px-2.5 py-1 font-mono text-sm font-black uppercase tracking-wider underline decoration-dotted underline-offset-2 hover:text-cyan-300 ' + (mine ? 'border-amber-300 bg-slate-950 text-amber-300' : 'border-sky-300 bg-slate-950 text-sky-300')} aria-label={`Ver perfil de ${sender}`}>{sender}</button>
-                    <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
+                    {parseDistanceShareImage(message.body) ? <DistanceShareMessage body={message.body} /> : <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>}
                     <div className="mt-1 flex items-center justify-end gap-2">
                       <p className={'text-[10px] ' + (mine ? 'text-violet-100' : 'text-slate-300')}>{new Date(message.created_at).toLocaleString()}</p>
                       {mine && <button type="button" onClick={() => void deleteOwnMessage(message.id)} disabled={Boolean(deletingMessage)} aria-label="Eliminar mi mensaje" title="Eliminar mi mensaje" className="rounded p-1 text-red-200 hover:bg-red-950 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /></button>}

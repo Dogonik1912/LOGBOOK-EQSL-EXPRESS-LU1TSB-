@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, MessageCircle, X, Map as MapIcon } from 'lucide-react';
+import { MapPin, MessageCircle, X, Map as MapIcon, Share2 } from 'lucide-react';
+import { DistanceShareModal } from './DistanceShareModal';
 import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
@@ -134,8 +135,12 @@ const distanceKmBetween = (a: {lat:number;lon:number}, b: {lat:number;lon:number
   return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
 };
 
-const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () => void }> = ({ callsign, grid, onClose }) => {
+const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () => void; autoOpenShare?: boolean; onAutoShareConsumed?: () => void }> = ({ callsign, grid, onClose, autoOpenShare = false, onAutoShareConsumed }) => {
   const mapElement = React.useRef<HTMLDivElement>(null);
+  const shareCaptureRef = React.useRef<HTMLElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+  const [shareNotice, setShareNotice] = useState('');
   const [stations, setStations] = useState<GridStationPoint[]>([]);
   const [viewerDistanceKm, setViewerDistanceKm] = useState<number | null>(null);
   const [viewerCallsign, setViewerCallsign] = useState('');
@@ -143,6 +148,7 @@ const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () =>
   const [error, setError] = useState('');
   const [mapError, setMapError] = useState('');
   const origin = maidenheadToPoint(grid);
+  const viewerDistanceMi = viewerDistanceKm === null ? null : viewerDistanceKm / 1.609344;
 
   useEffect(() => {
     let active = true;
@@ -191,12 +197,13 @@ const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () =>
 
   useEffect(() => {
     if (!stations.length || !mapElement.current) return;
+    setMapReady(false);
     let map: any;
     let cancelled = false;
     void loadProfileLeaflet().then((L) => {
       if (cancelled || !mapElement.current) return;
       map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       const bounds: Array<[number, number]> = [];
       const reference = stations.find((item) => item.callsign === callsign);
       const viewer = viewerCallsign ? stations.find((item) => item.callsign === viewerCallsign) : undefined;
@@ -222,37 +229,48 @@ const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () =>
       }
       if (bounds.length > 1) map.fitBounds(L.latLngBounds(bounds), { padding: [35, 35], maxZoom: 8 });
       else if (reference) map.setView([reference.lat, reference.lon], 7);
-      window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 120);
+      window.setTimeout(() => { if (!cancelled && map) { map.invalidateSize(); setMapReady(true); } }, 180);
     }).catch((reason) => { if (!cancelled) setMapError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
     return () => { cancelled = true; if (map) map.remove(); };
   }, [stations, callsign, viewerCallsign]);
 
-  return <div className="fixed inset-0 z-[11050] flex items-center justify-center bg-slate-950/90 p-2 sm:p-5" role="dialog" aria-modal="true" aria-label="Mapa de estaciones con Grid Locator" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
+  useEffect(() => {
+    if (!autoOpenShare || !mapReady) return;
+    if (viewerDistanceKm !== null) setShareOpen(true);
+    else setShareNotice('Para compartir la distancia exacta, primero guardá tu propio Grid Locator en Ajustes.');
+    onAutoShareConsumed?.();
+  }, [autoOpenShare, mapReady, viewerDistanceKm, onAutoShareConsumed]);
+
+  return <><div className="fixed inset-0 z-[11050] flex items-center justify-center bg-slate-950/90 p-2 sm:p-5" role="dialog" aria-modal="true" aria-label="Mapa de estaciones con Grid Locator" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section ref={shareCaptureRef} className="flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
         <div><h3 className="font-black">Estaciones con Grid Locator</h3><p className="text-xs text-slate-300">Ubicaciones de estaciones registradas · {grid.toUpperCase()}</p></div>
-        <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button>
+        <button type="button" data-share-ignore onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button>
       </header>
       {loading ? <div className="p-5 text-sm text-slate-200">Buscando estaciones con Grid Locator…</div> : error ? <div className="p-5 text-sm text-rose-300">{error}</div> : <>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-4 py-2 text-sm"><span><strong>{stations.length}</strong> estaciones con Grid Locator válido</span>{viewerDistanceKm !== null && <span className="text-xs text-cyan-200">Distancia entre {callsign} y {viewerCallsign}: <strong>{viewerDistanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km</strong></span>}</div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-4 py-2 text-sm"><span><strong>{stations.length}</strong> estaciones con Grid Locator válido</span>{viewerDistanceKm !== null && <span className="text-xs text-cyan-200">Distancia entre {callsign} y {viewerCallsign}: <strong>{viewerDistanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km · {viewerDistanceMi?.toLocaleString('es-ES', { maximumFractionDigits: 1 })} mi</strong></span>}</div>
         {mapError ? <div className="p-4 text-sm text-rose-300">{mapError}</div> : <div ref={mapElement} className="h-[48dvh] min-h-[260px] w-full bg-slate-800" />}
         <div className="max-h-[24dvh] overflow-y-auto border-t border-slate-700 px-4 py-2">
           {stations.map((station) => <button type="button" key={station.callsign} onClick={() => openUserProfile(station.callsign)} className="flex w-full items-center justify-between gap-3 border-b border-slate-800 py-2 text-left text-sm last:border-0 hover:bg-slate-800/70"><span className="min-w-0"><strong className="font-mono">{station.callsign}</strong><span className="ml-2 text-xs text-slate-400">{station.grid_locator}{station.callsign === callsign ? ' · perfil consultado' : station.callsign === viewerCallsign ? ' · tu estación' : ''}</span></span><span className="shrink-0 text-xs text-cyan-300">Ver perfil</span></button>)}
         </div>
       </>}
-      <footer className="flex justify-end border-t border-slate-700 px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></footer>
+      <footer data-share-ignore className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 px-4 py-3"><div className="min-w-0 flex-1">{shareNotice && <p role="status" className="text-xs text-amber-300">{shareNotice}</p>}</div><div className="flex gap-2">{viewerDistanceKm !== null && <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600"><Share2 className="h-4 w-4" />Compartir distancia</button>}<button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></div></footer>
     </section>
-  </div>;
+  </div>
+  {shareOpen && viewerDistanceKm !== null && <DistanceShareModal onClose={() => setShareOpen(false)} captureElement={() => shareCaptureRef.current} firstCallsign={callsign} secondCallsign={viewerCallsign} distanceKm={viewerDistanceKm} privateRecipients={[callsign]} defaultPrivateRecipient={callsign} />}
+  </>;
 };
 
 export const UserPublicProfile: React.FC = () => {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  const [autoShare, setAutoShare] = useState(false);
   useEffect(() => {
     const onOpen = (event: Event) => {
       const callsign = String((event as CustomEvent<{callsign?: string}>).detail?.callsign || '').trim().toUpperCase();
       if (callsign.length < 3) return;
       setMapOpen(false);
+      setAutoShare(false);
       setProfile({ callsign, photo: '', qraOperator: '', grid: '', location: '', elevation: null, loading: true });
     };
     window.addEventListener('open-user-profile', onOpen);
@@ -317,10 +335,10 @@ export const UserPublicProfile: React.FC = () => {
         <p className='pl-6 text-slate-300'><strong>Altitud sobre el nivel del mar:</strong> {profile.loading ? 'Calculando…' : profile.elevation === null ? 'No disponible' : '≈ '+profile.elevation+' m s. n. m.'}</p>
         <p className='pl-6 text-[11px] leading-relaxed text-slate-400'>Ciudad, pueblo y altitud estimados a partir del centro de la cuadrícula Maidenhead. No representan una dirección exacta ni la altura de la antena.</p>
       </div>
-      {isValidMaidenheadLocator(profile.grid) && <button type='button' onClick={() => setMapOpen(true)} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-3 font-bold text-white hover:bg-cyan-600'><MapIcon className='h-4 w-4' />VER EN EL MAPA</button>}
+      {isValidMaidenheadLocator(profile.grid) && <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2'><button type='button' onClick={() => { setAutoShare(false); setMapOpen(true); }} className='flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-3 font-bold text-white hover:bg-cyan-600'><MapIcon className='h-4 w-4' />VER EN EL MAPA</button><button type='button' onClick={() => { setAutoShare(true); setMapOpen(true); }} className='flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white hover:bg-emerald-600'><Share2 className='h-4 w-4' />COMPARTIR DISTANCIA</button></div>}
       <button type='button' disabled={profile.callsign === (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase()} onClick={() => { const target = profile.callsign; setProfile(null); window.dispatchEvent(new CustomEvent('open-private-message', { detail: { callsign: target } })); }} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white hover:bg-sky-600 disabled:opacity-40'><MessageCircle className='h-4 w-4' />Enviar mensaje privado</button>
       <button type='button' onClick={() => setProfile(null)} className='mt-2 w-full rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200'>Cerrar</button>
     </section>
-    {mapOpen && isValidMaidenheadLocator(profile.grid) && <GridStationsMap callsign={profile.callsign} grid={profile.grid} onClose={() => setMapOpen(false)} />}
+    {mapOpen && isValidMaidenheadLocator(profile.grid) && <GridStationsMap callsign={profile.callsign} grid={profile.grid} autoOpenShare={autoShare} onAutoShareConsumed={() => setAutoShare(false)} onClose={() => { setMapOpen(false); setAutoShare(false); }} />}
   </div>;
 };

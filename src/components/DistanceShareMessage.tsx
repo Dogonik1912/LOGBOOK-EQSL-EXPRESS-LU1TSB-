@@ -1,0 +1,3 @@
+import React from 'react';
+import {parseDistanceShareImage} from '../services/distanceShare';
+export const DistanceShareMessage:React.FC<{body:string}>=({body})=>{const url=parseDistanceShareImage(body);if(!url)return <p className="whitespace-pre-wrap break-words text-sm">{body}</p>;return <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 block max-w-full overflow-hidden rounded-lg border border-cyan-400/40"><img src={url} alt="Mapa de distancia de un contacto de radio" loading="lazy" className="max-h-72 max-w-full object-contain"/><span className="block bg-slate-950/70 px-2 py-1 text-[10px] font-semibold text-cyan-200">Ver mapa de distancia</span></a>;};
