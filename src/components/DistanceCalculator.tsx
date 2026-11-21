@@ -121,16 +121,19 @@ function bearingDegrees(a: Point, b: Point) {
 const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  const layersRef = useRef<any>(null);
   const changeRef = useRef(onDestinationChange);
+  const latestRef = useRef({ origin, destination, focusPlace, originLabel });
+  const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
+  useEffect(() => { latestRef.current = { origin, destination, focusPlace, originLabel }; }, [origin, destination, focusPlace, originLabel]);
 
-  // El mapa, los marcadores y la línea se crean juntos, igual que en
-  // DistanceShareModal: así la ruta usa el mismo L.polyline probado en producción.
+  // Crear Leaflet una sola vez. Cambiar el destino actualiza capas, nunca
+  // destruye/recrea el mapa ni su SVG (evita el error parentNode de Leaflet).
   useEffect(() => {
-    if (!element.current) return;
-    let map: any;
     let cancelled = false;
+    let map: any = null;
     let resizeTimer = 0;
     void loadLeaflet().then((L) => {
       if (cancelled || !element.current) return;
@@ -144,69 +147,75 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
         maxZoom: 19, crossOrigin: true, noWrap: false,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
-
-      const a: [number, number] = [origin.lat, origin.lon];
-      L.marker(a).addTo(map)
-        .bindPopup('Origen: ' + originLabel)
-        .bindTooltip('TU ESTACIÓN · ' + originLabel, { direction: 'top', offset: [0, -10], opacity: 0.95 });
-
-      if (destination) {
-        const b: [number, number] = [destination.lat, destination.lon];
-        L.marker(b, { draggable: true }).addTo(map)
-          .bindPopup('Destino: ' + destination.name)
-          .bindTooltip(destination.name, { direction: 'top', offset: [0, -10], opacity: 0.95 })
-          .on('dragend', (event: any) => {
-            const point = event.target.getLatLng();
-            changeRef.current({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lng });
-          });
-
-        // MISMO método que dibuja correctamente la línea entre estaciones.
-        L.polyline([a, b], { color: '#fff000', weight: 5, opacity: 1 }).addTo(map);
-        map.fitBounds(L.latLngBounds([a, b]), { padding: [55, 55], maxZoom: 12 });
-      } else if (focusPlace) {
-        L.circleMarker([focusPlace.lat, focusPlace.lon], {
-          radius: 8, color: '#facc15', weight: 3,
-          fillColor: '#facc15', fillOpacity: 0.85,
-        }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name);
-        map.setView([focusPlace.lat, focusPlace.lon], 12);
-      } else {
-        map.setView([20, 0], 2);
-      }
-
+      layersRef.current = L.layerGroup().addTo(map);
       map.on('click', (event: any) => {
         const lat = Math.max(-85.05112878, Math.min(85.05112878, event.latlng.lat));
         const lon = Math.max(-180, Math.min(180, event.latlng.lng));
         changeRef.current({ name: 'Punto seleccionado en el mapa', lat, lon });
       });
-
       resizeTimer = window.setTimeout(() => {
-        if (!cancelled && map) map.invalidateSize();
-      }, 100);
+        if (!cancelled && map && map.getContainer()) map.invalidateSize();
+      }, 120);
+      setMapReady(true);
       setError('');
     }).catch(reason => {
       if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudo abrir el mapa.');
     });
-
     return () => {
       cancelled = true;
       if (resizeTimer) window.clearTimeout(resizeTimer);
-      // Leaflet puede haber perdido ya algún nodo SVG al cerrar/actualizar
-      // el modal. No permitir que remove() interrumpa el desmontaje de React.
-      if (map) {
-        try { map.off(); map.remove(); } catch (cleanupError) {
+      const current = map;
+      mapRef.current = null;
+      layersRef.current = null;
+      if (current) {
+        try {
+          current.off();
+          if (current.getContainer?.()?. _leaflet_id) current.remove();
+        } catch (cleanupError) {
           console.warn('Leaflet cleanup (distance map):', cleanupError);
         }
       }
-      if (mapRef.current === map) mapRef.current = null;
     };
-  }, [origin.lat, origin.lon, originLabel, destination?.lat, destination?.lon, destination?.name, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
+  }, []);
+
+  // Repintar únicamente los elementos geográficos. El objeto mapa permanece vivo.
+  useEffect(() => {
+    const map = mapRef.current;
+    const layers = layersRef.current;
+    const L = (window as any).L;
+    if (!mapReady || !map || !layers || !L) return;
+    layers.clearLayers();
+    const a: [number, number] = [origin.lat, origin.lon];
+    L.marker(a).addTo(layers)
+      .bindPopup('Origen: ' + originLabel)
+      .bindTooltip('TU ESTACIÓN · ' + originLabel, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+    if (destination) {
+      const b: [number, number] = [destination.lat, destination.lon];
+      L.marker(b, { draggable: true }).addTo(layers)
+        .bindPopup('Destino: ' + destination.name)
+        .bindTooltip(destination.name, { direction: 'top', offset: [0, -10], opacity: 0.95 })
+        .on('dragend', (event: any) => {
+          const point = event.target.getLatLng();
+          changeRef.current({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lng });
+        });
+      L.polyline([a, b], { color: '#fff000', weight: 6, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(layers).bringToFront();
+      map.fitBounds(L.latLngBounds([a, b]), { padding: [55, 55], maxZoom: 12 });
+    } else if (focusPlace) {
+      L.circleMarker([focusPlace.lat, focusPlace.lon], {
+        radius: 8, color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.85,
+      }).addTo(layers).bindPopup('Zona buscada: ' + focusPlace.name);
+      map.setView([focusPlace.lat, focusPlace.lon], 12);
+    } else {
+      map.setView([20, 0], 2);
+    }
+  }, [mapReady, origin.lat, origin.lon, originLabel, destination?.lat, destination?.lon, destination?.name, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
 
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
   const locator = destination ? pointToMaidenhead(destination) : '';
   const shareMeasurement = () => {
     if (!destination || km === null || bearing === null) return;
-    const message = 'LOGBOOK eQSL EXPRESS\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\nRumbo: ' + bearing.toFixed(0) + '°\nGrid Locator destino: ' + locator + '\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5);
+    const message = 'LOGBOOK eQSL EXPRESS\\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\\nRumbo: ' + bearing.toFixed(0) + '°\\nGrid Locator destino: ' + locator + '\\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5);
     if (navigator.share) void navigator.share({ title: 'Calculador de distancia', text: message }).catch(() => {});
     else if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(message);
   };
