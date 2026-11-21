@@ -301,7 +301,7 @@ function MainApp() {
     ].join('|');
     const key = makeQsoKey(qso);
     const existing = qsos.find((item) => makeQsoKey(item) === key);
-    const trackedQSO: QSO = existing && !allowDuplicate
+    const trackedQSO: QSO = existing && !allowDuplicate && !qso.llotaActivityId
       ? {
           ...existing,
           ...qso,
@@ -316,7 +316,7 @@ function MainApp() {
           qslRcvd: Boolean(existing.qslRcvd || qso.qslRcvd),
         }
       : { ...qso };
-    const updated = existing && !allowDuplicate
+    const updated = existing && !allowDuplicate && !qso.llotaActivityId
       ? qsos.map((item) => item.id === existing.id ? trackedQSO : item)
       : [trackedQSO, ...qsos];
     handleSaveQsos(updated);
