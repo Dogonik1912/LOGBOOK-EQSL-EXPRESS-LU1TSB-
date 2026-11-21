@@ -247,8 +247,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   };
 
   // Dibujar la tarjeta eQSL en el canvas HTML5 con máxima calidad (1200x750)
-  const renderCard = () => {
-    if (!qso || !canvasRef.current) return;
+  const renderCard = (): Promise<void> => new Promise((resolve) => {
+    if (!qso || !canvasRef.current) { resolve(); return; }
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -260,7 +260,12 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
     const drawCardContent = () => {
       // Franja inferior blanca: primero identifica ambos corresponsales y luego los datos técnicos.
-      const footerH = qso.llotaReference ? 180 : 150;
+      const activityReferences = [
+        { label: 'LLOTA', code: qso.llotaReference, name: qso.llotaReferenceName },
+        { label: 'SOTA', code: qso.sotaReference, name: qso.sotaReferenceName },
+        { label: 'IOTA', code: qso.iotaReference, name: qso.iotaReferenceName },
+      ].filter((item) => Boolean(item.code?.trim()));
+      const footerH = activityReferences.length ? 180 + Math.max(0, activityReferences.length - 1) * 22 : 150;
       const footerY = height - footerH;
 
       ctx.save();
@@ -312,14 +317,14 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         }
       });
 
-      if (qso.llotaReference) {
+      activityReferences.forEach((activity, index) => {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = 'bold 14px sans-serif';
         ctx.fillStyle = '#0f766e';
-        const activityText = `LLOTA · ${qso.llotaReference}${qso.llotaReferenceName ? ` — ${qso.llotaReferenceName}` : ''}`;
-        ctx.fillText(activityText, width / 2, footerY + 145, width - 32);
-      }
+        const activityText = `${activity.label} · REFERENCIA: ${activity.code}${activity.name ? ` — ${activity.name}` : ''}`;
+        ctx.fillText(activityText, width / 2, footerY + 145 + index * 22, width - 32);
+      });
       // Marca de agua obligatoria, discreta, en la esquina inferior derecha.
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
@@ -344,7 +349,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
         // La imagen elegida se conserva limpia, sin oscurecerla ni añadir marcos.
 
         drawCardContent();
+        resolve();
       };
+      img.onerror = () => resolve();
       img.src = customBgImage;
     } else {
       // Plantillas temáticas: 19 motivos de radioafición.
@@ -381,8 +388,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       ctx.strokeRect(42, 42, width - 84, height - 84);
 
       drawCardContent();
+      resolve();
     }
-  };
+  });
 
   useEffect(() => {
     // Cada QSO nuevo empieza con el botón eQSL POST disponible.
@@ -405,7 +413,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
   useEffect(() => {
     if (isOpen && qso) {
-      const timer = window.setTimeout(renderCard, 50);
+      const timer = window.setTimeout(() => { void renderCard(); }, 50);
       return () => window.clearTimeout(timer);
     }
   }, [isOpen, qso, theme, customBgImage, imagePositionX, imagePositionY, imageZoom, signatureText, signatureEnabled]);
@@ -471,6 +479,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // Crear un enlace público corto. Los datos del QSO se guardan temporalmente en el servidor,
   // no se codifican dentro de la URL ni se incluyen datos privados de contacto.
   const getReceivedCardUrl = async (registerInAppInbox = false) => {
+    // Esperar a que el canvas termine de dibujarse (incluida la foto personalizada)
+    // antes de convertirlo en imagen; así no se pierde la referencia seleccionada.
+    await renderCard();
     const cardData = {
       from: cardSenderCallsign,
       to: qso.callsign,
@@ -486,6 +497,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       // Compartir la tarjeta ya renderizada: conserva imagen, recorte, posición y diseño exactos.
       imageDataUrl: canvasRef.current?.toDataURL('image/jpeg', 0.9) || '',
       ...(qso.llotaReference ? { llotaReference: qso.llotaReference, llotaReferenceName: qso.llotaReferenceName || '' } : {}),
+      ...(qso.sotaReference ? { sotaReference: qso.sotaReference, sotaReferenceName: qso.sotaReferenceName || '' } : {}),
+      ...(qso.iotaReference ? { iotaReference: qso.iotaReference, iotaReferenceName: qso.iotaReferenceName || '' } : {}),
     };
     if (registerInAppInbox) {
       const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
