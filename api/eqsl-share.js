@@ -31,7 +31,11 @@ async function writeRecord(storage, path, record) {
 
 function validateCard(body) {
   const llotaReference = clean(body?.llotaReference, 20).toUpperCase();
+  const sotaReference = clean(body?.sotaReference, 24).toUpperCase();
+  const iotaReference = clean(body?.iotaReference, 12).toUpperCase();
   if (llotaReference && !/^LL[A-Z]{2}-\d{4,5}$/.test(llotaReference)) return null;
+  if (sotaReference && !/^[A-Z0-9]{1,5}(?:\/[A-Z0-9]{1,5})?-[A-Z0-9]{3,5}$/.test(sotaReference)) return null;
+  if (iotaReference && !/^(?:AF|AN|AS|EU|NA|OC)-\d{3}$/.test(iotaReference)) return null;
   const card = {
     from: clean(body?.from, 40).toUpperCase(),
     to: clean(body?.to, 40).toUpperCase(),
@@ -46,6 +50,8 @@ function validateCard(body) {
     qth: clean(body?.qth, 80),
     grid: clean(body?.grid, 12),
     ...(llotaReference ? { llotaReference, llotaReferenceName: clean(body?.llotaReferenceName, 120) } : {}),
+    ...(sotaReference ? { sotaReference, sotaReferenceName: clean(body?.sotaReferenceName, 120) } : {}),
+    ...(iotaReference ? { iotaReference, iotaReferenceName: clean(body?.iotaReferenceName, 120) } : {}),
     imageDataUrl: typeof body?.imageDataUrl === 'string' ? body.imageDataUrl : '',
   };
   if (card.imageDataUrl && (
