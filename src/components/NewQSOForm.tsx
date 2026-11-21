@@ -24,9 +24,11 @@ import {
 interface NewQSOFormProps {
   onAddQSO: (qso: QSO, openEQSL?: boolean) => void;
   onFinishContest: (log: { id: string; name: string; type: string; finishedAt: string }) => boolean;
+  onFinishLLOTA: (log: { id: string; name: string; reference: string; activityType: string; startedAt: string; finishedAt: string }) => boolean;
+  hasDuplicateQSO: (qso: QSO) => boolean;
 }
 
-export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContest }) => {
+export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContest, onFinishLLOTA, hasDuplicateQSO }) => {
   const formatDateTime = (date: Date, utc: boolean) => ({
     date: `${utc ? date.getUTCFullYear() : date.getFullYear()}-${String((utc ? date.getUTCMonth() : date.getMonth()) + 1).padStart(2, '0')}-${String(utc ? date.getUTCDate() : date.getDate()).padStart(2, '0')}`,
     time: `${String(utc ? date.getUTCHours() : date.getHours()).padStart(2, '0')}:${String(utc ? date.getUTCMinutes() : date.getMinutes()).padStart(2, '0')}`,
@@ -191,11 +193,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [llotaLoading, setLLOTAloading] = useState(true);
   const [llotaLoadError, setLLOTAloadError] = useState('');
   const [llotaSearch, setLLOTAsearch] = useState('');
-  const [selectedLLOTAReference, setSelectedLLOTAReference] = useState<LLOTAReference | null>(() => {
+  const [selectedLLOTAReference, setSelectedLLOTAReference] = useState<(LLOTAReference & { activityId: string; startedAt: string }) | null>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('logbook_llota_selected_reference_v1') || 'null');
       return saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\d{4,5}$/i.test(saved.code)
-        ? { code: saved.code.toUpperCase(), name: String(saved.name || ''), country: String(saved.country || '') }
+        ? { code: saved.code.toUpperCase(), name: String(saved.name || ''), country: String(saved.country || ''), activityId: String(saved.activityId || `llota-${saved.code}-${Date.now()}`), startedAt: String(saved.startedAt || new Date().toISOString()) }
         : null;
     } catch { return null; }
   });
@@ -539,7 +541,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       exchangeSent: exchangeSent.trim(),
       exchangeReceived: exchangeReceived.trim(),
       ...(contestMode ? { contestLogId, contestLogName: contestLogName.trim(), contestType } : {}),
-      ...(selectedLLOTAReference ? { llotaReference: selectedLLOTAReference.code, llotaReferenceName: selectedLLOTAReference.name } : {}),
+      ...(selectedLLOTAReference ? { llotaReference: selectedLLOTAReference.code, llotaReferenceName: selectedLLOTAReference.name, llotaActivityId: selectedLLOTAReference.activityId, llotaActivityType: 'LLOTA' } : {}),
       email: email.trim(),
       whatsapp: whatsapp.trim(),
       whatsappRaw: whatsapp.trim(),
@@ -576,8 +578,11 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       document.activeElement.blur();
     }
 
+    const duplicateLLOTA = Boolean(selectedLLOTAReference && hasDuplicateQSO(newQSO));
+    const allowDuplicate = duplicateLLOTA ? window.confirm(`Este contacto ya figura en el log LLOTA ${selectedLLOTAReference?.code}. ¿Querés guardarlo igualmente como un nuevo registro?`) : false;
+    if (duplicateLLOTA && !allowDuplicate) return;
     // La tarjeta eQSL recibe el canal elegido por el usuario cuando corresponde.
-    onAddQSO(newQSO, shouldOpenEQSL);
+    onAddQSO(newQSO, shouldOpenEQSL, true, allowDuplicate);
 
     // PRIORIDAD 5: Guardar el último QSO en localStorage ('last_qso')
     // Manteniendo hora (UTC), fecha, banda, frecuencia, modo
@@ -868,7 +873,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
                 <div className="font-mono text-sm font-bold text-teal-200">{selectedLLOTAReference.code}</div>
                 <div className="text-xs text-slate-300">{selectedLLOTAReference.name}{selectedLLOTAReference.country ? ` · ${selectedLLOTAReference.country}` : ''}</div>
               </div>
-              <button type="button" onClick={() => setSelectedLLOTAReference(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Quitar</button>
+              <div className="flex gap-2"><button type="button" onClick={() => { const active = selectedLLOTAReference; if (!active) return; const ok = onFinishLLOTA({ id: active.activityId, name: active.name, reference: active.code, activityType: 'LLOTA', startedAt: active.startedAt, finishedAt: new Date().toISOString() }); if (ok) setSelectedLLOTAReference(null); }} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white">Finalizar y archivar</button><button type="button" onClick={() => setSelectedLLOTAReference(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">Quitar</button></div>
             </div>
           ) : <>
             <input type="search" value={llotaSearch} onChange={(e) => setLLOTAsearch(e.target.value)} placeholder="Buscar código, lago, laguna o país…" autoComplete="off" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-teal-400 focus:outline-none" />
@@ -876,7 +881,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
             {!llotaLoading && llotaLoadError && <p role="status" className="text-xs text-amber-300">{llotaLoadError}</p>}
             {!llotaLoading && !llotaLoadError && llotaSearch.trim().length < 2 && <p className="text-xs text-slate-400">Escribí al menos 2 caracteres para buscar en el catálogo mundial oficial ({llotaReferences.length.toLocaleString()} referencias).</p>}
             {filteredLLOTAReferences.length > 0 && <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950">
-              {filteredLLOTAReferences.map((reference) => <button key={reference.code} type="button" onClick={() => { setSelectedLLOTAReference(reference); setLLOTAsearch(''); }} className="block w-full border-b border-slate-800 px-3 py-2 text-left last:border-b-0 hover:bg-teal-900/40">
+              {filteredLLOTAReferences.map((reference) => <button key={reference.code} type="button" onClick={() => { setSelectedLLOTAReference({ ...reference, activityId: `llota-${reference.code}-${Date.now()}`, startedAt: new Date().toISOString() }); setLLOTAsearch(''); }} className="block w-full border-b border-slate-800 px-3 py-2 text-left last:border-b-0 hover:bg-teal-900/40">
                 <span className="block font-mono text-xs font-bold text-teal-200">{reference.code}</span>
                 <span className="block text-xs text-slate-200">{reference.name || 'Referencia LLOTA'}{reference.country ? ` · ${reference.country}` : ''}</span>
               </button>)}
