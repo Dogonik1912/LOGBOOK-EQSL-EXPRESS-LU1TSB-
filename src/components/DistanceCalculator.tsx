@@ -121,124 +121,89 @@ function bearingDegrees(a: Point, b: Point) {
 const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const leafletRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const lineRef = useRef<any>(null);
-  const focusRef = useRef<any>(null);
   const changeRef = useRef(onDestinationChange);
   const [error, setError] = useState('');
-  const [mapReady, setMapReady] = useState(false);
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
-  // Mantener una única instancia Leaflet: elegir destino no debe reiniciar el mapa.
+
+  // El mapa, los marcadores y la línea se crean juntos, igual que en
+  // DistanceShareModal: así la ruta usa el mismo L.polyline probado en producción.
   useEffect(() => {
     if (!element.current) return;
-    let cancelled = false; let map: any; let resizeTimer = 0;
-    let handleMapClick: ((event: MouseEvent) => void) | null = null;
-    void loadLeaflet().then(L => {
+    let map: any;
+    let cancelled = false;
+    let resizeTimer = 0;
+    void loadLeaflet().then((L) => {
       if (cancelled || !element.current) return;
-      map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true, worldCopyJump: true, minZoom: 2, maxZoom: 19 });
+      map = L.map(element.current, {
+        zoomControl: true, scrollWheelZoom: true, dragging: true,
+        touchZoom: true, doubleClickZoom: true, worldCopyJump: true,
+        minZoom: 2, maxZoom: 19,
+      });
       mapRef.current = map;
-      leafletRef.current = L;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-      // Pane de ruta con prioridad visual explícita sobre teselas y marcadores.
-      L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
-      map.setView([20, 0], 2);
-      // Capturar el click nativo del contenedor además del sistema de eventos
-      // de Leaflet mejora la selección en navegadores móviles dentro del modal.
-      handleMapClick = (event: MouseEvent) => {
-        const target = event.target as HTMLElement | null;
-        if (target?.closest('.leaflet-control')) return;
-        const point = map.mouseEventToLatLng(event);
-        const lat = Math.max(-85.05112878, Math.min(85.05112878, point.lat));
-        const lon = Math.max(-180, Math.min(180, point.lng));
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, crossOrigin: true, noWrap: false,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      const a: [number, number] = [origin.lat, origin.lon];
+      L.marker(a).addTo(map)
+        .bindPopup('Origen: ' + originLabel)
+        .bindTooltip('TU ESTACIÓN · ' + originLabel, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+      if (destination) {
+        const b: [number, number] = [destination.lat, destination.lon];
+        L.marker(b, { draggable: true }).addTo(map)
+          .bindPopup('Destino: ' + destination.name)
+          .bindTooltip(destination.name, { direction: 'top', offset: [0, -10], opacity: 0.95 })
+          .on('dragend', (event: any) => {
+            const point = event.target.getLatLng();
+            changeRef.current({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lng });
+          });
+
+        // MISMO método que dibuja correctamente la línea entre estaciones.
+        L.polyline([a, b], { color: '#fff000', weight: 5, opacity: 1 }).addTo(map);
+        map.fitBounds(L.latLngBounds([a, b]), { padding: [55, 55], maxZoom: 12 });
+      } else if (focusPlace) {
+        L.circleMarker([focusPlace.lat, focusPlace.lon], {
+          radius: 8, color: '#facc15', weight: 3,
+          fillColor: '#facc15', fillOpacity: 0.85,
+        }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name);
+        map.setView([focusPlace.lat, focusPlace.lon], 12);
+      } else {
+        map.setView([20, 0], 2);
+      }
+
+      map.on('click', (event: any) => {
+        const lat = Math.max(-85.05112878, Math.min(85.05112878, event.latlng.lat));
+        const lon = Math.max(-180, Math.min(180, event.latlng.lng));
         changeRef.current({ name: 'Punto seleccionado en el mapa', lat, lon });
-      };
-      element.current.addEventListener('click', handleMapClick);
-      const resize = () => { if (!cancelled && map) map.invalidateSize({ pan: false }); };
-      window.requestAnimationFrame(resize); resizeTimer = window.setTimeout(resize, 300);
-      // Los efectos de destino/búsqueda pueden ejecutarse antes de que Leaflet termine
-      // de cargar. Este estado los vuelve a ejecutar cuando el mapa ya está disponible.
-      setMapReady(true);
-    }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudo abrir el mapa.'); });
-    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (element.current && handleMapClick) element.current.removeEventListener('click', handleMapClick); if (map) map.remove(); mapRef.current = null; leafletRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
-  }, [origin.lat, origin.lon, originLabel]);
-  useEffect(() => {
-    const map = mapRef.current; const L = leafletRef.current || (window as any).L; if (!map || !L) return;
-    if (focusRef.current) { map.removeLayer(focusRef.current); focusRef.current = null; }
-    if (focusPlace) { focusRef.current = L.circleMarker([focusPlace.lat, focusPlace.lon], { radius: 8, color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.85 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name); map.setView([focusPlace.lat, focusPlace.lon], 12); }
-  }, [mapReady, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
-  useEffect(() => {
-    const map = mapRef.current;
-    const L = leafletRef.current;
-    if (!map || !L || !mapReady) return;
+      });
 
-    // Dibujar la ruta como SVG absoluto dentro del contenedor del mapa.
-    // No depende de los renderers/panes internos de Leaflet: queda por encima
-    // de las teselas y se recalculan sus extremos al mover o acercar el mapa.
-    if (markerRef.current && map.hasLayer(markerRef.current)) {
-      map.removeLayer(markerRef.current);
-    }
-    markerRef.current = null;
-    if (lineRef.current) {
-      const previous = Array.isArray(lineRef.current) ? lineRef.current : [lineRef.current];
-      previous.forEach((layer: any) => { if (layer && map.hasLayer(layer)) map.removeLayer(layer); });
-      lineRef.current = null;
-    }
-    if (!destination || !element.current) return;
-
-    map.invalidateSize({ pan: false });
-    map.fitBounds(
-      L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
-      { padding: [48, 48], maxZoom: 8, animate: false }
-    );
-
-    // Usar directamente el renderer SVG estándar de Leaflet (overlayPane).
-    // Evita panes/renderers personalizados y garantiza que la ruta se dibuje
-    // sobre las teselas, actualizándose automáticamente con el mapa.
-    const routePoints: [number, number][] = [
-      [origin.lat, origin.lon],
-      [destination.lat, destination.lon],
-    ];
-    const outline = L.polyline(routePoints, {
-      color: '#111111',
-      weight: 16,
-      opacity: 1,
-      lineCap: 'round',
-      lineJoin: 'round',
-      interactive: false,
-    }).addTo(map);
-    const yellow = L.polyline(routePoints, {
-      color: '#fff000',
-      weight: 9,
-      opacity: 1,
-      lineCap: 'round',
-      lineJoin: 'round',
-      interactive: false,
-    }).addTo(map);
-    outline.bringToFront();
-    yellow.bringToFront();
-    lineRef.current = [outline, yellow];
-
-    const marker = L.marker([destination.lat, destination.lon], { draggable: true })
-      .addTo(map).bindPopup('Destino: ' + destination.name);
-    marker.on('dragend', () => {
-      const point = marker.getLatLng();
-      changeRef.current({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lng });
+      resizeTimer = window.setTimeout(() => {
+        if (!cancelled && map) map.invalidateSize();
+      }, 100);
+      setError('');
+    }).catch(reason => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudo abrir el mapa.');
     });
-    markerRef.current = marker;
 
     return () => {
-      if (lineRef.current?.[0] === outline) lineRef.current = null;
-      if (map.hasLayer(outline)) map.removeLayer(outline);
-      if (map.hasLayer(yellow)) map.removeLayer(yellow);
-      if (map.hasLayer(marker)) map.removeLayer(marker);
-      if (markerRef.current === marker) markerRef.current = null;
+      cancelled = true;
+      if (resizeTimer) window.clearTimeout(resizeTimer);
+      if (map) map.remove();
+      if (mapRef.current === map) mapRef.current = null;
     };
-  }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
+  }, [origin.lat, origin.lon, originLabel, destination?.lat, destination?.lon, destination?.name, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
+
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
   const locator = destination ? pointToMaidenhead(destination) : '';
-  const shareMeasurement = () => { if (!destination || km === null || bearing === null) return; const message = 'LOGBOOK eQSL EXPRESS\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\nRumbo: ' + bearing.toFixed(0) + '°\nGrid Locator destino: ' + locator + '\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5); if (navigator.share) void navigator.share({ title: 'Calculador de distancia', text: message }).catch(() => {}); else if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(message); };
+  const shareMeasurement = () => {
+    if (!destination || km === null || bearing === null) return;
+    const message = 'LOGBOOK eQSL EXPRESS\\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\\nRumbo: ' + bearing.toFixed(0) + '°\\nGrid Locator destino: ' + locator + '\\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5);
+    if (navigator.share) void navigator.share({ title: 'Calculador de distancia', text: message }).catch(() => {});
+    else if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(message);
+  };
   return <div className="mt-3 overflow-hidden rounded-xl border border-slate-600">
     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800 px-3 py-3 text-sm text-white">
       {destination && km !== null ? <div className="flex flex-wrap gap-x-5 gap-y-1"><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span><span>Rumbo: <strong>{bearing!.toFixed(0)}°</strong></span></div> : <strong className="text-cyan-200">Mapa mundial: tocá cualquier punto para medir</strong>}
@@ -250,7 +215,6 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
   </div>;
 };
-
 
 type RegisteredStation = { callsign: string; grid_locator: string; lat: number; lon: number };
 const RegisteredGridStations: React.FC<{ origin: Point | null; onOpenProfile: (callsign: string) => void }> = ({ origin, onOpenProfile }) => {
