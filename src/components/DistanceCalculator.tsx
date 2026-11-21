@@ -140,10 +140,11 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       mapRef.current = map;
       leafletRef.current = L;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-      // Pane dedicado: la ruta queda siempre por encima de las teselas y los marcadores.
+      // Pane de ruta con prioridad visual explícita sobre teselas y marcadores.
       const routePane = map.createPane('distanceRoutePane');
-      routePane.style.zIndex = '650';
+      routePane.style.zIndex = '1000';
       routePane.style.pointerEvents = 'none';
+      routePane.style.overflow = 'visible';
       L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
       map.setView([20, 0], 2);
       // Capturar el click nativo del contenedor además del sistema de eventos
@@ -185,25 +186,31 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     lineRef.current = null;
     if (!destination) return;
 
-    // Dibujar la ruta con el renderer nativo de Leaflet en un pane dedicado.
-    // Leaflet recalcula automáticamente la geometría en cada zoom y movimiento;
-    // no depende de temporizadores, SVG manual ni de la posición CSS del mapa.
-    const route = L.polyline(
-      [[origin.lat, origin.lon], [destination.lat, destination.lon]],
-      {
-        pane: 'distanceRoutePane',
-        color: '#ffeb00',
-        weight: 7,
-        opacity: 1,
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: false,
-        smoothFactor: 0
-      }
-    ).addTo(map);
-    lineRef.current = route;
+    // Ruta doble: halo oscuro para contraste y trazo amarillo muy visible.
+    // Se fuerza un renderer SVG dentro del pane superior para evitar depender
+    // del renderer automático compartido de Leaflet en móviles.
+    map.invalidateSize({ pan: false });
+    const routeGroup = L.layerGroup().addTo(map);
+    const routeRenderer = L.svg({ pane: 'distanceRoutePane', padding: 0.5 });
+    const routePoints: [number, number][] = [
+      [origin.lat, origin.lon],
+      [destination.lat, destination.lon]
+    ];
+    L.polyline(routePoints, {
+      pane: 'distanceRoutePane', renderer: routeRenderer,
+      color: '#111827', weight: 13, opacity: 0.95,
+      lineCap: 'round', lineJoin: 'round',
+      interactive: false, smoothFactor: 0
+    }).addTo(routeGroup);
+    const route = L.polyline(routePoints, {
+      pane: 'distanceRoutePane', renderer: routeRenderer,
+      color: '#ffea00', weight: 7, opacity: 1,
+      lineCap: 'round', lineJoin: 'round',
+      interactive: false, smoothFactor: 0,
+      className: 'distance-calculator-route'
+    }).addTo(routeGroup);
+    lineRef.current = routeGroup;
     route.bringToFront();
-
     const group = L.layerGroup().addTo(map);
     const marker = L.marker([destination.lat, destination.lon], { draggable: true })
       .addTo(group).bindPopup('Destino: ' + destination.name);
@@ -216,12 +223,19 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
       { padding: [48, 48], maxZoom: 8, animate: false });
     route.redraw();
+    window.requestAnimationFrame(() => {
+      if (mapRef.current === map && map.hasLayer(routeGroup)) {
+        map.invalidateSize({ pan: false });
+        route.redraw();
+        route.bringToFront();
+      }
+    });
 
     return () => {
-      if (map.hasLayer(route)) map.removeLayer(route);
+      if (map.hasLayer(routeGroup)) map.removeLayer(routeGroup);
       if (markerRef.current === group) markerRef.current = null;
       if (map.hasLayer(group)) map.removeLayer(group);
-      if (lineRef.current === route) lineRef.current = null;
+      if (lineRef.current === routeGroup) lineRef.current = null;
     };
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
