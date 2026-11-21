@@ -117,9 +117,16 @@ const RegisteredGridStations: React.FC<{ origin: Point | null }> = ({ origin }) 
       for (const station of stations) {
         const coords: [number, number] = [station.lat, station.lon];
         bounds.push(coords);
-        L.marker(coords).addTo(map)
-          .bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br><button type="button" class="grid-station-profile">Ver perfil</button>')
-          .on('click', () => openUserProfile(station.callsign));
+        const marker = L.marker(coords).addTo(map);
+        marker.bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br><button type="button" class="grid-station-profile">Ver perfil</button>');
+        marker.on('popupopen', (event: any) => {
+          const button = event.popup?.getElement()?.querySelector('.grid-station-profile') as HTMLButtonElement | null;
+          if (button) button.onclick = (clickEvent) => {
+            clickEvent.preventDefault();
+            clickEvent.stopPropagation();
+            openUserProfile(station.callsign);
+          };
+        });
       }
       if (origin) {
         const originCoords: [number, number] = [origin.lat, origin.lon];
