@@ -170,6 +170,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen || localStorage.getItem('focus_user_grid_locator') !== '1') return;
+    const timer = window.setTimeout(() => {
+      const field = document.getElementById('user-grid-locator');
+      field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (field as HTMLInputElement | null)?.focus();
+      localStorage.removeItem('focus_user_grid_locator');
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
     const loadWeeklyHistory = async () => {
