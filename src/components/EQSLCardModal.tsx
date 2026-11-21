@@ -258,7 +258,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (references.length || !qso) return references;
     try {
       const saved = JSON.parse(localStorage.getItem('logbook_llota_selected_reference_v1') || 'null');
-      if (saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\\d{4,5}$/i.test(saved.code)) {
+      if (saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\d{4,5}$/i.test(saved.code)) {
         return [{ label: 'LLOTA', code: saved.code.toUpperCase(), name: String(saved.name || '') }];
       }
     } catch { /* No bloquear la generación de eQSL por un dato local inválido. */ }
