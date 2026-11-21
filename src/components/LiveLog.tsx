@@ -231,7 +231,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}_${myCallsign}.adi`;
+    link.download = `${(selectedLLOTALog ? `${selectedLLOTALog.name}_${selectedLLOTALog.reference}_${selectedLLOTALog.finishedAt.slice(0,10)}` : selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}_${myCallsign}.adi`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -284,7 +284,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}_${myCall}.log`;
+    link.download = `${(selectedLLOTALog ? `${selectedLLOTALog.name}_${selectedLLOTALog.reference}_${selectedLLOTALog.finishedAt.slice(0,10)}` : selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}_${myCall}.log`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -301,7 +301,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}.xls`;
+    link.download = `${(selectedLLOTALog ? `${selectedLLOTALog.name}_${selectedLLOTALog.reference}_${selectedLLOTALog.finishedAt.slice(0,10)}` : selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}.xls`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -322,7 +322,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${(selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}.csv`;
+    link.download = `${(selectedLLOTALog ? `${selectedLLOTALog.name}_${selectedLLOTALog.reference}_${selectedLLOTALog.finishedAt.slice(0,10)}` : selectedContestLog?.name || 'LogBook').replace(/[^a-zA-Z0-9_-]+/g, '_')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
