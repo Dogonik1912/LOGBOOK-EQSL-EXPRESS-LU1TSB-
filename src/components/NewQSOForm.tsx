@@ -191,7 +191,26 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const [llotaLoading, setLLOTAloading] = useState(true);
   const [llotaLoadError, setLLOTAloadError] = useState('');
   const [llotaSearch, setLLOTAsearch] = useState('');
-  const [selectedLLOTAReference, setSelectedLLOTAReference] = useState<LLOTAReference | null>(null);
+  const [selectedLLOTAReference, setSelectedLLOTAReference] = useState<LLOTAReference | null>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('logbook_llota_selected_reference_v1') || 'null');
+      return saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\\d{4,5}$/i.test(saved.code)
+        ? { code: saved.code.toUpperCase(), name: String(saved.name || ''), country: String(saved.country || '') }
+        : null;
+    } catch { return null; }
+  });
+  // La referencia elegida es una preferencia persistente del operador: no se limpia al guardar QSO.
+  useEffect(() => {
+    try {
+      if (selectedLLOTAReference) {
+        localStorage.setItem('logbook_llota_selected_reference_v1', JSON.stringify(selectedLLOTAReference));
+      } else {
+        localStorage.removeItem('logbook_llota_selected_reference_v1');
+      }
+    } catch (error) {
+      console.warn('No se pudo persistir la referencia LLOTA seleccionada:', error);
+    }
+  }, [selectedLLOTAReference]);
   useEffect(() => {
     let active = true;
     loadLLOTAReferences().then((references) => {
@@ -281,7 +300,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     // El campo CB solo se pide a quien tiene una SD de radioafición y aún no
     // guardó su identificación de 11 metros. Al cambiar de banda se oculta.
     if (newBand === '11 metros') {
-      setSelectedLLOTAReference(null);
+      // La referencia LLOTA queda guardada aunque el formulario oculte el selector en 11 metros.
       setLLOTAsearch('');
       const savedCB = getSavedCbStationCallsign();
       if (savedCB) {
@@ -587,7 +606,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setCountry('');
     setGrid('');
     setNotes('');
-    setSelectedLLOTAReference(null);
+    // La referencia seleccionada permanece activa para el siguiente QSO.
     setLLOTAsearch('');
 
     // Asegurar que el teclado siga cerrado después de que React monte el editor.
@@ -872,7 +891,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
             </div>}
             {!llotaLoading && !llotaLoadError && llotaSearch.trim().length >= 2 && filteredLLOTAReferences.length === 0 && <p className="text-xs text-slate-400">No hay coincidencias en el catálogo oficial. Revisá el código o consultá la página de LLOTA.</p>}
           </>}
-          <p className="text-[11px] text-slate-500">La referencia se aplica solo a este QSO. Si no seleccionás ninguna, el registro y la eQSL no incluirán datos de actividad.</p>
+          <p className="text-[11px] text-slate-500">La referencia queda seleccionada para los próximos QSO, incluso al cambiar de banda o salir de la app. Cada contacto guarda una copia propia. Usá «Quitar» para desactivarla cuando quieras cargar contactos sin referencia.</p>
         </section>}
         {/* Los datos adicionales se ocultan durante el concurso: quedan los datos esenciales y los dos intercambios. */}
         {!contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
