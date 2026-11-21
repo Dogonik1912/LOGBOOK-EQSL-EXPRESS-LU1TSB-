@@ -4,6 +4,7 @@ import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { capitalPointForCountry, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
+import { openUserProfile } from './UserPublicProfile';
 
 type Point = { lat: number; lon: number };
 type Place = { name: string; lat: number; lon: number; type?: string };
@@ -66,6 +67,86 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place; originLabel: st
     <div ref={element} className="h-[52dvh] min-h-[280px] w-full bg-slate-800" />
     <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Distancia en línea recta entre ambas ubicaciones. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
+  </div>;
+};
+
+
+type RegisteredStation = { callsign: string; grid_locator: string; lat: number; lon: number };
+const RegisteredGridStations: React.FC<{ origin: Point | null }> = ({ origin }) => {
+  const mapElement = useRef<HTMLDivElement>(null);
+  const [stations, setStations] = useState<RegisteredStation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true); setError('');
+      try {
+        const token = localStorage.getItem('community_chat_identity_token') || '';
+        if (!token) throw new Error('Validá tu SD o indicativo para consultar las estaciones registradas.');
+        const response = await fetch('/api/directory?action=grid-map', {
+          headers: { 'x-identity-token': token }, cache: 'no-store'
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'No se pudo consultar el directorio de estaciones.');
+        const unique = new Map<string, RegisteredStation>();
+        for (const row of Array.isArray(payload?.stations) ? payload.stations : []) {
+          const callsign = String(row?.callsign || '').trim().toUpperCase();
+          const grid = String(row?.grid_locator || '').trim().toUpperCase();
+          const point = isValidMaidenheadLocator(grid) ? maidenheadToPoint(grid) : null;
+          if (callsign && point) unique.set(callsign, { callsign, grid_locator: grid, lat: point.lat, lon: point.lon });
+        }
+        if (active) setStations([...unique.values()].sort((a,b) => a.callsign.localeCompare(b.callsign)));
+      } catch (reason) {
+        if (active) setError(reason instanceof Error ? reason.message : 'No se pudieron cargar las estaciones.');
+      } finally { if (active) setLoading(false); }
+    };
+    void load();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!mapElement.current || !stations.length) return;
+    let map: any, cancelled = false;
+    void loadLeaflet().then(L => {
+      if (cancelled || !mapElement.current) return;
+      map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+      const bounds: [number, number][] = [];
+      for (const station of stations) {
+        const coords: [number, number] = [station.lat, station.lon];
+        bounds.push(coords);
+        L.marker(coords).addTo(map)
+          .bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br><button type="button" class="grid-station-profile">Ver perfil</button>')
+          .on('click', () => openUserProfile(station.callsign));
+      }
+      if (origin) {
+        const originCoords: [number, number] = [origin.lat, origin.lon];
+        bounds.push(originCoords);
+        L.marker(originCoords).addTo(map).bindPopup('Tu estación (origen)');
+        if (bounds.length > 1) map.fitBounds(L.latLngBounds(bounds), { padding: [35,35], maxZoom: 8 });
+        else map.setView(originCoords, 6);
+      } else if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [35,35], maxZoom: 8 });
+      window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 120);
+    }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
+    return () => { cancelled = true; if (map) map.remove(); };
+  }, [stations, origin?.lat, origin?.lon]);
+
+  return <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div><h3 className="font-bold text-cyan-200">Estaciones registradas con Grid Locator</h3><p className="text-xs text-slate-400">Tocá una SD o indicativo para abrir su perfil público.</p></div>
+      {!loading && !error && <strong className="text-sm text-cyan-300">{stations.length} estaciones</strong>}
+    </div>
+    {loading ? <p className="text-sm text-slate-300">Buscando estaciones registradas…</p> : error ? <p className="text-sm text-amber-300">{error}</p> : stations.length === 0 ? <p className="text-sm text-slate-400">Todavía no hay estaciones con Grid Locator válido.</p> : <>
+      <div ref={mapElement} className="mb-3 h-[38dvh] min-h-[230px] w-full overflow-hidden rounded-lg bg-slate-800" />
+      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+        {stations.map(station => <button key={station.callsign} type="button" onClick={() => openUserProfile(station.callsign)} className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-left hover:border-cyan-500/60 hover:bg-slate-900">
+          <span className="min-w-0"><strong className="block truncate font-mono text-sm">{station.callsign}</strong><span className="text-xs text-slate-400">Grid: {station.grid_locator}</span></span>
+          <span className="shrink-0 text-xs font-bold text-cyan-300">Ver perfil</span>
+        </button>)}
+      </div>
+    </>}
   </div>;
 };
 
@@ -157,6 +238,7 @@ export const DistanceCalculator: React.FC = () => {
         {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
         {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
         {origin && selected && <DistanceMap origin={origin} destination={selected} originLabel={originLabel} />}
+        <RegisteredGridStations origin={origin} />
       </section>
     </div>}
   </>;
