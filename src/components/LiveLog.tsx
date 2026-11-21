@@ -26,10 +26,12 @@ import {
 } from 'lucide-react';
 
 interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
+interface LLOTAActivityLog { id: string; name: string; reference: string; activityType: string; startedAt: string; finishedAt: string; qsos: QSO[]; }
 
 interface LiveLogProps {
   qsos: QSO[];
   contestLogs: ContestLogRecord[];
+  llotaLogs: LLOTAActivityLog[];
   onUpdateQSO: (qso: QSO) => void;
   onDeleteQSO: (id: string) => void;
   onDeleteQSOs?: (ids: string[]) => void;
@@ -41,6 +43,7 @@ interface LiveLogProps {
 export const LiveLog: React.FC<LiveLogProps> = ({
   qsos,
   contestLogs,
+  llotaLogs,
   onUpdateQSO,
   onDeleteQSO,
   onDeleteQSOs,
@@ -55,16 +58,16 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const [filterBand, setFilterBand] = useState('ALL');
   const [filterMode, setFilterMode] = useState('ALL');
   const [selectedContestLogName, setSelectedContestLogName] = useState('');
+  const [selectedLLOTAId, setSelectedLLOTAId] = useState('');
+  const selectedLLOTALog = llotaLogs.find(log => log.id === selectedLLOTAId);
   const [importCabrilloInputKey, setImportCabrilloInputKey] = useState(0);
   const isCitizenBand = (q: QSO) => /^(11 metros|11m|27 ?mhz)$/i.test(String(q.band || '').trim()) || (() => { const f = Number(String(q.frequency || '').replace(',', '.')); return Number.isFinite(f) && f >= 26.965 && f <= 27.999; })();
   const hamQSOs = qsos.filter((q) => !isCitizenBand(q));
   const cbQSOs = qsos.filter(isCitizenBand);
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
   const selectedContestLog = contestLogs.find((log) => log.name.trim().toLocaleLowerCase() === selectedContestLogName.trim().toLocaleLowerCase());
-  const exportQSOs = selectedContestLog
-    ? (selectedContestLog.qsos?.length
-        ? selectedContestLog.qsos
-        : qsos.filter((q) => q.contestLogId === selectedContestLog.id || q.contestLogName === selectedContestLog.name))
+  const exportQSOs = selectedLLOTALog ? selectedLLOTALog.qsos : selectedContestLog
+    ? (selectedContestLog.qsos?.length ? selectedContestLog.qsos : qsos.filter((q) => q.contestLogId === selectedContestLog.id || q.contestLogName === selectedContestLog.name))
     : categoryQSOs;
   const visibleQSOs = categoryQSOs.filter((q) => {
     const term = searchTerm.trim().toLowerCase();
@@ -466,7 +469,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-wide">
-                {activeLog === 'ham' ? 'Radioafición' : '11 metros'} ({categoryQSOs.length} QSO)
+                {activeLog === 'ham' ? 'Radioafición' : '11m'} ({categoryQSOs.length} QSO)
               </h2>
               <p className="text-xs text-slate-400">
 </p>
@@ -479,7 +482,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             Radioafición <span className="ml-1 rounded-md bg-black/15 px-2 py-0.5">{hamQSOs.length}</span>
           </button>
           <button type="button" role="tab" aria-selected={activeLog === 'cb'} onClick={() => { setActiveLog('cb'); setFilterBand('ALL'); }} className={`flex-1 rounded-xl border px-3 py-3 text-sm font-bold transition-colors ${activeLog === 'cb' ? 'border-emerald-400 bg-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-950 text-slate-300'}`}>
-            11 metros <span className="ml-1 rounded-md bg-black/15 px-2 py-0.5">{cbQSOs.length}</span>
+            11m <span className="ml-1 rounded-md bg-black/15 px-2 py-0.5">{cbQSOs.length}</span>
           </button>
         </div>
 
@@ -523,16 +526,18 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             ))}
           </select>
 
+          <div className="flex flex-col gap-1 min-w-[220px]"><label className="text-[11px] text-teal-300">Archivo independiente LLOTA</label><select value={selectedLLOTAId} onChange={e => { setSelectedLLOTAId(e.target.value); setSelectedContestLogName(''); }} className="rounded-lg border border-teal-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-teal-100"><option value="">Seleccionar log LLOTA…</option>{llotaLogs.map(log => <option key={log.id} value={log.id}>{log.name} · {log.reference} · {log.finishedAt.slice(0,10)}</option>)}</select></div>
           <input
             type="text"
             value={selectedContestLogName}
-            onChange={(e) => setSelectedContestLogName(e.target.value)}
+            onChange={(e) => { setSelectedContestLogName(e.target.value); setSelectedLLOTAId(''); }}
             placeholder="Nombre del concurso (opcional)"
             aria-label="Escribir nombre del concurso libremente"
             className="min-w-0 max-w-full rounded-lg border border-amber-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200 placeholder:text-slate-500"
           />
-          {selectedContestLog && <span className="text-xs text-amber-300">Exportando el registro guardado «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
-          {!selectedContestLog && <span className="text-xs text-slate-400">Exportación: registro completo por categoría.</span>}
+          {selectedLLOTALog && <span className="text-xs text-teal-300">Exportando actividad LLOTA «{selectedLLOTALog.name} · {selectedLLOTALog.reference}» ({exportQSOs.length} QSO).</span>}
+          {selectedContestLog && !selectedLLOTALog && <span className="text-xs text-amber-300">Exportando el registro guardado «{selectedContestLog.name}» ({exportQSOs.length} QSO). Verifica las reglas oficiales del concurso antes de enviar el Cabrillo.</span>}
+          {!selectedContestLog && !selectedLLOTALog && <span className="text-xs text-slate-400">Exportación: registro completo por categoría.</span>}
 
           <button type="button" onClick={handleExportExcel} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar Excel (.xls)</button>
           <button type="button" onClick={handleExportCSV} disabled={!exportQSOs.length} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Descargar CSV</button>
