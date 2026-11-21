@@ -1,0 +1,151 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Calculator, Search, MapPin, X, Loader2 } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
+import { getUserCallsign } from '../services/qrzService';
+import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
+import { maidenheadToPoint } from '../services/dxDistance';
+
+type Point = { lat: number; lon: number };
+type Place = { name: string; lat: number; lon: number; type?: string };
+const loadLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
+  const w = window as any;
+  if (w.L) { resolve(w.L); return; }
+  if (!document.querySelector('link[data-distance-leaflet]')) {
+    const link = document.createElement('link'); link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.dataset.distanceLeaflet = 'true'; document.head.appendChild(link);
+  }
+  const existing = document.querySelector('script[data-distance-leaflet]') as HTMLScriptElement | null;
+  if (existing) {
+    existing.addEventListener('load', () => resolve((window as any).L), { once: true });
+    existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa.')), { once: true });
+    if (w.L) resolve(w.L); return;
+  }
+  const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  script.async = true; script.dataset.distanceLeaflet = 'true';
+  script.onload = () => w.L ? resolve(w.L) : reject(new Error('Leaflet no disponible.'));
+  script.onerror = () => reject(new Error('No se pudo cargar el mapa.')); document.head.appendChild(script);
+});
+async function searchPlaces(query: string): Promise<Place[]> {
+  const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'es' });
+  const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error('El buscador geográfico no está disponible. Intentá nuevamente.');
+  const rows = await response.json();
+  return (Array.isArray(rows) ? rows : []).map((row: any) => ({
+    name: String(row.display_name || '').split(',').slice(0, 4).join(', '),
+    lat: Number(row.lat), lon: Number(row.lon), type: String(row.type || ''),
+  })).filter((p: Place) => p.name && Number.isFinite(p.lat) && Number.isFinite(p.lon));
+}
+function distanceKm(a: Point, b: Point) {
+  const rad = (v: number) => v * Math.PI / 180;
+  const dLat = rad(b.lat-a.lat), dLon = rad(b.lon-a.lon);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+  return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+const DistanceMap: React.FC<{ origin: Point; destination: Place; originLabel: string }> = ({ origin, destination, originLabel }) => {
+  const element = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    if (!element.current) return;
+    let map: any, cancelled = false;
+    void loadLeaflet().then(L => {
+      if (cancelled || !element.current) return;
+      map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      const a: [number, number] = [origin.lat, origin.lon], b: [number, number] = [destination.lat, destination.lon];
+      L.marker(a).addTo(map).bindPopup('Origen: ' + originLabel);
+      L.marker(b).addTo(map).bindPopup('Destino: ' + destination.name);
+      L.polyline([a, b], { color: '#0891b2', weight: 4, opacity: 0.9 }).addTo(map);
+      map.fitBounds(L.latLngBounds([a, b]), { padding: [40, 40], maxZoom: 10 });
+      window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
+    }).catch(e => setError(e instanceof Error ? e.message : 'No se pudo abrir el mapa.'));
+    return () => { cancelled = true; if (map) map.remove(); };
+  }, [origin.lat, origin.lon, destination.lat, destination.lon, destination.name, originLabel]);
+  const km = distanceKm(origin, destination);
+  return <div className="mt-3 overflow-hidden rounded-xl border border-slate-600">
+    <div className="flex flex-wrap gap-x-5 gap-y-1 bg-slate-800 px-3 py-3 text-sm text-white"><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span></div>
+    <div ref={element} className="h-[52dvh] min-h-[280px] w-full bg-slate-800" />
+    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Distancia en línea recta entre ambas ubicaciones. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>
+    {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
+  </div>;
+};
+
+export const DistanceCalculator: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [origin, setOrigin] = useState<Point | null>(null);
+  const [originLabel, setOriginLabel] = useState('');
+  const [originLoading, setOriginLoading] = useState(false);
+  const [originError, setOriginError] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Place[]>([]);
+  const [selected, setSelected] = useState<Place | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  useEffect(() => {
+    if (!open || origin || originLoading) return;
+    let active = true;
+    const loadOrigin = async () => {
+      setOriginLoading(true); setOriginError('');
+      try {
+        const callsign = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || getUserCallsign() || localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
+        const is11m = is11MeterStationIdentifier(callsign);
+        const country = countryForCallsign(callsign, undefined, is11m);
+        let grid = '';
+        if (callsign && supabase) {
+          const { data, error } = await supabase.from('live_spot_grid_locators').select('grid_locator').eq('callsign', callsign).maybeSingle();
+          if (!error) grid = String(data?.grid_locator || '').trim().toUpperCase();
+        }
+        const gridPoint = maidenheadToPoint(grid);
+        if (gridPoint) {
+          if (active) { setOrigin(gridPoint); setOriginLabel('Tu estación · ' + grid); }
+          return;
+        }
+        if (!country) throw new Error('No se pudo identificar tu país. Revisá el indicativo o la configuración del perfil.');
+        const places = await searchPlaces('capital of ' + country);
+        if (!places.length) throw new Error('No se encontró la capital de ' + country + '. Podés volver a intentarlo.');
+        if (active) {
+          setOrigin({ lat: places[0].lat, lon: places[0].lon });
+          setOriginLabel('Capital de ' + country + ' · ' + places[0].name);
+        }
+      } catch (e) {
+        if (active) setOriginError(e instanceof Error ? e.message : 'No se pudo determinar tu ubicación inicial.');
+      } finally { if (active) setOriginLoading(false); }
+    };
+    void loadOrigin();
+    return () => { active = false; };
+  }, [open, origin, originLoading]);
+
+  const runSearch = async () => {
+    const term = query.trim();
+    if (term.length < 2) { setSearchError('Escribí al menos dos caracteres para buscar un lugar.'); return; }
+    setSearching(true); setSearchError(''); setSelected(null);
+    try {
+      const found = await searchPlaces(term);
+      setResults(found);
+      if (!found.length) setSearchError('No se encontraron lugares. Probá con ciudad y país.');
+    } catch (e) { setSearchError(e instanceof Error ? e.message : 'No se pudo realizar la búsqueda.'); }
+    finally { setSearching(false); }
+  };
+
+  return <>
+    <section className="mb-5 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
+      <button type="button" onClick={() => setOpen(true)} className="flex min-h-[56px] w-full min-w-0 items-center gap-2 bg-slate-900 px-3 py-2.5 text-left text-white hover:bg-slate-800/80">
+        <Calculator className="h-5 w-5 shrink-0 text-cyan-300" />
+        <span className="text-sm font-bold sm:text-base">CALCULADOR DE DISTANCIA</span>
+      </button>
+    </section>
+    {open && <div className="fixed inset-0 z-[11020] flex items-center justify-center bg-slate-950/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Calculador de distancia" onMouseDown={e => { if (e.target === e.currentTarget) setOpen(false); }}>
+      <section className="flex max-h-[95dvh] w-full max-w-4xl flex-col overflow-y-auto rounded-2xl border border-cyan-500/50 bg-slate-900 p-4 text-white shadow-2xl">
+        <header className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-black">CALCULADOR DE DISTANCIA</h2><p className="text-xs text-slate-400">Medición en línea recta entre dos lugares del mundo.</p></div><button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar"><X className="h-5 w-5" /></button></header>
+        <div className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm"><p className="mb-1 font-bold text-cyan-200">Tu ubicación de origen</p>{originLoading ? <span className="flex items-center gap-2 text-slate-300"><Loader2 className="h-4 w-4 animate-spin" />Localizando tu Grid Locator o la capital de tu país…</span> : origin ? <><p>{originLabel}</p><p className="mt-1 text-[11px] text-slate-400">Si tenés un Grid Locator guardado se utiliza el centro de esa cuadrícula; de lo contrario se usa la capital de tu país.</p></> : <p className="text-amber-300">{originError || 'No se pudo determinar la ubicación de origen.'}</p>}</div>
+        <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={e => { e.preventDefault(); void runSearch(); }}>
+          <label className="sr-only" htmlFor="distance-place-search">Lugar de destino</label><input id="distance-place-search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Escribí una ciudad, localidad o lugar del mundo…" className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-3 text-sm text-white placeholder:text-slate-500" />
+          <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Buscar lugar</button>
+        </form>
+        {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
+        {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
+        {origin && selected && <DistanceMap origin={origin} destination={selected} originLabel={originLabel} />}
+      </section>
+    </div>}
+  </>;
+};
