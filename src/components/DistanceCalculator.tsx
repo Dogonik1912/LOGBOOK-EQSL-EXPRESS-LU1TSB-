@@ -142,7 +142,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       // Pane de ruta con prioridad visual explícita sobre teselas y marcadores.
       const routePane = map.createPane('distanceRoutePane');
-      routePane.style.zIndex = '1000';
+      routePane.style.zIndex = '650';
       routePane.style.pointerEvents = 'none';
       routePane.style.overflow = 'visible';
       L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
@@ -184,7 +184,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     }
     markerRef.current = null;
     if (lineRef.current) {
-      lineRef.current.remove();
+      const previous = lineRef.current;
+      if (previous.group && map.hasLayer(previous.group)) map.removeLayer(previous.group);
+      if (previous.renderer && map.hasLayer(previous.renderer)) map.removeLayer(previous.renderer);
       lineRef.current = null;
     }
     if (!destination || !element.current) return;
@@ -195,49 +197,37 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       { padding: [48, 48], maxZoom: 8, animate: false }
     );
 
-    const svgNs = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNs, 'svg');
-    svg.setAttribute('aria-hidden', 'true');
-    svg.style.position = 'absolute';
-    svg.style.inset = '0';
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    svg.style.overflow = 'visible';
-    svg.style.pointerEvents = 'none';
-    svg.style.zIndex = '10000';
-
-    const outline = document.createElementNS(svgNs, 'line');
-    const yellow = document.createElementNS(svgNs, 'line');
-    for (const line of [outline, yellow]) {
-      line.setAttribute('stroke-linecap', 'round');
-      line.setAttribute('stroke-linejoin', 'round');
-      line.setAttribute('vector-effect', 'non-scaling-stroke');
-    }
-    outline.setAttribute('stroke', '#111827');
-    outline.setAttribute('stroke-width', '13');
-    yellow.setAttribute('stroke', '#ffea00');
-    yellow.setAttribute('stroke-width', '7');
-    svg.appendChild(outline);
-    svg.appendChild(yellow);
-    element.current.appendChild(svg);
-    lineRef.current = svg;
-
-    const redraw = () => {
-      if (!element.current || !svg.isConnected) return;
-      const a = map.latLngToContainerPoint([origin.lat, origin.lon]);
-      const b = map.latLngToContainerPoint([destination.lat, destination.lon]);
-      for (const line of [outline, yellow]) {
-        line.setAttribute('x1', String(a.x));
-        line.setAttribute('y1', String(a.y));
-        line.setAttribute('x2', String(b.x));
-        line.setAttribute('y2', String(b.y));
-      }
-    };
-    map.on('move zoom resize viewreset', redraw);
-    window.requestAnimationFrame(() => {
-      map.invalidateSize({ pan: false });
-      redraw();
-    });
+    // Dibujar ambas trazas como vectores SVG nativos de Leaflet dentro del
+    // pane superior. Así Leaflet mantiene la geometría alineada al mapa
+    // durante zoom, desplazamiento, resize y selección desde móviles.
+    const routeRenderer = L.svg({ pane: 'distanceRoutePane' }).addTo(map);
+    const routeGroup = L.layerGroup().addTo(map);
+    const routePoints: [number, number][] = [
+      [origin.lat, origin.lon],
+      [destination.lat, destination.lon],
+    ];
+    L.polyline(routePoints, {
+      pane: 'distanceRoutePane',
+      renderer: routeRenderer,
+      color: '#111827',
+      weight: 14,
+      opacity: 1,
+      lineCap: 'round',
+      lineJoin: 'round',
+      interactive: false,
+    }).addTo(routeGroup);
+    L.polyline(routePoints, {
+      pane: 'distanceRoutePane',
+      renderer: routeRenderer,
+      color: '#ffea00',
+      weight: 8,
+      opacity: 1,
+      lineCap: 'round',
+      lineJoin: 'round',
+      interactive: false,
+    }).addTo(routeGroup);
+    routeGroup.eachLayer((layer: any) => layer.bringToFront?.());
+    lineRef.current = { group: routeGroup, renderer: routeRenderer };
 
     const markerGroup = L.layerGroup().addTo(map);
     const marker = L.marker([destination.lat, destination.lon], { draggable: true })
@@ -249,9 +239,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     markerRef.current = markerGroup;
 
     return () => {
-      map.off('move zoom resize viewreset', redraw);
-      if (lineRef.current === svg) lineRef.current = null;
-      svg.remove();
+      if (lineRef.current?.group === routeGroup) lineRef.current = null;
+      if (map.hasLayer(routeGroup)) map.removeLayer(routeGroup);
+      if (map.hasLayer(routeRenderer)) map.removeLayer(routeRenderer);
       if (map.hasLayer(markerGroup)) map.removeLayer(markerGroup);
       if (markerRef.current === markerGroup) markerRef.current = null;
     };
