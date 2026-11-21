@@ -141,10 +141,6 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       leafletRef.current = L;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       // Pane de ruta con prioridad visual explícita sobre teselas y marcadores.
-      const routePane = map.createPane('distanceRoutePane');
-      routePane.style.zIndex = '650';
-      routePane.style.pointerEvents = 'none';
-      routePane.style.overflow = 'visible';
       L.marker([origin.lat, origin.lon]).addTo(map).bindPopup('Origen: ' + originLabel);
       map.setView([20, 0], 2);
       // Capturar el click nativo del contenedor además del sistema de eventos
@@ -184,9 +180,8 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     }
     markerRef.current = null;
     if (lineRef.current) {
-      const previous = lineRef.current;
-      if (previous.group && map.hasLayer(previous.group)) map.removeLayer(previous.group);
-      if (previous.renderer && map.hasLayer(previous.renderer)) map.removeLayer(previous.renderer);
+      const previous = Array.isArray(lineRef.current) ? lineRef.current : [lineRef.current];
+      previous.forEach((layer: any) => { if (layer && map.hasLayer(layer)) map.removeLayer(layer); });
       lineRef.current = null;
     }
     if (!destination || !element.current) return;
@@ -197,53 +192,47 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       { padding: [48, 48], maxZoom: 8, animate: false }
     );
 
-    // Dibujar ambas trazas como vectores SVG nativos de Leaflet dentro del
-    // pane superior. Así Leaflet mantiene la geometría alineada al mapa
-    // durante zoom, desplazamiento, resize y selección desde móviles.
-    const routeRenderer = L.svg({ pane: 'distanceRoutePane' }).addTo(map);
-    const routeGroup = L.layerGroup().addTo(map);
+    // Usar directamente el renderer SVG estándar de Leaflet (overlayPane).
+    // Evita panes/renderers personalizados y garantiza que la ruta se dibuje
+    // sobre las teselas, actualizándose automáticamente con el mapa.
     const routePoints: [number, number][] = [
       [origin.lat, origin.lon],
       [destination.lat, destination.lon],
     ];
-    L.polyline(routePoints, {
-      pane: 'distanceRoutePane',
-      renderer: routeRenderer,
-      color: '#111827',
-      weight: 14,
+    const outline = L.polyline(routePoints, {
+      color: '#111111',
+      weight: 16,
       opacity: 1,
       lineCap: 'round',
       lineJoin: 'round',
       interactive: false,
-    }).addTo(routeGroup);
-    L.polyline(routePoints, {
-      pane: 'distanceRoutePane',
-      renderer: routeRenderer,
-      color: '#ffea00',
-      weight: 8,
+    }).addTo(map);
+    const yellow = L.polyline(routePoints, {
+      color: '#fff000',
+      weight: 9,
       opacity: 1,
       lineCap: 'round',
       lineJoin: 'round',
       interactive: false,
-    }).addTo(routeGroup);
-    routeGroup.eachLayer((layer: any) => layer.bringToFront?.());
-    lineRef.current = { group: routeGroup, renderer: routeRenderer };
+    }).addTo(map);
+    outline.bringToFront();
+    yellow.bringToFront();
+    lineRef.current = [outline, yellow];
 
-    const markerGroup = L.layerGroup().addTo(map);
     const marker = L.marker([destination.lat, destination.lon], { draggable: true })
-      .addTo(markerGroup).bindPopup('Destino: ' + destination.name);
+      .addTo(map).bindPopup('Destino: ' + destination.name);
     marker.on('dragend', () => {
       const point = marker.getLatLng();
       changeRef.current({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lng });
     });
-    markerRef.current = markerGroup;
+    markerRef.current = marker;
 
     return () => {
-      if (lineRef.current?.group === routeGroup) lineRef.current = null;
-      if (map.hasLayer(routeGroup)) map.removeLayer(routeGroup);
-      if (map.hasLayer(routeRenderer)) map.removeLayer(routeRenderer);
-      if (map.hasLayer(markerGroup)) map.removeLayer(markerGroup);
-      if (markerRef.current === markerGroup) markerRef.current = null;
+      if (lineRef.current?.[0] === outline) lineRef.current = null;
+      if (map.hasLayer(outline)) map.removeLayer(outline);
+      if (map.hasLayer(yellow)) map.removeLayer(yellow);
+      if (map.hasLayer(marker)) map.removeLayer(marker);
+      if (markerRef.current === marker) markerRef.current = null;
     };
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
