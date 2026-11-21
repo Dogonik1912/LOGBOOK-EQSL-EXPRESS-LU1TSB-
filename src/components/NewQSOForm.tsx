@@ -663,17 +663,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           <RefreshCw className="w-3.5 h-3.5" /> Hora UTC actual
         </button>
       </div>
-      <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3">
-        <label className="flex items-center gap-2 text-sm font-semibold text-white">
-          <input type="checkbox" checked={contestMode || contestSetupOpen} onChange={(e) => {
-            // Una vez activo, tocar la casilla no puede desactivar el concurso
-            // ni abrir un diálogo que facilite perder el log por accidente.
-            if (contestMode) return;
-            if (e.target.checked) setContestSetupOpen(true);
-            else setContestSetupOpen(false);
-          }} className="h-4 w-4 accent-amber-500" />
-          Activar modo concurso
-        </label>
+      <details className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3" open={contestSetupOpen || contestMode} onToggle={(e) => { if (!contestMode) setContestSetupOpen((e.currentTarget as HTMLDetailsElement).open); }}>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-white">Concurso {contestMode ? `· Activo: ${contestLogName}` : '· Configurar log'}</summary>
         {contestSetupOpen && !contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-slate-800 p-3">
           <div>
             <label className="block text-xs text-slate-300 mb-1">Nombre del log</label>
@@ -699,8 +690,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           <p className="text-xs text-amber-300">Concurso activo: {contestLogName}. Los próximos QSO se vincularán a este log.</p>
           <button type="button" onClick={finishContest} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-bold text-white">Finalizar concurso y guardar log</button>
         </div>}
-        {!contestMode && !contestSetupOpen && <p className="text-xs text-slate-400">Activa el modo para configurar el nombre y la plantilla del log de concurso.</p>}
-      </div>
+        {!contestMode && !contestSetupOpen && <p className="text-xs text-slate-400">Abrí este apartado para configurar el log de concurso.</p>}
+      </details>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Banda rápida selector */}
         <div className="flex flex-wrap items-center gap-1.5 pb-1">
@@ -716,7 +707,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
                   : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
             >
-              {b.name === '11 metros' ? '11' : b.name}
+              {b.name === '11 metros' ? '11m' : b.name}
             </button>
           ))}
         </div>
@@ -865,9 +856,10 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           </div>
         </div>
 
-        {band !== '11 metros' && <section className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3 space-y-2">
+        {band !== '11 metros' && <details className="rounded-xl border border-teal-500/30 bg-teal-950/20 p-3 space-y-2" open={Boolean(selectedLLOTAReference)}>
+        <summary className="cursor-pointer list-none text-xs font-bold uppercase tracking-wider text-teal-200">Actividad LLOTA {selectedLLOTAReference ? `· ${selectedLLOTAReference.code}` : '· Opcional'}</summary>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-teal-200">Actividad LLOTA (opcional)</label>
+            <span className="text-xs text-teal-200">Seleccioná una referencia oficial para iniciar la actividad.</span>
             <a href="https://llota.app/referencias.html" target="_blank" rel="noreferrer" className="text-[11px] text-teal-300 underline">Catálogo oficial</a>
           </div>
           {selectedLLOTAReference ? (
@@ -892,7 +884,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
             {!llotaLoading && !llotaLoadError && llotaSearch.trim().length >= 2 && filteredLLOTAReferences.length === 0 && <p className="text-xs text-slate-400">No hay coincidencias en el catálogo oficial. Revisá el código o consultá la página de LLOTA.</p>}
           </>}
           <p className="text-[11px] text-slate-500">La referencia queda seleccionada para los próximos QSO, incluso al cambiar de banda o salir de la app. Cada contacto guarda una copia propia. Usá «Quitar» para desactivarla cuando quieras cargar contactos sin referencia.</p>
-        </section>}
+        </details>}
         {/* Los datos adicionales se ocultan durante el concurso: quedan los datos esenciales y los dos intercambios. */}
         {!contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           <div>
