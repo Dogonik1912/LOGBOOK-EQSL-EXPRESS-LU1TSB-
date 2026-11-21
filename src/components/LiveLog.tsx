@@ -313,12 +313,12 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const handleExportCSV = () => {
     if (!exportQSOs.length) return;
     const hasLLOTA = exportQSOs.some((q) => Boolean(q.llotaReference));
-    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas', ...(hasLLOTA ? ['Programa', 'Referencia LLOTA'] : [])];
+    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas', ...(hasLLOTA ? ['Tipo de actividad', 'Nombre del lugar', 'Referencia LLOTA'] : [])];
     const cell = (value: unknown) => {
       const raw = String(value ?? '');
       return '"' + raw.replace(/"/g, '""') + '"';
     };
-    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent || '59', q.rstRcvd || '59', q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes, ...(hasLLOTA ? [q.llotaReference ? 'LLOTA' : '', q.llotaReference || ''] : [])]);
+    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent || '59', q.rstRcvd || '59', q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes, ...(hasLLOTA ? [q.llotaReference ? 'LLOTA' : '', q.llotaReferenceName || '', q.llotaReference || ''] : [])]);
     const csv = '\\ufeff' + [columns, ...rows].map((row) => row.map(cell).join(',')).join('\\r\\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
