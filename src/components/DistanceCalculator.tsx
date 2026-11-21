@@ -190,7 +190,13 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     return () => {
       cancelled = true;
       if (resizeTimer) window.clearTimeout(resizeTimer);
-      if (map) map.remove();
+      // Leaflet puede haber perdido ya algún nodo SVG al cerrar/actualizar
+      // el modal. No permitir que remove() interrumpa el desmontaje de React.
+      if (map) {
+        try { map.off(); map.remove(); } catch (cleanupError) {
+          console.warn('Leaflet cleanup (distance map):', cleanupError);
+        }
+      }
       if (mapRef.current === map) mapRef.current = null;
     };
   }, [origin.lat, origin.lon, originLabel, destination?.lat, destination?.lon, destination?.name, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
@@ -302,7 +308,14 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
       }
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 120);
     }).catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
-    return () => { cancelled = true; if (map) map.remove(); };
+    return () => {
+      cancelled = true;
+      if (map) {
+        try { map.off(); map.remove(); } catch (cleanupError) {
+          console.warn('Leaflet cleanup (registered stations map):', cleanupError);
+        }
+      }
+    };
   }, [stations, origin?.lat, origin?.lon, destination?.lat, destination?.lon, destination?.name]);
 
   return <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
