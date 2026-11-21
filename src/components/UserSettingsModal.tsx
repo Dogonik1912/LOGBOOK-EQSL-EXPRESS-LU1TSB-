@@ -153,11 +153,11 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       setQraOperator('');
       setQraOperatorSaved(false);
       if (supabase && verifiedOnThisDevice) {
-        void supabase.rpc('community_profile_details', { p_callsigns: [verifiedCallsign] }).then(({ data, error }) => {
+        void supabase.rpc('community_profile_qra_status', { p_callsigns: [verifiedCallsign] }).then(({ data, error }) => {
           if (!error && Array.isArray(data)) {
-            const savedQra = String(data.find((row: any) => String(row.callsign || '').toUpperCase() === verifiedCallsign)?.qra_operator || '').trim();
-            setQraOperator(savedQra);
-            setQraOperatorSaved(Boolean(savedQra));
+            const qraRow = data.find((row: any) => String(row.callsign || '').trim().toUpperCase() === verifiedCallsign);
+            setQraOperator(String(qraRow?.qra_operator || '').trim());
+            setQraOperatorSaved(Boolean(qraRow?.accepted));
           }
         }).catch(() => {});
       }
@@ -434,7 +434,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const handleAcceptQraOperator = async () => {
     const callsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
     const token = localStorage.getItem('community_chat_identity_token') || '';
-    const value = qraOperator.trim().replace(/\\s+/g, ' ');
+    const value = qraOperator.trim().replace(/\s+/g, ' ');
     if (!callsign || !token || !supabase) {
       window.alert('Primero necesitás tener tu SD o indicativo verificado.');
       return;
