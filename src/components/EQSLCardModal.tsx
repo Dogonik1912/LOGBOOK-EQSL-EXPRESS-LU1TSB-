@@ -257,7 +257,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!code || savedName) return;
     const cached = officialLLOTANameRef.current;
     if (cached?.code === code && cached.name) return;
-    const catalogue = await loadLLOTAReferences();
+    const catalogue = await loadLLOTAReferences(true);
     const official = catalogue.find((item) => item.code.toUpperCase() === code);
     const officialName = String(official?.name || '').trim();
     if (!officialName) {
