@@ -174,6 +174,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     marker.on('dragend', () => { const p = marker.getLatLng(); changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng }); });
     markerRef.current = group;
     lineRef.current = L.polyline([[origin.lat, origin.lon], [destination.lat, destination.lon]], { color: '#0891b2', weight: 4, opacity: 0.95 }).addTo(map);
+    // Al elegir un resultado, mostrar simultáneamente origen, destino y recorrido.
+    // Evita que el zoom de la zona buscada deje el origen fuera de pantalla.
+    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]), { padding: [48, 48], maxZoom: 8 });
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
@@ -385,6 +388,16 @@ export const DistanceCalculator: React.FC = () => {
           <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}{searching ? 'Buscando…' : 'Buscar lugar'}</button>
         </form>
         {searching && <p role="status" className="mt-2 text-xs text-cyan-200">Buscando el lugar en el mapa mundial…</p>}{searchError && <p role="alert" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2 text-xs text-amber-200">{searchError}</p>}
+        {selected && origin && <div role="status" className="mt-3 rounded-xl border border-emerald-500/50 bg-emerald-950/40 p-3">
+          <p className="text-sm font-black text-emerald-200">MEDICIÓN CALCULADA</p>
+          <p className="mt-1 text-sm">{originLabel} → {selected.name}</p>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-base font-black">
+            <span>{distanceKm(origin, selected).toLocaleString('es-ES', { maximumFractionDigits: 1 })} km</span>
+            <span>{(distanceKm(origin, selected) / 1.609344).toLocaleString('es-ES', { maximumFractionDigits: 1 })} millas</span>
+            <span>Rumbo {bearingDegrees(origin, selected).toFixed(0)}°</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-300">Grid Locator destino: {pointToMaidenhead(selected).toUpperCase()} · {selected.lat.toFixed(5)}, {selected.lon.toFixed(5)}</p>
+        </div>}
         {results.length > 0 && <div className="mt-2 rounded-lg border border-cyan-500/40 bg-slate-950 p-2">
           <p className="px-2 pb-2 text-xs font-bold text-cyan-200">{results.length} coincidencias encontradas. Elegí el lugar correcto:</p>
           <div className="max-h-52 space-y-1 overflow-y-auto">{results.map((place, index) => <button type="button" key={place.name + place.lat + place.lon + index} onClick={() => { setMapFocus(place); setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-2 text-left text-sm hover:border-cyan-500/50 hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span className="min-w-0"><strong className="block">{place.name}</strong><span className="text-[11px] text-slate-400">{place.lat.toFixed(4)}, {place.lon.toFixed(4)}</span></span></button>)}</div>
