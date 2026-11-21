@@ -153,6 +153,24 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     let active = true;
     const initialize = async () => {
+      // Fast path: a device already validated keeps its local session and opens
+      // immediately. Server restriction checks continue asynchronously below
+      // through the ready/callsign effect; do not repeat registration on launch.
+      try {
+        const fastCall = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+        const fastToken = (localStorage.getItem('community_chat_identity_token') || '').trim();
+        const alreadyValidated = localStorage.getItem('logbook_sd_validated') === '1';
+        if (alreadyValidated && fastCall && fastToken) {
+          if (active) {
+            setCallsign(fastCall);
+            setReady(true);
+          }
+          return;
+        }
+      } catch (storageError) {
+        console.warn('No se pudo leer la sesión rápida; se intentará recuperar la identidad guardada:', storageError);
+      }
+
       const savedIdentity = await loadSavedIdentity();
       const savedCall = savedIdentity.callsign;
       let token = savedIdentity.token;
@@ -406,7 +424,19 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
-  if (!ready) return null;
+  if (!ready) return (
+    <main className="fixed inset-0 z-[10010] flex min-h-[100dvh] items-center justify-center bg-slate-950 px-5 py-8 text-white" role="status" aria-live="polite">
+      <section className="w-full max-w-sm text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-400/50 bg-sky-500/10 text-3xl font-black text-sky-300">eQSL</div>
+        <h1 className="text-xl font-black tracking-wide">LogBook eQSL EXPRESS</h1>
+        <p className="mt-3 text-sm text-slate-300">Preparando tu ingreso…</p>
+        <div className="mx-auto mt-5 h-1.5 w-40 overflow-hidden rounded-full bg-slate-700">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-sky-400" />
+        </div>
+        <p className="mt-4 text-xs text-slate-400">Tus contactos guardados están protegidos.</p>
+      </section>
+    </main>
+  );
   if (blocked) return (
     <div className="fixed inset-0 z-[10003] flex items-center justify-center bg-slate-950 p-4" role="alertdialog" aria-modal="true" aria-labelledby="blocked-access-title">
       <section className="w-full max-w-md rounded-2xl border border-red-400 bg-slate-900 p-6 text-white shadow-2xl">
