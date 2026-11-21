@@ -4,7 +4,7 @@ import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
-import { capitalPointForCountry, countryUsesMiles, distanceForSpot, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
+import { capitalPointForCountry, countryUsesMiles, distanceForSpot, maidenheadToPoint } from '../services/dxDistance';
 import { DistanceShareModal } from './DistanceShareModal';
 
 // Los indicativos del feed abren la conversación privada del usuario correspondiente.
@@ -122,8 +122,7 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     const h = Math.sin(dLat/2)**2 + Math.cos(rad(points.first.lat))*Math.cos(rad(points.second.lat))*Math.sin(dLon/2)**2;
     return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
   })() : null;
-  const canShareExactDistance = isValidMaidenheadLocator(firstGrid || '') && isValidMaidenheadLocator(secondGrid || '');
-  const missingGridCallsigns = [!isValidMaidenheadLocator(firstGrid || '') ? spot.callsign : '', !isValidMaidenheadLocator(secondGrid || '') ? spot.station_callsign : ''].filter(Boolean);
+  const usesCapitalEstimate = Boolean(points && (points.firstSource.startsWith('Capital de ') || points.secondSource.startsWith('Capital de ')));
   const currentCallsign = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
   const privateRecipient = currentCallsign === spot.callsign ? spot.station_callsign : spot.callsign;
   useEffect(() => {
@@ -146,10 +145,10 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
     <section ref={shareCaptureRef} className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || firstCountry || 'Capital pendiente'}) ↔ {spot.station_callsign} ({secondGrid || secondCountry || 'Capital pendiente'})</p></div><button type="button" data-share-ignore onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
       <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-700 px-4 py-3 text-sm"><span><strong>{km === null ? 'Calculando…' : km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km'}</strong></span><span><strong>{km === null ? '—' : (km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})+' mi'}</strong></span></div>
-      {points ? <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Ubicación por {points.firstSource} ↔ {points.secondSource}. Línea recta entre ambos puntos. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p></> : <div className="p-6 text-sm text-amber-200">{mapError || 'Buscando el Grid Locator o, si falta, la capital de cada país…'}</div>}
+      {points ? <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Ubicación por {points.firstSource} ↔ {points.secondSource}. Línea recta entre ambos puntos. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>{usesCapitalEstimate && <p className="mx-4 mb-3 rounded-lg border border-amber-500/40 bg-amber-950/50 px-3 py-2 text-xs font-bold text-amber-200">DISTANCIA APROXIMADA: se utilizó la capital del país donde falta el Grid Locator. La ubicación real puede variar.</p>}</> : <div className="p-6 text-sm text-amber-200">{mapError || 'Buscando el Grid Locator o, si falta, la capital de cada país…'}</div>}
       <footer data-share-ignore className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 px-4 py-3">
-        <div className="min-w-0 flex-1">{!canShareExactDistance && <p className="text-[11px] text-amber-300">Para compartir la distancia exacta falta el Grid Locator de: {missingGridCallsigns.join(', ')}. Completalo en Ajustes; no se compartirá una ubicación estimada por capital.</p>}</div>
-        <div className="flex gap-2"><button type="button" disabled={!canShareExactDistance || !points || km === null} onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"><Share2 className="h-4 w-4" />Compartir distancia</button><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></div>
+        <div className="min-w-0 flex-1">{usesCapitalEstimate && <p className="text-[11px] text-amber-300">Se compartirá una distancia aproximada usando la capital para la estación sin Grid Locator. Para mayor precisión, registrá el locator en Ajustes.</p>}</div>
+        <div className="flex gap-2"><button type="button" disabled={!points || km === null} onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"><Share2 className="h-4 w-4" />Compartir distancia</button><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></div>
       </footer>
     </section>
   </div>
