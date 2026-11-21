@@ -22,6 +22,7 @@ import { MorseDecoder } from './components/MorseDecoder';
 import { SDRSmart } from './components/SDRSmart';
 import { PrivateMessages } from './components/PrivateMessages';
 import { LiveSpots, publishQsoSpot } from './components/LiveSpots';
+import { DistanceCalculator } from './components/DistanceCalculator';
 import { startAutomaticUiTranslation } from './services/appLanguage';
 import { getUserCallsign } from './services/qrzService';
 import { InitialSdValidation } from './components/InitialSdValidation';
@@ -405,6 +406,8 @@ function MainApp() {
         <CommunityChat />
 
         <LiveSpots />
+
+        <DistanceCalculator />
 
         <MorseDecoder />
 
