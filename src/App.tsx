@@ -480,6 +480,9 @@ function MainApp() {
               <a href="https://llota.app/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-white/10">
                 Abrir sitio oficial <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
+              <a href="https://chat.whatsapp.com/CsQnKXyA49CD5zeyLsKNEN?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-green-300 transition hover:bg-white/10">
+                Unirse al grupo oficial de WhatsApp <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
               <a href="https://llota.app/referencias.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-white/10">
                 Ver referencias oficiales <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
