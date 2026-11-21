@@ -246,24 +246,14 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
-  // Resolver la actividad para esta eQSL. Los datos guardados en el QSO tienen
-  // prioridad; si un QSO antiguo no los tenía, usar la referencia oficial que el
-  // operador mantiene seleccionada en el Libro de Guardia.
-  const getEffectiveActivityReferences = () => {
-    const references = [
-      { label: 'LLOTA', code: qso?.llotaReference, name: qso?.llotaReferenceName },
-      { label: 'SOTA', code: qso?.sotaReference, name: qso?.sotaReferenceName },
-      { label: 'IOTA', code: qso?.iotaReference, name: qso?.iotaReferenceName },
-    ].filter((item) => Boolean(item.code?.trim()));
-    if (references.length || !qso) return references;
-    try {
-      const saved = JSON.parse(localStorage.getItem('logbook_llota_selected_reference_v1') || 'null');
-      if (saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\d{4,5}$/i.test(saved.code)) {
-        return [{ label: 'LLOTA', code: saved.code.toUpperCase(), name: String(saved.name || '') }];
-      }
-    } catch { /* No bloquear la generación de eQSL por un dato local inválido. */ }
-    return references;
-  };
+  // Cada eQSL refleja exclusivamente la actividad seleccionada y guardada en ESTE QSO.
+  // No recuperar referencias persistidas del dispositivo: un QSO sin referencia es
+  // un contacto normal, sin actividad especial.
+  const getEffectiveActivityReferences = () => [
+    { label: 'LLOTA', code: qso?.llotaReference, name: qso?.llotaReferenceName },
+    { label: 'SOTA', code: qso?.sotaReference, name: qso?.sotaReferenceName },
+    { label: 'IOTA', code: qso?.iotaReference, name: qso?.iotaReferenceName },
+  ].filter((item) => Boolean(item.code?.trim()));
 
   // Dibujar la tarjeta eQSL en el canvas HTML5 con máxima calidad (1200x750)
   const renderCard = (): Promise<void> => new Promise((resolve) => {
