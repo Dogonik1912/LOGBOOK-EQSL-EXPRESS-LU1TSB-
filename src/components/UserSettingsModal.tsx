@@ -809,7 +809,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 <input inputMode="decimal" value={gridLongitude} onChange={(event) => setGridLongitude(event.target.value)} placeholder="-58.381600" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm text-white" />
               </label>
             </div>
-            <button type="button" onClick={() => applyGridCoordinates(Number(gridLatitude.replace(',', '.')), Number(gridLongitude.replace(',', '.')))} className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/50 bg-slate-900 px-3 py-2 text-sm font-bold text-cyan-200 hover:bg-slate-800">
+            <button type="button" onClick={() => { if (!gridLatitude.trim() || !gridLongitude.trim()) { setGridSearchError('Completá latitud y longitud antes de calcular.'); return; } applyGridCoordinates(Number(gridLatitude.replace(',', '.')), Number(gridLongitude.replace(',', '.'))); }} className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/50 bg-slate-900 px-3 py-2 text-sm font-bold text-cyan-200 hover:bg-slate-800">
               <Crosshair size={16} /> CALCULAR GRID DESDE COORDENADAS
             </button>
             <div>
