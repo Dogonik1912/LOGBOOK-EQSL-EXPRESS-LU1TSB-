@@ -468,6 +468,7 @@ function MainApp() {
         <LiveLog
           qsos={qsos}
           contestLogs={contestLogs}
+          llotaLogs={llotaLogs}
           onUpdateQSO={handleUpdateQSO}
           onDeleteQSO={handleDeleteQSO}
           onDeleteQSOs={handleDeleteQSOs}
