@@ -253,8 +253,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // catálogo oficial. Si no se puede confirmar, no enviar una tarjeta incompleta.
   const ensureOfficialLLOTAName = async () => {
     const code = String(qso?.llotaReference || '').trim().toUpperCase();
-    const savedName = String(qso?.llotaReferenceName || '').trim();
-    if (!code || savedName) return;
+    if (!code) return;
     const cached = officialLLOTANameRef.current;
     if (cached?.code === code && cached.name) return;
     const catalogue = await loadLLOTAReferences(true);
@@ -275,7 +274,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const cleanSavedName = String(savedName || '').trim();
       if (!cleanCode) return cleanSavedName;
       const resolved = officialLLOTANameRef.current;
-      if (!cleanSavedName && resolved?.code === cleanCode && resolved.name) return resolved.name;
+      if (resolved?.code === cleanCode && resolved.name) return resolved.name;
       // Si el QSO antiguo guardó el código pero no el nombre, recuperarlo
       // exclusivamente del catálogo oficial LLOTA cacheado por el selector.
       try {
