@@ -49,7 +49,7 @@ function bearingDegrees(a: Point, b: Point) {
   const x = Math.cos(rad(a.lat))*Math.sin(rad(b.lat)) - Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
   return (Math.atan2(y,x) * 180 / Math.PI + 360) % 360;
 }
-const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, originLabel, onDestinationChange }) => {
+const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -71,6 +71,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLa
           updateDestination({ lat: point.lat, lon: point.lng });
         });
         map.fitBounds(L.latLngBounds([a, b]), { padding: [40, 40], maxZoom: 10 });
+      } else if (focusPlace) {
+        const focus: [number, number] = [focusPlace.lat, focusPlace.lon];
+        L.circleMarker(focus, { radius: 7, color: '#facc15', weight: 2, fillColor: '#facc15', fillOpacity: 0.75 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name);
+        map.setView(focus, 12);
       } else {
         map.setView(a, 3);
       }
@@ -78,7 +82,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLa
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
     }).catch(e => setError(e instanceof Error ? e.message : 'No se pudo abrir el mapa.'));
     return () => { cancelled = true; if (map) map.remove(); };
-  }, [origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name, originLabel, onDestinationChange]);
+  }, [origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name, focusPlace?.lat, focusPlace?.lon, focusPlace?.name, originLabel, onDestinationChange]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
   const locator = destination ? pointToMaidenhead(destination) : '';
@@ -194,6 +198,7 @@ export const DistanceCalculator: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
   const [selected, setSelected] = useState<Place | null>(null);
+  const [mapFocus, setMapFocus] = useState<Place | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
 
@@ -253,7 +258,10 @@ export const DistanceCalculator: React.FC = () => {
     try {
       const found = await searchPlaces(term);
       setResults(found);
-      if (!found.length) setSearchError('No se encontraron lugares. Probá con ciudad y país.');
+      if (found.length) {
+        setMapFocus(found[0]);
+        setSelected(null);
+      } else setSearchError('No se encontraron lugares. Probá con ciudad y país.');
     } catch (e) { setSearchError(e instanceof Error ? e.message : 'No se pudo realizar la búsqueda.'); }
     finally { setSearching(false); }
   };
@@ -279,8 +287,8 @@ export const DistanceCalculator: React.FC = () => {
           <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Buscar lugar</button>
         </form>
         {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
-        {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
-        {origin && <DistanceMap origin={origin} destination={selected} originLabel={originLabel} onDestinationChange={setSelected} />}
+        {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setMapFocus(place); setSelected(null); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
+        {origin && <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} />}
         <RegisteredGridStations origin={origin} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
       </section>
     </div>}
