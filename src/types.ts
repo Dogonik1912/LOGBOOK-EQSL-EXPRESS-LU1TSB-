@@ -33,6 +33,10 @@ export interface QSO {
   mapActivityAt?: number; // Marca temporal local para mostrar actividad en el mapamundi durante 30 minutos
   llotaReference?: string; // Referencia LLOTA oficial asociada únicamente a este QSO
   llotaReferenceName?: string; // Nombre del lugar según el catálogo oficial LLOTA
+  sotaReference?: string; // Referencia SOTA asociada únicamente a este QSO
+  sotaReferenceName?: string; // Nombre de la cima SOTA
+  iotaReference?: string; // Referencia IOTA asociada únicamente a este QSO
+  iotaReferenceName?: string; // Nombre del grupo/isla IOTA
 }
 
 export interface UserSettings {
