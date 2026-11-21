@@ -49,7 +49,7 @@ function bearingDegrees(a: Point, b: Point) {
   const x = Math.cos(rad(a.lat))*Math.sin(rad(b.lat)) - Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
   return (Math.atan2(y,x) * 180 / Math.PI + 360) % 360;
 }
-const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLabel: string; onDestinationChange: (place: Place) => void }> = ({ origin, destination, originLabel, onDestinationChange }) => {
+const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -89,7 +89,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; originLa
     <div ref={element} className="h-[52dvh] min-h-[300px] w-full bg-slate-800" />
     {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200">
       <span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span>
-      <button type="button" onClick={() => onDestinationChange({ name: 'Punto seleccionado en el mapa', lat: origin.lat, lon: origin.lon })} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button>
+      <button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button>
     </div>}
     <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Seleccioná cualquier lugar tocando o haciendo clic en el mapa. Podés arrastrar el marcador para ajustar el destino. La distancia se mide en línea recta desde tu estación.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
