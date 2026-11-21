@@ -3,7 +3,7 @@ import { Calculator, Search, MapPin, X, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
-import { maidenheadToPoint } from '../services/dxDistance';
+import { capitalPointForCountry, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 
 type Point = { lat: number; lon: number };
 type Place = { name: string; lat: number; lon: number; type?: string };
@@ -89,23 +89,35 @@ export const DistanceCalculator: React.FC = () => {
       try {
         const callsign = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || getUserCallsign() || localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
         const is11m = is11MeterStationIdentifier(callsign);
-        const country = countryForCallsign(callsign, undefined, is11m);
-        let grid = '';
-        if (callsign && supabase) {
-          const { data, error } = await supabase.from('live_spot_grid_locators').select('grid_locator').eq('callsign', callsign).maybeSingle();
-          if (!error) grid = String(data?.grid_locator || '').trim().toUpperCase();
-        }
-        const gridPoint = maidenheadToPoint(grid);
-        if (gridPoint) {
-          if (active) { setOrigin(gridPoint); setOriginLabel('Tu estación · ' + grid); }
+        const savedCountry = localStorage.getItem('user_country') || localStorage.getItem('cb_station_country') || undefined;
+        const country = countryForCallsign(callsign, savedCountry, is11m);
+        const localGrid = String(localStorage.getItem('user_grid_locator') || '').trim().toUpperCase();
+        const localGridPoint = isValidMaidenheadLocator(localGrid) ? maidenheadToPoint(localGrid) : null;
+        if (localGridPoint) {
+          if (active) { setOrigin(localGridPoint); setOriginLabel('Tu estación · ' + localGrid); }
           return;
         }
-        if (!country) throw new Error('No se pudo identificar tu país. Revisá el indicativo o la configuración del perfil.');
-        const places = await searchPlaces('capital of ' + country);
-        if (!places.length) throw new Error('No se encontró la capital de ' + country + '. Podés volver a intentarlo.');
+
+        // La capital está precargada localmente: no se espera a servicios geográficos externos.
+        const capital = capitalPointForCountry(country);
+        if (!capital) throw new Error(country ? 'No hay una capital configurada para ' + country + '.' : 'No se pudo identificar el país a partir de tu SD o indicativo.');
         if (active) {
-          setOrigin({ lat: places[0].lat, lon: places[0].lon });
-          setOriginLabel('Capital de ' + country + ' · ' + places[0].name);
+          setOrigin(capital);
+          setOriginLabel('Capital de ' + country);
+          setOriginLoading(false);
+        }
+
+        // En otro dispositivo puede existir un Grid guardado en el servidor.
+        // Se consulta en segundo plano; el mapa ya tiene una ubicación inmediata.
+        const token = localStorage.getItem('community_chat_identity_token') || '';
+        if (callsign && token && supabase) {
+          const { data, error } = await supabase.from('live_spot_grid_locators').select('grid_locator').eq('callsign', callsign).maybeSingle();
+          const remoteGrid = String(data?.grid_locator || '').trim().toUpperCase();
+          const remotePoint = !error && isValidMaidenheadLocator(remoteGrid) ? maidenheadToPoint(remoteGrid) : null;
+          if (active && remotePoint) {
+            setOrigin(remotePoint);
+            setOriginLabel('Tu estación · ' + remoteGrid);
+          }
         }
       } catch (e) {
         if (active) setOriginError(e instanceof Error ? e.message : 'No se pudo determinar tu ubicación inicial.');
