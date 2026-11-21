@@ -121,6 +121,7 @@ function bearingDegrees(a: Point, b: Point) {
 const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  const leafletRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const lineRef = useRef<any>(null);
   const focusRef = useRef<any>(null);
@@ -137,6 +138,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       if (cancelled || !element.current) return;
       map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true, worldCopyJump: true, minZoom: 2, maxZoom: 19 });
       mapRef.current = map;
+      leafletRef.current = L;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, noWrap: false, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       // Pane dedicado: la ruta queda siempre por encima de las teselas y los marcadores.
       const routePane = map.createPane('distanceRoutePane');
@@ -161,10 +163,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       // de cargar. Este estado los vuelve a ejecutar cuando el mapa ya está disponible.
       setMapReady(true);
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudo abrir el mapa.'); });
-    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (element.current && handleMapClick) element.current.removeEventListener('click', handleMapClick); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
+    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (element.current && handleMapClick) element.current.removeEventListener('click', handleMapClick); if (map) map.remove(); mapRef.current = null; leafletRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
   }, [origin.lat, origin.lon, originLabel]);
   useEffect(() => {
-    const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
+    const map = mapRef.current; const L = leafletRef.current || (window as any).L; if (!map || !L) return;
     if (focusRef.current) { map.removeLayer(focusRef.current); focusRef.current = null; }
     if (focusPlace) { focusRef.current = L.circleMarker([focusPlace.lat, focusPlace.lon], { radius: 8, color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.85 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name); map.setView([focusPlace.lat, focusPlace.lon], 12); }
   }, [mapReady, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
@@ -177,12 +179,18 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     const marker = L.marker([destination.lat, destination.lon], { draggable: true }).addTo(group).bindPopup('Destino: ' + destination.name);
     marker.on('dragend', () => { const p = marker.getLatLng(); changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng }); });
     markerRef.current = group;
-    // Dibujar la unión origen-destino en un pane superior para que nunca quede oculta.
-    lineRef.current = L.polyline(
+    // Dibujar la ruta en el pane SVG estándar de Leaflet (sobre las teselas).
+    // Se conserva una referencia directa al motor Leaflet cargado por este mapa.
+    const route = L.polyline(
       [[origin.lat, origin.lon], [destination.lat, destination.lon]],
-      { pane: 'distanceRoutePane', color: '#facc15', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false }
-    ).addTo(map);
-    lineRef.current.bringToFront();
+      { pane: 'overlayPane', color: '#facc15', weight: 7, opacity: 1, lineCap: 'round', lineJoin: 'round', interactive: false, smoothFactor: 1 }
+    );
+    route.addTo(map);
+    route.setStyle({ color: '#facc15', weight: 7, opacity: 1 });
+    route.bringToFront();
+    lineRef.current = route;
+    // Forzar el repintado después de que el modal haya terminado de mostrar el mapa.
+    window.requestAnimationFrame(() => { if (mapRef.current === map && map.hasLayer(route)) route.redraw(); });
     // Al elegir un resultado, mostrar simultáneamente origen, destino y recorrido.
     // Evita que el zoom de la zona buscada deje el origen fuera de pantalla.
     map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]), { padding: [48, 48], maxZoom: 8, animate: false });
