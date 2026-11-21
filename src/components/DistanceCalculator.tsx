@@ -412,7 +412,14 @@ export const DistanceCalculator: React.FC = () => {
     if (term.length < 2) { setSearchError('Escribí al menos dos caracteres para buscar un lugar.'); return; }
     setSearching(true); setSearchError(''); setSelected(null);
     try {
-      const found = await searchPlaces(term);
+      let found = await searchPlaces(term);
+      // Corregir errores tipográficos frecuentes antes de informar que no hay resultados.
+      // "quebeq" es una escritura habitual por error de "Quebec".
+      const normalizedTerm = term.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
+      const typoCorrections: Record<string, string> = { quebeq: 'Quebec' };
+      if (found.length === 0 && typoCorrections[normalizedTerm]) {
+        found = await searchPlaces(typoCorrections[normalizedTerm]);
+      }
       setResults(found);
       if (found.length === 1) {
         // Si hay una sola coincidencia inequívoca, seleccionarla permite medir
