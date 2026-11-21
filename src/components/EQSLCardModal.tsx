@@ -9,6 +9,7 @@ import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
 import { getRecipientLanguage } from '../services/appLanguage';
 import { enqueueEqslDelivery, deliverEqslJob } from '../services/offlineEqslQueue';
+import { loadLLOTAReferences } from '../services/llotaReferences';
 import { 
   X, 
   Download, 
@@ -246,6 +247,25 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
+  const officialLLOTANameRef = useRef<{ code: string; name: string } | null>(null);
+
+  // Antes de generar o enviar una eQSL, confirmar el nombre del lugar contra el
+  // catálogo oficial. Si no se puede confirmar, no enviar una tarjeta incompleta.
+  const ensureOfficialLLOTAName = async () => {
+    const code = String(qso?.llotaReference || '').trim().toUpperCase();
+    const savedName = String(qso?.llotaReferenceName || '').trim();
+    if (!code || savedName) return;
+    const cached = officialLLOTANameRef.current;
+    if (cached?.code === code && cached.name) return;
+    const catalogue = await loadLLOTAReferences();
+    const official = catalogue.find((item) => item.code.toUpperCase() === code);
+    const officialName = String(official?.name || '').trim();
+    if (!officialName) {
+      throw new Error('No se pudo confirmar el nombre de esta referencia en el catálogo oficial LLOTA. No se envió la eQSL para evitar datos incompletos. Actualizá el catálogo e intentá nuevamente.');
+    }
+    officialLLOTANameRef.current = { code, name: officialName };
+  };
+
   // Cada eQSL refleja exclusivamente la actividad seleccionada y guardada en ESTE QSO.
   // No recuperar referencias persistidas del dispositivo: un QSO sin referencia es
   // un contacto normal, sin actividad especial.
@@ -254,6 +274,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const cleanCode = String(code || '').trim().toUpperCase();
       const cleanSavedName = String(savedName || '').trim();
       if (!cleanCode) return cleanSavedName;
+      const resolved = officialLLOTANameRef.current;
+      if (!cleanSavedName && resolved?.code === cleanCode && resolved.name) return resolved.name;
       // Si el QSO antiguo guardó el código pero no el nombre, recuperarlo
       // exclusivamente del catálogo oficial LLOTA cacheado por el selector.
       try {
@@ -512,8 +534,9 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // Crear un enlace público corto. Los datos del QSO se guardan temporalmente en el servidor,
   // no se codifican dentro de la URL ni se incluyen datos privados de contacto.
   const getReceivedCardUrl = async (registerInAppInbox = false) => {
-    // Esperar a que el canvas termine de dibujarse (incluida la foto personalizada)
-    // antes de convertirlo en imagen; así no se pierde la referencia seleccionada.
+    // Confirmar primero el nombre oficial del lugar y luego renderizar la tarjeta.
+    // Así nunca se comparte una eQSL LLOTA con el lugar vacío o inventado.
+    await ensureOfficialLLOTAName();
     await renderCard();
     const cardData = {
       from: cardSenderCallsign,
