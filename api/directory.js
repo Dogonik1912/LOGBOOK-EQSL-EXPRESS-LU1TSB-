@@ -140,7 +140,31 @@ export default async function handler(req, res) {
       if (page.length < pageSize) break;
     }
 
-    return json(res, 200, { users, total: users.length });
+    // Indicamos únicamente si existe un Grid Locator válido para cada usuario.
+    // No exponemos el locator ni sus coordenadas en el directorio público.
+    const gridCallsigns = new Set();
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from('live_spot_grid_locators')
+        .select('callsign,grid_locator')
+        .order('callsign', { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const page = Array.isArray(data) ? data : [];
+      for (const row of page) {
+        const station = String(row.callsign || '').trim().toUpperCase();
+        const grid = String(row.grid_locator || '').trim().toUpperCase();
+        if (station && /^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(grid)) {
+          gridCallsigns.add(station);
+        }
+      }
+      if (page.length < pageSize) break;
+    }
+    const directoryUsers = users.map((user) => ({
+      ...user,
+      has_grid_locator: gridCallsigns.has(user.callsign),
+    }));
+    return json(res, 200, { users: directoryUsers, total: directoryUsers.length });
   } catch (error) {
     console.error('[Directorio de usuarios] No se pudo cargar la lista:', error?.message || error);
     return json(res, 503, { error: 'El directorio no está disponible en este momento. Volvé a intentarlo más tarde.' });
