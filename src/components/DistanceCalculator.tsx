@@ -200,7 +200,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const locator = destination ? pointToMaidenhead(destination) : '';
   const shareMeasurement = () => {
     if (!destination || km === null || bearing === null) return;
-    const message = 'LOGBOOK eQSL EXPRESS\\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\\nRumbo: ' + bearing.toFixed(0) + '°\\nGrid Locator destino: ' + locator + '\\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5);
+    const message = 'LOGBOOK eQSL EXPRESS\nDistancia desde mi estación (' + originLabel + ') hasta ' + destination.name + '\nDistancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' mi\nRumbo: ' + bearing.toFixed(0) + '°\nGrid Locator destino: ' + locator + '\nCoordenadas: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5);
     if (navigator.share) void navigator.share({ title: 'Calculador de distancia', text: message }).catch(() => {});
     else if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(message);
   };
