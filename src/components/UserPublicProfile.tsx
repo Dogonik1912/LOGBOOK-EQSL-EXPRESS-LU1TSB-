@@ -99,7 +99,7 @@ export const openUserProfile = (rawCallsign: string) => {
 
 
 type GridStation = { callsign: string; grid_locator: string };
-type GridStationPoint = GridStation & { lat: number; lon: number; distanceKm: number };
+type GridStationPoint = GridStation & { lat: number; lon: number };
 
 const loadProfileLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
   const w = window as any;
@@ -137,6 +137,8 @@ const distanceKmBetween = (a: {lat:number;lon:number}, b: {lat:number;lon:number
 const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () => void }> = ({ callsign, grid, onClose }) => {
   const mapElement = React.useRef<HTMLDivElement>(null);
   const [stations, setStations] = useState<GridStationPoint[]>([]);
+  const [viewerDistanceKm, setViewerDistanceKm] = useState<number | null>(null);
+  const [viewerCallsign, setViewerCallsign] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mapError, setMapError] = useState('');
@@ -161,14 +163,22 @@ const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () =>
         }
         byCall.set(callsign, { callsign, grid_locator: grid.toUpperCase() });
         if (!origin) throw new Error('El Grid Locator del perfil no es válido.');
+        const activeCall = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
+        const localViewerGrid = String(localStorage.getItem('user_grid_locator') || '').trim().toUpperCase();
+        if (activeCall && isValidMaidenheadLocator(localViewerGrid)) byCall.set(activeCall, { callsign: activeCall, grid_locator: localViewerGrid });
+        const viewer = activeCall ? byCall.get(activeCall) : undefined;
+        const viewerPoint = viewer ? maidenheadToPoint(viewer.grid_locator) : null;
         const mapped: GridStationPoint[] = [];
         for (const item of byCall.values()) {
           const point = maidenheadToPoint(item.grid_locator);
           if (!point) continue;
-          mapped.push({ ...item, lat: point.lat, lon: point.lon, distanceKm: distanceKmBetween(origin, point) });
+          mapped.push({ ...item, lat: point.lat, lon: point.lon });
         }
-        mapped.sort((a, b) => a.distanceKm - b.distanceKm);
-        if (active) setStations(mapped);
+        if (active) {
+          setViewerCallsign(activeCall);
+          setViewerDistanceKm(viewerPoint && activeCall !== callsign ? distanceKmBetween(origin, viewerPoint) : null);
+          setStations(mapped);
+        }
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : 'No se pudieron cargar las estaciones.');
       } finally {
@@ -189,36 +199,45 @@ const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () =>
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
       const bounds: Array<[number, number]> = [];
       const reference = stations.find((item) => item.callsign === callsign);
+      const viewer = viewerCallsign ? stations.find((item) => item.callsign === viewerCallsign) : undefined;
       if (reference) {
         const originCoords: [number, number] = [reference.lat, reference.lon];
         bounds.push(originCoords);
-        L.marker(originCoords).addTo(map).bindPopup('<strong>Estación de referencia: ' + reference.callsign + '</strong><br>Grid: ' + reference.grid_locator);
+        L.marker(originCoords).addTo(map).bindPopup('<strong>Perfil consultado: ' + reference.callsign + '</strong><br>Grid: ' + reference.grid_locator)
+          .on('click', () => openUserProfile(reference.callsign));
+      }
+      if (viewer && viewer.callsign !== callsign) {
+        const viewerCoords: [number, number] = [viewer.lat, viewer.lon];
+        bounds.push(viewerCoords);
+        L.marker(viewerCoords).addTo(map).bindPopup('<strong>Tu estación: ' + viewer.callsign + '</strong><br>Grid: ' + viewer.grid_locator)
+          .on('click', () => openUserProfile(viewer.callsign));
+        if (reference) L.polyline([[reference.lat, reference.lon], viewerCoords], { color: '#06b6d4', weight: 4, opacity: 0.9 }).addTo(map);
       }
       for (const station of stations) {
-        if (station.callsign === callsign) continue;
+        if (station.callsign === callsign || station.callsign === viewerCallsign) continue;
         const coords: [number, number] = [station.lat, station.lon];
         bounds.push(coords);
-        L.marker(coords).addTo(map).bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br>Distancia: ' + station.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' km');
-        if (reference) L.polyline([[reference.lat, reference.lon], coords], { color: '#06b6d4', weight: 2, opacity: 0.72 }).addTo(map);
+        L.marker(coords).addTo(map).bindPopup('<strong>' + station.callsign + '</strong><br>Grid: ' + station.grid_locator + '<br><button type="button" class="profile-map-open" data-callsign="' + station.callsign + '">Ver perfil</button>')
+          .on('click', () => openUserProfile(station.callsign));
       }
       if (bounds.length > 1) map.fitBounds(L.latLngBounds(bounds), { padding: [35, 35], maxZoom: 8 });
       else if (reference) map.setView([reference.lat, reference.lon], 7);
       window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 120);
     }).catch((reason) => { if (!cancelled) setMapError(reason instanceof Error ? reason.message : 'No se pudo cargar el mapa.'); });
     return () => { cancelled = true; if (map) map.remove(); };
-  }, [stations, callsign]);
+  }, [stations, callsign, viewerCallsign]);
 
   return <div className="fixed inset-0 z-[11050] flex items-center justify-center bg-slate-950/90 p-2 sm:p-5" role="dialog" aria-modal="true" aria-label="Mapa de estaciones con Grid Locator" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
-        <div><h3 className="font-black">Estaciones con Grid Locator</h3><p className="text-xs text-slate-300">Distancias desde {callsign} · {grid.toUpperCase()}</p></div>
+        <div><h3 className="font-black">Estaciones con Grid Locator</h3><p className="text-xs text-slate-300">Ubicaciones de estaciones registradas · {grid.toUpperCase()}</p></div>
         <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button>
       </header>
       {loading ? <div className="p-5 text-sm text-slate-200">Buscando estaciones con Grid Locator…</div> : error ? <div className="p-5 text-sm text-rose-300">{error}</div> : <>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-4 py-2 text-sm"><span><strong>{stations.length}</strong> estaciones con Grid Locator válido</span><span className="text-xs text-slate-300">Distancias en línea recta desde {callsign}</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-4 py-2 text-sm"><span><strong>{stations.length}</strong> estaciones con Grid Locator válido</span>{viewerDistanceKm !== null && <span className="text-xs text-cyan-200">Distancia entre {callsign} y {viewerCallsign}: <strong>{viewerDistanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km</strong></span>}</div>
         {mapError ? <div className="p-4 text-sm text-rose-300">{mapError}</div> : <div ref={mapElement} className="h-[48dvh] min-h-[260px] w-full bg-slate-800" />}
         <div className="max-h-[24dvh] overflow-y-auto border-t border-slate-700 px-4 py-2">
-          {stations.map((station) => <div key={station.callsign} className="flex items-center justify-between gap-3 border-b border-slate-800 py-2 text-sm last:border-0"><span className="min-w-0"><strong className="font-mono">{station.callsign}</strong><span className="ml-2 text-xs text-slate-400">{station.grid_locator}{station.callsign === callsign ? ' · referencia' : ''}</span></span><strong className="shrink-0 tabular-nums">{station.callsign === callsign ? '0 km' : station.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' km'}</strong></div>)}
+          {stations.map((station) => <button type="button" key={station.callsign} onClick={() => openUserProfile(station.callsign)} className="flex w-full items-center justify-between gap-3 border-b border-slate-800 py-2 text-left text-sm last:border-0 hover:bg-slate-800/70"><span className="min-w-0"><strong className="font-mono">{station.callsign}</strong><span className="ml-2 text-xs text-slate-400">{station.grid_locator}{station.callsign === callsign ? ' · perfil consultado' : station.callsign === viewerCallsign ? ' · tu estación' : ''}</span></span><span className="shrink-0 text-xs text-cyan-300">Ver perfil</span></button>)}
         </div>
       </>}
       <footer className="flex justify-end border-t border-slate-700 px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></footer>
