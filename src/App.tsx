@@ -419,27 +419,23 @@ function MainApp() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <section className="mb-4 rounded-2xl border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 p-4 text-white shadow-lg" aria-label="LLOTA - Lagos y Lagunas On The Air">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                <Waves className="h-7 w-7" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="text-lg font-extrabold tracking-wide">LLOTA · LAKES AND LAGOONS ON THE AIR</h2>
-                <p className="text-sm text-cyan-100">Explorá referencias oficiales y registrá la referencia LLOTA en cada QSO desde el Libro de Guardia.</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <a href="https://llota.app/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-white">
-                Abrir LLOTA <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        <div className="mb-3 flex items-center">
+          <details className="group relative">
+            <summary className="inline-flex min-h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+              <Waves className="h-5 w-5" aria-hidden="true" />
+              LLOTA oficial
+              <span className="text-xs transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+            </summary>
+            <div className="absolute left-0 top-full z-30 mt-2 flex min-w-56 flex-col gap-1 rounded-xl border border-cyan-300/40 bg-slate-950 p-2 text-white shadow-xl">
+              <a href="https://llota.app/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-white/10">
+                Abrir sitio oficial <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
-              <a href="https://llota.app/referencias.html" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/50 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white">
+              <a href="https://llota.app/referencias.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-white/10">
                 Ver referencias oficiales <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
             </div>
-          </div>
-        </section>
+          </details>
+        </div>
         <PendingEqslDeliveries />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <EQSLMailbox />
