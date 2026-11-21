@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Radio, Clock3, Signal, RefreshCw, Wifi, WifiOff, Trash2, Heart, Trophy, ChevronDown, ShieldCheck } from 'lucide-react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
-import { countryUsesMiles, distanceForSpot } from '../services/dxDistance';
+import { countryUsesMiles, distanceForSpot, maidenheadToPoint } from '../services/dxDistance';
 
 // Los indicativos del feed abren la conversación privada del usuario correspondiente.
 const openPrivateMessage = (rawCallsign: string) => {
@@ -67,6 +67,63 @@ const continentForSpot = (spot: Spot): string => {
  if(/antartida|antártida|antarctica|south pole|polo sur/.test(country)) return 'Antártida';
  return 'Otros';
 }
+
+type SpotMapProps = { spot: Spot; firstGrid?: string; secondGrid?: string; onClose: () => void };
+const loadLeaflet = (): Promise<any> => new Promise((resolve, reject) => {
+  const w = window as any;
+  if (w.L) { resolve(w.L); return; }
+  if (!document.querySelector('link[data-live-spot-leaflet]')) {
+    const link = document.createElement('link'); link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.dataset.liveSpotLeaflet = 'true'; document.head.appendChild(link);
+  }
+  const existing = document.querySelector('script[data-live-spot-leaflet]') as HTMLScriptElement | null;
+  if (existing) {
+    existing.addEventListener('load', () => resolve((window as any).L), { once: true });
+    existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa')), { once: true });
+    if (w.L) resolve(w.L); return;
+  }
+  const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  script.async = true; script.dataset.liveSpotLeaflet = 'true';
+  script.onload = () => w.L ? resolve(w.L) : reject(new Error('Leaflet no disponible'));
+  script.onerror = () => reject(new Error('No se pudo cargar el mapa')); document.head.appendChild(script);
+});
+const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, onClose }) => {
+  const mapElement = useRef<HTMLDivElement>(null);
+  const [mapError, setMapError] = useState('');
+  const first = maidenheadToPoint(firstGrid || ''), second = maidenheadToPoint(secondGrid || '');
+  const km = (() => {
+    if (!first || !second) return null;
+    const rad = (v: number) => v * Math.PI / 180;
+    const dLat = rad(second.lat-first.lat), dLon = rad(second.lon-first.lon);
+    const h = Math.sin(dLat/2)**2 + Math.cos(rad(first.lat))*Math.cos(rad(second.lat))*Math.sin(dLon/2)**2;
+    return 6371.0088 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+  })();
+  useEffect(() => {
+    if (!first || !second || !mapElement.current) return;
+    let map: any, cancelled = false;
+    void loadLeaflet().then((L) => {
+      if (cancelled || !mapElement.current) return;
+      map = L.map(mapElement.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+      const a: [number,number] = [first.lat,first.lon], b: [number,number] = [second.lat,second.lon];
+      L.marker(a).addTo(map).bindPopup('Estación '+spot.callsign+' · '+firstGrid);
+      L.marker(b).addTo(map).bindPopup('Estación '+spot.station_callsign+' · '+secondGrid);
+      L.polyline([a,b], { color:'#06b6d4', weight:4, opacity:0.9 }).addTo(map);
+      map.fitBounds(L.latLngBounds([a,b]), { padding:[35,35], maxZoom:10 });
+      window.setTimeout(() => { if (!cancelled && map) map.invalidateSize(); }, 100);
+    }).catch(error => setMapError(error instanceof Error ? error.message : 'No se pudo cargar el mapa.'));
+    return () => { cancelled = true; if (map) map.remove(); };
+  }, [spot.callsign, spot.station_callsign, firstGrid, secondGrid]);
+  return <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-slate-950/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Mapa de distancia del QSO" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-cyan-500/50 bg-slate-900 text-white shadow-2xl">
+      <header className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3"><div className="min-w-0"><h3 className="font-bold">Distancia del QSO</h3><p className="text-xs text-slate-300">{spot.callsign} ({firstGrid || 'Grid no informado'}) ↔ {spot.station_callsign} ({secondGrid || 'Grid no informado'})</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800" aria-label="Cerrar mapa"><X className="h-5 w-5" /></button></header>
+      <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-700 px-4 py-3 text-sm"><span><strong>{km === null ? '—' : km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km'}</strong></span><span><strong>{km === null ? '—' : (km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})+' mi'}</strong></span></div>
+      {(!first || !second) ? <div className="p-6 text-sm text-amber-200">No se puede trazar la línea: falta el Grid Locator de {(!first && !second) ? 'ambas estaciones' : !first ? spot.callsign : spot.station_callsign}. No se inventará una ubicación aproximada.</div> : <><div ref={mapElement} className="h-[55dvh] min-h-[300px] w-full bg-slate-800" /><p className="px-4 py-2 text-[11px] text-slate-400">Línea recta entre los centros de las cuadrículas Maidenhead. Podés ampliar, reducir y desplazar el mapa con gestos táctiles o con el ratón y los controles + / −.</p>{mapError && <p className="px-4 pb-3 text-xs text-amber-300">{mapError}</p>}</>}
+      <footer className="flex justify-end border-t border-slate-700 px-4 py-3"><button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></footer>
+    </section>
+  </div>;
+};
+
 export const LiveSpots: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -90,6 +147,7 @@ export const LiveSpots: React.FC = () => {
   const [voteMessage, setVoteMessage] = useState('');
   const [weeklyWinner, setWeeklyWinner] = useState<WeeklyWinner | null>(null);
   const [gridLocators, setGridLocators] = useState<Record<string, string>>({});
+  const [mapSpot, setMapSpot] = useState<Spot | null>(null);
 
   // Las bandas del filtro Live Spot son exactamente las del Libro de Guardia.
   const bandOptions=HAM_BANDS.map(item=>item.name);
@@ -315,12 +373,13 @@ export const LiveSpots: React.FC = () => {
     {!loading && !errorMessage && spots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos. Al registrar un QSO aparecerá aquí.</p>}
     {!loading && !errorMessage && spots.length>0 && filteredSpots.length===0 && <p className="px-4 py-4 text-sm text-slate-400">No hay spots que coincidan con los filtros elegidos. Marca «Ver todo» para mostrar toda la actividad.</p>}
     {filteredSpots.length > 0 && <div className="max-h-[30rem] overflow-y-auto overscroll-contain divide-y divide-slate-800">{filteredSpots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5">
-      <div className="min-w-[3.5rem] text-center"><div className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-cyan-500/60 bg-slate-900 px-1.5 py-1 text-sm font-extrabold leading-none text-cyan-200 shadow-sm">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country || countryForCallsign(spot.callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\d/.test(adminCallsign))))}</div></div>
+      <div className="min-w-[3.5rem] text-center"><button type="button" onClick={() => setMapSpot(spot)} title="Abrir mapa y ver distancia en km y millas" className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-cyan-500/60 bg-slate-900 px-1.5 py-1 text-sm font-extrabold leading-none text-cyan-200 shadow-sm">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country || countryForCallsign(spot.callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\d/.test(adminCallsign))))}</button></div>
       <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100"><button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div></div>
       <div className="flex items-center gap-1 text-right text-[10px] text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{spot.qso_time} UTC</div><div className="leading-3">{spot.qso_date}</div></div><button type="button" aria-label={votedSpotKeys.has(spot.spot_key) ? 'Spot votado' : 'Votar por este spot'} disabled={!adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey === spot.spot_key || Boolean(votingKey)} onClick={() => void voteForSpot(spot)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:cursor-default" style={{ color: votedSpotKeys.has(spot.spot_key) ? '#ff3040' : '#ffffff' }}><Heart className={`h-4 w-4 ${votedSpotKeys.has(spot.spot_key) ? 'fill-current' : ''}`} strokeWidth={2.2} /></button>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-md p-1.5 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /></button>}</div>
     </article>)}</div>}
     <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">Solo contactos guardados; hora UTC registrada.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
     <div className="flex justify-end border-t border-slate-800 px-3 py-3"><button type="button" onClick={() => setIsExpanded(false)} className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-700">Cerrar</button></div>
     </div>}
+    {mapSpot && <SpotDistanceMap spot={mapSpot} firstGrid={gridLocators[mapSpot.callsign]} secondGrid={gridLocators[mapSpot.station_callsign]} onClose={() => setMapSpot(null)} />}
   </section>;
 };
