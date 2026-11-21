@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   }
 
   const action = String(req.query?.action || '');
-  if (!['lookup', 'check'].includes(action)) {
+  if (!['lookup', 'check', 'grid-map'].includes(action)) {
     return json(res, 400, { error: 'Acción no válida' });
   }
 
@@ -84,6 +84,45 @@ export default async function handler(req, res) {
     const blockedCallsigns = new Set((blockedRows || [])
       .map((row) => String(row.target_callsign || '').trim().toUpperCase())
       .filter(Boolean));
+
+    if (action === 'grid-map') {
+      const registered = new Set();
+      const pageSize = 1000;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase
+          .from('community_call_signs')
+          .select('callsign')
+          .order('callsign', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        const page = Array.isArray(data) ? data : [];
+        for (const row of page) {
+          const station = String(row.callsign || '').trim().toUpperCase();
+          if (station && !blockedCallsigns.has(station) && !['DOGON1K', 'LU1TSB/4RC978', 'PRONTO'].includes(station)) registered.add(station);
+        }
+        if (page.length < pageSize) break;
+      }
+
+      const stations = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase
+          .from('live_spot_grid_locators')
+          .select('callsign,grid_locator')
+          .order('callsign', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        const page = Array.isArray(data) ? data : [];
+        for (const row of page) {
+          const station = String(row.callsign || '').trim().toUpperCase();
+          const grid = String(row.grid_locator || '').trim().toUpperCase();
+          if (registered.has(station) && /^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(grid)) {
+            stations.push({ callsign: station, grid_locator: grid });
+          }
+        }
+        if (page.length < pageSize) break;
+      }
+      return json(res, 200, { stations, total: stations.length });
+    }
 
     const users = [];
     const pageSize = 1000;
