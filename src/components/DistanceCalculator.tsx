@@ -125,7 +125,7 @@ export const DistanceCalculator: React.FC = () => {
     };
     void loadOrigin();
     return () => { active = false; };
-  }, [open, origin, originLoading]);
+  }, [open]);
 
   const runSearch = async () => {
     const term = query.trim();
