@@ -17,34 +17,40 @@ async function searchPlaces(query: string): Promise<Place[]> {
       name: String(row[nameKey] || '').split(',').slice(0, 4).join(', '),
       lat: Number(row[latKey]), lon: Number(row[lonKey]), type: String(row.type || ''),
     })).filter((p: Place) => p.name && Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 10000);
-  try {
-    const params = new URLSearchParams({ q: clean, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'es' });
+
+  // Cada proveedor tiene su propio límite de espera. Un fallo lento del primero
+  // nunca debe dejar abortada también la consulta de respaldo.
+  const requestJson = async (url: string, timeoutMs = 9000) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), {
-        headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store',
-      });
-      if (response.ok) {
-        const rows = await response.json();
-        const places = parseRows(Array.isArray(rows) ? rows : [], 'display_name', 'lat', 'lon');
-        if (places.length) return places;
-      }
-    } catch { /* Se intenta el proveedor geográfico alternativo. */ }
-    const photonParams = new URLSearchParams({ q: clean, limit: '6', lang: 'en' });
-    const fallback = await fetch('https://photon.komoot.io/api/?' + photonParams.toString(), {
-      headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store',
-    });
-    if (!fallback.ok) throw new Error('El servicio de búsqueda no respondió. Revisá tu conexión e intentá nuevamente.');
-    const payload = await fallback.json();
+      const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal, cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return await response.json();
+    } finally { window.clearTimeout(timer); }
+  };
+
+  const params = new URLSearchParams({ q: clean, format: 'jsonv2', limit: '8', addressdetails: '1', 'accept-language': 'es' });
+  try {
+    const rows = await requestJson('https://nominatim.openstreetmap.org/search?' + params.toString());
+    const places = parseRows(Array.isArray(rows) ? rows : [], 'display_name', 'lat', 'lon');
+    if (places.length) return places;
+  } catch { /* Consultar el proveedor alternativo. */ }
+
+  const photonParams = new URLSearchParams({ q: clean, limit: '8', lang: 'es' });
+  try {
+    const payload = await requestJson('https://photon.komoot.io/api/?' + photonParams.toString());
     const features = Array.isArray(payload?.features) ? payload.features : [];
-    return features.map((feature: any) => {
+    const places = features.map((feature: any) => {
       const props = feature?.properties || {};
       const coords = feature?.geometry?.coordinates || [];
       const parts = [props.name, props.city, props.state, props.country].filter(Boolean);
       return { name: [...new Set(parts)].join(', ') || clean, lat: Number(coords[1]), lon: Number(coords[0]), type: String(props.type || '') };
     }).filter((p: Place) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
-  } finally { window.clearTimeout(timeout); }
+    if (places.length) return places;
+  } catch { /* Mostrar un error claro si ambos proveedores fallan. */ }
+
+  throw new Error('No se pudo conectar con los buscadores de lugares. Probá nuevamente; el mapa sigue disponible para seleccionar el punto manualmente.');
 }
 function distanceKm(a: Point, b: Point) {
   const rad = (v: number) => v * Math.PI / 180;
@@ -338,9 +344,9 @@ export const DistanceCalculator: React.FC = () => {
         </div>}
         <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={e => { e.preventDefault(); void runSearch(); }}>
           <label className="sr-only" htmlFor="distance-place-search">Lugar de destino</label><input id="distance-place-search" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void runSearch(); } }} placeholder="Escribí una ciudad, localidad o lugar del mundo…" className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-3 text-sm text-white placeholder:text-slate-500" />
-          <button type="button" disabled={searching} onClick={() => { void runSearch(); }} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}Buscar lugar</button>
+          <button type="submit" disabled={searching} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}{searching ? 'Buscando…' : 'Buscar lugar'}</button>
         </form>
-        {searchError && <p className="mt-2 text-xs text-amber-300">{searchError}</p>}
+        {searching && <p role="status" className="mt-2 text-xs text-cyan-200">Buscando el lugar en el mapa mundial…</p>}{searchError && <p role="alert" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2 text-xs text-amber-200">{searchError}</p>}
         {results.length > 0 && <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-2">{results.map((place, index) => <button type="button" key={place.name + index} onClick={() => { setMapFocus(place); setSelected(null); setResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}</div>}
         {origin && <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} />}
         <RegisteredGridStations origin={origin} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
