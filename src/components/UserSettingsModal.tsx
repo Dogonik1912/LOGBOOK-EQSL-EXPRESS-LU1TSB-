@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { isValidMaidenheadLocator } from '../services/dxDistance';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon } from 'lucide-react';
 
 interface UserSettingsModalProps {
@@ -412,13 +413,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       window.alert('Ingresá tu indicativo de radio antes de guardar.');
       return;
     }
-    // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
-    if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
     const normalizedGrid = gridLocator.trim().toUpperCase();
-    if (normalizedGrid && !/^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(normalizedGrid)) {
-      window.alert('El Grid Locator no parece válido. Usá, por ejemplo, IN83, IN83ka o IN83ka12.');
+    if (normalizedGrid && !isValidMaidenheadLocator(normalizedGrid)) {
+      window.alert('Grid Locator inválido. Ingresá un Maidenhead válido de 4, 6, 8 o 10 caracteres (por ejemplo IN83, IN83KA, IN83KA12 o IN83KA12AB).');
       return;
     }
+    // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
+    if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
     if (normalizedGrid) localStorage.setItem('user_grid_locator', normalizedGrid);
     else localStorage.removeItem('user_grid_locator');
     const gridToken = localStorage.getItem('community_chat_identity_token') || '';
@@ -551,7 +552,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           <section className="rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="grid-locator-title">
             <h3 id="grid-locator-title" className="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Locator para distancia DX</h3>
             <label htmlFor="user-grid-locator" className="block text-xs text-slate-300">Tu locator Maidenhead</label>
-            <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
+            <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" spellCheck={false} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
+            <p className={gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>{gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'Formato no válido. Usá 4, 6, 8 o 10 caracteres Maidenhead.' : 'Válido para cuentas de radioaficionado y de 11 metros. Ejemplos: IN83 · IN83KA · IN83KA12 · IN83KA12AB.'}</p>
           </section>
 
           <section className="rounded-xl border border-sky-500/25 bg-slate-950/70 p-3.5 space-y-3" aria-labelledby="profile-photo-title">
