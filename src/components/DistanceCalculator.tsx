@@ -123,11 +123,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const mapRef = useRef<any>(null);
   const layersRef = useRef<any>(null);
   const changeRef = useRef(onDestinationChange);
-  const latestRef = useRef({ origin, destination, focusPlace, originLabel });
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
-  useEffect(() => { latestRef.current = { origin, destination, focusPlace, originLabel }; }, [origin, destination, focusPlace, originLabel]);
 
   // Crear Leaflet una sola vez. Cambiar el destino actualiza capas, nunca
   // destruye/recrea el mapa ni su SVG (evita el error parentNode de Leaflet).
@@ -234,6 +232,8 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
 type RegisteredStation = { callsign: string; grid_locator: string; lat: number; lon: number };
 const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Place | null; onOpenProfile: (callsign: string) => void }> = ({ origin, destination, onOpenProfile }) => {
   const mapElement = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
   const [stations, setStations] = useState<RegisteredStation[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [loading, setLoading] = useState(true);
