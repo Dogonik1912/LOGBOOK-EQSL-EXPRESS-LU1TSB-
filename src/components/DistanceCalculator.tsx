@@ -176,66 +176,84 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     const L = leafletRef.current;
     if (!map || !L || !mapReady) return;
 
-    if (markerRef.current) {
+    // Dibujar la ruta como SVG absoluto dentro del contenedor del mapa.
+    // No depende de los renderers/panes internos de Leaflet: queda por encima
+    // de las teselas y se recalculan sus extremos al mover o acercar el mapa.
+    if (markerRef.current && map.hasLayer(markerRef.current)) {
       map.removeLayer(markerRef.current);
-      markerRef.current = null;
     }
-    if (lineRef.current && map.hasLayer(lineRef.current)) {
-      map.removeLayer(lineRef.current);
+    markerRef.current = null;
+    if (lineRef.current) {
+      lineRef.current.remove();
+      lineRef.current = null;
     }
-    lineRef.current = null;
-    if (!destination) return;
+    if (!destination || !element.current) return;
 
-    // Ajustar primero el encuadre y después dibujar la ruta con Canvas nativo.
-    // Canvas evita depender del SVG personalizado que no se estaba viendo en móviles.
     map.invalidateSize({ pan: false });
-    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
-      { padding: [48, 48], maxZoom: 8, animate: false });
+    map.fitBounds(
+      L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
+      { padding: [48, 48], maxZoom: 8, animate: false }
+    );
 
-    const routeGroup = L.layerGroup().addTo(map);
-    const routeRenderer = L.canvas({ pane: 'distanceRoutePane', padding: 0.5 });
-    const routePoints: [number, number][] = [
-      [origin.lat, origin.lon],
-      [destination.lat, destination.lon]
-    ];
-    L.polyline(routePoints, {
-      pane: 'distanceRoutePane', renderer: routeRenderer,
-      color: '#111827', weight: 15, opacity: 1,
-      lineCap: 'round', lineJoin: 'round',
-      interactive: false, smoothFactor: 0
-    }).addTo(routeGroup);
-    const route = L.polyline(routePoints, {
-      pane: 'distanceRoutePane', renderer: routeRenderer,
-      color: '#ffea00', weight: 8, opacity: 1,
-      lineCap: 'round', lineJoin: 'round',
-      interactive: false, smoothFactor: 0,
-      className: 'distance-calculator-route'
-    }).addTo(routeGroup);
-    lineRef.current = routeGroup;
-    route.redraw();
-    route.bringToFront();
-    const group = L.layerGroup().addTo(map);
-    const marker = L.marker([destination.lat, destination.lon], { draggable: true })
-      .addTo(group).bindPopup('Destino: ' + destination.name);
-    marker.on('dragend', () => {
-      const p = marker.getLatLng();
-      changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng });
-    });
-    markerRef.current = group;
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.style.position = 'absolute';
+    svg.style.inset = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.overflow = 'visible';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '10000';
 
-    window.requestAnimationFrame(() => {
-      if (mapRef.current === map && map.hasLayer(routeGroup)) {
-        map.invalidateSize({ pan: false });
-        route.redraw();
-        route.bringToFront();
+    const outline = document.createElementNS(svgNs, 'line');
+    const yellow = document.createElementNS(svgNs, 'line');
+    for (const line of [outline, yellow]) {
+      line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('stroke-linejoin', 'round');
+      line.setAttribute('vector-effect', 'non-scaling-stroke');
+    }
+    outline.setAttribute('stroke', '#111827');
+    outline.setAttribute('stroke-width', '13');
+    yellow.setAttribute('stroke', '#ffea00');
+    yellow.setAttribute('stroke-width', '7');
+    svg.appendChild(outline);
+    svg.appendChild(yellow);
+    element.current.appendChild(svg);
+    lineRef.current = svg;
+
+    const redraw = () => {
+      if (!element.current || !svg.isConnected) return;
+      const a = map.latLngToContainerPoint([origin.lat, origin.lon]);
+      const b = map.latLngToContainerPoint([destination.lat, destination.lon]);
+      for (const line of [outline, yellow]) {
+        line.setAttribute('x1', String(a.x));
+        line.setAttribute('y1', String(a.y));
+        line.setAttribute('x2', String(b.x));
+        line.setAttribute('y2', String(b.y));
       }
+    };
+    map.on('move zoom resize viewreset', redraw);
+    window.requestAnimationFrame(() => {
+      map.invalidateSize({ pan: false });
+      redraw();
     });
+
+    const markerGroup = L.layerGroup().addTo(map);
+    const marker = L.marker([destination.lat, destination.lon], { draggable: true })
+      .addTo(markerGroup).bindPopup('Destino: ' + destination.name);
+    marker.on('dragend', () => {
+      const point = marker.getLatLng();
+      changeRef.current({ name: 'Punto seleccionado en el mapa', lat: point.lat, lon: point.lng });
+    });
+    markerRef.current = markerGroup;
 
     return () => {
-      if (map.hasLayer(routeGroup)) map.removeLayer(routeGroup);
-      if (markerRef.current === group) markerRef.current = null;
-      if (map.hasLayer(group)) map.removeLayer(group);
-      if (lineRef.current === routeGroup) lineRef.current = null;
+      map.off('move zoom resize viewreset', redraw);
+      if (lineRef.current === svg) lineRef.current = null;
+      svg.remove();
+      if (map.hasLayer(markerGroup)) map.removeLayer(markerGroup);
+      if (markerRef.current === markerGroup) markerRef.current = null;
     };
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
