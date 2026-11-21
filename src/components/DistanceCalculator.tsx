@@ -90,6 +90,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   useEffect(() => {
     if (!element.current) return;
     let cancelled = false; let map: any; let resizeTimer = 0;
+    let handleMapClick: ((event: MouseEvent) => void) | null = null;
     void loadLeaflet().then(L => {
       if (cancelled || !element.current) return;
       map = L.map(element.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true, doubleClickZoom: true, worldCopyJump: true, minZoom: 2, maxZoom: 19 });
@@ -99,7 +100,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       map.setView([20, 0], 2);
       // Capturar el click nativo del contenedor además del sistema de eventos
       // de Leaflet mejora la selección en navegadores móviles dentro del modal.
-      const handleMapClick = (event: MouseEvent) => {
+      handleMapClick = (event: MouseEvent) => {
         const target = event.target as HTMLElement | null;
         if (target?.closest('.leaflet-control')) return;
         const point = map.mouseEventToLatLng(event);
@@ -108,18 +109,13 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
         changeRef.current({ name: 'Punto seleccionado en el mapa', lat, lon });
       };
       element.current.addEventListener('click', handleMapClick);
-      map.on('click', (ev: any) => {
-        const lat = Math.max(-85.05112878, Math.min(85.05112878, ev.latlng.lat));
-        const lon = Math.max(-180, Math.min(180, ev.latlng.lng));
-        changeRef.current({ name: 'Punto seleccionado en el mapa', lat, lon });
-      });
       const resize = () => { if (!cancelled && map) map.invalidateSize({ pan: false }); };
       window.requestAnimationFrame(resize); resizeTimer = window.setTimeout(resize, 300);
       // Los efectos de destino/búsqueda pueden ejecutarse antes de que Leaflet termine
       // de cargar. Este estado los vuelve a ejecutar cuando el mapa ya está disponible.
       setMapReady(true);
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudo abrir el mapa.'); });
-    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (element.current && map) element.current.removeEventListener('click', handleMapClick); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
+    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (element.current && handleMapClick) element.current.removeEventListener('click', handleMapClick); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
   }, [origin.lat, origin.lon, originLabel]);
   useEffect(() => {
     const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
