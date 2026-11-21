@@ -57,6 +57,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const focusRef = useRef<any>(null);
   const changeRef = useRef(onDestinationChange);
   const [error, setError] = useState('');
+  const [mapReady, setMapReady] = useState(false);
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
   // Mantener una única instancia Leaflet: elegir destino no debe reiniciar el mapa.
   useEffect(() => {
@@ -76,14 +77,17 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       });
       const resize = () => { if (!cancelled && map) map.invalidateSize({ pan: false }); };
       window.requestAnimationFrame(resize); resizeTimer = window.setTimeout(resize, 300);
+      // Los efectos de destino/búsqueda pueden ejecutarse antes de que Leaflet termine
+      // de cargar. Este estado los vuelve a ejecutar cuando el mapa ya está disponible.
+      setMapReady(true);
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudo abrir el mapa.'); });
-    return () => { cancelled = true; if (resizeTimer) window.clearTimeout(resizeTimer); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
+    return () => { cancelled = true; setMapReady(false); if (resizeTimer) window.clearTimeout(resizeTimer); if (map) map.remove(); mapRef.current = null; markerRef.current = null; lineRef.current = null; focusRef.current = null; };
   }, [origin.lat, origin.lon, originLabel]);
   useEffect(() => {
     const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
     if (focusRef.current) { map.removeLayer(focusRef.current); focusRef.current = null; }
     if (focusPlace) { focusRef.current = L.circleMarker([focusPlace.lat, focusPlace.lon], { radius: 8, color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.85 }).addTo(map).bindPopup('Zona buscada: ' + focusPlace.name); map.setView([focusPlace.lat, focusPlace.lon], 12); }
-  }, [focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
+  }, [mapReady, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
   useEffect(() => {
     const map = mapRef.current; const L = (window as any).L; if (!map || !L) return;
     if (markerRef.current) { map.removeLayer(markerRef.current); markerRef.current = null; }
@@ -94,7 +98,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     marker.on('dragend', () => { const p = marker.getLatLng(); changeRef.current({ name: 'Punto seleccionado en el mapa', lat: p.lat, lon: p.lng }); });
     markerRef.current = group;
     lineRef.current = L.polyline([[origin.lat, origin.lon], [destination.lat, destination.lon]], { color: '#0891b2', weight: 4, opacity: 0.95 }).addTo(map);
-  }, [origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
+  }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
   const locator = destination ? pointToMaidenhead(destination) : '';
