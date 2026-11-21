@@ -57,12 +57,7 @@ export async function publishQsoSpot(qso: QSO) {
     country: countryForCallsign(remoteCall, qso.country, isElevenMeterSpot(String(qso.band || ''), String(qso.frequency || ''))),
     ...(qso.llotaReference ? { llota_reference: qso.llotaReference, llota_reference_name: qso.llotaReferenceName || null } : {}),
   }, { onConflict: 'spot_key', ignoreDuplicates: true });
-  if (error) { console.warn('No se pudo publicar el spot en vivo:', error.message); return; }
-  // Completar referencias en spots preexistentes sin borrar metadatos cuando no hay LLOTA.
-  if (qso.llotaReference) {
-    const { error: referenceError } = await supabase.from('live_qso_spots').update({ llota_reference: qso.llotaReference, llota_reference_name: qso.llotaReferenceName || null }).eq('spot_key', spotKey);
-    if (referenceError) console.warn('No se pudo actualizar la referencia LLOTA del spot:', referenceError.message);
-  }
+  if (error) console.warn('No se pudo publicar el spot en vivo:', error.message);
 }
 
 const continentForSpot = (spot: Spot): string => {
