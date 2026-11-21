@@ -23,6 +23,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [callsign, setCallsign] = useState('');
   const [gridLocator, setGridLocator] = useState('');
+  const [qraOperator, setQraOperator] = useState('');
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isVerifiedCallsign, setIsVerifiedCallsign] = useState(false);
   const [customBg, setCustomBg] = useState<string | null>(null);
@@ -147,6 +148,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         }).catch(() => setIsAdminActor(false));
       }
       setGridLocator((localStorage.getItem('user_grid_locator') || '').trim().toUpperCase());
+      setQraOperator('');
+      if (supabase && verifiedOnThisDevice) {
+        void supabase.rpc('community_profile_details', { p_callsigns: [verifiedCallsign] }).then(({ data, error }) => {
+          if (!error && Array.isArray(data)) setQraOperator(String(data.find((row: any) => String(row.callsign || '').toUpperCase() === verifiedCallsign)?.qra_operator || ''));
+        }).catch(() => {});
+      }
       setProfilePhoto(localStorage.getItem('user_profile_photo') || null);
       setCallsign(verifiedOnThisDevice ? verifiedCallsign : (localStorage.getItem('user_callsign') || ''));
       setCustomBg(localStorage.getItem('eqsl_custom_bg') || null);
@@ -417,7 +424,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalCall = callsign.trim().toUpperCase();
     if (!isVerifiedCallsign && !finalCall) {
@@ -428,6 +435,26 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     if (normalizedGrid && !isValidMaidenheadLocator(normalizedGrid)) {
       window.alert('Grid Locator inválido. Ingresá un Maidenhead válido de 4, 6, 8 o 10 caracteres (por ejemplo IN83, IN83KA, IN83KA12 o IN83KA12AB).');
       return;
+    }
+    const qraToken = localStorage.getItem('community_chat_identity_token') || '';
+    const qraCallsign = (localStorage.getItem('community_chat_sd') || finalCall || '').trim().toUpperCase();
+    const normalizedQra = qraOperator.trim().replace(/\\s+/g, ' ');
+    if (normalizedQra.length > 80) {
+      window.alert('El campo QRA OPERADOR admite hasta 80 caracteres.');
+      return;
+    }
+    if (normalizedQra && (!supabase || !qraToken || !qraCallsign)) {
+      window.alert('Para publicar tu QRA OPERADOR necesitás tener tu SD o indicativo verificado en el chat.');
+      return;
+    }
+    if (supabase && qraToken && qraCallsign) {
+      const { data, error } = await supabase.rpc('save_community_profile_qra_operator', {
+        p_callsign: qraCallsign, p_token: qraToken, p_qra_operator: normalizedQra || null,
+      });
+      if (error || !data?.ok) {
+        window.alert('No se pudo guardar el QRA OPERADOR para que lo vean los demás. Verificá tu conexión e intentá nuevamente.');
+        return;
+      }
     }
     // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
     if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
@@ -565,6 +592,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <label htmlFor="user-grid-locator" className="block text-xs text-slate-300">Tu locator Maidenhead</label>
             <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" spellCheck={false} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
             <p className={gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>{gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'Formato no válido. Usá 4, 6, 8 o 10 caracteres Maidenhead.' : 'Válido para cuentas de radioaficionado y de 11 metros. Ejemplos: IN83 · IN83KA · IN83KA12 · IN83KA12AB.'}</p>
+          </section>
+
+          <section className="rounded-xl border border-emerald-500/25 bg-slate-950/70 p-3.5 space-y-2" aria-labelledby="qra-operator-title">
+            <h3 id="qra-operator-title" className="text-xs font-bold uppercase tracking-wider text-emerald-300">QRA OPERADOR</h3>
+            <label htmlFor="qra-operator" className="block text-xs text-slate-300">Nombre del operador (visible en tu perfil público)</label>
+            <input id="qra-operator" type="text" maxLength={80} value={qraOperator} onChange={(event) => setQraOperator(event.target.value)} placeholder="Ingresá tu QRA OPERADOR" autoComplete="name" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:border-emerald-400 focus:outline-none" />
+            <p className="text-xs text-slate-400">Este dato será visible para los demás usuarios cuando consulten tu perfil. Dejalo vacío si no querés mostrarlo.</p>
           </section>
 
           <section className="rounded-xl border border-sky-500/25 bg-slate-950/70 p-3.5 space-y-3" aria-labelledby="profile-photo-title">
