@@ -246,6 +246,25 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     localStorage.removeItem('eqsl_custom_bg');
   };
 
+  // Resolver la actividad para esta eQSL. Los datos guardados en el QSO tienen
+  // prioridad; si un QSO antiguo no los tenía, usar la referencia oficial que el
+  // operador mantiene seleccionada en el Libro de Guardia.
+  const getEffectiveActivityReferences = () => {
+    const references = [
+      { label: 'LLOTA', code: qso?.llotaReference, name: qso?.llotaReferenceName },
+      { label: 'SOTA', code: qso?.sotaReference, name: qso?.sotaReferenceName },
+      { label: 'IOTA', code: qso?.iotaReference, name: qso?.iotaReferenceName },
+    ].filter((item) => Boolean(item.code?.trim()));
+    if (references.length || !qso) return references;
+    try {
+      const saved = JSON.parse(localStorage.getItem('logbook_llota_selected_reference_v1') || 'null');
+      if (saved && typeof saved.code === 'string' && /^LL[A-Z]{2}-\\d{4,5}$/i.test(saved.code)) {
+        return [{ label: 'LLOTA', code: saved.code.toUpperCase(), name: String(saved.name || '') }];
+      }
+    } catch { /* No bloquear la generación de eQSL por un dato local inválido. */ }
+    return references;
+  };
+
   // Dibujar la tarjeta eQSL en el canvas HTML5 con máxima calidad (1200x750)
   const renderCard = (): Promise<void> => new Promise((resolve) => {
     if (!qso || !canvasRef.current) { resolve(); return; }
@@ -260,11 +279,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
 
     const drawCardContent = () => {
       // Franja inferior blanca: primero identifica ambos corresponsales y luego los datos técnicos.
-      const activityReferences = [
-        { label: 'LLOTA', code: qso.llotaReference, name: qso.llotaReferenceName },
-        { label: 'SOTA', code: qso.sotaReference, name: qso.sotaReferenceName },
-        { label: 'IOTA', code: qso.iotaReference, name: qso.iotaReferenceName },
-      ].filter((item) => Boolean(item.code?.trim()));
+      const activityReferences = getEffectiveActivityReferences();
       // Reservar espacio suficiente para identificar la actividad, el lugar y el código
       // en líneas independientes dentro de la imagen final de la eQSL.
       const footerH = activityReferences.length ? 205 + Math.max(0, activityReferences.length - 1) * 58 : 150;
@@ -504,9 +519,17 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       grid: myGrid,
       // Compartir la tarjeta ya renderizada: conserva imagen, recorte, posición y diseño exactos.
       imageDataUrl: canvasRef.current?.toDataURL('image/jpeg', 0.9) || '',
-      ...(qso.llotaReference ? { llotaReference: qso.llotaReference, llotaReferenceName: qso.llotaReferenceName || '' } : {}),
-      ...(qso.sotaReference ? { sotaReference: qso.sotaReference, sotaReferenceName: qso.sotaReferenceName || '' } : {}),
-      ...(qso.iotaReference ? { iotaReference: qso.iotaReference, iotaReferenceName: qso.iotaReferenceName || '' } : {}),
+      ...(() => {
+        const activities = getEffectiveActivityReferences();
+        const llota = activities.find((item) => item.label === 'LLOTA');
+        const sota = activities.find((item) => item.label === 'SOTA');
+        const iota = activities.find((item) => item.label === 'IOTA');
+        return {
+          ...(llota?.code ? { llotaReference: llota.code, llotaReferenceName: llota.name || '' } : {}),
+          ...(sota?.code ? { sotaReference: sota.code, sotaReferenceName: sota.name || '' } : {}),
+          ...(iota?.code ? { iotaReference: iota.code, iotaReferenceName: iota.name || '' } : {}),
+        };
+      })(),
     };
     if (registerInAppInbox) {
       const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
@@ -890,15 +913,11 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           <canvas ref={canvasRef} className="w-full h-auto max-h-[440px] object-contain rounded-lg shadow-2xl pointer-events-none" />
           {customBgImage && <span className="absolute bottom-3 left-3 rounded-md bg-black/65 px-2 py-1 text-[11px] text-white pointer-events-none">Arrastrá para mover · pellizcá para ampliar o reducir</span>}
         </div>
-        {(qso.llotaReference || qso.sotaReference || qso.iotaReference) && <div className="mb-4 rounded-xl border border-teal-500/50 bg-teal-950/40 p-3">
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-teal-200">Datos de actividad que se incluirán en la eQSL</p>
-          {[
-            { type: 'LLOTA', code: qso.llotaReference, place: qso.llotaReferenceName },
-            { type: 'SOTA', code: qso.sotaReference, place: qso.sotaReferenceName },
-            { type: 'IOTA', code: qso.iotaReference, place: qso.iotaReferenceName },
-          ].filter((item) => Boolean(item.code?.trim())).map((item) => <div key={item.type} className="space-y-0.5 text-sm text-white">
-            <p><strong className="text-teal-200">TIPO DE ACTIVIDAD:</strong> {item.type}</p>
-            <p><strong className="text-teal-200">NOMBRE DEL LUGAR:</strong> {item.place?.trim() || 'NO INDICADO EN EL CATÁLOGO'}</p>
+        {getEffectiveActivityReferences().length > 0 && <div className="mb-4 rounded-xl border border-teal-500/50 bg-teal-950/40 p-3">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-teal-200">Datos de actividad incluidos en la eQSL</p>
+          {getEffectiveActivityReferences().map((item) => <div key={item.label} className="space-y-0.5 text-sm text-white">
+            <p><strong className="text-teal-200">TIPO DE ACTIVIDAD:</strong> {item.label}</p>
+            <p><strong className="text-teal-200">NOMBRE DEL LUGAR:</strong> {item.name?.trim() || 'NO INDICADO EN EL CATÁLOGO'}</p>
             <p><strong className="text-teal-200">REFERENCIA:</strong> {item.code}</p>
           </div>)}
         </div>}
