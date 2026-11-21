@@ -28,6 +28,7 @@ import { InitialSdValidation } from './components/InitialSdValidation';
 import { PropagationReport } from './components/PropagationReport';
 import { PatentGenerator } from './components/PatentGenerator';
 import { UserDirectory } from './components/UserDirectory';
+import { UserPublicProfile } from './components/UserPublicProfile';
 import { PatentDownloadedPage, PatentSharePage } from './components/PatentSharePage';
 
 
@@ -432,6 +433,7 @@ function MainApp() {
       <PropagationReport />
       <PatentGenerator />
       <UserDirectory />
+      <UserPublicProfile />
 
       {/* Pie de página al final de la aplicación. */}
       <Footer />
