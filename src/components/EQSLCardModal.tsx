@@ -251,7 +251,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     if (!qso || !canvasRef.current) { resolve(); return; }
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) { resolve(); return; }
 
     const width = 1200;
     const height = 750;
