@@ -66,10 +66,16 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const cbQSOs = qsos.filter((q) => !q.llotaActivityId && isCitizenBand(q));
   const categoryQSOs = activeLog === 'cb' ? cbQSOs : hamQSOs;
   const selectedContestLog = contestLogs.find((log) => log.name.trim().toLocaleLowerCase() === selectedContestLogName.trim().toLocaleLowerCase());
-  const exportQSOs = selectedLLOTALog ? selectedLLOTALog.qsos : selectedContestLog
+  // Un archivo LLOTA solo puede mostrar contactos vinculados al ID exacto
+  // de esa actividad. No confiar únicamente en el array archivado: puede contener
+  // registros antiguos mezclados por versiones previas del log.
+  const selectedLLOTAQSOs = selectedLLOTALog
+    ? selectedLLOTALog.qsos.filter((q) => q.llotaActivityId === selectedLLOTALog.id)
+    : [];
+  const exportQSOs = selectedLLOTALog ? selectedLLOTAQSOs : selectedContestLog
     ? (selectedContestLog.qsos?.length ? selectedContestLog.qsos : qsos.filter((q) => q.contestLogId === selectedContestLog.id || q.contestLogName === selectedContestLog.name))
     : categoryQSOs;
-  const logQSOs = selectedLLOTALog ? selectedLLOTALog.qsos : selectedContestLog ? exportQSOs : categoryQSOs;
+  const logQSOs = selectedLLOTALog ? selectedLLOTAQSOs : selectedContestLog ? exportQSOs : categoryQSOs;
   const visibleQSOs = logQSOs.filter((q) => {
     const term = searchTerm.trim().toLowerCase();
     return (!term || [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.country, q.grid].some((v) => String(v || '').toLowerCase().includes(term))) &&
