@@ -63,7 +63,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushStatus, setPushStatus] = useState('');
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [gridSaveBusy, setGridSaveBusy] = useState(false);
+  const [gridSaveStatus, setGridSaveStatus] = useState('');
+  const [callsignSaveBusy, setCallsignSaveBusy] = useState(false);
+  const [callsignSaveStatus, setCallsignSaveStatus] = useState('');
   const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
   const [weeklyHistoryOpen, setWeeklyHistoryOpen] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<Array<{
@@ -207,7 +210,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           setPushEnabled(Boolean(subscription && Notification.permission === 'granted'));
         }).catch(() => setPushEnabled(false));
       }
-      setSavedSuccess(false);
+      setGridSaveStatus('');
+      setCallsignSaveStatus('');
     }
   }, [isOpen]);
 
@@ -639,51 +643,52 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveCallsign = async () => {
     const finalCall = callsign.trim().toUpperCase();
-    if (!isVerifiedCallsign && !finalCall) {
-      window.alert('Ingresá tu indicativo de radio antes de guardar.');
-      return;
-    }
+    if (isVerifiedCallsign) return;
+    if (!finalCall) { setCallsignSaveStatus('Ingresá tu indicativo antes de guardar.'); return; }
+    setCallsignSaveBusy(true); setCallsignSaveStatus('Guardando…');
+    try {
+      localStorage.setItem('user_callsign', finalCall);
+      setCallsign(finalCall);
+      window.dispatchEvent(new Event('user-profile-updated'));
+      onUpdate();
+      setCallsignSaveStatus('Indicativo guardado correctamente en este dispositivo.');
+    } catch {
+      setCallsignSaveStatus('No se pudo guardar el indicativo. Revisá el espacio disponible e intentá nuevamente.');
+    } finally { setCallsignSaveBusy(false); }
+  };
+
+  const handleSaveGridLocator = async () => {
     const normalizedGrid = gridLocator.trim().toUpperCase();
     if (normalizedGrid && !isValidMaidenheadLocator(normalizedGrid)) {
-      window.alert('Grid Locator inválido. Ingresá un Maidenhead válido de 4, 6, 8 o 10 caracteres (por ejemplo IN83, IN83KA, IN83KA12 o IN83KA12AB).');
+      setGridSearchError('Grid Locator inválido. Usá 4, 6, 8 o 10 caracteres Maidenhead.');
+      setGridSaveStatus('Corregí el formato antes de guardar.');
       return;
     }
-    // La SD ya verificada pertenece a la identidad comunitaria; no se sustituye desde Ajustes.
-    if (!isVerifiedCallsign) localStorage.setItem('user_callsign', finalCall);
-    if (normalizedGrid) localStorage.setItem('user_grid_locator', normalizedGrid);
-    else localStorage.removeItem('user_grid_locator');
-    const gridToken = localStorage.getItem('community_chat_identity_token') || '';
-    const gridCallsign = (localStorage.getItem('community_chat_sd') || finalCall || '').trim().toUpperCase();
-    if (supabase && gridToken && gridCallsign) {
-      void supabase.rpc('save_live_spot_grid_locator', { p_callsign: gridCallsign, p_token: gridToken, p_grid_locator: normalizedGrid || null }).then(({ data, error }) => {
-        if (error || !data?.ok) console.warn('[LogBook] No se pudo compartir el Grid Locator:', error?.message || data?.reason);
-      });
-    }
-    localStorage.setItem('eqsl_theme', defaultEQSLTheme);
-    localStorage.setItem('eqsl_sound_alerts', eqslSoundAlerts ? 'true' : 'false');
-    window.dispatchEvent(new Event('eqsl-sound-setting-updated'));
-    const pushToken = localStorage.getItem('community_chat_identity_token') || '';
-    const pushCallsign = (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-    if (pushToken && pushCallsign) {
-      void fetch('/api/push-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'settings', token: pushToken, callsign: pushCallsign, alertsEnabled: eqslSoundAlerts }) }).catch(() => {});
-    }
-    window.dispatchEvent(new Event('user-profile-updated'));
-
-    localStorage.removeItem('hamqth_user');
-    localStorage.removeItem('hamqth_pass');
-    localStorage.removeItem('qrz_logbook_key');
-    localStorage.removeItem('qrz_auto_upload');
-    localStorage.removeItem('eqsl_user');
-    localStorage.removeItem('eqsl_pass');
-
-    setSavedSuccess(true);
-    onUpdate();
-    setTimeout(() => {
-      onClose();
-    }, 600);
+    setGridSaveBusy(true); setGridSaveStatus('Guardando…'); setGridSearchError('');
+    try {
+      const gridToken = localStorage.getItem('community_chat_identity_token') || '';
+      const gridCallsign = (localStorage.getItem('community_chat_sd') || callsign.trim().toUpperCase() || '').trim().toUpperCase();
+      if (supabase && gridToken && gridCallsign) {
+        const { data, error } = await supabase.rpc('save_live_spot_grid_locator', {
+          p_callsign: gridCallsign, p_token: gridToken, p_grid_locator: normalizedGrid || null,
+        });
+        if (error || !data?.ok) throw new Error('No se pudo compartir el Grid Locator con el directorio. El valor sigue en el formulario; intentá nuevamente.');
+        if (normalizedGrid) localStorage.setItem('user_grid_locator', normalizedGrid);
+        else localStorage.removeItem('user_grid_locator');
+        setGridSaveStatus('Grid Locator guardado y compartido en el directorio.');
+      } else {
+        if (normalizedGrid) localStorage.setItem('user_grid_locator', normalizedGrid);
+        else localStorage.removeItem('user_grid_locator');
+        setGridSaveStatus('Grid Locator guardado en este dispositivo. Para compartirlo en el directorio necesitás una SD verificada.');
+      }
+      setGridLocator(normalizedGrid);
+      window.dispatchEvent(new Event('user-profile-updated'));
+      onUpdate();
+    } catch (error) {
+      setGridSaveStatus(error instanceof Error ? error.message : 'No se pudo guardar el Grid Locator. Intentá nuevamente.');
+    } finally { setGridSaveBusy(false); }
   };
 
   return (
@@ -707,7 +712,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4 pt-4">
+        <div className="space-y-4 pt-4">
           {/* Los usuarios con SD verificada usan la identidad registrada automáticamente. */}
           {!isVerifiedCallsign && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -722,6 +727,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   placeholder="Ingresá tu señal distintiva"
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm font-mono text-amber-300 font-bold focus:border-amber-400 focus:outline-hidden"
                 />
+                <button type="button" onClick={() => void handleSaveCallsign()} disabled={callsignSaveBusy || !callsign.trim()} className="mt-2 w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50">{callsignSaveBusy ? 'Guardando…' : 'GUARDAR INDICATIVO'}</button>
+                {callsignSaveStatus && <p role="status" className="mt-1 text-xs text-emerald-300">{callsignSaveStatus}</p>}
               </div>
             </div>
           )}
@@ -787,7 +794,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <h3 id="grid-locator-title" className="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Locator para distancia DX</h3>
               <label htmlFor="user-grid-locator" className="mt-2 block text-xs text-slate-300">Tu locator Maidenhead actual o nuevo</label>
               <input id="user-grid-locator" type="text" maxLength={10} value={gridLocator} onChange={(e) => setGridLocator(e.target.value.toUpperCase().replace(/\s+/g, ''))} placeholder="Ej.: IN83ka" autoCapitalize="characters" spellCheck={false} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm font-bold text-cyan-200 focus:border-cyan-400 focus:outline-none" />
-              <p className={gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>{gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'Formato no válido. Usá 4, 6, 8 o 10 caracteres Maidenhead.' : 'Podés conservarlo o reemplazarlo cuando operes desde otra ubicación. Se guarda solo al pulsar Guardar cambios.'}</p>
+              <p className={gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'text-xs text-rose-300' : 'text-xs text-slate-400'}>{gridLocator.trim() && !isValidMaidenheadLocator(gridLocator) ? 'Formato no válido. Usá 4, 6, 8 o 10 caracteres Maidenhead.' : 'Podés conservarlo o reemplazarlo cuando operes desde otra ubicación. Guardalo aquí después de elegir tu ubicación. Podés cambiarlo cuando operes desde otro lugar.'}</p>
             </div>
             <button type="button" onClick={detectGridGps} disabled={gridGpsBusy} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
               <LocateFixed size={17} /> {gridGpsBusy ? 'Detectando ubicación…' : 'DETECTAR MI UBICACIÓN GPS'}
@@ -817,6 +824,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <div ref={gridMapRef} className="h-[250px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
             </div>
             {gridSearchError && <p role="status" className="text-xs text-amber-300">{gridSearchError}</p>}
+            <button type="button" onClick={() => void handleSaveGridLocator()} disabled={gridSaveBusy || Boolean(gridLocator.trim() && !isValidMaidenheadLocator(gridLocator))} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-3 py-2.5 text-sm font-black text-slate-950 hover:bg-cyan-500 disabled:opacity-50">{gridSaveBusy ? 'Guardando Grid Locator…' : 'GUARDAR GRID LOCATOR'}</button>
+            {gridSaveStatus && <p role="status" className={`text-xs ${gridSaveStatus.startsWith('Grid Locator guardado') ? 'text-emerald-300' : 'text-amber-300'}`}>{gridSaveStatus}</p>}
             {gridLocator.trim() && isValidMaidenheadLocator(gridLocator) && <p className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-sm font-bold text-emerald-200">Grid Locator calculado: {gridLocator.toUpperCase()}</p>}
           </section>
 
@@ -1051,29 +1060,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               <a href="mailto:lu1tsb.4rc978@gmail.com?subject=Contacto%20con%20LogBook%20eQSL%20EXPRESS" className="font-medium text-sky-300 underline underline-offset-2">lu1tsb.4rc978@gmail.com</a>
             </p>
           </section>
-          {/* Footer del Modal */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-            <div className="text-xs text-emerald-400 font-medium">
-              {savedSuccess ? '¡Guardado correctamente!' : ''}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-xs text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
-              >
-                <Check className="w-4 h-4" />
-                Guardar Configuración
-              </button>
-            </div>
+          <div className="flex justify-end pt-4 border-t border-slate-800">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">Cerrar</button>
           </div>
-        </form>
       </div>
     </div>
   );
