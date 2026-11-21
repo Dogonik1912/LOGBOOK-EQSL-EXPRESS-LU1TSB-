@@ -11,6 +11,9 @@ type SharedEQSL = {
   from: string; to: string; date: string; time: string; band: string;
   frequency: string; mode: string; rstSent: string; rstRcvd: string;
   name?: string; qth?: string; grid?: string; imageDataUrl?: string; isResponse?: boolean;
+  llotaReference?: string; llotaReferenceName?: string;
+  sotaReference?: string; sotaReferenceName?: string;
+  iotaReference?: string; iotaReferenceName?: string;
 };
 
 type Language = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'ja' | 'zh' | 'pl' | 'sv' | 'no' | 'da' | 'fi' | 'cs' | 'sk' | 'hu' | 'ro' | 'tr' | 'el' | 'uk' | 'hr' | 'sr' | 'ca';
@@ -96,6 +99,11 @@ export const ReceivedEQSLPage: React.FC = () => {
   const [errorKey, setErrorKey] = useState<'missing' | 'invalid' | ''>('');
   const language = languageForRecipient();
   const t = translations[language];
+  const activityReferences = card ? [
+    { label: 'LLOTA', code: card.llotaReference, name: card.llotaReferenceName },
+    { label: 'SOTA', code: card.sotaReference, name: card.sotaReferenceName },
+    { label: 'IOTA', code: card.iotaReference, name: card.iotaReferenceName },
+  ].filter((item) => Boolean(item.code?.trim())) : [];
 
   useEffect(() => {
     let active = true;
@@ -223,6 +231,10 @@ export const ReceivedEQSLPage: React.FC = () => {
       {card && alreadyViewed && <p role="status" className="mb-4 rounded-lg border border-amber-400/50 bg-amber-950/60 p-3 text-center font-semibold text-amber-200">{card.isResponse ? 'Esta respuesta ya fue vista o enviada.' : 'Esta eQSL ya fue vista o descargada.'}</p>}
       {errorKey ? <p role="alert" className="rounded-lg bg-red-950 p-4 text-red-200">{t[errorKey]}</p> : card && <>
         <div className="rounded-xl overflow-hidden border-2 border-amber-400/70 bg-slate-950 p-1 shadow-lg">{card.imageDataUrl ? <img src={card.imageDataUrl} alt={card.isResponse ? 'Tarjeta eQSL de respuesta' : t.title} className="block w-full h-auto" /> : <canvas ref={canvasRef} aria-label={t.title} className="block w-full h-auto" />}</div>
+        {activityReferences.length > 0 && <div className="mt-3 rounded-xl border border-teal-500/50 bg-teal-950/40 p-3">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-teal-200">Actividad / referencia</p>
+          <div className="space-y-1">{activityReferences.map((activity) => <p key={activity.label} className="text-sm font-semibold text-white"><span className="text-teal-200">{activity.label} · REFERENCIA:</span> {activity.code}{activity.name ? ` — ${activity.name}` : ''}</p>)}</div>
+        </div>}
         <div className="mt-4 flex flex-col gap-3">
           <button onClick={download} className="rounded-xl bg-amber-400 px-5 py-4 text-center text-base sm:text-lg font-extrabold text-slate-950 shadow-lg hover:bg-amber-300">{card.isResponse ? 'Descargar' : t.download}</button>
           {!card.isResponse && downloadAttempted && <div className="space-y-3 rounded-xl border border-emerald-500/50 bg-emerald-950/30 p-4 text-center">
