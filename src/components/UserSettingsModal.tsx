@@ -5,7 +5,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { isValidMaidenheadLocator } from '../services/dxDistance';
+import { isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
+import { loadLeaflet } from '../services/leaflet';
 import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon, MapPin, Search, LocateFixed, Crosshair } from 'lucide-react';
 
 function gridPointToMaidenhead(latitude: number, longitude: number): string | null {
@@ -46,6 +47,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [gridPlaceQuery, setGridPlaceQuery] = useState('');
   const [gridPlaceResults, setGridPlaceResults] = useState<Array<{ name: string; lat: number; lon: number }>>([]);
   const [gridSearchBusy, setGridSearchBusy] = useState(false);
+  const [gridMapLoading, setGridMapLoading] = useState(false);
   const [gridSearchError, setGridSearchError] = useState('');
   const [gridGpsBusy, setGridGpsBusy] = useState(false);
   const [gridLatitude, setGridLatitude] = useState('');
@@ -218,54 +220,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   useEffect(() => {
     if (!isOpen || !gridMapRef.current) return;
     let cancelled = false;
+    setGridMapLoading(true);
     const initializeMap = async () => {
-      const w = window as any;
-      const ensureLeaflet = async () => {
-        if (w.L) return w.L;
-        const loadStylesheet = async () => {
-          if (document.querySelector('link[data-grid-leaflet][data-loaded="true"]')) return;
-          const existing = document.querySelector('link[data-grid-leaflet]') as HTMLLinkElement | null;
-          if (existing) existing.remove();
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
-          link.dataset.gridLeaflet = 'true';
-          await new Promise<void>((resolve, reject) => {
-            link.onload = () => { link.dataset.loaded = 'true'; resolve(); };
-            link.onerror = () => { link.remove(); reject(new Error('No se pudieron cargar los estilos del mapa.')); };
-            document.head.appendChild(link);
-          });
-        };
-        const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = src;
-          script.async = true;
-          script.dataset.gridLeaflet = 'true';
-          const timeout = window.setTimeout(() => {
-            script.remove();
-            reject(new Error('Tiempo de espera agotado al cargar el mapa.'));
-          }, 12000);
-          script.onload = () => { window.clearTimeout(timeout); resolve(); };
-          script.onerror = () => { window.clearTimeout(timeout); script.remove(); reject(new Error('No se pudo descargar el componente del mapa.')); };
-          document.head.appendChild(script);
-        });
-        await loadStylesheet();
-        try {
-          await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');
-        } catch {
-          await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
-        }
-        if (!w.L) throw new Error('El mapa no pudo inicializarse. Comprobá la conexión e intentá nuevamente.');
-        return w.L;
-      };
+      setGridMapLoading(true);
       try {
-        const L = await ensureLeaflet();
+        const L = await loadLeaflet();
         if (cancelled || !gridMapRef.current || gridMapInstanceRef.current) return;
         const currentPoint = maidenheadToPoint(gridLocator);
         const center: [number, number] = currentPoint ? [currentPoint.lat, currentPoint.lon] : [-34.6037, -58.3816];
         const map = L.map(gridMapRef.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true }).setView(center, currentPoint ? 8 : 4);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap', crossOrigin: true }).addTo(map);
         gridMapInstanceRef.current = map;
+        setGridMapLoading(false);
         const placeMarker = (lat: number, lon: number) => {
           if (!gridMapInstanceRef.current) return;
           if (gridMapMarkerRef.current) gridMapMarkerRef.current.setLatLng([lat, lon]);
@@ -291,7 +257,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           }, delay);
         });
       } catch (error) {
-        if (!cancelled) setGridSearchError(error instanceof Error ? error.message : 'No se pudo abrir el mapa.');
+        if (!cancelled) {
+          setGridMapLoading(false);
+          setGridSearchError(error instanceof Error ? error.message : 'No se pudo abrir el mapa.');
+        }
       }
     };
     void initializeMap();
@@ -825,7 +794,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <div>
               <p className="mb-1 text-xs font-semibold text-slate-300">Mapa: tocá el punto exacto donde estás para calcular el locator. El mapa permanece visible al buscar una dirección.</p>
-              <div ref={gridMapRef} className="relative z-0 isolate block h-[320px] min-h-[320px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
+              <div className="relative"><div ref={gridMapRef} aria-label="Mapa mundial interactivo para elegir tu Grid Locator" className="relative z-0 isolate block h-[52dvh] min-h-[320px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />{gridMapLoading && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-slate-950/60 text-sm font-semibold text-cyan-100">Cargando mapa mundial…</div>}</div>{gridSearchError && <p role="status" className="mt-2 text-xs text-amber-300">{gridSearchError}</p>}
             </div>
             {gridPlaceResults.length > 0 && <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2">
               {gridPlaceResults.map((place, index) => <button key={place.name + index} type="button" onClick={() => { applyGridCoordinates(place.lat, place.lon); setGridPlaceResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"><MapPin size={15} className="mt-0.5 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}
