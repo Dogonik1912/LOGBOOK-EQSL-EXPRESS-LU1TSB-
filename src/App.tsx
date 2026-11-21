@@ -34,6 +34,7 @@ import { PatentDownloadedPage, PatentSharePage } from './components/PatentShareP
 
 
 interface ContestLogRecord { id: string; name: string; type: string; finishedAt: string; qsos?: QSO[]; }
+interface LLOTAActivityLog { id: string; name: string; reference: string; activityType: string; startedAt: string; finishedAt: string; qsos: QSO[]; }
 
 const QSO_BACKUP_DB = 'logbook-offline-qso';
 const QSO_BACKUP_STORE = 'qsos';
@@ -115,6 +116,21 @@ function MainApp() {
     try { return JSON.parse(localStorage.getItem('logbook_contest_logs') || '[]') as ContestLogRecord[]; }
     catch { return []; }
   });
+  const [llotaLogs, setLLOTALogs] = useState<LLOTAActivityLog[]>(() => { try { return JSON.parse(localStorage.getItem('logbook_llota_activity_logs') || '[]') as LLOTAActivityLog[]; } catch { return []; } });
+  const handleFinishLLOTA = (log: Omit<LLOTAActivityLog, 'qsos'>): boolean => {
+    const snapshot = qsos.filter(q => q.llotaActivityId === log.id).map(q => ({ ...q }));
+    if (!snapshot.length) { window.alert('No se encontraron QSO de esta actividad. La referencia seguirá activa para proteger los datos.'); return false; }
+    const archived: LLOTAActivityLog = { ...log, qsos: snapshot, name: log.name || log.reference };
+    const updated = [archived, ...llotaLogs.filter(item => item.id !== log.id)];
+    try {
+      localStorage.setItem('logbook_llota_activity_logs', JSON.stringify(updated));
+      const check = JSON.parse(localStorage.getItem('logbook_llota_activity_logs') || '[]') as LLOTAActivityLog[];
+      const saved = check.find(item => item.id === log.id);
+      if (!saved || saved.qsos?.length !== snapshot.length) throw new Error('Verificación de archivo fallida');
+      setLLOTALogs(updated);
+      return true;
+    } catch (error) { console.error(error); window.alert('No se pudo verificar el archivo LLOTA. La actividad sigue activa.'); return false; }
+  };
   const handleFinishContest = (log: ContestLogRecord): boolean => {
     // No cerrar el concurso si no podemos confirmar que hay QSO asociados y archivados.
     const snapshot = qsos
@@ -273,7 +289,7 @@ function MainApp() {
     });
   };
 
-  const handleAddQSO = (qso: QSO, openEQSL = true, publishSpot = true) => {
+  const handleAddQSO = (qso: QSO, openEQSL = true, publishSpot = true, allowDuplicate = false) => {
     // Evitar duplicados al guardar una respuesta eQSL de un QSO que ya estaba cargado.
     const makeQsoKey = (item: QSO) => [
       String(item.callsign || '').trim().toUpperCase(),
@@ -285,7 +301,7 @@ function MainApp() {
     ].join('|');
     const key = makeQsoKey(qso);
     const existing = qsos.find((item) => makeQsoKey(item) === key);
-    const trackedQSO: QSO = existing
+    const trackedQSO: QSO = existing && !allowDuplicate
       ? {
           ...existing,
           ...qso,
@@ -300,7 +316,7 @@ function MainApp() {
           qslRcvd: Boolean(existing.qslRcvd || qso.qslRcvd),
         }
       : { ...qso };
-    const updated = existing
+    const updated = existing && !allowDuplicate
       ? qsos.map((item) => item.id === existing.id ? trackedQSO : item)
       : [trackedQSO, ...qsos];
     handleSaveQsos(updated);
@@ -444,6 +460,8 @@ function MainApp() {
         <NewQSOForm
           onAddQSO={handleAddQSO}
           onFinishContest={handleFinishContest}
+          onFinishLLOTA={handleFinishLLOTA}
+          hasDuplicateQSO={(candidate) => qsos.some(q => q.llotaActivityId === candidate.llotaActivityId && q.callsign.trim().toUpperCase() === candidate.callsign.trim().toUpperCase() && q.date === candidate.date && q.time === candidate.time && q.frequency === candidate.frequency && q.mode === candidate.mode)}
         />
 
         {/* Tabla Live Log (con columna Email editable, filtros y acciones) */}
