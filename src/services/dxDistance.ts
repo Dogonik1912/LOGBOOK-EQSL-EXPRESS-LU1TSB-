@@ -36,7 +36,7 @@ const CAPITALS: Record<string, Point> = {
   'Rumania':{lat:44.4268,lon:26.1025}, 'Ucrania':{lat:50.4501,lon:30.5234}
 };
 
-export function maidenheadToPoint(locator: string): Point | null {
+export function capitalPointForCountry(country: string): Point | null {\n  return CAPITALS[String(country || '').trim()] || null;\n}\n\nexport function maidenheadToPoint(locator: string): Point | null {
   const grid = String(locator || '').trim().toUpperCase();
   if (!/^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(grid)) return null;
   let lon = -180 + (grid.charCodeAt(0) - 65) * 20;
