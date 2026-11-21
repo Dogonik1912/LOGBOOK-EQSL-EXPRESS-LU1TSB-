@@ -23,24 +23,41 @@ function maidenheadCenter(locator: string): GridPoint | null {
 async function localityForGrid(locator: string, point: GridPoint): Promise<string> {
   const key = locator.toUpperCase();
   if (localityCache.has(key)) return localityCache.get(key) || '';
-  try {
-    // Photon (OpenStreetMap) reverse-geocodes the grid centre; radius allows for the
-    // uncertainty of a Maidenhead cell without pretending this is an exact address.
-    const radius = key.length <= 4 ? 300 : key.length <= 6 ? 60 : 20;
-    const params = new URLSearchParams({ lat: String(point.latitude), lon: String(point.longitude), radius: String(radius), lang: 'es', limit: '1' });
-    const response = await fetch('https://photon.komoot.io/reverse?' + params.toString());
-    if (!response.ok) return '';
-    const data = await response.json();
-    const properties = data?.features?.[0]?.properties || {};
-    const place = String(properties.locality || properties.city || properties.name || properties.district || '').trim();
-    const region = String(properties.state || '').trim();
-    const countryName = String(properties.country || '').trim();
-    const result = [place, region && region !== place ? region : '', countryName].filter(Boolean).join(', ');
-    if (result) localityCache.set(key, result);
-    return result;
-  } catch {
-    return '';
+  // Maidenhead cell half-diagonal, in metres, plus wider fallbacks for rural areas.
+  // A six-character locator covers roughly 5 x 2.5 km, not a 60 m point.
+  const radii = key.length <= 4 ? [30000, 50000] : key.length <= 6 ? [4000, 10000, 20000] : key.length <= 8 ? [500, 2000, 5000] : [100, 500, 1500];
+  const settlementTypes = new Set(['city', 'town', 'village', 'hamlet', 'isolated_dwelling', 'suburb', 'neighbourhood']);
+  for (const radius of radii) {
+    try {
+      const params = new URLSearchParams({ lat: String(point.latitude), lon: String(point.longitude), radius: String(radius), lang: 'es', limit: '8' });
+      const response = await fetch('https://photon.komoot.io/reverse?' + params.toString());
+      if (!response.ok) continue;
+      const data = await response.json();
+      const features = Array.isArray(data?.features) ? data.features : [];
+      if (!features.length) continue;
+      // Prefer an actual populated place over a road, building or other nearby map feature.
+      const ranked = [...features].sort((a: any, b: any) => {
+        const aType = String(a?.properties?.osm_value || a?.properties?.type || '').toLowerCase();
+        const bType = String(b?.properties?.osm_value || b?.properties?.type || '').toLowerCase();
+        return Number(settlementTypes.has(bType)) - Number(settlementTypes.has(aType));
+      });
+      const properties = ranked.find((feature: any) => {
+        const p = feature?.properties || {};
+        return Boolean(p.locality || p.city || p.name || p.district);
+      })?.properties || {};
+      const place = String(properties.locality || properties.city || properties.name || properties.district || '').trim();
+      const region = String(properties.state || properties.county || '').trim();
+      const countryName = String(properties.country || '').trim();
+      const result = [place, region && region !== place ? region : '', countryName].filter(Boolean).join(', ');
+      if (result) {
+        localityCache.set(key, result);
+        return result;
+      }
+    } catch {
+      // Intenta con un radio mayor; el perfil no debe fallar por un servicio externo.
+    }
   }
+  return '';
 }
 
 export const openUserProfile = (rawCallsign: string) => {
