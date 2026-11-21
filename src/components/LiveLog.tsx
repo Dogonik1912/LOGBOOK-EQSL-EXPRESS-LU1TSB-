@@ -222,6 +222,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       if (q.llotaReference) {
         adif += `<STATION_CALLSIGN:${myCallsign.length}>${myCallsign}`;
         adif += `<MY_SIG:5>LLOTA<MY_SIG_INFO:${q.llotaReference.length}>${q.llotaReference}`;
+        const place = String(q.llotaReferenceName || '').trim();
+        if (place) adif += `<MY_CITY:${place.length}>${place}`;
       }
       adif += `<OPERATOR:${myCallsign.length}>${myCallsign}`;
       adif += `<EOR>\n`;
@@ -294,8 +296,8 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     if (!exportQSOs.length) return;
     const escapeCell = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const hasLLOTA = exportQSOs.some((q) => Boolean(q.llotaReference));
-    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas', ...(hasLLOTA ? ['Programa', 'Referencia LLOTA'] : [])];
-    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent, q.rstRcvd, q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes, ...(hasLLOTA ? [q.llotaReference ? 'LLOTA' : '', q.llotaReference || ''] : [])]);
+    const columns = ['Indicativo', 'Fecha UTC', 'Hora UTC', 'Banda', 'Frecuencia MHz', 'Modo', 'RST enviado', 'RST recibido', 'Progresivo enviado', 'Progresivo recibido', 'País', 'Grid', 'Notas', ...(hasLLOTA ? ['Tipo de actividad', 'Nombre del lugar', 'Referencia LLOTA'] : [])];
+    const rows = exportQSOs.map((q) => [q.callsign, q.date, q.time, q.band, q.frequency, q.mode, q.rstSent, q.rstRcvd, q.exchangeSent, q.exchangeReceived, q.country, q.grid, q.notes, ...(hasLLOTA ? [q.llotaReference ? 'LLOTA' : '', q.llotaReferenceName || '', q.llotaReference || ''] : [])]);
     const html = '<html><head><meta charset="utf-8"></head><body><table><thead><tr>' + columns.map((c) => '<th>' + escapeCell(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.map((row) => '<tr>' + row.map((v) => '<td>' + escapeCell(v) + '</td>').join('') + '</tr>').join('') + '</tbody></table></body></html>';
     const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob);
