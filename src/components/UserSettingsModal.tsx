@@ -792,12 +792,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <button type="button" onClick={detectGridGps} disabled={gridGpsBusy} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
               <LocateFixed size={17} /> {gridGpsBusy ? 'Detectando ubicación…' : 'DETECTAR MI UBICACIÓN GPS'}
             </button>
-            <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void searchGridPlaces(); }}>
-              <input value={gridPlaceQuery} onChange={(event) => setGridPlaceQuery(event.target.value)} placeholder="Buscar ciudad, localidad o dirección…" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white placeholder:text-slate-500" />
-              <button type="submit" disabled={gridSearchBusy} className="flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input value={gridPlaceQuery} onChange={(event) => setGridPlaceQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchGridPlaces(); } }} placeholder="Buscar ciudad, localidad o dirección…" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white placeholder:text-slate-500" />
+              <button type="button" onClick={() => { void searchGridPlaces(); }} disabled={gridSearchBusy} className="flex min-h-[42px] items-center justify-center gap-2 rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
                 <Search size={16} /> {gridSearchBusy ? 'Buscando…' : 'BUSCAR LUGAR'}
               </button>
-            </form>
+            </div>
             {gridPlaceResults.length > 0 && <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2">
               {gridPlaceResults.map((place, index) => <button key={place.name + index} type="button" onClick={() => { applyGridCoordinates(place.lat, place.lon); setGridPlaceResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"><MapPin size={15} className="mt-0.5 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}
             </div>}
