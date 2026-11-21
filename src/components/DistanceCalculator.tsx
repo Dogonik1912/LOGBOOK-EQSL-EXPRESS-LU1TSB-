@@ -186,30 +186,33 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     lineRef.current = null;
     if (!destination) return;
 
-    // Ruta doble: halo oscuro para contraste y trazo amarillo muy visible.
-    // Se fuerza un renderer SVG dentro del pane superior para evitar depender
-    // del renderer automático compartido de Leaflet en móviles.
+    // Ajustar primero el encuadre y después dibujar la ruta con Canvas nativo.
+    // Canvas evita depender del SVG personalizado que no se estaba viendo en móviles.
     map.invalidateSize({ pan: false });
+    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
+      { padding: [48, 48], maxZoom: 8, animate: false });
+
     const routeGroup = L.layerGroup().addTo(map);
-    const routeRenderer = L.svg({ pane: 'distanceRoutePane', padding: 0.5 });
+    const routeRenderer = L.canvas({ pane: 'distanceRoutePane', padding: 0.5 });
     const routePoints: [number, number][] = [
       [origin.lat, origin.lon],
       [destination.lat, destination.lon]
     ];
     L.polyline(routePoints, {
       pane: 'distanceRoutePane', renderer: routeRenderer,
-      color: '#111827', weight: 13, opacity: 0.95,
+      color: '#111827', weight: 15, opacity: 1,
       lineCap: 'round', lineJoin: 'round',
       interactive: false, smoothFactor: 0
     }).addTo(routeGroup);
     const route = L.polyline(routePoints, {
       pane: 'distanceRoutePane', renderer: routeRenderer,
-      color: '#ffea00', weight: 7, opacity: 1,
+      color: '#ffea00', weight: 8, opacity: 1,
       lineCap: 'round', lineJoin: 'round',
       interactive: false, smoothFactor: 0,
       className: 'distance-calculator-route'
     }).addTo(routeGroup);
     lineRef.current = routeGroup;
+    route.redraw();
     route.bringToFront();
     const group = L.layerGroup().addTo(map);
     const marker = L.marker([destination.lat, destination.lon], { draggable: true })
@@ -220,9 +223,6 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     });
     markerRef.current = group;
 
-    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
-      { padding: [48, 48], maxZoom: 8, animate: false });
-    route.redraw();
     window.requestAnimationFrame(() => {
       if (mapRef.current === map && map.hasLayer(routeGroup)) {
         map.invalidateSize({ pan: false });
