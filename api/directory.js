@@ -75,6 +75,16 @@ export default async function handler(req, res) {
       return json(res, 200, { registered: targetBlocked !== true });
     }
 
+    const { data: blockedRows, error: sanctionsError } = await supabase
+      .from('community_sanctions')
+      .select('target_callsign')
+      .eq('active', true)
+      .eq('sanction_type', 'block');
+    if (sanctionsError) throw sanctionsError;
+    const blockedCallsigns = new Set((blockedRows || [])
+      .map((row) => String(row.target_callsign || '').trim().toUpperCase())
+      .filter(Boolean));
+
     const users = [];
     const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
@@ -87,7 +97,7 @@ export default async function handler(req, res) {
       const page = Array.isArray(data) ? data : [];
       users.push(...page
         .map((row) => ({ callsign: String(row.callsign || '').trim().toUpperCase() }))
-        .filter((row) => row.callsign && !['DOGON1K', 'LU1TSB/4RC978', 'PRONTO'].includes(row.callsign)));
+        .filter((row) => row.callsign && !['DOGON1K', 'LU1TSB/4RC978', 'PRONTO'].includes(row.callsign) && !blockedCallsigns.has(row.callsign)));
       if (page.length < pageSize) break;
     }
 
