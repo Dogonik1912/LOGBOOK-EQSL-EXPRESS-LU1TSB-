@@ -249,11 +249,31 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   // Cada eQSL refleja exclusivamente la actividad seleccionada y guardada en ESTE QSO.
   // No recuperar referencias persistidas del dispositivo: un QSO sin referencia es
   // un contacto normal, sin actividad especial.
-  const getEffectiveActivityReferences = () => [
-    { label: 'LLOTA', code: qso?.llotaReference, name: qso?.llotaReferenceName },
-    { label: 'SOTA', code: qso?.sotaReference, name: qso?.sotaReferenceName },
-    { label: 'IOTA', code: qso?.iotaReference, name: qso?.iotaReferenceName },
-  ].filter((item) => Boolean(item.code?.trim()));
+  const getEffectiveActivityReferences = () => {
+    const resolveOfficialLLOTAName = (code?: string, savedName?: string) => {
+      const cleanCode = String(code || '').trim().toUpperCase();
+      const cleanSavedName = String(savedName || '').trim();
+      if (!cleanCode) return cleanSavedName;
+      // Si el QSO antiguo guardó el código pero no el nombre, recuperarlo
+      // exclusivamente del catálogo oficial LLOTA cacheado por el selector.
+      try {
+        const catalog = JSON.parse(localStorage.getItem('logbook_llota_reference_catalog_v1') || 'null');
+        const official = Array.isArray(catalog?.items)
+          ? catalog.items.find((item: { code?: string }) => String(item?.code || '').trim().toUpperCase() === cleanCode)
+          : null;
+        const officialName = String(official?.name || '').trim();
+        if (officialName) return officialName;
+      } catch {
+        // Mantener el nombre guardado si el caché no se puede leer.
+      }
+      return cleanSavedName;
+    };
+    return [
+      { label: 'LLOTA', code: qso?.llotaReference, name: resolveOfficialLLOTAName(qso?.llotaReference, qso?.llotaReferenceName) },
+      { label: 'SOTA', code: qso?.sotaReference, name: qso?.sotaReferenceName },
+      { label: 'IOTA', code: qso?.iotaReference, name: qso?.iotaReferenceName },
+    ].filter((item) => Boolean(item.code?.trim()));
+  };
 
   // Dibujar la tarjeta eQSL en el canvas HTML5 con máxima calidad (1200x750)
   const renderCard = (): Promise<void> => new Promise((resolve) => {
