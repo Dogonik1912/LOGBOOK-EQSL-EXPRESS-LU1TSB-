@@ -222,29 +222,40 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       const w = window as any;
       const ensureLeaflet = async () => {
         if (w.L) return w.L;
-        if (!document.querySelector('link[data-grid-leaflet]')) {
+        const loadStylesheet = async () => {
+          if (document.querySelector('link[data-grid-leaflet][data-loaded="true"]')) return;
+          const existing = document.querySelector('link[data-grid-leaflet]') as HTMLLinkElement | null;
+          if (existing) existing.remove();
           const link = document.createElement('link');
           link.rel = 'stylesheet';
-          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
           link.dataset.gridLeaflet = 'true';
-          document.head.appendChild(link);
-        }
-        await new Promise<void>((resolve, reject) => {
-          const existing = document.querySelector('script[data-grid-leaflet]') as HTMLScriptElement | null;
-          if (existing) {
-            if (w.L) return resolve();
-            existing.addEventListener('load', () => resolve(), { once: true });
-            existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa.')), { once: true });
-            return;
-          }
+          await new Promise<void>((resolve, reject) => {
+            link.onload = () => { link.dataset.loaded = 'true'; resolve(); };
+            link.onerror = () => { link.remove(); reject(new Error('No se pudieron cargar los estilos del mapa.')); };
+            document.head.appendChild(link);
+          });
+        };
+        const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
           const script = document.createElement('script');
-          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+          script.src = src;
           script.async = true;
           script.dataset.gridLeaflet = 'true';
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error('No se pudo cargar el mapa.'));
+          const timeout = window.setTimeout(() => {
+            script.remove();
+            reject(new Error('Tiempo de espera agotado al cargar el mapa.'));
+          }, 12000);
+          script.onload = () => { window.clearTimeout(timeout); resolve(); };
+          script.onerror = () => { window.clearTimeout(timeout); script.remove(); reject(new Error('No se pudo descargar el componente del mapa.')); };
           document.head.appendChild(script);
         });
+        await loadStylesheet();
+        try {
+          await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');
+        } catch {
+          await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+        }
+        if (!w.L) throw new Error('El mapa no pudo inicializarse. Comprobá la conexión e intentá nuevamente.');
         return w.L;
       };
       try {
@@ -253,7 +264,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         const currentPoint = maidenheadToPoint(gridLocator);
         const center: [number, number] = currentPoint ? [currentPoint.lat, currentPoint.lon] : [-34.6037, -58.3816];
         const map = L.map(gridMapRef.current, { zoomControl: true, scrollWheelZoom: true, dragging: true, touchZoom: true }).setView(center, currentPoint ? 8 : 4);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap', crossOrigin: true }).addTo(map);
         gridMapInstanceRef.current = map;
         const placeMarker = (lat: number, lon: number) => {
           if (!gridMapInstanceRef.current) return;
@@ -814,7 +825,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             </div>
             <div>
               <p className="mb-1 text-xs font-semibold text-slate-300">Mapa: tocá el punto exacto donde estás para calcular el locator. El mapa permanece visible al buscar una dirección.</p>
-              <div ref={gridMapRef} className="h-[280px] min-h-[280px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
+              <div ref={gridMapRef} className="relative z-0 isolate block h-[320px] min-h-[320px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
             </div>
             {gridPlaceResults.length > 0 && <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2">
               {gridPlaceResults.map((place, index) => <button key={place.name + index} type="button" onClick={() => { applyGridCoordinates(place.lat, place.lon); setGridPlaceResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"><MapPin size={15} className="mt-0.5 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}
