@@ -176,7 +176,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     lineRef.current = L.polyline([[origin.lat, origin.lon], [destination.lat, destination.lon]], { color: '#0891b2', weight: 4, opacity: 0.95 }).addTo(map);
     // Al elegir un resultado, mostrar simultáneamente origen, destino y recorrido.
     // Evita que el zoom de la zona buscada deje el origen fuera de pantalla.
-    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]), { padding: [48, 48], maxZoom: 8 });
+    map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]), { padding: [48, 48], maxZoom: 8, animate: false });
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
