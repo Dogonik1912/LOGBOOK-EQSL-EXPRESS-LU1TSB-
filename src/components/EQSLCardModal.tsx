@@ -890,6 +890,18 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           <canvas ref={canvasRef} className="w-full h-auto max-h-[440px] object-contain rounded-lg shadow-2xl pointer-events-none" />
           {customBgImage && <span className="absolute bottom-3 left-3 rounded-md bg-black/65 px-2 py-1 text-[11px] text-white pointer-events-none">Arrastrá para mover · pellizcá para ampliar o reducir</span>}
         </div>
+        {(qso.llotaReference || qso.sotaReference || qso.iotaReference) && <div className="mb-4 rounded-xl border border-teal-500/50 bg-teal-950/40 p-3">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-teal-200">Datos de actividad que se incluirán en la eQSL</p>
+          {[
+            { type: 'LLOTA', code: qso.llotaReference, place: qso.llotaReferenceName },
+            { type: 'SOTA', code: qso.sotaReference, place: qso.sotaReferenceName },
+            { type: 'IOTA', code: qso.iotaReference, place: qso.iotaReferenceName },
+          ].filter((item) => Boolean(item.code?.trim())).map((item) => <div key={item.type} className="space-y-0.5 text-sm text-white">
+            <p><strong className="text-teal-200">TIPO DE ACTIVIDAD:</strong> {item.type}</p>
+            <p><strong className="text-teal-200">NOMBRE DEL LUGAR:</strong> {item.place?.trim() || 'NO INDICADO EN EL CATÁLOGO'}</p>
+            <p><strong className="text-teal-200">REFERENCIA:</strong> {item.code}</p>
+          </div>)}
+        </div>}
 
         {/* Destinatario y opción de respuesta */}
         <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
