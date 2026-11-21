@@ -272,7 +272,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           placeMarker(lat, lon);
           setGridSearchError('');
         });
-        window.setTimeout(() => { if (!cancelled && gridMapInstanceRef.current) map.invalidateSize(); }, 120);
+        // El modal abre con transición; Leaflet necesita recalcular el tamaño
+        // cuando el contenedor termina de hacerse visible en pantallas móviles.
+        [150, 400, 900].forEach((delay) => {
+          window.setTimeout(() => {
+            if (!cancelled && gridMapInstanceRef.current) map.invalidateSize({ pan: false });
+          }, delay);
+        });
       } catch (error) {
         if (!cancelled) setGridSearchError(error instanceof Error ? error.message : 'No se pudo abrir el mapa.');
       }
@@ -303,6 +309,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
       map.setView([lat, lon], Math.max(map.getZoom(), 8));
       if (gridMapMarkerRef.current) gridMapMarkerRef.current.setLatLng([lat, lon]);
       else gridMapMarkerRef.current = L.marker([lat, lon]).addTo(map);
+      window.setTimeout(() => map.invalidateSize({ pan: false }), 80);
     }
   };
 
@@ -805,6 +812,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 <Search size={16} /> {gridSearchBusy ? 'Buscando…' : 'BUSCAR LUGAR'}
               </button>
             </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-slate-300">Mapa: tocá el punto exacto donde estás para calcular el locator. El mapa permanece visible al buscar una dirección.</p>
+              <div ref={gridMapRef} className="h-[280px] min-h-[280px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
+            </div>
             {gridPlaceResults.length > 0 && <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2">
               {gridPlaceResults.map((place, index) => <button key={place.name + index} type="button" onClick={() => { applyGridCoordinates(place.lat, place.lon); setGridPlaceResults([]); }} className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-xs text-slate-200 hover:bg-slate-800"><MapPin size={15} className="mt-0.5 shrink-0 text-cyan-300" /><span>{place.name}</span></button>)}
             </div>}
@@ -819,10 +830,6 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <button type="button" onClick={() => { if (!gridLatitude.trim() || !gridLongitude.trim()) { setGridSearchError('Completá latitud y longitud antes de calcular.'); return; } applyGridCoordinates(Number(gridLatitude.replace(',', '.')), Number(gridLongitude.replace(',', '.'))); }} className="flex min-h-[42px] w-full items-center justify-center gap-2 rounded-lg border border-cyan-500/50 bg-slate-900 px-3 py-2 text-sm font-bold text-cyan-200 hover:bg-slate-800">
               <Crosshair size={16} /> CALCULAR GRID DESDE COORDENADAS
             </button>
-            <div>
-              <p className="mb-1 text-xs font-semibold text-slate-300">Mapa: tocá el punto exacto donde estás para calcular el locator.</p>
-              <div ref={gridMapRef} className="h-[250px] w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-800" />
-            </div>
             {gridSearchError && <p role="status" className="text-xs text-amber-300">{gridSearchError}</p>}
             <button type="button" onClick={() => void handleSaveGridLocator()} disabled={gridSaveBusy || Boolean(gridLocator.trim() && !isValidMaidenheadLocator(gridLocator))} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-3 py-2.5 text-sm font-black text-slate-950 hover:bg-cyan-500 disabled:opacity-50">{gridSaveBusy ? 'Guardando Grid Locator…' : 'GUARDAR GRID LOCATOR'}</button>
             {gridSaveStatus && <p role="status" className={`text-xs ${gridSaveStatus.startsWith('Grid Locator guardado') ? 'text-emerald-300' : 'text-amber-300'}`}>{gridSaveStatus}</p>}
