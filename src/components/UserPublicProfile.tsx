@@ -23,8 +23,12 @@ function maidenheadCenter(locator: string): GridPoint | null {
 async function localityForGrid(locator: string, point: GridPoint): Promise<string> {
   const key = locator.toUpperCase();
   if (localityCache.has(key)) return localityCache.get(key) || '';
-  // Maidenhead cell half-diagonal, in metres, plus wider fallbacks for rural areas.
-  // A six-character locator covers roughly 5 x 2.5 km, not a 60 m point.
+
+  const clean = (value: unknown) => String(value || '').trim();
+  const format = (place: string, region: string, country: string) =>
+    [place, region && region !== place ? region : '', country].filter(Boolean).join(', ');
+
+  // Primero Photon: ofrece localidades cercanas y funciona bien en la mayoría de países.
   const radii = key.length <= 4 ? [30000, 50000] : key.length <= 6 ? [4000, 10000, 20000] : key.length <= 8 ? [500, 2000, 5000] : [100, 500, 1500];
   const settlementTypes = new Set(['city', 'town', 'village', 'hamlet', 'isolated_dwelling', 'suburb', 'neighbourhood']);
   for (const radius of radii) {
@@ -34,28 +38,55 @@ async function localityForGrid(locator: string, point: GridPoint): Promise<strin
       if (!response.ok) continue;
       const data = await response.json();
       const features = Array.isArray(data?.features) ? data.features : [];
-      if (!features.length) continue;
-      // Prefer an actual populated place over a road, building or other nearby map feature.
       const ranked = [...features].sort((a: any, b: any) => {
-        const aType = String(a?.properties?.osm_value || a?.properties?.type || '').toLowerCase();
-        const bType = String(b?.properties?.osm_value || b?.properties?.type || '').toLowerCase();
+        const aType = clean(a?.properties?.osm_value || a?.properties?.type).toLowerCase();
+        const bType = clean(b?.properties?.osm_value || b?.properties?.type).toLowerCase();
         return Number(settlementTypes.has(bType)) - Number(settlementTypes.has(aType));
       });
       const properties = ranked.find((feature: any) => {
         const p = feature?.properties || {};
-        return Boolean(p.locality || p.city || p.name || p.district);
+        return Boolean(p.locality || p.city || p.name || p.district || p.suburb || p.county);
       })?.properties || {};
-      const place = String(properties.locality || properties.city || properties.name || properties.district || '').trim();
-      const region = String(properties.state || properties.county || '').trim();
-      const countryName = String(properties.country || '').trim();
-      const result = [place, region && region !== place ? region : '', countryName].filter(Boolean).join(', ');
+      const place = clean(properties.locality || properties.city || properties.name || properties.district || properties.suburb || properties.county);
+      const result = format(place, clean(properties.state || properties.county), clean(properties.country));
       if (result) {
         localityCache.set(key, result);
         return result;
       }
     } catch {
-      // Intenta con un radio mayor; el perfil no debe fallar por un servicio externo.
+      // Si Photon falla o no conoce la zona, se consulta el proveedor alternativo.
     }
+  }
+
+  // Alternativa: Nominatim/OSM devuelve la jerarquía administrativa del punto.
+  // Es especialmente útil en áreas urbanas donde Photon no devuelve resultados.
+  try {
+    const params = new URLSearchParams({
+      format: 'jsonv2',
+      lat: String(point.latitude),
+      lon: String(point.longitude),
+      zoom: '10',
+      addressdetails: '1',
+      'accept-language': 'es',
+    });
+    const response = await fetch('https://nominatim.openstreetmap.org/reverse?' + params.toString());
+    if (response.ok) {
+      const data = await response.json();
+      const address = data?.address || {};
+      const place = clean(
+        address.city || address.town || address.village || address.municipality ||
+        address.city_district || address.suburb || address.hamlet || address.county
+      );
+      const region = clean(address.state || address.province || address.region);
+      const country = clean(address.country);
+      const result = format(place, region, country);
+      if (result) {
+        localityCache.set(key, result);
+        return result;
+      }
+    }
+  } catch {
+    // El perfil sigue disponible aunque los servicios externos no respondan.
   }
   return '';
 }
