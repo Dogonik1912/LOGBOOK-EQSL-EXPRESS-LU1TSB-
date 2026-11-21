@@ -172,11 +172,11 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   }, [mapReady, focusPlace?.lat, focusPlace?.lon, focusPlace?.name]);
   useEffect(() => {
     const map = mapRef.current;
-    // Usar exactamente la instancia Leaflet que creó este mapa; no depender de window.L.
     const L = leafletRef.current;
     if (!map || !L || !mapReady) return;
     if (markerRef.current) { map.removeLayer(markerRef.current); markerRef.current = null; }
-    if (lineRef.current) { map.removeLayer(lineRef.current); lineRef.current = null; }
+    if (lineRef.current?.svg?.parentNode) lineRef.current.svg.parentNode.removeChild(lineRef.current.svg);
+    lineRef.current = null;
     if (!destination) return;
 
     const group = L.layerGroup().addTo(map);
@@ -188,31 +188,56 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     });
     markerRef.current = group;
 
-    // Crear un renderer SVG explícito y asignarlo a la ruta. Así Leaflet no
-    // depende de que detecte automáticamente el renderer/pane en móviles.
-    const renderer = L.svg({ pane: 'overlayPane', padding: 0.5 });
-    const route = L.polyline(
-      [[origin.lat, origin.lon], [destination.lat, destination.lon]],
-      { renderer, pane: 'overlayPane', color: '#facc15', opacity: 1, weight: 8,
-        lineCap: 'round', lineJoin: 'round', interactive: false, smoothFactor: 1 }
-    );
-    route.addTo(map);
-    lineRef.current = route;
+    // Ruta SVG DOM independiente del renderer interno de Leaflet. Sus extremos
+    // se proyectan en cada movimiento/zoom, usando exactamente las coordenadas
+    // que Leaflet utiliza para ubicar los marcadores.
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.style.position = 'absolute';
+    svg.style.inset = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.overflow = 'hidden';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '1000';
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('stroke', '#ffeb00');
+    line.setAttribute('stroke-width', '6');
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('opacity', '1');
+    line.setAttribute('filter', 'drop-shadow(0px 0px 3px #111827)');
+    svg.appendChild(line);
+    const container = map.getContainer();
+    if (window.getComputedStyle(container).position === 'static') container.style.position = 'relative';
+    container.appendChild(svg);
 
-    // Encajar ambos extremos y volver a pintar cuando el contenedor modal ya
-    // tenga dimensiones reales. El repintado se repite tras el primer layout.
+    const redrawRoute = () => {
+      if (mapRef.current !== map || !svg.isConnected) return;
+      const a = map.latLngToContainerPoint([origin.lat, origin.lon]);
+      const b = map.latLngToContainerPoint([destination.lat, destination.lon]);
+      line.setAttribute('x1', String(a.x));
+      line.setAttribute('y1', String(a.y));
+      line.setAttribute('x2', String(b.x));
+      line.setAttribute('y2', String(b.y));
+      svg.setAttribute('viewBox', '0 0 ' + Math.max(1, container.clientWidth) + ' ' + Math.max(1, container.clientHeight));
+    };
+    lineRef.current = { svg, redraw: redrawRoute };
     map.fitBounds(L.latLngBounds([[origin.lat, origin.lon], [destination.lat, destination.lon]]),
       { padding: [48, 48], maxZoom: 8, animate: false });
-    const repaint = () => {
-      if (mapRef.current !== map || !map.hasLayer(route)) return;
-      map.invalidateSize({ pan: false });
-      route.setStyle({ color: '#facc15', opacity: 1, weight: 8 });
-      route.redraw();
-      route.bringToFront();
+    map.on('move zoom resize viewreset', redrawRoute);
+    redrawRoute();
+    window.requestAnimationFrame(redrawRoute);
+    window.setTimeout(redrawRoute, 180);
+    window.setTimeout(redrawRoute, 500);
+
+    return () => {
+      map.off('move zoom resize viewreset', redrawRoute);
+      if (svg.parentNode) svg.parentNode.removeChild(svg);
+      if (markerRef.current === group) markerRef.current = null;
+      if (map.hasLayer(group)) map.removeLayer(group);
+      if (lineRef.current?.svg === svg) lineRef.current = null;
     };
-    window.requestAnimationFrame(repaint);
-    window.setTimeout(repaint, 180);
-    window.setTimeout(repaint, 500);
   }, [mapReady, origin.lat, origin.lon, destination?.lat, destination?.lon, destination?.name]);
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
