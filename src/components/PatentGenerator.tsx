@@ -150,32 +150,21 @@ async function plate(call:string, code:string) {
  return c;
 }
 
-async function loadCanvasImage(url:string):Promise<HTMLImageElement>{
- // Descargar explícitamente en modo CORS y dibujar desde un Blob local.
- // Así el canvas nunca incorpora una imagen remota sin autorización de exportación.
+async function loadCanvasImage(url:string):Promise<ImageBitmap>{
+ // Convertir toda imagen remota a ImageBitmap desde un Blob obtenido con CORS.
+ // Nunca se dibuja un elemento IMG remoto en el canvas: así evitamos canvas tainted.
  const response=await fetch(url,{mode:'cors',credentials:'omit',cache:'force-cache'});
  if(!response.ok) throw new Error('No se pudo descargar un recurso gráfico de la patente (HTTP '+response.status+').');
  const blob=await response.blob();
  if(!blob.type.startsWith('image/')) throw new Error('El recurso gráfico recibido no es una imagen válida.');
- const objectUrl=URL.createObjectURL(blob);
- try{
-  const image=new Image();
-  image.decoding='async';
-  image.src=objectUrl;
-  await new Promise<void>((resolve,reject)=>{
-   image.onload=()=>resolve();
-   image.onerror=()=>reject(new Error('No se pudo preparar la imagen oficial de la patente.'));
-  });
-  if(!image.naturalWidth||!image.naturalHeight) throw new Error('La imagen oficial recibida está vacía o no es válida.');
-  return image;
- }finally{
-  URL.revokeObjectURL(objectUrl);
- }
+ const bitmap=await createImageBitmap(blob);
+ if(!bitmap.width||!bitmap.height){bitmap.close();throw new Error('La imagen oficial recibida está vacía o no es válida.');}
+ return bitmap;
 }
 const commonsCountryNames:Record<string,string>={
  AR:'Argentina',BR:'Brazil',PT:'Portugal',ES:'Spain',US:'United States',GB:'United Kingdom',FR:'France',DE:'Germany',IT:'Italy',NL:'Netherlands',PL:'Poland',RU:'Russia',UA:'Ukraine',CN:'China',JP:'Japan',KR:'South Korea',IN:'India',TR:'Turkey',SE:'Sweden',NO:'Norway',DK:'Denmark',FI:'Finland',CZ:'Czech Republic',GR:'Greece',RO:'Romania',HU:'Hungary',CA:'Canada',AU:'Australia',NZ:'New Zealand',CL:'Chile',UY:'Uruguay',PE:'Peru',BO:'Bolivia',PY:'Paraguay',CO:'Colombia',VE:'Venezuela',EC:'Ecuador',GT:'Guatemala',CR:'Costa Rica',HN:'Honduras',SV:'El Salvador',NI:'Nicaragua',MX:'Mexico',ZA:'South Africa',IS:'Iceland',IE:'Ireland',CH:'Switzerland',AT:'Austria',BE:'Belgium',BG:'Bulgaria',HR:'Croatia',SI:'Slovenia',SK:'Slovakia',LT:'Lithuania',LV:'Latvia',EE:'Estonia',BY:'Belarus',IL:'Israel',TH:'Thailand',ID:'Indonesia',PH:'Philippines',SG:'Singapore',MY:'Malaysia',HK:'Hong Kong',TW:'Taiwan',PK:'Pakistan',BD:'Bangladesh',LK:'Sri Lanka',EG:'Egypt',MA:'Morocco',TN:'Tunisia',KE:'Kenya',NG:'Nigeria',GH:'Ghana'
 };
-async function officialNationalEmblem(code:string):Promise<HTMLImageElement|null>{
+async function officialNationalEmblem(code:string):Promise<ImageBitmap|null>{
  const country=commonsCountryNames[code];
  if(!country)return null;
  // Priorizar originales vectoriales de Commons y títulos que identifiquen inequívocamente
@@ -211,10 +200,12 @@ async function narrowPlate(call:string,code:string,customText:string){
  const x=c.getContext('2d');if(!x)throw new Error('No se pudo crear la imagen.');
  const country=(code==='IC'||code==='IC-ESCUDO')?'CANARIAS':(countries.find(v=>v[0]===code)?.[1].replace(/^\\S+\\s+/,'').toUpperCase()||code);
  const flagCode=code.toLowerCase();
- const flag=code.startsWith('IC')
-  ? null
-  : await loadCanvasImage('https://flagcdn.com/w1600/'+flagCode+'.png');
- let emblem:HTMLImageElement|null=null;
+ let flag:ImageBitmap|null=null;
+ if(!code.startsWith('IC')){
+  try{flag=await loadCanvasImage('https://flagcdn.com/w1600/'+flagCode+'.png');}
+  catch{flag=null;}
+ }
+ let emblem:ImageBitmap|null=null;
  try{
   emblem=(code==='IC'||code==='IC-ESCUDO')
    ? await loadCanvasImage('https://www.gobiernodecanarias.org/cmsgob2/export/sites/administracionespublicas/modernizacion/img/escudo_canarias.jpg')
@@ -227,16 +218,16 @@ async function narrowPlate(call:string,code:string,customText:string){
  const text=(value:string,px:number,py:number,size:number,color:string,weight=900,align:CanvasTextAlign='center')=>{
   x.textAlign=align;x.textBaseline='middle';x.font=weight+' '+size+'px system-ui,sans-serif';x.fillStyle=color;x.fillText(value,px,py);
  };
- const fit=(img:HTMLImageElement,maxW:number,maxH:number)=>{const s=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight);return {w:img.naturalWidth*s,h:img.naturalHeight*s};};
+ const fit=(img:ImageBitmap,maxW:number,maxH:number)=>{const s=Math.min(maxW/img.width,maxH/img.height);return {w:img.width*s,h:img.height*s};};
  x.clearRect(0,0,W,H);
  x.save();x.beginPath();x.roundRect(24,24,W-48,H-48,48);x.clip();
  // La bandera auténtica del país ocupa TODO el fondo horizontal: no se usan
  // colores ni diseños de matrículas automovilísticas.
  if(flag){
-  const scale=Math.max((W-48)/flag.naturalWidth,(H-48)/flag.naturalHeight);
-  const fw=flag.naturalWidth*scale,fh=flag.naturalHeight*scale;
+  const scale=Math.max((W-48)/flag.width,(H-48)/flag.height);
+  const fw=flag.width*scale,fh=flag.height*scale;
   x.drawImage(flag,(W-fw)/2,(H-fh)/2,fw,fh);
- }else{
+ }else if(code.startsWith('IC')){
   // Bandera de Canarias para la opción territorial: blanco, azul y amarillo.
   x.fillStyle='#ffffff';x.fillRect(24,24,(W-48)/3,H-48);
   x.fillStyle='#0071bc';x.fillRect(24+(W-48)/3,24,(W-48)/3,H-48);
@@ -245,6 +236,11 @@ async function narrowPlate(call:string,code:string,customText:string){
    x.fillStyle='#087b43';
    for(let i=0;i<7;i++){const a=-Math.PI/2+i*Math.PI*2/7;x.beginPath();x.arc(W/2+Math.cos(a)*155,H/2+Math.sin(a)*155,18,0,Math.PI*2);x.fill();}
   }
+ }else{
+  // Respaldo local si el CDN de banderas no responde: no interrumpe la generación.
+  x.fillStyle='#18334f';x.fillRect(24,24,W-48,H-48);
+  const emoji=countries.find(v=>v[0]===code)?.[1].split(' ')[0]||'🌐';
+  text(emoji,W/2,H/2,360,'#ffffff',900);
  }
  // Velo discreto superior para identificar el país sin tapar la bandera.
  const top=x.createLinearGradient(0,24,0,230);top.addColorStop(0,'rgba(0,0,0,.58)');top.addColorStop(1,'rgba(0,0,0,0)');
@@ -309,7 +305,7 @@ export const PatentGenerator:React.FC=()=>{
    {code.startsWith('IC')&&<p className="mb-3 rounded-lg bg-sky-50 p-3 text-sm text-sky-900">{code==='IC'?'Bandera tricolor blanca, celeste y amarilla con siete estrellas verdes.':'Bandera institucional oficial blanca, azul y amarilla con el escudo original del Gobierno de Canarias (dos perros).'}</p>}
    <label htmlFor="patent-callsign" className="mb-1 block text-sm font-bold text-slate-700">Indicativo / SD</label>
    <input id="patent-callsign" value={call} onChange={e=>handleCallChange(e.target.value)} maxLength={18} placeholder="Ej.: LU1TSB o 4RC978" className="mb-3 w-full rounded-lg border border-slate-300 p-3 text-lg font-bold uppercase tracking-wider text-slate-900"/>
-   <label htmlFor="patent-custom-text" className="mb-1 block text-sm font-bold text-slate-700">Texto opcional (QAP, frecuencia, localidad, saludos)</label><input id="patent-custom-text" value={customText} onChange={e=>setCustomText(e.target.value)} maxLength={42} placeholder="Ej.: QAP 7.120 · TUCUMAN · 73 SALUDOS" className="mb-3 w-full rounded-lg border border-slate-300 p-3 text-slate-900"/><button onClick={generate} className="w-full rounded-lg bg-sky-700 px-4 py-3 font-bold text-white">GENERAR PATENTE</button>
+   <label htmlFor="patent-custom-text" className="mb-1 block text-sm font-bold text-slate-700">Texto opcional (QAP, frecuencia, localidad, saludos)</label><input id="patent-custom-text" value={customText} onChange={e=>setCustomText(e.target.value)} maxLength={42} placeholder="Ej.: QAP 7.120 · TUCUMAN · 73 SALUDOS" className="mb-3 w-full rounded-lg border border-slate-300 p-4 text-lg font-semibold text-slate-900 placeholder:text-base"/><button onClick={generate} className="w-full rounded-lg bg-sky-700 px-4 py-3 font-bold text-white">GENERAR PATENTE</button>
    {preview&&<div className="mt-4"><img src={preview} alt="Vista previa de la patente de radio" className="w-full rounded-xl border border-slate-200"/><label htmlFor="patent-share-language" className="mb-1 mt-3 block text-sm font-bold text-slate-700">Idioma para WhatsApp</label><select id="patent-share-language" value={shareLanguage} onChange={e=>setShareLanguage(e.target.value as 'auto'|AppLanguage)} className="mb-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900"><option value="auto">Automático según el país de la bandera seleccionada (si el teléfono permite detectar el prefijo, tiene prioridad)</option>{APP_LANGUAGES.map(language=><option key={language} value={language}>{patentLanguageNames[language]}</option>)}</select><div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><button onClick={download} className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-3 font-bold text-white"><Download size={18}/> DESCARGAR PNG</button><button onClick={share} className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-3 font-bold text-white"><Share2 size={18}/> COMPARTIR POR WHATSAPP</button></div><p className="mt-2 text-xs text-slate-500">PNG de 1800 × 1200 píxeles. Al compartir por WhatsApp se crea un enlace directo a esta patente, con opción de verla y descargarla.</p></div>}
    <button onClick={()=>{setOpen(false);setPreview(null);}} className="mt-4 w-full rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 font-bold text-slate-700">CERRAR</button>
   </div>}
