@@ -559,11 +559,11 @@ export const PropagationReport: React.FC = () => {
             </div>
             <div className="grid gap-2 px-3 sm:grid-cols-[1.15fr_.85fr]">
               <a href="https://www.spaceweather.gov/products/solar-ultraviolet-imager" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/animations/suvi/primary/171/latest.png" alt="Imagen ultravioleta actual del Sol observada por NOAA GOES SUVI" loading="lazy" className="h-44 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-48"/>
+                <img src="https://cdn.star.nesdis.noaa.gov/GOES19/SUVI/FD/Fe171/latest.jpg" alt="Imagen ultravioleta actual del Sol observada por NOAA GOES SUVI" loading="lazy" className="h-44 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-48"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">SOL EN ULTRAVIOLETA · 171 Å</span>
               </a>
               <a href="https://www.spaceweather.gov/products/goes-x-ray-flux" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/goes-xray-flux.gif" alt="Gráfico actualizado de flujo de rayos X solares GOES" loading="lazy" className="h-44 w-full object-contain transition duration-500 group-hover:scale-[1.02] sm:h-48"/>
+                <img src="https://services.swpc.noaa.gov/images/animations/goes-xray-flux/GOES_XRAy_1m_7d.gif" alt="Gráfico actualizado de flujo de rayos X solares GOES" loading="lazy" className="h-44 w-full object-contain transition duration-500 group-hover:scale-[1.02] sm:h-48"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">RAYOS X · ERUPCIONES SOLARES</span>
               </a>
             </div>
@@ -648,7 +648,6 @@ export const PropagationReport: React.FC = () => {
           </div>
           {radioStats?.rareActive?.length ? <div className="rounded-xl border border-fuchsia-300/20 bg-slate-950/40 p-3"><h4 className="mb-2 text-sm font-black text-fuchsia-100">ENTIDADES DX POCO FRECUENTES ACTIVAS</h4><div className="grid gap-2 sm:grid-cols-2">{radioStats.rareActive.slice(0,8).map(entity=><div key={entity.dxcc} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs"><strong className="text-white">{entity.entity}</strong><span className="ml-2 text-fuchsia-200">#{entity.rank}</span><span className="mt-1 block text-slate-400">{entity.bands?.join(', ')||'—'} · {entity.modes?.join(', ')||'—'}</span></div>)}</div></div> : null}
           <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500"><span>{radioDataUpdated ? 'Consulta: '+radioDataUpdated : 'Esperando datos de actividad'}</span><span>11 metros: fuente específica pendiente de respuesta de RCQSL.</span></div>
-          {radioDataError && <p role="status" className="text-xs text-amber-200">{radioDataError}</p>}
           <p className="text-[10px] leading-relaxed text-slate-500">Los reportes de PSK Reporter, RBN y DX Cluster indican recepción o anuncios. No son contactos confirmados. Los contactos válidos de LogBook se muestran por separado en el mapa.</p>
         </section>
         <section className="space-y-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-[#0c263d] to-[#101a34] p-3 shadow-xl sm:p-4">
@@ -668,7 +667,7 @@ export const PropagationReport: React.FC = () => {
             <label className="flex items-center gap-2"><input type="checkbox" checked={showDxPaths} onChange={e=>setShowDxPaths(e.target.checked)} /> Rutas DX</label>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-pink-300">● Contacto válido</span><span className="text-sky-300">● PSK Reporter</span><span className="text-orange-300">● DX Cluster</span><span className="text-violet-300">● RBN</span></div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300"><span>{externalSpots.length} estaciones con actividad agregada · {externalSpotsUpdated ? 'Actualizado: ' + externalSpotsUpdated : 'Esperando datos'}{externalSpotsError ? ' · ' + externalSpotsError : ''}</span><span className="flex flex-wrap gap-x-2">Fuentes: {['pskreporter','cluster','rbn'].map(source => <span key={source} className={(externalSources[source]?.state === 'receiving' ? 'text-emerald-300' : 'text-slate-400')}>{source === 'pskreporter' ? 'PSK' : source === 'cluster' ? 'Clusters' : 'RBN'} · {externalSources[source]?.state === 'receiving' ? 'en vivo' : externalSources[source]?.state === 'waiting' ? 'esperando' : externalSources[source]?.state === 'silent' ? 'sin actividad' : '—'}</span>)}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300"><span>{externalSpots.length} estaciones con actividad agregada · {externalSpotsUpdated ? 'Actualizado: ' + externalSpotsUpdated : 'Esperando datos'}</span><span className="flex flex-wrap gap-x-2">Fuentes: {['pskreporter','cluster','rbn'].map(source => <span key={source} className={(externalSources[source]?.state === 'receiving' ? 'text-emerald-300' : 'text-slate-400')}>{source === 'pskreporter' ? 'PSK' : source === 'cluster' ? 'Clusters' : 'RBN'} · {externalSources[source]?.state === 'receiving' ? 'en vivo' : externalSources[source]?.state === 'waiting' ? 'esperando' : externalSources[source]?.state === 'silent' ? 'sin actividad' : '—'}</span>)}</span></div>
           <p className="text-[10px] text-slate-400">Datos de actividad: <a href="https://cqdx.io" target="_blank" rel="noreferrer" className="underline decoration-slate-500 underline-offset-2">CQDX (cqdx.io)</a> · actualizado según la última consulta.</p>
           <div ref={mapElementRef} className="z-0 h-[420px] w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900 sm:h-[520px]" role="application" aria-label="Mapa interactivo mundial de propagación y reportes DX"/>
           <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p>
@@ -687,7 +686,6 @@ export const PropagationReport: React.FC = () => {
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-bold text-slate-300">ÚLTIMAS 6 HORAS</span>
             {dxUpdated && <span className="rounded bg-slate-800 px-2 py-1">Consulta: {dxUpdated}</span>}
           </div>
-          {dxError && <p role="status" className="text-xs leading-relaxed text-amber-200">{dxError}</p>}
           {dxReports.length > 0 && <div className="max-h-80 overflow-auto rounded-xl border border-white/10 shadow-lg">
             <table className="w-full min-w-[500px] text-left text-xs">
               <thead className="sticky top-0 bg-gradient-to-r from-[#183754] to-[#20274a] text-cyan-100"><tr><th className="p-2">Estación TX</th><th className="p-2">Receptor</th><th className="p-2">Frecuencia</th><th className="p-2">Locator receptor</th><th className="p-2">UTC</th></tr></thead>
@@ -700,7 +698,6 @@ export const PropagationReport: React.FC = () => {
               </tr>)}</tbody>
             </table>
           </div>}
-          <p className="text-[11px] leading-relaxed text-slate-400">PSK Reporter recoge recepción de señales digitales reportadas por estaciones voluntarias. No representa todos los contactos ni la fonía SSB. Para 11 metros se necesita una conexión autorizada con una fuente específica de esa banda.</p>
           {stationIdentity.selectedType === '11m' && <a href="https://log11dx.com/" target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-sky-500/50 px-3 py-2 text-xs font-semibold text-sky-200">Abrir cluster mundial de 11 metros (LOG11DX)</a>}
         </section>
         <h3 className="text-base font-black uppercase tracking-wider text-white">PANORAMA POR REGIONES DEL MUNDO</h3>
