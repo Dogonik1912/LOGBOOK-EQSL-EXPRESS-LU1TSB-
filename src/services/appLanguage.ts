@@ -187,7 +187,7 @@ export function languageFromCallsign(callsign?: string | null): AppLanguage | nu
 }
 
 export function getInitialAppLanguage(): AppLanguage {
-  // A shared invitation can request a temporary language without overwriting
+  // A shared link can request its initial language without overwriting
   // the language preference saved by an existing user on this device.
   const forcedByLink = normalizeLanguage(new URLSearchParams(window.location.search).get('lang'));
   if (forcedByLink) return forcedByLink;
