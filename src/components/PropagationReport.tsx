@@ -7,6 +7,8 @@ import { HAM_BANDS, HAM_MODES } from '../types';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
+type ExternalSpot = { dxCall: string; band: string; mode: string; frequency: number; dxLat: number | null; dxLon: number | null; dxGrid?: string | null; dxEntityName?: string; dxContinent?: string; reporterCount: number; sources: string[]; firstSeen: number; lastSeen: number; latestDeCall?: string; latestComment?: string | null; bestSnr?: number | null; signalTrend?: string; };
+type SpotSourceState = { state: string; lastAcceptedAt?: number | null };
 type GeoPoint = { lat: number; lon: number };
 type LiveQsoContact = { spot_key: string; callsign: string; station_callsign: string; band: string; frequency: string; mode: string; qso_date: string; qso_time: string; created_at: string; country?: string | null };
 function maidenheadToLatLon(locator?: string): GeoPoint | null {
@@ -70,6 +72,10 @@ export const PropagationReport: React.FC = () => {
   const [updated, setUpdated] = useState('');
   const [error, setError] = useState('');
   const [dxReports, setDxReports] = useState<DXReception[]>([]);
+  const [externalSpots, setExternalSpots] = useState<ExternalSpot[]>([]);
+  const [externalSources, setExternalSources] = useState<Record<string, SpotSourceState>>({});
+  const [externalSpotsUpdated, setExternalSpotsUpdated] = useState('');
+  const [externalSpotsError, setExternalSpotsError] = useState('');
   const [liveQsoContacts, setLiveQsoContacts] = useState<LiveQsoContact[]>([]);
   const [liveGridLocators, setLiveGridLocators] = useState<Record<string, string>>({});
   const [liveMapClock, setLiveMapClock] = useState(Date.now());
@@ -189,6 +195,36 @@ export const PropagationReport: React.FC = () => {
 
   useEffect(() => { if (open && sfi === null && !loading) void refresh(); }, [open]);
 
+
+  const refreshExternalActivity = async () => {
+    try {
+      const response = await fetch('https://cqdx.io/api/v1/spots?live=true', { cache: 'no-store' });
+      if (!response.ok) throw new Error(response.status === 429 ? 'La fuente mundial alcanzó su límite temporal; se reintentará automáticamente.' : 'La actividad mundial no está disponible en este momento.');
+      const payload = await response.json();
+      const groups = Array.isArray(payload?.groups) ? payload.groups : [];
+      setExternalSpots(groups.filter((g: any) => Number.isFinite(Number(g.dxLat)) && Number.isFinite(Number(g.dxLon))) as ExternalSpot[]);
+      const computedAt = payload?.computedAt ? new Date(payload.computedAt).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+      setExternalSpotsUpdated(computedAt);
+      setExternalSpotsError('');
+    } catch (e) {
+      setExternalSpotsError(e instanceof Error ? e.message : 'No se pudo consultar la actividad mundial.');
+    }
+    try {
+      const response = await fetch('https://cqdx.io/api/v1/stats/sources', { cache: 'no-store' });
+      if (response.ok) {
+        const payload = await response.json();
+        const sources = payload?.sources && typeof payload.sources === 'object' ? payload.sources : payload;
+        setExternalSources(sources || {});
+      }
+    } catch { /* El estado de fuentes es informativo; los spots siguen funcionando sin él. */ }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    void refreshExternalActivity();
+    const timer = window.setInterval(() => void refreshExternalActivity(), 30000);
+    return () => window.clearInterval(timer);
+  }, [open]);
 
   const refreshDx = async () => {
     const callsign = stationIdentity.selectedCallsign.trim().toUpperCase();
@@ -313,6 +349,15 @@ export const PropagationReport: React.FC = () => {
     if (mapZone === 'continent') { const region = mapRegions.find(x => x.name === ownContinent); return Boolean(region && [first, second].some(point => point.lat >= region.bounds.south && point.lat <= region.bounds.north && point.lon >= region.bounds.west && point.lon <= region.bounds.east)); }
     return true;
   });
+  const visibleExternalSpots = externalSpots.filter(spot => {
+    if (selectedMapBand && spot.band.toLowerCase() !== selectedMapBand.toLowerCase()) return false;
+    if (selectedMapMode && spot.mode.toUpperCase() !== selectedMapMode.toUpperCase() && !(selectedMapMode === 'SSB' && ['USB','LSB'].includes(spot.mode.toUpperCase()))) return false;
+    const p = { lat: Number(spot.dxLat), lon: Number(spot.dxLon) };
+    if (mapZone === 'zone') return Boolean(ownGeo && distanceKm(ownGeo, p) <= 1200);
+    if (mapZone === 'country') return countryForCallsign(spot.dxCall, spot.dxEntityName || undefined) === ownCountry;
+    if (mapZone === 'continent') { const r = mapRegions.find(x => x.name === ownContinent); return Boolean(r && p.lat >= r.bounds.south && p.lat <= r.bounds.north && p.lon >= r.bounds.west && p.lon <= r.bounds.east); }
+    return true;
+  });
   const visibleDxReports=dxReports.filter(report=>{
     if(selectedMapBand && bandForFrequency(report.frequency)!==selectedMapBand)return false;
     if(selectedMapMode && String(report.mode||'').toUpperCase()!==selectedMapMode.toUpperCase())return false;
@@ -365,17 +410,30 @@ export const PropagationReport: React.FC = () => {
          L.circleMarker([first.lat, first.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.callsign) + (firstApprox ? ' · ubicación aproximada' : '')).addTo(layers);
          L.circleMarker([second.lat, second.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.station_callsign) + (secondApprox ? ' · ubicación aproximada' : '')).addTo(layers);
        });
+      visibleExternalSpots.forEach(spot => {
+        const p = { lat: Number(spot.dxLat), lon: Number(spot.dxLon) };
+        if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return;
+        const sourceColors: Record<string, string> = { pskreporter: '#38bdf8', cluster: '#fb923c', rbn: '#a78bfa' };
+        const sourceLabels: Record<string, string> = { pskreporter: 'PSK Reporter', cluster: 'DX Cluster', rbn: 'Reverse Beacon Network' };
+        const primarySource = spot.sources?.includes('cluster') ? 'cluster' : spot.sources?.includes('rbn') ? 'rbn' : 'pskreporter';
+        const color = sourceColors[primarySource] || '#38bdf8';
+        const ageSeconds = Math.max(0, Date.now() / 1000 - Number(spot.lastSeen || 0));
+        const opacity = Math.max(0.28, 1 - ageSeconds / 3600);
+        const sourcesText = (spot.sources || []).map(source => sourceLabels[source] || source).join(' + ');
+        const popup = '<b>ACTIVIDAD DX · ' + esc(spot.dxCall) + '</b><br>Banda: ' + esc(spot.band) + '<br>Modo: ' + esc(spot.mode) + '<br>Frecuencia: ' + (spot.frequency ? (spot.frequency / 1e6).toFixed(3) + ' MHz' : '—') + '<br>Reporteros: ' + Number(spot.reporterCount || 0) + '<br>Actividad: ' + esc(sourcesText) + '<br>Último reporte: ' + new Date(Number(spot.lastSeen) * 1000).toISOString().slice(11, 16) + ' UTC' + (spot.latestComment ? '<br>Comentario: ' + esc(spot.latestComment) : '');
+        L.circleMarker([p.lat, p.lon], { radius: 7, color: '#fff', weight: 1.5, fillColor: color, fillOpacity: opacity, opacity }).bindTooltip(esc(spot.dxCall) + ' · ' + esc(spot.band) + ' · ' + esc(spot.mode)).bindPopup(popup).addTo(layers);
+      });
       visibleDxReports.forEach(report=>{const p=maidenheadToLatLon(report.receiverLocator);if(!p)return;
         if(showDxPaths&&ownGeo)L.polyline(greatCirclePath(ownGeo,p),{color:'#38bdf8',weight:2,opacity:.72,dashArray:'5 5'}).bindTooltip('Ruta de recepción · círculo máximo').addTo(layers);
         L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
       const reg=mapRegions.find(x=>x.name===ownContinent);
       if(mapZone==='world')map.setView([15,0],2);else if(ownGeo&&mapZone==='zone')map.setView([ownGeo.lat,ownGeo.lon],5);else if(ownGeo&&mapZone==='continent'&&reg)map.fitBounds([[reg.bounds.south,reg.bounds.west],[reg.bounds.north,reg.bounds.east]]);else if(ownGeo)map.setView([ownGeo.lat,ownGeo.lon],4);
-        setMapStatus(visibleLiveContacts.length + ' contactos registrados visibles en el mapa · ' + visibleDxReports.length + ' informes digitales visibles.');
+        setMapStatus(visibleLiveContacts.length + ' contactos válidos · ' + visibleExternalSpots.length + ' estaciones con actividad DX · ' + visibleDxReports.length + ' recepciones de tu indicativo.');
       window.setTimeout(()=>map.invalidateSize(),100);
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
     return()=>{cancelled=true;if(mapInstanceRef.current){mapInstanceRef.current.remove();mapInstanceRef.current=null;mapLayersRef.current=null;}};
-  },[open,mapZone,dxReports,visibleDxReports.length,liveQsoContacts,liveGridLocators,visibleLiveContacts.length,liveMapClock,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths,selectedMapBand,selectedMapMode]);
+  },[open,mapZone,dxReports,visibleDxReports.length,externalSpots,visibleExternalSpots.length,liveQsoContacts,liveGridLocators,visibleLiveContacts.length,liveMapClock,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths,selectedMapBand,selectedMapMode]);
 
   const summary = kp === null || sfi === null
     ? 'Esperando datos solares actualizados.'
@@ -456,7 +514,9 @@ export const PropagationReport: React.FC = () => {
             <label className="flex items-center gap-2"><input type="checkbox" checked={showMaidenheadGrid} onChange={e=>setShowMaidenheadGrid(e.target.checked)} /> Cuadrícula Maidenhead</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={showDxPaths} onChange={e=>setShowDxPaths(e.target.checked)} /> Rutas DX</label>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-emerald-300">● Verde · Buena</span><span className="text-amber-300">● Naranja · Media</span><span className="text-red-400">● Rojo · Mala</span><span className="text-cyan-300">● Punto azul · DX real</span></div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-pink-300">● Contacto válido</span><span className="text-sky-300">● PSK Reporter</span><span className="text-orange-300">● DX Cluster</span><span className="text-violet-300">● RBN</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300"><span>{externalSpots.length} estaciones con actividad agregada · {externalSpotsUpdated ? 'Actualizado: ' + externalSpotsUpdated : 'Esperando datos'}{externalSpotsError ? ' · ' + externalSpotsError : ''}</span><span className="flex flex-wrap gap-x-2">Fuentes: {['pskreporter','cluster','rbn'].map(source => <span key={source} className={(externalSources[source]?.state === 'receiving' ? 'text-emerald-300' : 'text-slate-400')}>{source === 'pskreporter' ? 'PSK' : source === 'cluster' ? 'Clusters' : 'RBN'} · {externalSources[source]?.state === 'receiving' ? 'en vivo' : externalSources[source]?.state === 'waiting' ? 'esperando' : externalSources[source]?.state === 'silent' ? 'sin actividad' : '—'}</span>)}</span></div>
+          <p className="text-[10px] text-slate-400">Datos de actividad: <a href="https://cqdx.io" target="_blank" rel="noreferrer" className="underline decoration-slate-500 underline-offset-2">CQDX (cqdx.io)</a> · actualizado según la última consulta.</p>
           <div ref={mapElementRef} className="z-0 h-[420px] w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900 sm:h-[520px]" role="application" aria-label="Mapa interactivo mundial de propagación y reportes DX"/>
           <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p>
           {!ownGeo&&<p className="text-xs text-amber-200">Completá tu Grid Locator en el perfil para centrar Mi zona, Mi país y Mi continente.</p>}
