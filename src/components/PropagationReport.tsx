@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
