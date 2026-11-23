@@ -9,6 +9,7 @@ import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
 import { getRecipientLanguage } from '../services/appLanguage';
 import { enqueueEqslDelivery, deliverEqslJob } from '../services/offlineEqslQueue';
+import { publishQsoSpot } from './LiveSpots';
 import { loadLLOTAReferences } from '../services/llotaReferences';
 import { 
   X, 
@@ -604,6 +605,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       }
       await getReceivedCardUrl(true);
       if (inboxDeliveryStatus.current === true) {
+        // Un envío eQSL POST entregado también habilita el contacto en LIVE SPOT.
+        await publishQsoSpot(qso);
         // Confirmación visual en el propio botón: sin cartel y sin segundo envío del mismo QSO.
         setEqslPostSent(true);
         returnToHome();
