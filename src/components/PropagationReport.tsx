@@ -15,6 +15,26 @@ function maidenheadToLatLon(locator?: string): GeoPoint | null {
  return {lat:lat+latSize/2,lon:lon+lonSize/2};
 }
 function distanceKm(a:GeoPoint,b:GeoPoint){const r=(n:number)=>n*Math.PI/180,d1=r(b.lat-a.lat),d2=r(b.lon-a.lon),h=Math.sin(d1/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(d2/2)**2;return 6371*2*Math.asin(Math.sqrt(h));}
+function greatCirclePath(a:GeoPoint,b:GeoPoint,steps=48):[number,number][]{
+ const rad=(n:number)=>n*Math.PI/180,deg=(n:number)=>n*180/Math.PI;
+ const p1=rad(a.lat),l1=rad(a.lon),p2=rad(b.lat),l2=rad(b.lon);
+ const omega=2*Math.asin(Math.sqrt(Math.sin((p2-p1)/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin((l2-l1)/2)**2));
+ if(!Number.isFinite(omega)||omega<1e-8)return [[a.lat,a.lon],[b.lat,b.lon]];
+ const out:[number,number][]=[];
+ for(let i=0;i<=steps;i++){const t=i/steps,A=Math.sin((1-t)*omega)/Math.sin(omega),B=Math.sin(t*omega)/Math.sin(omega),x=A*Math.cos(p1)*Math.cos(l1)+B*Math.cos(p2)*Math.cos(l2),y=A*Math.cos(p1)*Math.sin(l1)+B*Math.cos(p2)*Math.sin(l2),z=A*Math.sin(p1)+B*Math.sin(p2);out.push([deg(Math.atan2(z,Math.sqrt(x*x+y*y))),((deg(Math.atan2(y,x))+540)%360)-180]);}
+ return out;
+}
+function greyLineCoordinates(date=new Date()):[number,number][]{
+ const day=Math.floor((Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate())-Date.UTC(date.getUTCFullYear(),0,0))/86400000);
+ const hour=date.getUTCHours()+date.getUTCMinutes()/60;
+ const gamma=2*Math.PI/365*(day-1+(hour-12)/24);
+ const decl=0.006918-0.399912*Math.cos(gamma)+0.070257*Math.sin(gamma)-0.006758*Math.cos(2*gamma)+0.000907*Math.sin(2*gamma)-0.002697*Math.cos(3*gamma)+0.00148*Math.sin(3*gamma);
+ const eq=229.18*(0.000075+0.001868*Math.cos(gamma)-0.032077*Math.sin(gamma)-0.014615*Math.cos(2*gamma)-0.040849*Math.sin(2*gamma));
+ const subLon=((720-(hour*60+eq))/4+540)%360-180;
+ const pts:[number,number][]=[];
+ for(let lon=-180;lon<=180;lon+=2){const H=(lon-subLon)*Math.PI/180;let lat;if(Math.abs(Math.tan(decl))<1e-5)lat=Math.sin(H)>=0?-89.9:89.9;else lat=Math.atan(-Math.cos(H)/Math.tan(decl))*180/Math.PI;pts.push([Math.max(-89.9,Math.min(89.9,lat)),lon]);}
+ return pts;
+}
 const continentForPoint=(p:GeoPoint)=>p.lon < -30?(p.lat>5?'América del Norte':'América del Sur'):p.lon<60?(p.lat>34?'Europa':'África'):p.lat>-10?'Asia':'Oceanía';
 const mapRegions=[
 {name:'América del Norte',lat:40,lon:-100,radius:4200000,bounds:{south:5,north:85,west:-170,east:-30}},
@@ -46,6 +66,9 @@ export const PropagationReport: React.FC = () => {
   const [dxUpdated, setDxUpdated] = useState('');
   const [lastDxRequest, setLastDxRequest] = useState(0);
   const [mapZone, setMapZone] = useState<'world'|'zone'|'country'|'continent'>('world');
+  const [showGreyLine, setShowGreyLine] = useState(true);
+  const [showMaidenheadGrid, setShowMaidenheadGrid] = useState(true);
+  const [showDxPaths, setShowDxPaths] = useState(true);
   const [mapStatus, setMapStatus] = useState('Cargando cartografía…');
   const mapElementRef = useRef<HTMLDivElement|null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -247,9 +270,20 @@ export const PropagationReport: React.FC = () => {
       if(!mapInstanceRef.current){mapInstanceRef.current=L.map(mapElementRef.current,{worldCopyJump:true,scrollWheelZoom:true}).setView([15,0],2);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'}).addTo(mapInstanceRef.current);mapLayersRef.current=L.layerGroup().addTo(mapInstanceRef.current);}
       const map=mapInstanceRef.current,layers=mapLayersRef.current;layers.clearLayers();
       const state=(r:typeof mapRegions[number])=>{const h=(new Date().getUTCHours()+Math.round(r.lon/15)+24)%24,day=h>=7&&h<19;if(kp!==null&&kp>=5)return{label:'Mala',color:'#ef4444'};if(sfi!==null&&sfi>=120&&day&&(kp===null||kp<4))return{label:'Buena',color:'#22c55e'};return{label:'Media',color:'#f59e0b'};};
-      mapRegions.forEach(r=>{const st=state(r);L.circle([r.lat,r.lon],{radius:r.radius,color:st.color,weight:1.5,fillColor:st.color,fillOpacity:.19,opacity:.75}).bindTooltip(r.name+' · Propagación estimada: '+st.label).addTo(layers);});
+      mapRegions.forEach(r=>{const st=state(r);L.circle([r.lat,r.lon],{radius:r.radius,color:st.color,weight:1.5,fillColor:st.color,fillOpacity:.19,opacity:.75}).bindTooltip(r.name+' · Propagación orientativa: '+st.label).addTo(layers);});
+      if(showGreyLine){
+        const terminator=greyLineCoordinates(new Date());
+        L.polyline(terminator,{color:'#e2e8f0',weight:2.5,opacity:.95,dashArray:'7 5'}).bindTooltip('Grey Line · terminador día/noche aproximado').addTo(layers);
+        [-6,6].forEach(offset=>L.polyline(terminator.map(([lat,lon])=>[Math.max(-89.9,Math.min(89.9,lat+offset)),lon]),{color:'#94a3b8',weight:1,opacity:.45,dashArray:'3 7'}).addTo(layers));
+      }
+      if(showMaidenheadGrid){
+        for(let lon=-180;lon<=180;lon+=20)L.polyline([[-90,lon],[90,lon]],{color:'#cbd5e1',weight:.65,opacity:.32,dashArray:'2 5'}).addTo(layers);
+        for(let lat=-90;lat<=90;lat+=10)L.polyline([[lat,-180],[lat,180]],{color:'#cbd5e1',weight:.65,opacity:.32,dashArray:'2 5'}).addTo(layers);
+      }
       const esc=(v:string)=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-      visibleDxReports.forEach(report=>{const p=maidenheadToLatLon(report.receiverLocator);if(!p)return;L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
+      visibleDxReports.forEach(report=>{const p=maidenheadToLatLon(report.receiverLocator);if(!p)return;
+        if(showDxPaths&&ownGeo)L.polyline(greatCirclePath(ownGeo,p),{color:'#38bdf8',weight:2,opacity:.72,dashArray:'5 5'}).bindTooltip('Ruta de recepción · círculo máximo').addTo(layers);
+        L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
       const reg=mapRegions.find(x=>x.name===ownContinent);
       if(mapZone==='world')map.setView([15,0],2);else if(ownGeo&&mapZone==='zone')map.setView([ownGeo.lat,ownGeo.lon],5);else if(ownGeo&&mapZone==='continent'&&reg)map.fitBounds([[reg.bounds.south,reg.bounds.west],[reg.bounds.north,reg.bounds.east]]);else if(ownGeo)map.setView([ownGeo.lat,ownGeo.lon],4);
       setMapStatus(visibleDxReports.length?visibleDxReports.length+' informes con locator válido visibles. Los informes sin locator no se pueden ubicar.':'No hay informes DX con locator válido para este filtro. Esto no significa ausencia de propagación.');
@@ -257,7 +291,7 @@ export const PropagationReport: React.FC = () => {
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
     return()=>{cancelled=true;if(mapInstanceRef.current){mapInstanceRef.current.remove();mapInstanceRef.current=null;mapLayersRef.current=null;}};
-  },[open,mapZone,dxReports,visibleDxReports.length,stationIdentity.grid,ownContinent,sfi,kp]);
+  },[open,mapZone,dxReports,visibleDxReports.length,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths]);
 
   const summary = kp === null || sfi === null
     ? 'Esperando datos solares actualizados.'
@@ -325,6 +359,11 @@ export const PropagationReport: React.FC = () => {
         <section className="space-y-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-[#0c263d] to-[#101a34] p-3 shadow-xl sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-base font-black text-white sm:text-lg">MAPA MUNDIAL DX Y PROPAGACIÓN</h3><p className="text-xs text-slate-300">Cartografía real · DX reportados · zonas estimadas</p></div><span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[10px] font-black text-cyan-100">OPENSTREETMAP</span></div>
           <div className="flex flex-wrap gap-2">{([{id:'zone',label:'Mi zona'},{id:'country',label:'Mi país'},{id:'continent',label:'Mi continente'},{id:'world',label:'Todo el mundo'}] as const).map(x=><button key={x.id} type="button" onClick={()=>setMapZone(x.id)} aria-pressed={mapZone===x.id} className={'rounded-lg border px-3 py-2 text-xs font-bold '+(mapZone===x.id?'border-cyan-300 bg-cyan-500 text-slate-950':'border-slate-600 bg-slate-900/70 text-slate-200')}>{x.label}</button>)}</div>
+          <div className="flex flex-wrap gap-4 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs text-slate-200">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={showGreyLine} onChange={e=>setShowGreyLine(e.target.checked)} /> Grey Line</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={showMaidenheadGrid} onChange={e=>setShowMaidenheadGrid(e.target.checked)} /> Cuadrícula Maidenhead</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={showDxPaths} onChange={e=>setShowDxPaths(e.target.checked)} /> Rutas DX</label>
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-emerald-300">● Verde · Buena</span><span className="text-amber-300">● Naranja · Media</span><span className="text-red-400">● Rojo · Mala</span><span className="text-cyan-300">● Punto azul · DX real</span></div>
           <div ref={mapElementRef} className="z-0 h-[420px] w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900 sm:h-[520px]" role="application" aria-label="Mapa interactivo mundial de propagación y reportes DX"/>
           <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p><p className="text-[10px] leading-relaxed text-slate-400">Los puntos azules son reportes digitales reales de PSK Reporter con locator válido. Los círculos de color son orientación regional simplificada basada en SFI, Kp y hora solar; no son mediciones locales ni una predicción de cobertura. © OpenStreetMap.</p>
