@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
+import { supabase } from '../services/supabaseClient';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; };
 type GeoPoint = { lat: number; lon: number };
+type LiveQsoContact = { spot_key: string; callsign: string; station_callsign: string; band: string; frequency: string; mode: string; qso_date: string; qso_time: string; created_at: string; country?: string | null };
 function maidenheadToLatLon(locator?: string): GeoPoint | null {
  const v=String(locator||'').trim().toUpperCase();
  if(!/^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2}([A-X]{2})?)?)?$/.test(v)) return null;
@@ -61,6 +63,9 @@ export const PropagationReport: React.FC = () => {
   const [updated, setUpdated] = useState('');
   const [error, setError] = useState('');
   const [dxReports, setDxReports] = useState<DXReception[]>([]);
+  const [liveQsoContacts, setLiveQsoContacts] = useState<LiveQsoContact[]>([]);
+  const [liveGridLocators, setLiveGridLocators] = useState<Record<string, string>>({});
+  const [liveMapClock, setLiveMapClock] = useState(Date.now());
   const [dxLoading, setDxLoading] = useState(false);
   const [dxError, setDxError] = useState('');
   const [dxUpdated, setDxUpdated] = useState('');
@@ -245,7 +250,47 @@ export const PropagationReport: React.FC = () => {
     if (open && stationIdentity.selectedType === 'ham' && stationIdentity.selectedCallsign) void refreshDx();
   }, [open, stationIdentity.selectedCallsign, stationIdentity.selectedType]);
 
+  useEffect(() => {
+    if (!open || !supabase) return;
+    let active = true;
+    const loadLiveContacts = async () => {
+      const [spotsResult, gridsResult] = await Promise.all([
+        supabase.from('live_qso_spots').select('spot_key,callsign,station_callsign,band,frequency,mode,qso_date,qso_time,created_at,country').order('created_at', { ascending: false }).limit(200),
+        supabase.from('live_spot_grid_locators').select('callsign,grid_locator'),
+      ]);
+      if (!active) return;
+      if (spotsResult.error) console.warn('No se pudieron cargar los contactos del mapa:', spotsResult.error.message);
+      else setLiveQsoContacts((spotsResult.data || []) as LiveQsoContact[]);
+      if (gridsResult.error) console.warn('No se pudieron cargar los locator del mapa:', gridsResult.error.message);
+      else {
+        const next: Record<string, string> = {};
+        (gridsResult.data || []).forEach((row: { callsign: string; grid_locator: string | null }) => {
+          if (row.grid_locator) next[String(row.callsign).trim().toUpperCase()] = row.grid_locator;
+        });
+        setLiveGridLocators(next);
+      }
+      setLiveMapClock(Date.now());
+    };
+    void loadLiveContacts();
+    const channel = supabase.channel('propagation-live-qso-map')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_qso_spots' }, () => { void loadLiveContacts(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_spot_grid_locators' }, () => { void loadLiveContacts(); })
+      .subscribe();
+    const poll = window.setInterval(() => { void loadLiveContacts(); setLiveMapClock(Date.now()); }, 60000);
+    return () => { active = false; window.clearInterval(poll); void supabase.removeChannel(channel); };
+  }, [open]);
   const ownGeo=maidenheadToLatLon(stationIdentity.grid);
+  const visibleLiveContacts = liveQsoContacts.filter(contact => {
+    const age = liveMapClock - new Date(contact.created_at).getTime();
+    if (!Number.isFinite(age) || age < 0 || age >= 2 * 60 * 60 * 1000) return false;
+    const first = maidenheadToLatLon(liveGridLocators[contact.callsign]);
+    const second = maidenheadToLatLon(liveGridLocators[contact.station_callsign]);
+    if (!first || !second) return false;
+    if (mapZone === 'zone') return Boolean(ownGeo && (distanceKm(ownGeo, first) <= 1200 || distanceKm(ownGeo, second) <= 1200));
+    if (mapZone === 'country') return countryForCallsign(contact.callsign) === ownCountry || countryForCallsign(contact.station_callsign) === ownCountry;
+    if (mapZone === 'continent') { const region = mapRegions.find(x => x.name === ownContinent); return Boolean(region && [first, second].some(point => point.lat >= region.bounds.south && point.lat <= region.bounds.north && point.lon >= region.bounds.west && point.lon <= region.bounds.east)); }
+    return true;
+  });
   const ownCountry=countryForCallsign(stationIdentity.selectedCallsign,undefined,stationIdentity.selectedType==='11m');
   const ownContinent=ownGeo?continentForPoint(ownGeo):'';
   const visibleDxReports=dxReports.filter(report=>{
@@ -281,17 +326,30 @@ export const PropagationReport: React.FC = () => {
         for(let lat=-90;lat<=90;lat+=10)L.polyline([[lat,-180],[lat,180]],{color:'#cbd5e1',weight:.65,opacity:.32,dashArray:'2 5'}).addTo(layers);
       }
       const esc=(v:string)=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+       visibleLiveContacts.forEach(contact => {
+         const first = maidenheadToLatLon(liveGridLocators[contact.callsign]);
+         const second = maidenheadToLatLon(liveGridLocators[contact.station_callsign]);
+         if (!first || !second) return;
+         const age = Math.max(0, Date.now() - new Date(contact.created_at).getTime());
+         const opacity = age <= 60 * 60 * 1000 ? 0.95 : Math.max(0.08, 0.95 * (1 - (age - 60 * 60 * 1000) / (60 * 60 * 1000)));
+         L.polyline(greatCirclePath(first, second, 64), { color: '#f472b6', weight: 2.8, opacity, lineCap: 'round' })
+           .bindTooltip('Contacto registrado · ' + esc(contact.callsign) + ' ↔ ' + esc(contact.station_callsign) + ' · ' + esc(contact.band) + ' · ' + esc(contact.mode))
+           .bindPopup('<b>CONTACTO REGISTRADO</b><br>' + esc(contact.callsign) + ' ↔ ' + esc(contact.station_callsign) + '<br>Banda: ' + esc(contact.band) + '<br>Frecuencia: ' + esc(contact.frequency) + ' MHz<br>Modo: ' + esc(contact.mode) + '<br>Fecha UTC: ' + esc(contact.qso_date) + ' ' + esc(contact.qso_time))
+           .addTo(layers);
+         L.circleMarker([first.lat, first.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.callsign)).addTo(layers);
+         L.circleMarker([second.lat, second.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.station_callsign)).addTo(layers);
+       });
       visibleDxReports.forEach(report=>{const p=maidenheadToLatLon(report.receiverLocator);if(!p)return;
         if(showDxPaths&&ownGeo)L.polyline(greatCirclePath(ownGeo,p),{color:'#38bdf8',weight:2,opacity:.72,dashArray:'5 5'}).bindTooltip('Ruta de recepción · círculo máximo').addTo(layers);
         L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
       const reg=mapRegions.find(x=>x.name===ownContinent);
       if(mapZone==='world')map.setView([15,0],2);else if(ownGeo&&mapZone==='zone')map.setView([ownGeo.lat,ownGeo.lon],5);else if(ownGeo&&mapZone==='continent'&&reg)map.fitBounds([[reg.bounds.south,reg.bounds.west],[reg.bounds.north,reg.bounds.east]]);else if(ownGeo)map.setView([ownGeo.lat,ownGeo.lon],4);
-      setMapStatus(visibleDxReports.length?visibleDxReports.length+' informes con locator válido visibles. Los informes sin locator no se pueden ubicar.':'No hay informes DX con locator válido para este filtro. Esto no significa ausencia de propagación.');
+       setMapStatus(visibleLiveContacts.length + ' contactos registrados con locator válido · ' + visibleDxReports.length + ' informes de recepción digital. Los contactos permanecen 1 hora y se desvanecen durante la segunda. Los registros sin locator no se pueden ubicar.');
       window.setTimeout(()=>map.invalidateSize(),100);
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
     return()=>{cancelled=true;if(mapInstanceRef.current){mapInstanceRef.current.remove();mapInstanceRef.current=null;mapLayersRef.current=null;}};
-  },[open,mapZone,dxReports,visibleDxReports.length,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths]);
+  },[open,mapZone,dxReports,visibleDxReports.length,liveQsoContacts,liveGridLocators,visibleLiveContacts.length,liveMapClock,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths]);
 
   const summary = kp === null || sfi === null
     ? 'Esperando datos solares actualizados.'
@@ -366,7 +424,7 @@ export const PropagationReport: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-emerald-300">● Verde · Buena</span><span className="text-amber-300">● Naranja · Media</span><span className="text-red-400">● Rojo · Mala</span><span className="text-cyan-300">● Punto azul · DX real</span></div>
           <div ref={mapElementRef} className="z-0 h-[420px] w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900 sm:h-[520px]" role="application" aria-label="Mapa interactivo mundial de propagación y reportes DX"/>
-          <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p><p className="text-[10px] leading-relaxed text-slate-400">Los puntos azules son reportes digitales reales de PSK Reporter con locator válido. Los círculos de color son orientación regional simplificada basada en SFI, Kp y hora solar; no son mediciones locales ni una predicción de cobertura. © OpenStreetMap.</p>
+          <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p><p className="text-[10px] leading-relaxed text-slate-400">Las líneas curvas rosas unen estaciones de contactos registrados en LIVE SPOT: permanecen una hora y se desvanecen durante la segunda. Los puntos azules son recepciones digitales de PSK Reporter, no contactos confirmados. Los círculos de color son orientación regional simplificada basada en SFI, Kp y hora solar. © OpenStreetMap.</p>
           {!ownGeo&&<p className="text-xs text-amber-200">Completá tu Grid Locator en el perfil para centrar Mi zona, Mi país y Mi continente.</p>}
         </section>
         <section className="space-y-4 overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-[#0d2538] to-[#0b1b31] p-4 shadow-xl sm:p-5">
