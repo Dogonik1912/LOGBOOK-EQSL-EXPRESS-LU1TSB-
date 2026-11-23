@@ -9,6 +9,11 @@ type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
 type ExternalSpot = { dxCall: string; band: string; mode: string; frequency: number; dxLat: number | null; dxLon: number | null; dxGrid?: string | null; dxEntityName?: string; dxContinent?: string; reporterCount: number; sources: string[]; firstSeen: number; lastSeen: number; latestDeCall?: string; latestComment?: string | null; bestSnr?: number | null; signalTrend?: string; };
 type SpotSourceState = { state: string; lastAcceptedAt?: number | null };
+type RadioStats = { totalSpots?: number; activeEntities?: number; byBand?: Record<string,{spots?:number;entities?:number;rareCount?:number}>; byMode?: Record<string,{spots?:number;entities?:number}>; rareActive?: Array<{dxcc:number;entity:string;rank:number;bands:string[];modes:string[]}> };
+type RadioConditions = { sfi?:number|null; kp?:number|null; aIndex?:number|null; updatedAt?:number|null; bandConditions?:Record<string,string> };
+type IonosondeStation = { name:string; lat:number; lon:number; muf:number; updated:number };
+type RadioHistory = { period?:string; bucketSizeSeconds?:number; data?:Array<{bucket:number;spots:number;entities:number;band?:string}> };
+
 type GeoPoint = { lat: number; lon: number };
 type LiveQsoContact = { spot_key: string; callsign: string; station_callsign: string; band: string; frequency: string; mode: string; qso_date: string; qso_time: string; created_at: string; country?: string | null };
 function maidenheadToLatLon(locator?: string): GeoPoint | null {
@@ -76,6 +81,14 @@ export const PropagationReport: React.FC = () => {
   const [externalSources, setExternalSources] = useState<Record<string, SpotSourceState>>({});
   const [externalSpotsUpdated, setExternalSpotsUpdated] = useState('');
   const [externalSpotsError, setExternalSpotsError] = useState('');
+  const [radioStats, setRadioStats] = useState<RadioStats | null>(null);
+  const [radioConditions, setRadioConditions] = useState<RadioConditions | null>(null);
+  const [ionosondeStations, setIonosondeStations] = useState<IonosondeStation[]>([]);
+  const [radioHistory, setRadioHistory] = useState<RadioHistory | null>(null);
+  const [radioHistoryPeriod, setRadioHistoryPeriod] = useState<'1h'|'6h'|'24h'|'7d'>('24h');
+  const [radioDataUpdated, setRadioDataUpdated] = useState('');
+  const [radioDataError, setRadioDataError] = useState('');
+
   const [liveQsoContacts, setLiveQsoContacts] = useState<LiveQsoContact[]>([]);
   const [liveGridLocators, setLiveGridLocators] = useState<Record<string, string>>({});
   const [liveMapClock, setLiveMapClock] = useState(Date.now());
@@ -225,6 +238,53 @@ export const PropagationReport: React.FC = () => {
     const timer = window.setInterval(() => void refreshExternalActivity(), 30000);
     return () => window.clearInterval(timer);
   }, [open]);
+
+
+  const refreshRadioAmateurData = async (period: '1h'|'6h'|'24h'|'7d' = radioHistoryPeriod) => {
+    const fetchJson = async (url: string) => {
+      const response = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(response.status === 429 ? 'Límite temporal de la fuente de datos.' : 'HTTP ' + response.status);
+      return response.json();
+    };
+    const [statsResult, conditionsResult, propagationResult, historyResult] = await Promise.allSettled([
+      fetchJson('https://cqdx.io/api/v1/embed/stats'),
+      fetchJson('https://cqdx.io/api/v1/embed/conditions'),
+      fetchJson('https://cqdx.io/api/v1/propagation'),
+      fetchJson('https://cqdx.io/api/v1/stats/history?period=' + encodeURIComponent(period)),
+    ]);
+    const failures: string[] = [];
+    if (statsResult.status === 'fulfilled') {
+      const data = statsResult.value;
+      if (data && typeof data === 'object') setRadioStats(data as RadioStats);
+      else failures.push('estadísticas');
+    } else failures.push('estadísticas');
+    if (conditionsResult.status === 'fulfilled') {
+      const data = conditionsResult.value;
+      if (data && typeof data === 'object') setRadioConditions(data as RadioConditions);
+      else failures.push('condiciones solares');
+    } else failures.push('condiciones solares');
+    if (propagationResult.status === 'fulfilled') {
+      const stations = Array.isArray(propagationResult.value?.stations) ? propagationResult.value.stations : [];
+      setIonosondeStations(stations.filter((station: any) =>
+        Number.isFinite(Number(station.lat)) && Number.isFinite(Number(station.lon)) &&
+        Number.isFinite(Number(station.muf)) && Number(station.muf) > 0
+      ) as IonosondeStation[]);
+    } else failures.push('ionosondas');
+    if (historyResult.status === 'fulfilled') {
+      const data = historyResult.value;
+      if (data && Array.isArray(data.data)) setRadioHistory(data as RadioHistory);
+      else failures.push('historial');
+    } else failures.push('historial');
+    setRadioDataUpdated(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
+    setRadioDataError(failures.length ? 'Datos temporalmente no disponibles: ' + failures.join(', ') + '. Se conservan los últimos valores recibidos.' : '');
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    void refreshRadioAmateurData(radioHistoryPeriod);
+    const timer = window.setInterval(() => void refreshRadioAmateurData(radioHistoryPeriod), 60000);
+    return () => window.clearInterval(timer);
+  }, [open, radioHistoryPeriod]);
 
   const refreshDx = async () => {
     const callsign = stationIdentity.selectedCallsign.trim().toUpperCase();
@@ -498,6 +558,53 @@ export const PropagationReport: React.FC = () => {
           </div>
         </div>
         <p className="break-words rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-[#153452] to-[#252044] p-4 text-sm font-medium leading-relaxed text-slate-100 shadow-lg">{summary}</p>
+
+        <section className="space-y-4 rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-[#102b40] to-[#111d35] p-4 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div><h3 className="text-base font-black text-white sm:text-lg">ACTIVIDAD MUNDIAL DE RADIOAFICIÓN</h3><p className="text-xs text-slate-300">Datos agregados de los últimos 30 minutos · actualización automática</p></div>
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-[10px] font-bold text-emerald-200">FUENTES EN VIVO</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3"><span className="text-[10px] font-bold uppercase text-slate-400">Reportes DX</span><strong className="mt-1 block text-3xl text-white">{radioStats?.totalSpots ?? '—'}</strong></div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3"><span className="text-[10px] font-bold uppercase text-slate-400">Entidades DXCC</span><strong className="mt-1 block text-3xl text-white">{radioStats?.activeEntities ?? '—'}</strong></div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3"><span className="text-[10px] font-bold uppercase text-slate-400">Bandas activas</span><strong className="mt-1 block text-3xl text-white">{radioStats?.byBand ? Object.values(radioStats.byBand).filter(v => Number(v.spots || 0) > 0).length : '—'}</strong></div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3"><span className="text-[10px] font-bold uppercase text-slate-400">Modos activos</span><strong className="mt-1 block text-3xl text-white">{radioStats?.byMode ? Object.values(radioStats.byMode).filter(v => Number(v.spots || 0) > 0).length : '—'}</strong></div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+              <h4 className="mb-3 text-sm font-black text-cyan-100">ACTIVIDAD POR BANDA</h4>
+              {radioStats?.byBand && Object.keys(radioStats.byBand).length > 0 ? <div className="space-y-2">{Object.entries(radioStats.byBand).sort((a,b)=>Number(b[1].spots||0)-Number(a[1].spots||0)).map(([band,data])=><div key={band} className="grid grid-cols-[52px_1fr_42px] items-center gap-2 text-xs"><strong className="text-slate-200">{band}</strong><div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-cyan-400" style={{width:Math.max(2,Number(data.spots||0)/Math.max(1,...Object.values(radioStats.byBand||{}).map(v=>Number(v.spots||0)))*100)+'%'}}/></div><span className="text-right tabular-nums text-slate-300">{data.spots||0}</span></div>)}</div> : <p className="text-xs text-slate-400">Sin estadísticas de bandas disponibles.</p>}
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+              <h4 className="mb-3 text-sm font-black text-violet-100">ACTIVIDAD POR MODO</h4>
+              {radioStats?.byMode && Object.keys(radioStats.byMode).length > 0 ? <div className="space-y-2">{Object.entries(radioStats.byMode).sort((a,b)=>Number(b[1].spots||0)-Number(a[1].spots||0)).map(([mode,data])=><div key={mode} className="grid grid-cols-[72px_1fr_42px] items-center gap-2 text-xs"><strong className="text-slate-200">{mode}</strong><div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-violet-400" style={{width:Math.max(2,Number(data.spots||0)/Math.max(1,...Object.values(radioStats.byMode||{}).map(v=>Number(v.spots||0)))*100)+'%'}}/></div><span className="text-right tabular-nums text-slate-300">{data.spots||0}</span></div>)}</div> : <p className="text-xs text-slate-400">Sin estadísticas de modos disponibles.</p>}
+            </div>
+          </div>
+          <div className="rounded-xl border border-amber-300/20 bg-slate-950/40 p-3">
+            <h4 className="mb-3 text-sm font-black text-amber-100">CONDICIONES SOLARES Y ESTADO DE LAS BANDAS</h4>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div><span className="block text-[10px] text-slate-400">SFI</span><strong className="text-xl text-white">{radioConditions?.sfi ?? sfi ?? '—'}</strong></div>
+              <div><span className="block text-[10px] text-slate-400">Kp</span><strong className="text-xl text-white">{radioConditions?.kp != null ? Number(radioConditions.kp).toFixed(1) : kp != null ? kp.toFixed(1) : '—'}</strong></div>
+              <div><span className="block text-[10px] text-slate-400">Índice A</span><strong className="text-xl text-white">{radioConditions?.aIndex ?? '—'}</strong></div>
+              <div><span className="block text-[10px] text-slate-400">Actualización</span><strong className="text-xs text-white">{radioConditions?.updatedAt ? new Date(Number(radioConditions.updatedAt)*1000).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' UTC' : '—'}</strong></div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{([{key:'hf_high',label:'10–17 m'},{key:'hf_mid',label:'20–30 m'},{key:'hf_low',label:'40–160 m'},{key:'vhf',label:'6 m'}] as const).map(item=>{const value=radioConditions?.bandConditions?.[item.key]||'—';return <div key={item.key} className="rounded-lg border border-white/10 bg-white/5 p-2"><span className="block text-[10px] text-slate-400">{item.label}</span><strong className={'text-sm '+(value==='Good'?'text-emerald-300':value==='Fair'?'text-amber-200':value==='Poor'?'text-rose-300':'text-slate-300')}>{value==='Good'?'Buenas':value==='Fair'?'Regulares':value==='Poor'?'Pobres':'Sin datos'}</strong></div>})}</div>
+          </div>
+          <div className="rounded-xl border border-sky-300/20 bg-slate-950/40 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-black text-sky-100">IONOSONDAS · FRECUENCIA MÁXIMA UTILIZABLE (MUF)</h4><span className="text-[10px] text-slate-400">{ionosondeStations.length} estaciones con lectura</span></div>
+            {ionosondeStations.length ? <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{[...ionosondeStations].sort((a,b)=>Number(b.updated||0)-Number(a.updated||0)).slice(0,9).map((station,index)=><div key={station.name+'-'+index} className="rounded-lg border border-white/10 bg-white/5 p-2"><strong className="block truncate text-xs text-white">{station.name}</strong><span className="text-lg font-black text-sky-200">{Number(station.muf).toFixed(1)} MHz</span><span className="block text-[10px] text-slate-400">Lectura {station.updated ? new Date(Number(station.updated)*1000).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' UTC' : 'sin hora'}</span></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No hay lecturas ionosféricas disponibles en este momento.</p>}
+            <p className="mt-2 text-[10px] text-slate-500">Fuente: red mundial de ionosondas prop.kc2g.com, integrada por CQDX. La MUF es una medición ionosférica regional, no garantiza un contacto.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-black text-white">HISTORIAL DE ACTIVIDAD DX</h4><select aria-label="Período del historial" value={radioHistoryPeriod} onChange={event=>setRadioHistoryPeriod(event.target.value as '1h'|'6h'|'24h'|'7d')} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-white"><option value="1h">Última hora</option><option value="6h">Últimas 6 horas</option><option value="24h">Últimas 24 horas</option><option value="7d">Últimos 7 días</option></select></div>
+            {radioHistory?.data?.length ? <div className="mt-3 flex h-24 items-end gap-1">{radioHistory.data.slice(-36).map((bucket,index)=>{const max=Math.max(1,...radioHistory.data!.map(x=>Number(x.spots||0)));return <div key={String(bucket.bucket)+'-'+index} title={new Date(Number(bucket.bucket)*1000).toLocaleString('es-AR')+': '+bucket.spots+' reportes'} className="min-w-0 flex-1 rounded-t bg-cyan-400/80" style={{height:Math.max(3,Number(bucket.spots||0)/max*100)+'%'}}/>})}</div> : <p className="mt-2 text-xs text-slate-400">Historial no disponible todavía.</p>}
+            <p className="mt-2 text-[10px] text-slate-500">Evolución de reportes DX agregados; no representa QSOs confirmados.</p>
+          </div>
+          {radioStats?.rareActive?.length ? <div className="rounded-xl border border-fuchsia-300/20 bg-slate-950/40 p-3"><h4 className="mb-2 text-sm font-black text-fuchsia-100">ENTIDADES DX POCO FRECUENTES ACTIVAS</h4><div className="grid gap-2 sm:grid-cols-2">{radioStats.rareActive.slice(0,8).map(entity=><div key={entity.dxcc} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs"><strong className="text-white">{entity.entity}</strong><span className="ml-2 text-fuchsia-200">#{entity.rank}</span><span className="mt-1 block text-slate-400">{entity.bands?.join(', ')||'—'} · {entity.modes?.join(', ')||'—'}</span></div>)}</div></div> : null}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500"><span>{radioDataUpdated ? 'Consulta: '+radioDataUpdated : 'Esperando datos de actividad'}</span><span>11 metros: fuente específica pendiente de respuesta de RCQSL.</span></div>
+          {radioDataError && <p role="status" className="text-xs text-amber-200">{radioDataError}</p>}
+          <p className="text-[10px] leading-relaxed text-slate-500">Los reportes de PSK Reporter, RBN y DX Cluster indican recepción o anuncios. No son contactos confirmados. Los contactos válidos de LogBook se muestran por separado en el mapa.</p>
+        </section>
         <section className="space-y-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-[#0c263d] to-[#101a34] p-3 shadow-xl sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-base font-black text-white sm:text-lg">MAPA MUNDIAL DX Y PROPAGACIÓN</h3><p className="text-xs text-slate-300">Cartografía real · DX reportados · zonas estimadas</p></div><span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[10px] font-black text-cyan-100">OPENSTREETMAP</span></div>
           <div className="flex flex-wrap gap-2">{([{id:'zone',label:'Mi zona'},{id:'country',label:'Mi país'},{id:'continent',label:'Mi continente'},{id:'world',label:'Todo el mundo'}] as const).map(x=><button key={x.id} type="button" onClick={()=>setMapZone(x.id)} aria-pressed={mapZone===x.id} className={'rounded-lg border px-3 py-2 text-xs font-bold '+(mapZone===x.id?'border-cyan-300 bg-cyan-500 text-slate-950':'border-slate-600 bg-slate-900/70 text-slate-200')}>{x.label}</button>)}</div>
