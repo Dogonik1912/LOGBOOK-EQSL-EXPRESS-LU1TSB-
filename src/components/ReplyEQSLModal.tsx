@@ -406,6 +406,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       setEqslPostStatus('Falta la señal distintiva del destinatario. Abrí la eQSL original desde su enlace para completar ese dato.');
       return;
     }
+    if (!handleSaveToLocalLog()) return;
     setEqslPostSending(true);
     setEqslPostStatus('');
     try {
