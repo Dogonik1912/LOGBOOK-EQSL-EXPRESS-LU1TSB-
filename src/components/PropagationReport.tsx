@@ -396,6 +396,10 @@ export const PropagationReport: React.FC = () => {
     return capitalPointForCountry(country);
   };
   const ownContinent=ownGeo?continentForPoint(ownGeo):'';
+  const solarFluxValue = radioConditions?.sfi ?? sfi;
+  const geomagneticKpValue = radioConditions?.kp != null ? Number(radioConditions.kp) : kp;
+  const solarFluxLabel = solarFluxValue == null ? 'Esperando medición' : solarFluxValue < 70 ? 'Actividad solar baja' : solarFluxValue < 100 ? 'Actividad moderada' : solarFluxValue < 150 ? 'Buena disponibilidad potencial en HF' : 'Flujo solar elevado';
+  const geomagneticLabel = geomagneticKpValue == null ? 'Esperando índice Kp' : geomagneticKpValue < 4 ? 'Campo geomagnético tranquilo' : geomagneticKpValue < 5 ? 'Inestable' : geomagneticKpValue < 6 ? 'Tormenta menor · G1' : geomagneticKpValue < 7 ? 'Tormenta moderada · G2' : geomagneticKpValue < 8 ? 'Tormenta fuerte · G3' : geomagneticKpValue < 9 ? 'Tormenta severa · G4' : 'Tormenta extrema · G5';
   const visibleLiveContacts = liveQsoContacts.filter(contact => {
     const age = liveMapClock - new Date(contact.created_at).getTime();
     if (!Number.isFinite(age) || age < 0 || age >= 60 * 60 * 1000) return false;
@@ -547,16 +551,58 @@ export const PropagationReport: React.FC = () => {
           </div>
           {!stationIdentity.selectedCallsign && <p className="mt-2 text-xs text-amber-200">No se encontró una identidad verificada para esta modalidad. Revisá la identidad de tu cuenta y la SD vinculada de 11 metros en Ajustes.</p>}
         </section>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="group relative overflow-hidden rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/15 to-orange-500/5 p-4">
-            <span className="block break-words text-xs font-bold uppercase tracking-wider text-amber-100/80">☀ FLUJO SOLAR · SFI</span>
-            <strong className="mt-2 block text-4xl font-black tracking-tight text-white">{sfi === null ? '—' : Math.round(sfi)}</strong>
-          </div>
-          <div className="rounded-lg bg-slate-900 p-3">
-            <span className="block break-words text-xs font-bold uppercase tracking-wider text-violet-100/80">◉ GEOMAGNÉTICO · KP</span>
-            <strong className="mt-2 block text-4xl font-black tracking-tight text-white">{kp === null ? '—' : kp.toFixed(1)}</strong>
-          </div>
-        </div>
+        <section className="grid gap-4 xl:grid-cols-2">
+          <article className="overflow-hidden rounded-2xl border border-amber-300/25 bg-gradient-to-br from-[#3b260f] via-[#251b20] to-[#111827] shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-4 pb-3">
+              <div><span className="text-[10px] font-black tracking-[.2em] text-amber-200">MONITOREO SOLAR · NOAA / GOES</span><h3 className="mt-1 text-lg font-black text-white">El Sol y la ionización</h3></div>
+              <span className="rounded-full border border-amber-200/30 bg-amber-200/10 px-3 py-1 text-xs font-bold text-amber-100">SFI {solarFluxValue == null ? '—' : Math.round(Number(solarFluxValue))}</span>
+            </div>
+            <div className="grid gap-2 px-3 sm:grid-cols-[1.15fr_.85fr]">
+              <a href="https://www.spaceweather.gov/products/solar-ultraviolet-imager" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
+                <img src="https://services.swpc.noaa.gov/images/animations/suvi/primary/171/latest.png" alt="Imagen ultravioleta actual del Sol observada por NOAA GOES SUVI" loading="lazy" className="h-44 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-48"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">SOL EN ULTRAVIOLETA · 171 Å</span>
+              </a>
+              <a href="https://www.spaceweather.gov/products/goes-x-ray-flux" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
+                <img src="https://services.swpc.noaa.gov/images/goes-xray-flux.gif" alt="Gráfico actualizado de flujo de rayos X solares GOES" loading="lazy" className="h-44 w-full object-contain transition duration-500 group-hover:scale-[1.02] sm:h-48"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">RAYOS X · ERUPCIONES SOLARES</span>
+              </a>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-amber-100/70">FLUJO SFI</span><strong className="mt-1 block text-2xl font-black text-white">{solarFluxValue == null ? '—' : Math.round(Number(solarFluxValue))}</strong><span className="text-[10px] text-amber-100/80">sfu</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-amber-100/70">ESTADO SOLAR</span><strong className="mt-1 block text-sm font-black text-amber-100">{solarFluxLabel}</strong></div>
+              <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-3 sm:col-span-1"><span className="text-[10px] text-amber-100/70">IMPACTO EN HF</span><p className="mt-1 text-xs leading-relaxed text-slate-100">Un flujo más alto suele favorecer la ionización y las bandas altas. Una llamarada intensa de rayos X puede provocar apagones HF en la zona diurna.</p></div>
+            </div>
+            <p className="px-4 pb-4 text-[10px] text-amber-100/60">Imagen solar y rayos X en tiempo casi real · NOAA SWPC / GOES. Tocá cada imagen para abrir el producto oficial.</p>
+          </article>
+
+          <article className="overflow-hidden rounded-2xl border border-violet-300/25 bg-gradient-to-br from-[#211b45] via-[#151d3a] to-[#0b172d] shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-4 pb-3">
+              <div><span className="text-[10px] font-black tracking-[.2em] text-violet-200">TIERRA · CAMPO MAGNÉTICO</span><h3 className="mt-1 text-lg font-black text-white">Actividad geomagnética</h3></div>
+              <span className="rounded-full border border-violet-200/30 bg-violet-200/10 px-3 py-1 text-xs font-bold text-violet-100">Kp {geomagneticKpValue == null ? '—' : Number(geomagneticKpValue).toFixed(1)}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 px-3">
+              <a href="https://www.spaceweather.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
+                <img src="https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg" alt="Pronóstico de auroras boreales para el hemisferio norte" loading="lazy" className="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-40"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">HEMISFERIO NORTE</span>
+              </a>
+              <a href="https://www.spaceweather.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
+                <img src="https://services.swpc.noaa.gov/images/animations/ovation/south/latest.jpg" alt="Pronóstico de auroras australes para el hemisferio sur" loading="lazy" className="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-40"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">HEMISFERIO SUR</span>
+              </a>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-violet-100/70">ÍNDICE Kp</span><strong className="mt-1 block text-2xl font-black text-white">{geomagneticKpValue == null ? '—' : Number(geomagneticKpValue).toFixed(1)}</strong><span className="text-[10px] text-violet-100/80">escala 0–9</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-violet-100/70">ÍNDICE A</span><strong className="mt-1 block text-2xl font-black text-white">{radioConditions?.aIndex ?? '—'}</strong><span className="text-[10px] text-violet-100/80">actividad diaria</span></div>
+              <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-3 sm:col-span-1"><span className="text-[10px] text-violet-100/70">NIVEL GEOMAGNÉTICO</span><strong className="mt-1 block text-sm font-black text-violet-100">{geomagneticLabel}</strong></div>
+            </div>
+            <div className="mx-3 mb-3 rounded-xl border border-violet-100/10 bg-black/25 p-3">
+              <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-violet-100/70"><span>ESCALA DE TORMENTAS NOAA</span><span>Kp 5 = G1 · Kp 9 = G5</span></div>
+              <div className="grid grid-cols-5 gap-1 text-center text-[10px] font-black">{['G1','G2','G3','G4','G5'].map((level,index)=><div key={level} className={'rounded-md py-2 '+(geomagneticKpValue != null && geomagneticKpValue >= index+5 ? 'bg-violet-400/40 text-white' : 'bg-white/5 text-violet-100/50')}>{level}</div>)}</div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-100">Cuando Kp aumenta, crece la perturbación del campo magnético: puede degradar la propagación HF, especialmente en latitudes altas, aunque también favorece auroras más extensas.</p>
+            </div>
+            <p className="px-4 pb-4 text-[10px] text-violet-100/60">Pronóstico auroral OVATION actualizado por NOAA SWPC · no indica visibilidad garantizada desde tu ubicación.</p>
+          </article>
+        </section>
         <p className="break-words rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-[#153452] to-[#252044] p-4 text-sm font-medium leading-relaxed text-slate-100 shadow-lg">{summary}</p>
 
         <section className="space-y-4 rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-[#102b40] to-[#111d35] p-4 shadow-xl">
