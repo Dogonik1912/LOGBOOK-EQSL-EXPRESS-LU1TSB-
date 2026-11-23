@@ -26,7 +26,6 @@ type Spot = {
   qso_time: string; band: string; frequency: string; mode: string; country: string | null;
   llota_reference?: string | null; llota_reference_name?: string | null;
   created_at: string;
-  source?: 'external'; source_url?: string; comment?: string; spotter?: string;
 };
 
 type WeeklyWinner = {
@@ -44,7 +43,9 @@ export async function publishQsoSpot(qso: QSO) {
   // Clave simétrica: el mismo QSO se reconoce aunque lo publique cualquiera de las dos estaciones.
   // Banda, frecuencia y modo permanecen en la clave para no mezclar servicios/contactos distintos.
   const [firstCall, secondCall] = [ownCall, remoteCall].sort((a, b) => a.localeCompare(b));
-  const normalizedFrequency = String(qso.frequency).trim().replace(',', '.');
+  const frequencyNumber = Number(String(qso.frequency).trim().replace(',', '.'));
+  if (!Number.isFinite(frequencyNumber) || frequencyNumber <= 0) return;
+  const normalizedFrequency = frequencyNumber.toFixed(3);
   const spotKey = [firstCall, secondCall, qso.date, qso.time, String(qso.band).trim().toLowerCase(), normalizedFrequency, String(qso.mode || '').trim().toUpperCase()].join('|');
   const { error } = await supabase.from('live_qso_spots').upsert({
     spot_key: spotKey,
@@ -53,7 +54,7 @@ export async function publishQsoSpot(qso: QSO) {
     qso_date: qso.date,
     qso_time: qso.time,
     band: qso.band,
-    frequency: String(qso.frequency).replace(',', '.'),
+    frequency: normalizedFrequency,
     mode: qso.mode || '',
     country: countryForCallsign(remoteCall, qso.country, isElevenMeterSpot(String(qso.band || ''), String(qso.frequency || ''))),
     ...(qso.llotaReference ? { llota_reference: qso.llotaReference, llota_reference_name: qso.llotaReferenceName || null } : {}),
@@ -182,9 +183,6 @@ export const LiveSpots: React.FC = () => {
   const [selectedContinents, setSelectedContinents] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('live_spot_filter_continents') || '[]'); } catch { return []; } });
   const [showAllActivity, setShowAllActivity] = useState(() => localStorage.getItem('live_spot_show_all') !== 'false');
   const [spots, setSpots] = useState<Spot[]>([]);
-  const [hamDxSpots, setHamDxSpots] = useState<Spot[]>([]);
-  const [hamDxError, setHamDxError] = useState('');
-  const [hamDxUpdated, setHamDxUpdated] = useState('');
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -208,7 +206,7 @@ export const LiveSpots: React.FC = () => {
   const modeOptions=HAM_MODES;
   const continentOptions=['África','América','Asia','Europa','Oceanía','Antártida','Otros'];
   const normalizeFilterValue=(value:string)=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ');
-  const allSpots = [...spots, ...hamDxSpots].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+  const allSpots = [...spots].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
   const filteredSpots=showAllActivity ? allSpots : allSpots.filter(spot=>
     (!selectedBands.length||selectedBands.some(value=>normalizeFilterValue(value)===normalizeFilterValue(spot.band))) &&
     (!selectedModes.length||selectedModes.some(value=>normalizeFilterValue(value)===normalizeFilterValue(spot.mode))) &&
@@ -243,44 +241,6 @@ export const LiveSpots: React.FC = () => {
     }));
     setErrorMessage('');
     setLoading(false);
-  };
-
-  // Feed público de DX Cluster para radioafición. Se consulta una vez por minuto,
-  // respetando el límite publicado por SpottedHam para accesos sin clave.
-  const loadHamDxSpots = async () => {
-    try {
-      const response = await fetch('https://www.spottedham.com/api/v1/spots?source=cluster&limit=100', {
-        headers: { Accept: 'application/json' }, cache: 'no-store',
-      });
-      if (!response.ok) {
-        if (response.status === 429) throw new Error('Límite temporal de consultas del proveedor DX. Se reintentará en el próximo ciclo.');
-        throw new Error('La fuente internacional de DX no está disponible temporalmente.');
-      }
-      const payload = await response.json();
-      if (!payload?.ok || !Array.isArray(payload.spots)) throw new Error('La fuente DX devolvió una respuesta no válida.');
-      const normalized: Spot[] = payload.spots.map((item: any) => {
-        const callsign = String(item.callsign || '').trim().toUpperCase();
-        const spotter = String(item.spotter || '').trim().toUpperCase();
-        const date = new Date(item.spotted_utc || '');
-        const frequency = Number(item.frequency_mhz);
-        const band = String(item.band || '').trim().toLowerCase();
-        const mode = String(item.mode || '').trim().toUpperCase();
-        if (!callsign || !Number.isFinite(date.getTime()) || !Number.isFinite(frequency) || frequency <= 0 || !band) return null;
-        return {
-          spot_key: 'external:spottedham:' + String(item.id || [callsign, item.spotted_utc, frequency].join(':')),
-          callsign, station_callsign: spotter,
-          qso_date: date.toISOString().slice(0,10), qso_time: date.toISOString().slice(11,16),
-          band, frequency: frequency.toFixed(3), mode: mode || 'No especificado', country: null,
-          created_at: date.toISOString(), source: 'external',
-          comment: String(item.comment || '').slice(0,240),
-        } as Spot;
-      }).filter((item: Spot | null): item is Spot => Boolean(item));
-      setHamDxSpots(normalized);
-      setHamDxError('');
-      setHamDxUpdated(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC');
-    } catch (error) {
-      setHamDxError(error instanceof Error ? error.message : 'No se pudieron recuperar los spots DX internacionales.');
-    }
   };
 
   const loadWeeklyWinnerAndVotes = async () => {
@@ -360,15 +320,13 @@ export const LiveSpots: React.FC = () => {
   useEffect(() => {
     void loadSpots();
     void loadGridLocators();
-    void loadHamDxSpots();
-    const dxRefresh = window.setInterval(() => { void loadHamDxSpots(); }, 60000);
-    if (!supabase) return () => window.clearInterval(dxRefresh);
+    if (!supabase) return;
     const channel = supabase.channel('live-qso-spots-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_qso_spots' }, () => { void loadSpots(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_spot_grid_locators' }, () => { void loadGridLocators(); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_qso_spot_weekly_winners' }, () => { void loadWeeklyWinnerAndVotes(); })
       .subscribe((status) => setConnected(status === 'SUBSCRIBED'));
-    return () => { window.clearInterval(dxRefresh); void supabase.removeChannel(channel); };
+    return () => { void supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
@@ -447,7 +405,6 @@ export const LiveSpots: React.FC = () => {
       </div>
     </section>}
     {errorMessage && <p className="px-4 py-3 text-sm text-amber-300">{errorMessage}</p>}
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-slate-900/70 px-3 py-2 text-[10px] text-slate-300"><span>DX internacional · {hamDxSpots.length} reportes</span><span>{hamDxUpdated ? 'Actualizado ' + hamDxUpdated : 'Actualizando actividad DX…'}</span></div>
     {adminStatus && <p role="status" className="px-4 py-2 text-sm text-slate-200">{adminStatus}</p>}
     {voteMessage && <p role="status" className="px-4 py-2 text-sm text-cyan-200">{voteMessage}</p>}
     {isAdmin && <div className="border-b border-rose-900 bg-slate-900">
@@ -465,14 +422,14 @@ export const LiveSpots: React.FC = () => {
       </div>}
     </div>}
     {loading && <p className="px-4 py-3 text-sm text-slate-500">Cargando spots…</p>}
-    {!loading && !errorMessage && allSpots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay spots compartidos ni reportes DX disponibles.</p>}
+    {!loading && !errorMessage && allSpots.length === 0 && <p className="px-4 py-4 text-sm text-slate-500">Todavía no hay contactos compartidos. Se mostrarán cuando un operador registre un QSO o envíe una eQSL.</p>}
     {!loading && !errorMessage && allSpots.length>0 && filteredSpots.length===0 && <p className="px-4 py-4 text-sm text-slate-400">No hay spots que coincidan con los filtros elegidos. Marca «Ver todo» para mostrar toda la actividad.</p>}
     {filteredSpots.length > 0 && <div className="max-h-[30rem] overflow-y-auto overscroll-contain divide-y divide-slate-800">{filteredSpots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5">
-      <div className="min-w-[3.5rem] text-center">{spot.source === 'external' ? <span className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-slate-700 bg-slate-900 px-1.5 py-1 text-sm font-bold leading-none text-slate-500">—</span> : <button type="button" onClick={() => setMapSpot(spot)} title="Abrir mapa y ver distancia en km y millas" className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-cyan-500/60 bg-slate-900 px-1.5 py-1 text-sm font-extrabold leading-none text-cyan-200 shadow-sm">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country || countryForCallsign(spot.callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\\d/.test(adminCallsign))))}</button>}</div>
-      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100">{spot.source === 'external' ? <span>{flagForCallsign(spot.callsign, spot.country || undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</span> : <button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button>}{spot.source === 'external' ? (spot.station_callsign ? <><span className="text-slate-500">↔</span><span>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</span></> : null) : <><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></>}</div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div>{spot.comment && <div className="text-[10px] leading-4 text-slate-400">{spot.comment}</div>}{spot.llota_reference && <div className="mt-0.5 text-[10px] font-bold leading-4 text-cyan-300">🌊 LLOTA · {spot.llota_reference}{spot.llota_reference_name ? ' — ' + spot.llota_reference_name : ''}</div>}</div>
-      <div className="flex items-center gap-1 text-right text-[10px] text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{spot.qso_time} UTC</div><div className="leading-3">{spot.qso_date}</div></div>{spot.source !== 'external' && <><button type="button" aria-label={votedSpotKeys.has(spot.spot_key) ? 'Spot votado' : 'Votar por este spot'} disabled={!adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey === spot.spot_key || Boolean(votingKey)} onClick={() => void voteForSpot(spot)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:cursor-default" style={{ color: votedSpotKeys.has(spot.spot_key) ? '#ff3040' : '#ffffff' }}><Heart className={`h-4 w-4 ${votedSpotKeys.has(spot.spot_key) ? 'fill-current' : ''}`} strokeWidth={2.2} /></button>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-md p-1.5 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /></button>}</>}</div>
+      <div className="min-w-[3.5rem] text-center"><button type="button" onClick={() => setMapSpot(spot)} title="Abrir mapa y ver distancia en km y millas" className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-cyan-500/60 bg-slate-900 px-1.5 py-1 text-sm font-extrabold leading-none text-cyan-200 shadow-sm">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country || countryForCallsign(spot.callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\\d/.test(adminCallsign))))}</button></div>
+      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100"><button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div>{spot.llota_reference && <div className="mt-0.5 text-[10px] font-bold leading-4 text-cyan-300">🌊 LLOTA · {spot.llota_reference}{spot.llota_reference_name ? ' — ' + spot.llota_reference_name : ''}</div>}</div>
+      <div className="flex items-center gap-1 text-right text-[10px] text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{spot.qso_time} UTC</div><div className="leading-3">{spot.qso_date}</div></div><button type="button" aria-label={votedSpotKeys.has(spot.spot_key) ? 'Spot votado' : 'Votar por este spot'} disabled={!adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey === spot.spot_key || Boolean(votingKey)} onClick={() => void voteForSpot(spot)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:cursor-default" style={{ color: votedSpotKeys.has(spot.spot_key) ? '#ff3040' : '#ffffff' }}><Heart className={`h-4 w-4 ${votedSpotKeys.has(spot.spot_key) ? 'fill-current' : ''}`} strokeWidth={2.2} /></button>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-md p-1.5 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /></button>}</div>
     </article>)}</div>}
-    <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">QSO de usuarios y DX internacional · hora UTC.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); void loadHamDxSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
+    <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">Contactos registrados por operadores · hora UTC.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>
     <div className="flex justify-end border-t border-slate-800 px-3 py-3"><button type="button" onClick={() => setIsExpanded(false)} className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-700">Cerrar</button></div>
     </div>}
     {mapSpot && <SpotDistanceMap spot={mapSpot} firstGrid={gridLocators[mapSpot.callsign]} secondGrid={gridLocators[mapSpot.station_callsign]} onClose={() => setMapSpot(null)} />}
