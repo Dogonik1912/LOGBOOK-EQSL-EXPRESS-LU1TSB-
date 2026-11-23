@@ -3,6 +3,7 @@ import { ChevronDown, RefreshCw } from 'lucide-react';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
+type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; };
 const zones: Zone[] = [
   { name: 'América del Sur', utcOffset: -3, latitude: -25 },
   { name: 'América del Norte', utcOffset: -5, latitude: 40 },
@@ -19,6 +20,10 @@ export const PropagationReport: React.FC = () => {
   const [kp, setKp] = useState<number | null>(null);
   const [updated, setUpdated] = useState('');
   const [error, setError] = useState('');
+  const [dxReports, setDxReports] = useState<DXReception[]>([]);
+  const [dxLoading, setDxLoading] = useState(false);
+  const [dxError, setDxError] = useState('');
+  const [dxUpdated, setDxUpdated] = useState('');
   const [identityRefresh, setIdentityRefresh] = useState(0);
   const [selectedIdentity, setSelectedIdentity] = useState<'11m' | 'ham'>(() => {
     const saved = localStorage.getItem('logbook_propagation_identity');
@@ -97,6 +102,70 @@ export const PropagationReport: React.FC = () => {
 
   useEffect(() => { if (open && sfi === null && !loading) void refresh(); }, [open]);
 
+
+  const refreshDx = async () => {
+    const callsign = stationIdentity.selectedCallsign.trim().toUpperCase();
+    if (!callsign || stationIdentity.selectedType !== 'ham') {
+      setDxReports([]);
+      setDxError(stationIdentity.selectedType === '11m'
+        ? 'Los informes de 11 metros requieren una fuente autorizada de 11 m; PSK Reporter no se usa para esta modalidad.'
+        : 'Seleccioná una señal distintiva de radioaficionado para consultar informes.');
+      return;
+    }
+    setDxLoading(true);
+    setDxError('');
+    try {
+      const url = new URL('https://retrieve.pskreporter.info/query');
+      url.searchParams.set('callsign', callsign);
+      url.searchParams.set('flowStartSeconds', '-21600');
+      url.searchParams.set('rptlimit', '50');
+      const response = await fetch(url.toString(), { cache: 'no-store' });
+      if (!response.ok) throw new Error('PSK Reporter no está disponible en este momento.');
+      const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
+      if (xml.querySelector('parsererror')) throw new Error('La respuesta de PSK Reporter no tiene un formato válido.');
+      const reports = Array.from(xml.querySelectorAll('receptionReport')).map(node => ({
+        receiverCallsign: node.getAttribute('receiverCallsign') || '',
+        senderCallsign: node.getAttribute('senderCallsign') || '',
+        frequency: Number(node.getAttribute('frequency') || 0),
+        flowStartSeconds: Number(node.getAttribute('flowStartSeconds') || 0),
+        receiverLocator: node.getAttribute('receiverLocator') || undefined,
+      })).filter(report => report.receiverCallsign || report.senderCallsign);
+      setDxReports(reports);
+      setDxUpdated(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
+      if (!reports.length) setDxError('No hay informes para este indicativo en las últimas 6 horas. Esto no significa que no haya propagación.');
+    } catch (e) {
+      setDxError(e instanceof Error ? e.message : 'No se pudieron recuperar los informes DX.');
+    } finally {
+      setDxLoading(false);
+    }
+  };
+
+  const sharePropagation = async () => {
+    const shareText = [
+      'LogBook eQSL EXPRESS · Centro Mundial de Propagación DX',
+      'Estación: ' + (stationIdentity.selectedCallsign || 'sin indicativo'),
+      'Modalidad: ' + (stationIdentity.selectedType === '11m' ? '11 metros' : 'Radioafición'),
+      'Grid Locator: ' + (stationIdentity.grid || 'no informado'),
+      'SFI: ' + (sfi === null ? 'sin dato' : Math.round(sfi)),
+      'Kp: ' + (kp === null ? 'sin dato' : kp.toFixed(1)),
+      'Informes DX: ' + dxReports.length,
+      window.location.origin,
+    ].join('\n');
+    try {
+      if (navigator.share) await navigator.share({ title: 'Propagación DX · LogBook eQSL EXPRESS', text: shareText, url: window.location.origin });
+      else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        window.alert('Información copiada. Ya podés pegarla en WhatsApp, Telegram o correo.');
+      } else window.prompt('Copiá la información para compartirla:', shareText);
+    } catch (e) {
+      if (!(e instanceof Error && e.name === 'AbortError')) window.alert('No se pudo abrir el menú de compartir.');
+    }
+  };
+
+  useEffect(() => {
+    if (open && stationIdentity.selectedType === 'ham' && stationIdentity.selectedCallsign) void refreshDx();
+  }, [open, stationIdentity.selectedCallsign, stationIdentity.selectedType]);
+
   const summary = kp === null || sfi === null
     ? 'Esperando datos solares actualizados.'
     : kp >= 5
@@ -160,6 +229,35 @@ export const PropagationReport: React.FC = () => {
           </div>
         </div>
         <p className="break-words rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm leading-relaxed">{summary}</p>
+        <section className="space-y-3 rounded-xl border border-emerald-500/50 bg-slate-900 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-emerald-200">DX mundial · recepción de mi estación</h3>
+              <p className="text-xs text-slate-300">Informes reales de recepción digital asociados al indicativo, desde estaciones receptoras de cualquier región.</p>
+            </div>
+            <button type="button" onClick={() => void refreshDx()} disabled={dxLoading || stationIdentity.selectedType !== 'ham'} className="rounded-lg border border-emerald-500/60 px-3 py-2 text-xs font-semibold disabled:opacity-50">{dxLoading ? 'Consultando…' : 'Actualizar DX'}</button>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
+            <span className="rounded bg-emerald-950 px-2 py-1">REAL · PSK Reporter</span>
+            <span className="rounded bg-slate-800 px-2 py-1">Últimas 6 horas</span>
+            {dxUpdated && <span className="rounded bg-slate-800 px-2 py-1">Consulta: {dxUpdated}</span>}
+          </div>
+          {dxError && <p role="status" className="text-xs leading-relaxed text-amber-200">{dxError}</p>}
+          {dxReports.length > 0 && <div className="max-h-72 overflow-auto rounded-lg border border-slate-700">
+            <table className="w-full min-w-[500px] text-left text-xs">
+              <thead className="sticky top-0 bg-slate-800 text-slate-200"><tr><th className="p-2">Estación TX</th><th className="p-2">Receptor</th><th className="p-2">Frecuencia</th><th className="p-2">Locator receptor</th><th className="p-2">UTC</th></tr></thead>
+              <tbody>{dxReports.map((report, index) => <tr key={report.flowStartSeconds + '-' + report.receiverCallsign + '-' + index} className="border-t border-slate-800">
+                <td className="p-2 font-mono">{report.senderCallsign || '—'}</td>
+                <td className="p-2 font-mono">{report.receiverCallsign || '—'}</td>
+                <td className="p-2">{report.frequency ? (report.frequency / 1000000).toFixed(3) + ' MHz' : '—'}</td>
+                <td className="p-2">{report.receiverLocator || '—'}</td>
+                <td className="p-2">{report.flowStartSeconds ? new Date(report.flowStartSeconds * 1000).toISOString().slice(11, 16) : '—'}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+          <p className="text-[11px] leading-relaxed text-slate-400">PSK Reporter recoge recepción de señales digitales reportadas por estaciones voluntarias. No representa todos los contactos ni la fonía SSB. Para 11 metros se necesita una conexión autorizada con una fuente específica de esa banda.</p>
+          {stationIdentity.selectedType === '11m' && <a href="https://log11dx.com/" target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-sky-500/50 px-3 py-2 text-xs font-semibold text-sky-200">Abrir cluster mundial de 11 metros (LOG11DX)</a>}
+        </section>
         <h3 className="text-center text-sm font-bold">Orientación estimada por zona</h3>
         <p className="break-words text-xs leading-relaxed text-slate-400">Los valores SFI y Kp son mediciones globales de NOAA. Las recomendaciones por zona combinan esos valores con la hora local; no son mediciones independientes de cada región.</p>
         <div className="min-w-0 space-y-2">
@@ -171,6 +269,7 @@ export const PropagationReport: React.FC = () => {
         {error && <p role="status" className="break-words text-sm text-amber-200">{error}</p>}
         {updated && <p className="break-words text-xs text-slate-400">Actualizado: {updated} · Fuente: NOAA, Centro de Predicción del Clima Espacial.</p>}
         <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void sharePropagation()} className="inline-flex items-center justify-center rounded-lg border border-sky-500/60 bg-sky-950 px-3 py-2 text-sm font-semibold hover:bg-sky-900">Compartir propagación</button>
           <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex max-w-full items-center justify-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-semibold hover:bg-slate-700 disabled:opacity-60">
             <RefreshCw className={'h-4 w-4 shrink-0 ' + (loading ? 'animate-spin' : '')} />{loading ? 'Actualizando…' : 'Actualizar datos'}
           </button>
