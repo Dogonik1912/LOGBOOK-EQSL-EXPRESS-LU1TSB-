@@ -573,7 +573,7 @@ function MainApp() {
           setIsReplyModalOpen(false);
           setReplyData(null);
         }}
-        onSaveQSO={(qso) => handleAddQSO(qso, false, false)}
+        onSaveQSO={(qso) => handleAddQSO(qso, false, true)}
       />
 
 
