@@ -3,9 +3,10 @@ import { ChevronDown, RefreshCw } from 'lucide-react';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { supabase } from '../services/supabaseClient';
 import { capitalPointForCountry } from '../services/dxDistance';
+import { HAM_BANDS, HAM_MODES } from '../types';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
-type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; };
+type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
 type GeoPoint = { lat: number; lon: number };
 type LiveQsoContact = { spot_key: string; callsign: string; station_callsign: string; band: string; frequency: string; mode: string; qso_date: string; qso_time: string; created_at: string; country?: string | null };
 function maidenheadToLatLon(locator?: string): GeoPoint | null {
@@ -39,6 +40,11 @@ function greyLineCoordinates(date=new Date()):[number,number][]{
  return pts;
 }
 const continentForPoint=(p:GeoPoint)=>p.lon < -30?(p.lat>5?'América del Norte':'América del Sur'):p.lon<60?(p.lat>34?'Europa':'África'):p.lat>-10?'Asia':'Oceanía';
+function bandForFrequency(value:number):string {
+ const mhz=value>1000?value/1_000_000:value;
+ const ranges:[number,number,string][]=[[1.8,2,'160m'],[3.5,4,'80m'],[7,7.3,'40m'],[10.1,10.15,'30m'],[14,14.35,'20m'],[18.068,18.168,'17m'],[21,21.45,'15m'],[24.89,24.99,'12m'],[26.965,27.999,'11 metros'],[28,29.7,'10m'],[50,54,'6m'],[144,148,'2m'],[420,450,'70cm']];
+ return ranges.find(([low,high])=>mhz>=low&&mhz<=high)?.[2]||'';
+}
 const mapRegions=[
 {name:'América del Norte',lat:40,lon:-100,radius:4200000,bounds:{south:5,north:85,west:-170,east:-30}},
 {name:'América del Sur',lat:-20,lon:-60,radius:3600000,bounds:{south:-60,north:15,west:-95,east:-30}},
@@ -75,6 +81,8 @@ export const PropagationReport: React.FC = () => {
   const [showGreyLine, setShowGreyLine] = useState(true);
   const [showMaidenheadGrid, setShowMaidenheadGrid] = useState(true);
   const [showDxPaths, setShowDxPaths] = useState(true);
+  const [selectedMapBand, setSelectedMapBand] = useState('');
+  const [selectedMapMode, setSelectedMapMode] = useState('');
   const [mapStatus, setMapStatus] = useState('Cargando cartografía…');
   const mapElementRef = useRef<HTMLDivElement|null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -214,6 +222,7 @@ export const PropagationReport: React.FC = () => {
         frequency: Number(node.getAttribute('frequency') || 0),
         flowStartSeconds: Number(node.getAttribute('flowStartSeconds') || 0),
         receiverLocator: node.getAttribute('receiverLocator') || undefined,
+        mode: node.getAttribute('mode') || undefined,
       })).filter(report => report.receiverCallsign || report.senderCallsign);
       setDxReports(reports);
       setDxUpdated(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
@@ -293,7 +302,9 @@ export const PropagationReport: React.FC = () => {
   const ownContinent=ownGeo?continentForPoint(ownGeo):'';
   const visibleLiveContacts = liveQsoContacts.filter(contact => {
     const age = liveMapClock - new Date(contact.created_at).getTime();
-    if (!Number.isFinite(age) || age < 0 || age >= 2 * 60 * 60 * 1000) return false;
+    if (!Number.isFinite(age) || age < 0 || age >= 60 * 60 * 1000) return false;
+    if (selectedMapBand && contact.band !== selectedMapBand) return false;
+    if (selectedMapMode && String(contact.mode || '').toUpperCase() !== selectedMapMode.toUpperCase()) return false;
     const first = contactPoint(contact, contact.callsign);
     const second = contactPoint(contact, contact.station_callsign);
     if (!first || !second) return false;
@@ -303,6 +314,8 @@ export const PropagationReport: React.FC = () => {
     return true;
   });
   const visibleDxReports=dxReports.filter(report=>{
+    if(selectedMapBand && bandForFrequency(report.frequency)!==selectedMapBand)return false;
+    if(selectedMapMode && String(report.mode||'').toUpperCase()!==selectedMapMode.toUpperCase())return false;
     const p=maidenheadToLatLon(report.receiverLocator); if(!p)return false;
     if(mapZone==='zone')return Boolean(ownGeo&&distanceKm(ownGeo,p)<=1200);
     if(mapZone==='country')return Boolean(ownCountry&&countryForCallsign(report.receiverCallsign)===ownCountry);
@@ -340,7 +353,9 @@ export const PropagationReport: React.FC = () => {
          const second = contactPoint(contact, contact.station_callsign);
          if (!first || !second) return;
          const age = Math.max(0, Date.now() - new Date(contact.created_at).getTime());
-         const opacity = age <= 60 * 60 * 1000 ? 0.95 : Math.max(0.08, 0.95 * (1 - (age - 60 * 60 * 1000) / (60 * 60 * 1000)));
+         const fadeStart = 30 * 60 * 1000;
+         const fadeDuration = 30 * 60 * 1000;
+         const opacity = age <= fadeStart ? 0.95 : Math.max(0, 0.95 * (1 - (age - fadeStart) / fadeDuration));
          const firstApprox = !maidenheadToLatLon(liveGridLocators[contact.callsign]);
          const secondApprox = !maidenheadToLatLon(liveGridLocators[contact.station_callsign]);
          L.polyline(greatCirclePath(first, second, 64), { color: '#f472b6', weight: 2.8, opacity, lineCap: 'round', dashArray: firstApprox || secondApprox ? '6 5' : undefined })
@@ -355,12 +370,12 @@ export const PropagationReport: React.FC = () => {
         L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
       const reg=mapRegions.find(x=>x.name===ownContinent);
       if(mapZone==='world')map.setView([15,0],2);else if(ownGeo&&mapZone==='zone')map.setView([ownGeo.lat,ownGeo.lon],5);else if(ownGeo&&mapZone==='continent'&&reg)map.fitBounds([[reg.bounds.south,reg.bounds.west],[reg.bounds.north,reg.bounds.east]]);else if(ownGeo)map.setView([ownGeo.lat,ownGeo.lon],4);
-        setMapStatus(visibleLiveContacts.length + ' contactos registrados visibles en el mapa · ' + visibleDxReports.length + ' informes de recepción digital. Las ubicaciones sin Grid Locator se estiman en la capital del país y se dibujan con línea discontinua. Permanecen 1 hora y se desvanecen durante la segunda.');
+        setMapStatus(visibleLiveContacts.length + ' contactos registrados visibles en el mapa · ' + visibleDxReports.length + ' informes digitales visibles.');
       window.setTimeout(()=>map.invalidateSize(),100);
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
     return()=>{cancelled=true;if(mapInstanceRef.current){mapInstanceRef.current.remove();mapInstanceRef.current=null;mapLayersRef.current=null;}};
-  },[open,mapZone,dxReports,visibleDxReports.length,liveQsoContacts,liveGridLocators,visibleLiveContacts.length,liveMapClock,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths]);
+  },[open,mapZone,dxReports,visibleDxReports.length,liveQsoContacts,liveGridLocators,visibleLiveContacts.length,liveMapClock,stationIdentity.grid,ownContinent,sfi,kp,showGreyLine,showMaidenheadGrid,showDxPaths,selectedMapBand,selectedMapMode]);
 
   const summary = kp === null || sfi === null
     ? 'Esperando datos solares actualizados.'
@@ -428,6 +443,14 @@ export const PropagationReport: React.FC = () => {
         <section className="space-y-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-[#0c263d] to-[#101a34] p-3 shadow-xl sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-base font-black text-white sm:text-lg">MAPA MUNDIAL DX Y PROPAGACIÓN</h3><p className="text-xs text-slate-300">Cartografía real · DX reportados · zonas estimadas</p></div><span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[10px] font-black text-cyan-100">OPENSTREETMAP</span></div>
           <div className="flex flex-wrap gap-2">{([{id:'zone',label:'Mi zona'},{id:'country',label:'Mi país'},{id:'continent',label:'Mi continente'},{id:'world',label:'Todo el mundo'}] as const).map(x=><button key={x.id} type="button" onClick={()=>setMapZone(x.id)} aria-pressed={mapZone===x.id} className={'rounded-lg border px-3 py-2 text-xs font-bold '+(mapZone===x.id?'border-cyan-300 bg-cyan-500 text-slate-950':'border-slate-600 bg-slate-900/70 text-slate-200')}>{x.label}</button>)}</div>
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs font-bold text-slate-200">Banda
+              <select value={selectedMapBand} onChange={event=>setSelectedMapBand(event.target.value)} className="min-h-10 rounded-lg border border-slate-600 bg-slate-900 px-3 text-sm text-white"><option value="">Todas las bandas</option>{HAM_BANDS.map(band=><option key={band.name} value={band.name}>{band.name}</option>)}</select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold text-slate-200">Modo
+              <select value={selectedMapMode} onChange={event=>setSelectedMapMode(event.target.value)} className="min-h-10 rounded-lg border border-slate-600 bg-slate-900 px-3 text-sm text-white"><option value="">Todos los modos</option>{HAM_MODES.map(mode=><option key={mode} value={mode}>{mode}</option>)}</select>
+            </label>
+          </div>
           <div className="flex flex-wrap gap-4 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs text-slate-200">
             <label className="flex items-center gap-2"><input type="checkbox" checked={showGreyLine} onChange={e=>setShowGreyLine(e.target.checked)} /> Grey Line</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={showMaidenheadGrid} onChange={e=>setShowMaidenheadGrid(e.target.checked)} /> Cuadrícula Maidenhead</label>
@@ -435,7 +458,7 @@ export const PropagationReport: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-emerald-300">● Verde · Buena</span><span className="text-amber-300">● Naranja · Media</span><span className="text-red-400">● Rojo · Mala</span><span className="text-cyan-300">● Punto azul · DX real</span></div>
           <div ref={mapElementRef} className="z-0 h-[420px] w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900 sm:h-[520px]" role="application" aria-label="Mapa interactivo mundial de propagación y reportes DX"/>
-          <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p><p className="text-[10px] leading-relaxed text-slate-400">Las líneas curvas rosas unen estaciones de contactos registrados en LIVE SPOT: permanecen una hora y se desvanecen durante la segunda. Las líneas discontinuas indican ubicaciones aproximadas por capital cuando falta Grid Locator. Los puntos azules son recepciones digitales de PSK Reporter, no contactos confirmados. Los círculos de color son orientación regional simplificada. © OpenStreetMap.</p>
+          <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p>
           {!ownGeo&&<p className="text-xs text-amber-200">Completá tu Grid Locator en el perfil para centrar Mi zona, Mi país y Mi continente.</p>}
         </section>
         <section className="space-y-4 overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-[#0d2538] to-[#0b1b31] p-4 shadow-xl sm:p-5">
