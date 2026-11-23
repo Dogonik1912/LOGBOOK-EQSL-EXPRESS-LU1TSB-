@@ -256,7 +256,7 @@ export const PropagationReport: React.FC = () => {
       window.setTimeout(()=>map.invalidateSize(),100);
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
-    return()=>{cancelled=true;};
+    return()=>{cancelled=true;if(mapInstanceRef.current){mapInstanceRef.current.remove();mapInstanceRef.current=null;mapLayersRef.current=null;}};
   },[open,mapZone,dxReports,visibleDxReports.length,stationIdentity.grid,ownContinent,sfi,kp]);
 
   const summary = kp === null || sfi === null
