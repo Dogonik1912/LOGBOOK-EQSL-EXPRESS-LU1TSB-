@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { supabase } from '../services/supabaseClient';
+import { capitalPointForCountry } from '../services/dxDistance';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; };
@@ -280,19 +281,27 @@ export const PropagationReport: React.FC = () => {
     return () => { active = false; window.clearInterval(poll); void supabase.removeChannel(channel); };
   }, [open]);
   const ownGeo=maidenheadToLatLon(stationIdentity.grid);
+  const ownCountry=countryForCallsign(stationIdentity.selectedCallsign,undefined,stationIdentity.selectedType==='11m');
+  const contactPoint = (contact: LiveQsoContact, callsign: string): GeoPoint | null => {
+    const exact = maidenheadToLatLon(liveGridLocators[callsign]);
+    if (exact) return exact;
+    const mhz = Number(String(contact.frequency || '').replace(',', '.'));
+    const is11m = Number.isFinite(mhz) && mhz >= 26 && mhz <= 28;
+    const country = countryForCallsign(callsign, callsign === contact.callsign ? contact.country || undefined : undefined, is11m);
+    return capitalPointForCountry(country);
+  };
+  const ownContinent=ownGeo?continentForPoint(ownGeo):'';
   const visibleLiveContacts = liveQsoContacts.filter(contact => {
     const age = liveMapClock - new Date(contact.created_at).getTime();
     if (!Number.isFinite(age) || age < 0 || age >= 2 * 60 * 60 * 1000) return false;
-    const first = maidenheadToLatLon(liveGridLocators[contact.callsign]);
-    const second = maidenheadToLatLon(liveGridLocators[contact.station_callsign]);
+    const first = contactPoint(contact, contact.callsign);
+    const second = contactPoint(contact, contact.station_callsign);
     if (!first || !second) return false;
     if (mapZone === 'zone') return Boolean(ownGeo && (distanceKm(ownGeo, first) <= 1200 || distanceKm(ownGeo, second) <= 1200));
-    if (mapZone === 'country') return countryForCallsign(contact.callsign) === ownCountry || countryForCallsign(contact.station_callsign) === ownCountry;
+    if (mapZone === 'country') return countryForCallsign(contact.callsign, contact.country || undefined) === ownCountry || countryForCallsign(contact.station_callsign) === ownCountry;
     if (mapZone === 'continent') { const region = mapRegions.find(x => x.name === ownContinent); return Boolean(region && [first, second].some(point => point.lat >= region.bounds.south && point.lat <= region.bounds.north && point.lon >= region.bounds.west && point.lon <= region.bounds.east)); }
     return true;
   });
-  const ownCountry=countryForCallsign(stationIdentity.selectedCallsign,undefined,stationIdentity.selectedType==='11m');
-  const ownContinent=ownGeo?continentForPoint(ownGeo):'';
   const visibleDxReports=dxReports.filter(report=>{
     const p=maidenheadToLatLon(report.receiverLocator); if(!p)return false;
     if(mapZone==='zone')return Boolean(ownGeo&&distanceKm(ownGeo,p)<=1200);
@@ -327,24 +336,26 @@ export const PropagationReport: React.FC = () => {
       }
       const esc=(v:string)=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
        visibleLiveContacts.forEach(contact => {
-         const first = maidenheadToLatLon(liveGridLocators[contact.callsign]);
-         const second = maidenheadToLatLon(liveGridLocators[contact.station_callsign]);
+         const first = contactPoint(contact, contact.callsign);
+         const second = contactPoint(contact, contact.station_callsign);
          if (!first || !second) return;
          const age = Math.max(0, Date.now() - new Date(contact.created_at).getTime());
          const opacity = age <= 60 * 60 * 1000 ? 0.95 : Math.max(0.08, 0.95 * (1 - (age - 60 * 60 * 1000) / (60 * 60 * 1000)));
-         L.polyline(greatCirclePath(first, second, 64), { color: '#f472b6', weight: 2.8, opacity, lineCap: 'round' })
+         const firstApprox = !maidenheadToLatLon(liveGridLocators[contact.callsign]);
+         const secondApprox = !maidenheadToLatLon(liveGridLocators[contact.station_callsign]);
+         L.polyline(greatCirclePath(first, second, 64), { color: '#f472b6', weight: 2.8, opacity, lineCap: 'round', dashArray: firstApprox || secondApprox ? '6 5' : undefined })
            .bindTooltip('Contacto registrado · ' + esc(contact.callsign) + ' ↔ ' + esc(contact.station_callsign) + ' · ' + esc(contact.band) + ' · ' + esc(contact.mode))
-           .bindPopup('<b>CONTACTO REGISTRADO</b><br>' + esc(contact.callsign) + ' ↔ ' + esc(contact.station_callsign) + '<br>Banda: ' + esc(contact.band) + '<br>Frecuencia: ' + esc(contact.frequency) + ' MHz<br>Modo: ' + esc(contact.mode) + '<br>Fecha UTC: ' + esc(contact.qso_date) + ' ' + esc(contact.qso_time))
+           .bindPopup('<b>CONTACTO REGISTRADO</b><br>' + esc(contact.callsign) + ' ↔ ' + esc(contact.station_callsign) + '<br>Banda: ' + esc(contact.band) + '<br>Frecuencia: ' + esc(contact.frequency) + ' MHz<br>Modo: ' + esc(contact.mode) + '<br>Fecha UTC: ' + esc(contact.qso_date) + ' ' + esc(contact.qso_time) + ((firstApprox || secondApprox) ? '<br><i>Ubicación aproximada por capital: falta Grid Locator de una o ambas estaciones.</i>' : '<br>Ubicaciones por Grid Locator'))
            .addTo(layers);
-         L.circleMarker([first.lat, first.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.callsign)).addTo(layers);
-         L.circleMarker([second.lat, second.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.station_callsign)).addTo(layers);
+         L.circleMarker([first.lat, first.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.callsign) + (firstApprox ? ' · ubicación aproximada' : '')).addTo(layers);
+         L.circleMarker([second.lat, second.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#f472b6', fillOpacity: opacity, opacity }).bindTooltip(esc(contact.station_callsign) + (secondApprox ? ' · ubicación aproximada' : '')).addTo(layers);
        });
       visibleDxReports.forEach(report=>{const p=maidenheadToLatLon(report.receiverLocator);if(!p)return;
         if(showDxPaths&&ownGeo)L.polyline(greatCirclePath(ownGeo,p),{color:'#38bdf8',weight:2,opacity:.72,dashArray:'5 5'}).bindTooltip('Ruta de recepción · círculo máximo').addTo(layers);
         L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
       const reg=mapRegions.find(x=>x.name===ownContinent);
       if(mapZone==='world')map.setView([15,0],2);else if(ownGeo&&mapZone==='zone')map.setView([ownGeo.lat,ownGeo.lon],5);else if(ownGeo&&mapZone==='continent'&&reg)map.fitBounds([[reg.bounds.south,reg.bounds.west],[reg.bounds.north,reg.bounds.east]]);else if(ownGeo)map.setView([ownGeo.lat,ownGeo.lon],4);
-       setMapStatus(visibleLiveContacts.length + ' contactos registrados con locator válido · ' + visibleDxReports.length + ' informes de recepción digital. Los contactos permanecen 1 hora y se desvanecen durante la segunda. Los registros sin locator no se pueden ubicar.');
+        setMapStatus(visibleLiveContacts.length + ' contactos registrados visibles en el mapa · ' + visibleDxReports.length + ' informes de recepción digital. Las ubicaciones sin Grid Locator se estiman en la capital del país y se dibujan con línea discontinua. Permanecen 1 hora y se desvanecen durante la segunda.');
       window.setTimeout(()=>map.invalidateSize(),100);
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
