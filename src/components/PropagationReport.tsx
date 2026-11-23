@@ -283,14 +283,6 @@ export const PropagationReport: React.FC = () => {
   const ownGeo=maidenheadToLatLon(stationIdentity.grid);
   const ownCountry=countryForCallsign(stationIdentity.selectedCallsign,undefined,stationIdentity.selectedType==='11m');
   const contactPoint = (contact: LiveQsoContact, callsign: string): GeoPoint | null => {
-  const contactPoint = (contact: LiveQsoContact, callsign: string): GeoPoint | null => {
-    const exact = maidenheadToLatLon(liveGridLocators[callsign]);
-    if (exact) return exact;
-    const mhz = Number(String(contact.frequency || '').replace(',', '.'));
-    const is11m = Number.isFinite(mhz) && mhz >= 26 && mhz <= 28;
-    const country = countryForCallsign(callsign, callsign === contact.callsign ? contact.country || undefined : undefined, is11m);
-    return capitalPointForCountry(country);
-  };
     const exact = maidenheadToLatLon(liveGridLocators[callsign]);
     if (exact) return exact;
     const mhz = Number(String(contact.frequency || '').replace(',', '.'));
