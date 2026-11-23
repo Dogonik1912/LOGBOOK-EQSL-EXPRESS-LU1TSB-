@@ -24,6 +24,7 @@ export const PropagationReport: React.FC = () => {
   const [dxLoading, setDxLoading] = useState(false);
   const [dxError, setDxError] = useState('');
   const [dxUpdated, setDxUpdated] = useState('');
+  const [lastDxRequest, setLastDxRequest] = useState(0);
   const [identityRefresh, setIdentityRefresh] = useState(0);
   const [selectedIdentity, setSelectedIdentity] = useState<'11m' | 'ham'>(() => {
     const saved = localStorage.getItem('logbook_propagation_identity');
@@ -112,6 +113,12 @@ export const PropagationReport: React.FC = () => {
         : 'Seleccioná una señal distintiva de radioaficionado para consultar informes.');
       return;
     }
+    const now = Date.now();
+    if (lastDxRequest && now - lastDxRequest < 300000) {
+      setDxError('PSK Reporter recomienda consultar como máximo cada 5 minutos. Esperá antes de volver a actualizar.');
+      return;
+    }
+    setLastDxRequest(now);
     setDxLoading(true);
     setDxError('');
     try {
