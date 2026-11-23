@@ -196,22 +196,22 @@ export const PropagationReport: React.FC = () => {
   };
 
   return (
-    <section className="mx-auto my-3 w-full max-w-4xl overflow-hidden rounded-xl border border-amber-500/70 bg-slate-950 text-white shadow-lg">
+    <section className="relative mx-auto my-4 w-full max-w-6xl overflow-hidden rounded-[26px] border border-slate-700/70 bg-gradient-to-br from-[#071326] via-[#0b1b34] to-[#171536] text-white shadow-[0_24px_80px_rgba(2,8,23,0.48)]">
       <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
-        className="flex min-h-[56px] w-full min-w-0 items-center justify-between gap-3 bg-slate-900 px-3 py-2.5 text-left hover:bg-slate-800">
-        <span className="min-w-0 break-words font-bold">PROPAGACIÓN · INFORME POR ZONAS</span>
+        className="flex min-h-[82px] w-full min-w-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-[#12365c] via-[#132b4d] to-[#30204e] px-4 py-4 text-left transition hover:brightness-110 sm:px-6">
+        <span className="flex min-w-0 flex-col gap-1"><span className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">LogBook eQSL EXPRESS · DX CENTER</span><span className="break-words text-lg font-black tracking-tight sm:text-2xl">CENTRO MUNDIAL DE PROPAGACIÓN</span><span className="text-xs font-medium text-slate-300">Actividad solar · recepción DX · panorama global</span></span>
         <ChevronDown className={'h-5 w-5 shrink-0 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
-      {open && <div className="min-w-0 space-y-3 p-3 sm:p-4">
-        <section className="rounded-xl border border-sky-500/60 bg-slate-900 p-3">
+      {open && <div className="relative min-w-0 space-y-5 bg-[radial-gradient(ellipse_at_10%_0%,rgba(14,165,233,0.12),transparent_38%),radial-gradient(ellipse_at_90%_15%,rgba(168,85,247,0.12),transparent_34%)] p-3 sm:p-5 lg:p-6">
+        <section className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#12365d] via-[#102747] to-[#28204e] p-4 shadow-xl sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <span className="block text-[10px] font-semibold uppercase tracking-wider text-sky-300">Mi estación · identidad activa</span>
+              <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">MI ESTACIÓN · IDENTIDAD ACTIVA</span>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span role="img" aria-label="Bandera del país de la estación" className="text-3xl leading-none">{stationIdentity.flag}</span>
-                <strong data-no-translate="true" translate="no" className="break-all font-mono text-2xl font-black text-white">{stationIdentity.selectedCallsign || 'Indicativo no disponible'}</strong>
+                <span role="img" aria-label="Bandera del país de la estación" className="text-4xl leading-none drop-shadow-lg sm:text-5xl">{stationIdentity.flag}</span>
+                <strong data-no-translate="true" translate="no" className="break-all font-mono text-3xl font-black tracking-tight text-white sm:text-4xl">{stationIdentity.selectedCallsign || 'Indicativo no disponible'}</strong>
               </div>
-              <span className="mt-1 block text-xs text-slate-300">
+              <span className="mt-2 block text-xs font-medium text-blue-100/80">
                 {stationIdentity.selectedType === '11m' ? 'Modalidad: 11 metros' : 'Modalidad: radioafición'}
                 {stationIdentity.grid ? ' · Grid Locator: ' + stationIdentity.grid : ' · Grid Locator pendiente'}
               </span>
@@ -225,34 +225,34 @@ export const PropagationReport: React.FC = () => {
           </div>
           {!stationIdentity.selectedCallsign && <p className="mt-2 text-xs text-amber-200">No se encontró una identidad verificada para esta modalidad. Revisá la identidad de tu cuenta y la SD vinculada de 11 metros en Ajustes.</p>}
         </section>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="rounded-lg bg-slate-900 p-3">
-            <span className="block break-words text-xs text-slate-300">Flujo solar (SFI)</span>
-            <strong className="text-xl">{sfi === null ? '—' : Math.round(sfi)}</strong>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="group relative overflow-hidden rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/15 to-orange-500/5 p-4">
+            <span className="block break-words text-xs font-bold uppercase tracking-wider text-amber-100/80">☀ FLUJO SOLAR · SFI</span>
+            <strong className="mt-2 block text-4xl font-black tracking-tight text-white">{sfi === null ? '—' : Math.round(sfi)}</strong>
           </div>
           <div className="rounded-lg bg-slate-900 p-3">
-            <span className="block break-words text-xs text-slate-300">Índice geomagnético Kp</span>
-            <strong className="text-xl">{kp === null ? '—' : kp.toFixed(1)}</strong>
+            <span className="block break-words text-xs font-bold uppercase tracking-wider text-violet-100/80">◉ GEOMAGNÉTICO · KP</span>
+            <strong className="mt-2 block text-4xl font-black tracking-tight text-white">{kp === null ? '—' : kp.toFixed(1)}</strong>
           </div>
         </div>
-        <p className="break-words rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm leading-relaxed">{summary}</p>
-        <section className="space-y-3 rounded-xl border border-emerald-500/50 bg-slate-900 p-3">
+        <p className="break-words rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-[#153452] to-[#252044] p-4 text-sm font-medium leading-relaxed text-slate-100 shadow-lg">{summary}</p>
+        <section className="space-y-4 overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-[#0d2538] to-[#0b1b31] p-4 shadow-xl sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-bold text-emerald-200">DX mundial · recepción de mi estación</h3>
-              <p className="text-xs text-slate-300">Informes reales de recepción digital asociados al indicativo, desde estaciones receptoras de cualquier región.</p>
+              <h3 className="text-base font-black tracking-tight text-white sm:text-lg">DX MUNDIAL · RECEPCIÓN DE MI ESTACIÓN</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-300">Informes reales de recepción digital asociados al indicativo, desde estaciones receptoras de cualquier región.</p>
             </div>
             <button type="button" onClick={() => void refreshDx()} disabled={dxLoading || stationIdentity.selectedType !== 'ham'} className="rounded-lg border border-emerald-500/60 px-3 py-2 text-xs font-semibold disabled:opacity-50">{dxLoading ? 'Consultando…' : 'Actualizar DX'}</button>
           </div>
           <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
-            <span className="rounded bg-emerald-950 px-2 py-1">REAL · PSK Reporter</span>
-            <span className="rounded bg-slate-800 px-2 py-1">Últimas 6 horas</span>
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 font-black tracking-wider text-emerald-200">● REAL · PSK REPORTER</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-bold text-slate-300">ÚLTIMAS 6 HORAS</span>
             {dxUpdated && <span className="rounded bg-slate-800 px-2 py-1">Consulta: {dxUpdated}</span>}
           </div>
           {dxError && <p role="status" className="text-xs leading-relaxed text-amber-200">{dxError}</p>}
-          {dxReports.length > 0 && <div className="max-h-72 overflow-auto rounded-lg border border-slate-700">
+          {dxReports.length > 0 && <div className="max-h-80 overflow-auto rounded-xl border border-white/10 shadow-lg">
             <table className="w-full min-w-[500px] text-left text-xs">
-              <thead className="sticky top-0 bg-slate-800 text-slate-200"><tr><th className="p-2">Estación TX</th><th className="p-2">Receptor</th><th className="p-2">Frecuencia</th><th className="p-2">Locator receptor</th><th className="p-2">UTC</th></tr></thead>
+              <thead className="sticky top-0 bg-gradient-to-r from-[#183754] to-[#20274a] text-cyan-100"><tr><th className="p-2">Estación TX</th><th className="p-2">Receptor</th><th className="p-2">Frecuencia</th><th className="p-2">Locator receptor</th><th className="p-2">UTC</th></tr></thead>
               <tbody>{dxReports.map((report, index) => <tr key={report.flowStartSeconds + '-' + report.receiverCallsign + '-' + index} className="border-t border-slate-800">
                 <td className="p-2 font-mono">{report.senderCallsign || '—'}</td>
                 <td className="p-2 font-mono">{report.receiverCallsign || '—'}</td>
@@ -265,22 +265,22 @@ export const PropagationReport: React.FC = () => {
           <p className="text-[11px] leading-relaxed text-slate-400">PSK Reporter recoge recepción de señales digitales reportadas por estaciones voluntarias. No representa todos los contactos ni la fonía SSB. Para 11 metros se necesita una conexión autorizada con una fuente específica de esa banda.</p>
           {stationIdentity.selectedType === '11m' && <a href="https://log11dx.com/" target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-sky-500/50 px-3 py-2 text-xs font-semibold text-sky-200">Abrir cluster mundial de 11 metros (LOG11DX)</a>}
         </section>
-        <h3 className="text-center text-sm font-bold">Orientación estimada por zona</h3>
-        <p className="break-words text-xs leading-relaxed text-slate-400">Los valores SFI y Kp son mediciones globales de NOAA. Las recomendaciones por zona combinan esos valores con la hora local; no son mediciones independientes de cada región.</p>
-        <div className="min-w-0 space-y-2">
-          {zones.map(zone => <div key={zone.name} className="grid min-w-0 grid-cols-1 gap-1 rounded-lg border border-slate-800 bg-slate-900 p-2 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:items-start sm:gap-3">
-            <strong className="break-words text-sm">{zone.name}</strong>
-            <span className="min-w-0 break-words text-xs leading-relaxed text-slate-200">{zoneAssessment(zone)}</span>
+        <h3 className="text-base font-black uppercase tracking-wider text-white">PANORAMA POR REGIONES DEL MUNDO</h3>
+        <p className="break-words text-xs leading-relaxed text-violet-100/70">Orientación calculada con índices globales y hora local; no son reportes medidos de cada región.</p>
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {zones.map(zone => <div key={zone.name} className="grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-white/10 bg-gradient-to-br from-violet-400/10 to-sky-400/5 p-3 transition hover:border-violet-200/30 hover:from-violet-400/15 sm:items-start">
+            <strong className="break-words text-sm font-bold text-white">{zone.name}</strong>
+            <span className="min-w-0 break-words text-xs leading-relaxed text-slate-300">{zoneAssessment(zone)}</span>
           </div>)}
         </div>
         {error && <p role="status" className="break-words text-sm text-amber-200">{error}</p>}
         {updated && <p className="break-words text-xs text-slate-400">Actualizado: {updated} · Fuente: NOAA, Centro de Predicción del Clima Espacial.</p>}
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => void sharePropagation()} className="inline-flex items-center justify-center rounded-lg border border-sky-500/60 bg-sky-950 px-3 py-2 text-sm font-semibold hover:bg-sky-900">Compartir propagación</button>
-          <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex max-w-full items-center justify-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-semibold hover:bg-slate-700 disabled:opacity-60">
+        <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
+          <button type="button" onClick={() => void sharePropagation()} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
+          <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 disabled:opacity-60">
             <RefreshCw className={'h-4 w-4 shrink-0 ' + (loading ? 'animate-spin' : '')} />{loading ? 'Actualizando…' : 'Actualizar datos'}
           </button>
-          <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-800">Cerrar</button>
+          <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10">Cerrar</button>
         </div>
       </div>}
     </section>
