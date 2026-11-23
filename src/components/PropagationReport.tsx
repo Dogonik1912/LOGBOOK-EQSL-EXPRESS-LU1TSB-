@@ -3,7 +3,6 @@ import { ChevronDown, RefreshCw } from 'lucide-react';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { supabase } from '../services/supabaseClient';
 import { capitalPointForCountry } from '../services/dxDistance';
-import { capitalPointForCountry } from '../services/dxDistance';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; };
