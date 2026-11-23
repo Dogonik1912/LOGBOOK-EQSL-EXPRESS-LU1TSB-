@@ -148,7 +148,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   SV:'Grecia',SW:'Grecia',SX:'Grecia',SY:'Grecia',SZ:'Grecia',J4:'Grecia',
   SP:'Polonia',SQ:'Polonia',SO:'Polonia',SN:'Polonia',SR:'Polonia',HF:'Polonia','3Z':'Polonia',
   YO:'Rumania',YP:'Rumania',YQ:'Rumania',YR:'Rumania',HA:'Hungría',HG:'Hungría',OK:'Chequia',OL:'Chequia',
-  HS:'Tailandia',E2:'Tailandia',HP:'Panamá',HL:'Corea del Sur',DS:'Corea del Sur',D7:'Corea del Sur',D8:'Corea del Sur',D9:'Corea del Sur',
+  HS:'Tailandia',E2:'Tailandia',TI:'Costa Rica',HP:'Panamá',HL:'Corea del Sur',DS:'Corea del Sur',D7:'Corea del Sur',D8:'Corea del Sur',D9:'Corea del Sur',
   YB:'Indonesia',YC:'Indonesia',YD:'Indonesia',YE:'Indonesia',YF:'Indonesia',YG:'Indonesia',YH:'Indonesia','8A':'Indonesia','8B':'Indonesia','8E':'Indonesia','8I':'Indonesia',
   UA:'Rusia',RA:'Rusia',RZ:'Rusia',UR:'Ucrania',UT:'Ucrania',UU:'Ucrania',UV:'Ucrania',UW:'Ucrania',UX:'Ucrania',UY:'Ucrania',UZ:'Ucrania'
 };
