@@ -559,11 +559,11 @@ export const PropagationReport: React.FC = () => {
             </div>
             <div className="grid gap-2 px-3 sm:grid-cols-[1.15fr_.85fr]">
               <a href="https://www.spaceweather.gov/products/solar-ultraviolet-imager" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
-                <img src="https://cdn.star.nesdis.noaa.gov/GOES19/SUVI/FD/Fe171/latest.jpg" alt="Imagen ultravioleta actual del Sol observada por NOAA GOES SUVI" loading="lazy" className="h-44 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-48"/>
+                <img src="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" alt="Imagen ultravioleta actual del Sol observada por NOAA GOES SUVI" loading="lazy" className="h-44 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-48"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">SOL EN ULTRAVIOLETA · 171 Å</span>
               </a>
               <a href="https://www.spaceweather.gov/products/goes-x-ray-flux" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/animations/goes-xray-flux/GOES_XRAy_1m_7d.gif" alt="Gráfico actualizado de flujo de rayos X solares GOES" loading="lazy" className="h-44 w-full object-contain transition duration-500 group-hover:scale-[1.02] sm:h-48"/>
+                <img src="https://services.swpc.noaa.gov/images/animations/suvi/secondary/map/latest.png" alt="Gráfico actualizado de flujo de rayos X solares GOES" loading="lazy" className="h-44 w-full object-contain transition duration-500 group-hover:scale-[1.02] sm:h-48"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">RAYOS X · ERUPCIONES SOLARES</span>
               </a>
             </div>
