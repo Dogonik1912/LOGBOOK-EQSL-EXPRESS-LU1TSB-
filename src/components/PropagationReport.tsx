@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, RefreshCw } from 'lucide-react';
+import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 const zones: Zone[] = [
@@ -18,6 +19,53 @@ export const PropagationReport: React.FC = () => {
   const [kp, setKp] = useState<number | null>(null);
   const [updated, setUpdated] = useState('');
   const [error, setError] = useState('');
+  const [identityRefresh, setIdentityRefresh] = useState(0);
+  const [selectedIdentity, setSelectedIdentity] = useState<'11m' | 'ham'>(() => {
+    const saved = localStorage.getItem('logbook_propagation_identity');
+    if (saved === '11m' || saved === 'ham') return saved;
+    const primary = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+    const active = (localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
+    const cb = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
+    return cb && active === cb ? '11m' : (is11MeterStationIdentifier(primary) ? '11m' : 'ham');
+  });
+  const stationIdentity = useMemo(() => {
+    const primary = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+    const cb = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
+    const linkedTo = (localStorage.getItem('cb_station_linked_sd') || '').trim().toUpperCase();
+    const primaryIs11m = is11MeterStationIdentifier(primary);
+    const linkedCb = Boolean(cb && !primaryIs11m && linkedTo === primary);
+    const hasHam = Boolean(primary && !primaryIs11m);
+    const has11m = Boolean(linkedCb || primaryIs11m);
+    const callsign11m = linkedCb ? cb : (primaryIs11m ? primary : '');
+    const callsignHam = hasHam ? primary : '';
+    const selectedCallsign = selectedIdentity === '11m' ? callsign11m : callsignHam;
+    return {
+      hasHam, has11m, selectedCallsign,
+      selectedType: selectedCallsign ? selectedIdentity : (callsign11m ? '11m' : 'ham'),
+      flag: selectedCallsign ? flagForCallsign(selectedCallsign, undefined, selectedIdentity === '11m') : '🏳️',
+      grid: (localStorage.getItem('user_grid_locator') || '').trim().toUpperCase(),
+    };
+  }, [identityRefresh, selectedIdentity]);
+  useEffect(() => {
+    const refreshIdentity = () => setIdentityRefresh(value => value + 1);
+    window.addEventListener('user-profile-updated', refreshIdentity);
+    window.addEventListener('community-active-identity-changed', refreshIdentity);
+    window.addEventListener('storage', refreshIdentity);
+    return () => {
+      window.removeEventListener('user-profile-updated', refreshIdentity);
+      window.removeEventListener('community-active-identity-changed', refreshIdentity);
+      window.removeEventListener('storage', refreshIdentity);
+    };
+  }, []);
+  useEffect(() => {
+    if (stationIdentity.has11m && !stationIdentity.hasHam) setSelectedIdentity('11m');
+    else if (stationIdentity.hasHam && !stationIdentity.has11m) setSelectedIdentity('ham');
+  }, [stationIdentity.has11m, stationIdentity.hasHam]);
+  const chooseIdentity = (identity: '11m' | 'ham') => {
+    setSelectedIdentity(identity);
+    localStorage.setItem('logbook_propagation_identity', identity);
+  };
+
 
   const refresh = async () => {
     setLoading(true);
@@ -79,6 +127,28 @@ export const PropagationReport: React.FC = () => {
         <ChevronDown className={'h-5 w-5 shrink-0 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
       {open && <div className="min-w-0 space-y-3 p-3 sm:p-4">
+        <section className="rounded-xl border border-sky-500/60 bg-slate-900 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="block text-[10px] font-semibold uppercase tracking-wider text-sky-300">Mi estación · identidad activa</span>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span role="img" aria-label="Bandera del país de la estación" className="text-3xl leading-none">{stationIdentity.flag}</span>
+                <strong data-no-translate="true" translate="no" className="break-all font-mono text-2xl font-black text-white">{stationIdentity.selectedCallsign || 'Indicativo no disponible'}</strong>
+              </div>
+              <span className="mt-1 block text-xs text-slate-300">
+                {stationIdentity.selectedType === '11m' ? 'Modalidad: 11 metros' : 'Modalidad: radioafición'}
+                {stationIdentity.grid ? ' · Grid Locator: ' + stationIdentity.grid : ' · Grid Locator pendiente'}
+              </span>
+            </div>
+            {stationIdentity.hasHam && stationIdentity.has11m && (
+              <div className="flex flex-wrap gap-1.5" aria-label="Seleccionar identidad de estación">
+                <button type="button" onClick={() => chooseIdentity('11m')} aria-pressed={selectedIdentity === '11m'} className={'rounded-lg border px-3 py-2 text-xs font-bold ' + (selectedIdentity === '11m' ? 'border-emerald-300 bg-emerald-600 text-white' : 'border-slate-600 bg-slate-800 text-slate-200')}>11 metros</button>
+                <button type="button" onClick={() => chooseIdentity('ham')} aria-pressed={selectedIdentity === 'ham'} className={'rounded-lg border px-3 py-2 text-xs font-bold ' + (selectedIdentity === 'ham' ? 'border-sky-300 bg-sky-600 text-white' : 'border-slate-600 bg-slate-800 text-slate-200')}>Radioafición</button>
+              </div>
+            )}
+          </div>
+          {!stationIdentity.selectedCallsign && <p className="mt-2 text-xs text-amber-200">No se encontró una identidad verificada para esta modalidad. Revisá la identidad de tu cuenta y la SD vinculada de 11 metros en Ajustes.</p>}
+        </section>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="rounded-lg bg-slate-900 p-3">
             <span className="block break-words text-xs text-slate-300">Flujo solar (SFI)</span>
