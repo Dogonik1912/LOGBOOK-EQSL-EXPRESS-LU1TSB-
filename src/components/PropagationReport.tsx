@@ -84,16 +84,40 @@ export const PropagationReport: React.FC = () => {
       if (!fluxResponse.ok || !kpResponse.ok) throw new Error('No se pudieron consultar los datos solares.');
       const fluxData = await fluxResponse.json();
       const kpData = await kpResponse.json();
-      const fluxRows = Array.isArray(fluxData) ? fluxData : [fluxData];
-      const fluxRow = [...fluxRows].reverse().find((row: any) => Number.isFinite(Number(row?.Flux ?? row?.flux ?? row?.['10cm_flux'])));
+      const normalizeRows = (data: any, valueKey: string) => {
+        if (!Array.isArray(data)) return data && typeof data === 'object' ? [data] : [];
+        // NOAA cambió estos productos a objetos JSON con claves en marzo de 2026.
+        // Se admite también el formato tabular anterior por compatibilidad.
+        if (Array.isArray(data[0])) {
+          const headers = data[0].map((key: unknown) => String(key));
+          return data.slice(1).map((values: unknown[]) =>
+            Object.fromEntries(headers.map((key: string, index: number) => [key, values[index]]))
+          );
+        }
+        return data;
+      };
+      const fluxRows = normalizeRows(fluxData, 'flux');
+      const fluxRow = [...fluxRows].reverse().find((row: any) => {
+        const value = Number(row?.Flux ?? row?.flux ?? row?.['10cm_flux']);
+        return Number.isFinite(value) && Number.isFinite(Date.parse(String(row?.time_tag || '')));
+      });
       const fluxValue = Number(fluxRow?.Flux ?? fluxRow?.flux ?? fluxRow?.['10cm_flux']);
-      const kpRows = Array.isArray(kpData) ? kpData.slice(1) : [];
-      const kpRow = [...kpRows].reverse().find((row: any) => Number.isFinite(Number(row?.kp_index ?? row?.estimated_kp ?? row?.Kp)));
+      const kpRows = normalizeRows(kpData, 'Kp');
+      const kpRow = [...kpRows].reverse().find((row: any) => {
+        const value = Number(row?.kp_index ?? row?.estimated_kp ?? row?.Kp);
+        return Number.isFinite(value) && Number.isFinite(Date.parse(String(row?.time_tag || '')));
+      });
       const kpValue = Number(kpRow?.kp_index ?? kpRow?.estimated_kp ?? kpRow?.Kp);
-      if (!Number.isFinite(fluxValue) || !Number.isFinite(kpValue)) throw new Error('Los servicios no devolvieron valores solares válidos.');
+      if (!Number.isFinite(fluxValue) || !Number.isFinite(kpValue)) throw new Error('NOAA no devolvió mediciones solares válidas. Se conservan los últimos datos disponibles.');
+      const kpTime = Date.parse(String(kpRow.time_tag));
+      const fluxTime = Date.parse(String(fluxRow.time_tag));
+      const nowTime = Date.now();
+      if (nowTime - kpTime > 9 * 60 * 60 * 1000 || nowTime - fluxTime > 72 * 60 * 60 * 1000) {
+        throw new Error('Los datos de NOAA recibidos están demasiado antiguos. Se mantienen las últimas mediciones válidas.');
+      }
       setSfi(fluxValue);
       setKp(kpValue);
-      setUpdated(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
+      setUpdated('NOAA · Kp ' + new Date(kpTime).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC · Flujo ' + new Date(fluxTime).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Datos solares no disponibles. Intentá nuevamente.');
     } finally {
