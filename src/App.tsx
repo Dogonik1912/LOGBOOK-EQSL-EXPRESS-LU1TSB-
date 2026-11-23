@@ -30,6 +30,7 @@ import { PropagationReport } from './components/PropagationReport';
 import { PatentGenerator } from './components/PatentGenerator';
 import { UserDirectory } from './components/UserDirectory';
 import { UserPublicProfile } from './components/UserPublicProfile';
+import { GridLocatorReminder } from './components/GridLocatorReminder';
 import { PatentDownloadedPage, PatentSharePage } from './components/PatentSharePage';
 
 
@@ -186,7 +187,16 @@ function MainApp() {
   };
 
   useEffect(() => {
-    const openGridSettings = () => handleOpenSettings();
+    const openGridSettings = () => {
+      handleOpenSettings();
+      // Esperar a que el modal de Ajustes esté montado y llevar el foco
+      // directamente al campo Grid Locator.
+      window.setTimeout(() => {
+        const field = document.getElementById('user-grid-locator') as HTMLInputElement | null;
+        field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field?.focus({ preventScroll: true });
+      }, 350);
+    };
     window.addEventListener('open-user-settings-grid', openGridSettings);
     return () => window.removeEventListener('open-user-settings-grid', openGridSettings);
   }, []);
@@ -466,6 +476,8 @@ function MainApp() {
         onOpenSettings={handleOpenSettings}
         onOpenReplyModal={handleOpenManualReply}
       />
+
+      <GridLocatorReminder />
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
