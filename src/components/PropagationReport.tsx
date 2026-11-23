@@ -3,6 +3,7 @@ import { ChevronDown, RefreshCw } from 'lucide-react';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { supabase } from '../services/supabaseClient';
 import { capitalPointForCountry } from '../services/dxDistance';
+import { capitalPointForCountry } from '../services/dxDistance';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; };
@@ -283,6 +284,14 @@ export const PropagationReport: React.FC = () => {
   const ownGeo=maidenheadToLatLon(stationIdentity.grid);
   const ownCountry=countryForCallsign(stationIdentity.selectedCallsign,undefined,stationIdentity.selectedType==='11m');
   const contactPoint = (contact: LiveQsoContact, callsign: string): GeoPoint | null => {
+  const contactPoint = (contact: LiveQsoContact, callsign: string): GeoPoint | null => {
+    const exact = maidenheadToLatLon(liveGridLocators[callsign]);
+    if (exact) return exact;
+    const mhz = Number(String(contact.frequency || '').replace(',', '.'));
+    const is11m = Number.isFinite(mhz) && mhz >= 26 && mhz <= 28;
+    const country = countryForCallsign(callsign, callsign === contact.callsign ? contact.country || undefined : undefined, is11m);
+    return capitalPointForCountry(country);
+  };
     const exact = maidenheadToLatLon(liveGridLocators[callsign]);
     if (exact) return exact;
     const mhz = Number(String(contact.frequency || '').replace(',', '.'));
@@ -435,7 +444,7 @@ export const PropagationReport: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] font-bold"><span className="text-emerald-300">● Verde · Buena</span><span className="text-amber-300">● Naranja · Media</span><span className="text-red-400">● Rojo · Mala</span><span className="text-cyan-300">● Punto azul · DX real</span></div>
           <div ref={mapElementRef} className="z-0 h-[420px] w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900 sm:h-[520px]" role="application" aria-label="Mapa interactivo mundial de propagación y reportes DX"/>
-          <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p><p className="text-[10px] leading-relaxed text-slate-400">Las líneas curvas rosas unen estaciones de contactos registrados en LIVE SPOT: permanecen una hora y se desvanecen durante la segunda. Los puntos azules son recepciones digitales de PSK Reporter, no contactos confirmados. Los círculos de color son orientación regional simplificada basada en SFI, Kp y hora solar. © OpenStreetMap.</p>
+          <p role="status" className="text-xs leading-relaxed text-slate-300">{mapStatus}</p><p className="text-[10px] leading-relaxed text-slate-400">Las líneas curvas rosas unen estaciones de contactos registrados en LIVE SPOT: permanecen una hora y se desvanecen durante la segunda. Las líneas discontinuas indican ubicaciones aproximadas por capital cuando falta Grid Locator. Los puntos azules son recepciones digitales de PSK Reporter, no contactos confirmados. Los círculos de color son orientación regional simplificada. © OpenStreetMap.</p>
           {!ownGeo&&<p className="text-xs text-amber-200">Completá tu Grid Locator en el perfil para centrar Mi zona, Mi país y Mi continente.</p>}
         </section>
         <section className="space-y-4 overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-[#0d2538] to-[#0b1b31] p-4 shadow-xl sm:p-5">
