@@ -79,6 +79,53 @@ async function authorize(req, supabase) {
   return { token, callsign: requestedCall, rootCall, isAdmin: role === 'admin' };
 }
 
+function sourceKeyForEvent(event) {
+  if (!event?.is_auto) return null;
+  let host = '';
+  try { host = new URL(String(event.source_url || '')).hostname.toLowerCase().replace(/^www\\./, ''); } catch { return null; }
+  if (host === 'contestclock.com') return 'contestclock-ham';
+  if (host === 'alfatango.org') return 'alfa-tango-11m';
+  if (host === 'ure.es') return 'ure-ham-contests';
+  if (host === 'da-rcxmas.org') return 'da-rc-xmas-11m';
+  if (host === 'lu4aa.org') return 'radio-club-argentina';
+  if (host === 'cqww.com') return 'cqww-ham';
+  if (host === 'cq11ww.org') return 'cq-eleven-ww';
+  if (host === 'rcqsl.com') return 'romeo-charlie-11m';
+  if (host === 'sugardelta.org') return 'sugar-delta-11m';
+  if (host === 'ekdxgroup.com') return 'echo-kilo-11m';
+  return null;
+}
+
+function normalizedEventTitle(value) {
+  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+    .toLowerCase().replace(/\\b20\\d{2}\\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\\s+/g, ' ');
+}
+
+function eventDeduplicationKey(event) {
+  const start = event.start_at ? new Date(event.start_at).toISOString().slice(0, 10) : 'no-date';
+  const end = event.end_at ? new Date(event.end_at).toISOString().slice(0, 10) : 'no-end';
+  const scope = [event.event_scope, event.station_type, event.event_kind, event.country_code || ''];
+  if (/\\byota\\b/i.test([event.title, event.organizer, event.source_name].join(' '))) {
+    return ['yota-month', ...scope, start, end].join('|');
+  }
+  return [...scope, start, end, normalizedEventTitle(event.title)].join('|');
+}
+
+function deduplicateEvents(events) {
+  const selected = new Map();
+  for (const event of events || []) {
+    const key = eventDeduplicationKey(event);
+    const prior = selected.get(key);
+    if (!prior) { selected.set(key, event); continue; }
+    const score = (item) => (item.verified ? 4 : 0) +
+      (item.rules_url ? 2 : 0) + (item.source_url ? 1 : 0) +
+      (item.description ? Math.min(String(item.description).length / 1000, 1) : 0) +
+      (/radio club argentino|radioaficionado argentino/i.test(String(item.organizer || '') + ' ' + String(item.source_name || '')) ? 3 : 0);
+    if (score(event) > score(prior)) selected.set(key, event);
+  }
+  return [...selected.values()];
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -132,15 +179,23 @@ export default async function handler(req, res) {
       } else if (country) {
         query = query.eq('country_code', country);
       }
-      const [{ data: events, error }, { data: countryRows, error: countryError }, { data: sourceRows, error: sourceError }] = await Promise.all([
+      const [{ data: events, error }, { data: countryRows, error: countryError }, { data: sourceRows, error: sourceError }, { data: syncRuns, error: syncError }] = await Promise.all([
         query,
         supabase.from('radio_events').select('country_code').eq('status', 'published').in('station_type', [stationType, 'both']).not('country_code', 'is', null).limit(1000),
         supabase.from('radio_event_sources').select('last_success_at').not('last_success_at', 'is', null).order('last_success_at', { ascending: false }).limit(1),
+        supabase.from('radio_event_sync_runs').select('source_key,status,finished_at').order('finished_at', { ascending: false }).limit(200),
       ]);
-      if (error || countryError || sourceError) throw error || countryError || sourceError;
+      if (error || countryError || sourceError || syncError) throw error || countryError || sourceError || syncError;
+      const latestSync = new Map();
+      for (const run of syncRuns || []) if (!latestSync.has(run.source_key)) latestSync.set(run.source_key, run.status);
+      const visibleEvents = deduplicateEvents((events || []).filter((event) => {
+        if (!event.is_auto) return true;
+        const sourceKey = sourceKeyForEvent(event);
+        return sourceKey ? latestSync.get(sourceKey) === 'success' : false;
+      }));
       const countries = [...new Set((countryRows || []).map((row) => String(row.country_code || '').toUpperCase()).filter((code) => /^[A-Z]{2}$/.test(code)))].sort();
       return json(res, 200, {
-        events: events || [],
+        events: visibleEvents,
         countries,
         is_admin: identity.isAdmin,
         last_updated: sourceRows?.[0]?.last_success_at || null,
