@@ -481,9 +481,9 @@ function parseUreContests(html) {
 
 function parseRefCalendar(html, year) {
   const rows = [];
-  const tableRows = [...String(html || '').matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
+  const tableRows = [...String(html || '').matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
   const parseDateTime = (value, isEnd) => {
-    const match = String(value || '').match(/(\\d{1,2})\\/(\\d{1,2})\\/(20\\d{2})(?:\\s+(\\d{1,2}):(\\d{2}))?/);
+    const match = String(value || '').match(/(\d{1,2})\/(\d{1,2})\/(20\d{2})(?:\s+(\d{1,2}):(\d{2}))?/);
     if (!match) return null;
     const day = Number(match[1]), month = Number(match[2]) - 1, y = Number(match[3]);
     const hour = match[4] === undefined ? (isEnd ? 23 : 0) : Number(match[4]);
@@ -493,7 +493,7 @@ function parseRefCalendar(html, year) {
     return date.toISOString();
   };
   for (const row of tableRows) {
-    const cells = [...row[1].matchAll(/<td\\b[^>]*>([\\s\\S]*?)<\\/td>/gi)].map(cell => cell[1]);
+    const cells = [...row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(cell => cell[1]);
     if (cells.length < 3) continue;
     const title = plainText(cells[0]);
     if (!title || /^concours$/i.test(title)) continue;
@@ -503,8 +503,8 @@ function parseRefCalendar(html, year) {
     const startMs = new Date(startAt).getTime();
     if (startMs < Date.now() - 30 * 86400000 || startMs > Date.now() + 400 * 86400000) continue;
     // Les épreuves IARU sont régionales/internationales; les autres lignes du calendrier REF sont nationales françaises.
-    const international = /\\bIARU\\b/i.test(title);
-    const slug = title.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+    const international = /\bIARU\b/i.test(title);
+    const slug = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
     const linkMatch = String(cells[5] || cells[0]).match(/href=["']([^"']+)["']/i);
     let rulesUrl = null;
     if (linkMatch) {
