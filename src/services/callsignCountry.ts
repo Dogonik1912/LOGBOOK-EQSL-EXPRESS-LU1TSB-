@@ -69,7 +69,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   '4A':'México','4B':'México','4C':'México','6D':'México','6E':'México','6F':'México','6G':'México','6H':'México','6I':'México','6J':'México',
   W:'Estados Unidos',K:'Estados Unidos',N:'Estados Unidos',AA:'Estados Unidos',AB:'Estados Unidos',AC:'Estados Unidos',AD:'Estados Unidos',AE:'Estados Unidos',AF:'Estados Unidos',AG:'Estados Unidos',AH:'Estados Unidos',AI:'Estados Unidos',AJ:'Estados Unidos',AK:'Estados Unidos',
   VE:'Canadá',VA:'Canadá',VO:'Canadá',VY:'Canadá',VZ:'Canadá',CF:'Canadá',CG:'Canadá',CH:'Canadá',CI:'Canadá',CJ:'Canadá',CK:'Canadá',CY:'Canadá',CZ:'Canadá',
-  G:'Reino Unido',M:'Reino Unido',GM:'Reino Unido',GW:'Reino Unido',GI:'Reino Unido',GD:'Reino Unido',GJ:'Reino Unido',GU:'Reino Unido',
+  G:'Reino Unido',M:'Reino Unido',
   F:'Francia',TM:'Francia',TO:'Francia',TK:'Francia',DL:'Alemania',DA:'Alemania',DB:'Alemania',DC:'Alemania',DD:'Alemania',DF:'Alemania',DG:'Alemania',DH:'Alemania',DJ:'Alemania',DK:'Alemania',DM:'Alemania',DN:'Alemania',DO:'Alemania',DP:'Alemania',DQ:'Alemania',DR:'Alemania',
   I:'Italia',JA:'Japón',JE:'Japón',JF:'Japón',JG:'Japón',JH:'Japón',JI:'Japón',JJ:'Japón',JK:'Japón',JL:'Japón',JM:'Japón',JN:'Japón',JO:'Japón',JP:'Japón',JQ:'Japón',JR:'Japón',JS:'Japón','7J':'Japón','7K':'Japón','7L':'Japón','7M':'Japón','7N':'Japón','8J':'Japón',
   VK:'Australia',ZL:'Nueva Zelanda',PA:'Países Bajos',PB:'Países Bajos',PC:'Países Bajos',PD:'Países Bajos',PE:'Países Bajos',PF:'Países Bajos',PG:'Países Bajos',PH:'Países Bajos',PI:'Países Bajos',
@@ -81,7 +81,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   YO:'Rumania',YP:'Rumania',YQ:'Rumania',YR:'Rumania',HA:'Hungría',HG:'Hungría',OK:'Chequia',OL:'Chequia',
   HS:'Tailandia',E2:'Tailandia',TI:'Costa Rica',HP:'Panamá',HL:'Corea del Sur',DS:'Corea del Sur',D7:'Corea del Sur',D8:'Corea del Sur',D9:'Corea del Sur',
   YB:'Indonesia',YC:'Indonesia',YD:'Indonesia',YE:'Indonesia',YF:'Indonesia',YG:'Indonesia',YH:'Indonesia','8A':'Indonesia','8B':'Indonesia','8E':'Indonesia','8I':'Indonesia',
-  UA:'Rusia',RA:'Rusia',RZ:'Rusia',UR:'Ucrania',UT:'Ucrania',UU:'Ucrania',UV:'Ucrania',UW:'Ucrania',UX:'Ucrania',UY:'Ucrania',UZ:'Ucrania'
+  UA:'Rusia',RA:'Rusia',RZ:'Rusia',UR:'Ucrania',UT:'Ucrania',UU:'Ucrania',UV:'Ucrania',UW:'Ucrania',UX:'Ucrania',UY:'Ucrania',UZ:'Ucrania',
 
   // Territorios y prefijos geográficos especiales de radioafición.
   EA6:'Islas Baleares',EB6:'Islas Baleares',EH6:'Islas Baleares',
