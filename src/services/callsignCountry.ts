@@ -463,7 +463,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   CE0Y:'Isla de Pascua',CE0Z:'Islas Juan Fernández',CE0X:'Islas San Félix y San Ambrosio',
   FY:'Guayana Francesa',FK:'Nueva Caledonia',FO:'Polinesia Francesa',FP:'San Pedro y Miquelón',
   FM:'Martinica',FG:'Guadalupe',FR:'Reunión',FS:'San Martín',FW:'Wallis y Futuna',
-  '3A':'Mónaco','3B8':'Mauricio','3B9':'Rodrigues','3C':'Guinea Ecuatorial','3D2':'Fiyi','3DA':'Esuatini',
+  '3A':'Mónaco','3B':'Mauricio','3B8':'Mauricio','3B9':'Rodrigues','3C':'Guinea Ecuatorial','3D2':'Fiyi','3DA':'Esuatini',
   '5B':'Chipre','5H':'Tanzania','5N':'Nigeria','5R':'Madagascar','5T':'Mauritania','5U':'Níger','5W':'Samoa',
   '5X':'Uganda','5Z':'Kenia','6W':'Senegal','6Y':'Jamaica','7P':'Lesoto','7Q':'Malaui','7X':'Argelia',
   '8P':'Barbados','8Q':'Maldivas','9A':'Croacia','9G':'Ghana','9H':'Malta','9J':'Zambia','9K':'Kuwait',
