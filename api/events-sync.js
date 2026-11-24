@@ -13,7 +13,8 @@ const SUGAR_CONTESTS_URL = 'https://sugardelta.org/concursos.php';
 const SUGAR_ACTIVATIONS_URL = 'https://sugardelta.org/activaciones.php';
 const ALFA_TANGO_URL = 'https://www.alfatango.org/';
 const URE_CONTESTS_URL = 'https://www.ure.es/proximos-concursos/';
-const DA_RC_XMAS_URL = 'https://da-rcxmas.org/';
+const DA_RC_XMAS_URL = 'https://da-rcxmas.org/es/';
+const RCQSL_TROPHY_URL = 'https://www.rcqsl.com/news.php?id=62';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
 
 function config() {
@@ -497,6 +498,42 @@ function parseDaRcXmas(html) {
   }];
 }
 
+function parseRcqslChristmasTrophy(html) {
+  const text = plainText(html);
+  const dateMatch = text.match(/(?:Date|Fechas?)\s*:\s*(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|al|[-–—])\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
+  if (!dateMatch) return [];
+  const monthName = dateMatch[3].toLowerCase();
+  const month = EN_MONTHS[monthName] ?? MONTHS[monthName] ?? (monthName === 'diecembre' ? 11 : undefined);
+  if (month === undefined) return [];
+  const range = normalizeDateRange(Number(dateMatch[4]), month, Number(dateMatch[1]), Number(dateMatch[4]), month, Number(dateMatch[2]));
+  if (!range) return [];
+  const modes = (text.match(/QSO valid only in\s+([^*.]{2,100})/i) || [])[1] || 'SSB, AM y FM';
+  return [{
+    external_id: 'rcqsl-news-62:' + range.start_at.slice(0, 10),
+    event_kind: 'contest',
+    title: 'Trofeo Navidad RC 2026',
+    description: 'Trofeo internacional de 11 metros abierto a operadores RC y no RC. Cazadores: 1 punto por estación RC/SC contactada. Activadores: 1 punto por estación en el log y cada DXCC cuenta como multiplicador. Modos válidos: ' + modes.trim() + '. La clasificación se actualiza al cargar los logs de activadores y se emite eQSL por cada contacto con estaciones activadoras.',
+    event_scope: 'international',
+    station_type: '11m',
+    country_code: null,
+    country_name: 'Internacional',
+    organizer: 'Romeo Charlie HQ · Romeo Charlie DX Group',
+    start_at: range.start_at,
+    end_at: range.end_at,
+    timezone: 'UTC',
+    rules_url: RCQSL_TROPHY_URL,
+    source_url: RCQSL_TROPHY_URL,
+    source_name: 'RCQSL · Reglamento oficial del Trofeo Navidad RC 2026',
+    image_url: null,
+    status: 'published',
+    verified: true,
+    is_auto: true,
+    source_updated_at: null,
+    last_seen_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }];
+}
+
 function parseLu4aaoActivities(html) {
   const blocks = String(html || '').split(/<hr\b[^>]*>|(?:\*\s*){4,}\*/gi);
   const rows = [];
@@ -554,12 +591,13 @@ function parseLu4aaoActivities(html) {
     const isLu1aas = /\bLU1AAS\b/i.test(title);
     const organizer = isLu1aas && /prefectura/i.test(title) ? 'Prefectura Naval Argentina · LU1AAS'
       : ((title.match(/Radio Club [^,.;]{2,90}/i) || [])[0] || (isLu1aas ? 'LU1AAS · Prefectura Naval Argentina' : 'Radio Club / grupo organizador'));
+    const isArgentina = /\b(?:LU|LW|AY|AZ|LP|LQ)\d[A-Z0-9/]*\b|Argentina|argentino|argentina|Buenos Aires|La Rioja|Entre R[ií]os|Chajar[ií]|Mor[oó]n/i.test(text);
     rows.push({
       external_id: 'lu4aao-programmed:' + slug + ':' + range.start_at.slice(0, 10),
       event_kind: /concurso|contest|trofeo/i.test(title) ? 'contest' : 'event',
       title,
       description: text.slice(0, 5000) + '\n\nCalendario recopilado por LU4AAO a partir de información de las entidades organizadoras. Confirmá posibles cambios en la publicación original.',
-      event_scope: 'national', station_type: 'ham', country_code: 'AR', country_name: 'Argentina', organizer,
+      event_scope: isArgentina ? 'national' : 'international', station_type: 'ham', country_code: isArgentina ? 'AR' : null, country_name: isArgentina ? 'Argentina' : 'Internacional', organizer,
       start_at: range.start_at, end_at: range.end_at, timezone: 'UTC', rules_url: rulesUrl,
       source_url: LU4AAO_PROGRAMMED_URL, source_name: 'LU4AAO · actividades programadas de radioclubes argentinos',
       image_url: null, status: 'published', verified: false, is_auto: true,
@@ -625,7 +663,7 @@ async function recordRun(supabase, sourceKey, status, inserted, updated, errorMe
 
 async function upsertRows(supabase, sourceKey, rows) {
   if (!rows.length) {
-    await recordRun(supabase, sourceKey, 'success', 0, 0, null, { received: 0 });
+    await recordRun(supabase, sourceKey, 'partial', 0, 0, 'La fuente respondió, pero no se detectaron eventos con fechas válidas; se conserva la última información publicada.', { received: 0 });
     return { inserted: 0, updated: 0, received: 0 };
   }
   let inserted = 0;
@@ -737,6 +775,10 @@ export default async function handler(req, res) {
         } else if (source.source_key === 'da-rc-xmas-11m') {
           const response = await fetchWithTimeout(DA_RC_XMAS_URL, 'text/html');
           const rows = parseDaRcXmas(await response.text());
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'rcqsl-news-62') {
+          const response = await fetchWithTimeout(RCQSL_TROPHY_URL, 'text/html');
+          const rows = parseRcqslChristmasTrophy(await response.text());
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'cq-eleven-ww') {
           const response = await fetchWithTimeout(CQ11WW_URL, 'text/html');

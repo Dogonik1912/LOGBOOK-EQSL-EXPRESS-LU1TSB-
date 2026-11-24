@@ -82,7 +82,7 @@ async function authorize(req, supabase) {
 function sourceKeyForEvent(event) {
   if (!event?.is_auto) return null;
   let host = '';
-  try { host = new URL(String(event.source_url || '')).hostname.toLowerCase().replace(/^www\\./, ''); } catch { return null; }
+  try { host = new URL(String(event.source_url || '')).hostname.toLowerCase().replace(/^www\./, ''); } catch { return null; }
   if (host === 'contestclock.com') return 'contestclock-ham';
   if (host === 'alfatango.org') return 'alfa-tango-11m';
   if (host === 'ure.es') return 'ure-ham-contests';
@@ -148,7 +148,7 @@ export default async function handler(req, res) {
 
   try {
     const { client: supabase, secret } = (() => {
-      const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\\/$/, '');
+      const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
       if (!url || !key) throw new Error('EVENTS_NOT_CONFIGURED');
       return { client: createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }), secret: key };

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Globe2, MapPin, RefreshCw, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck, ChevronDown } from 'lucide-react';
+import { CalendarDays, Globe2, MapPin, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
@@ -91,7 +91,6 @@ export const EventsAndContests: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPublisher, setShowPublisher] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', event_scope: 'national' as EventScope, event_kind: 'event' as EventKind, station_type: 'ham' as StationType,
     country_code: '', organizer: '', start_at: '', end_at: '', rules_url: '', image_url: '',
@@ -177,27 +176,6 @@ export const EventsAndContests: React.FC = () => {
 
   useEffect(() => { void loadIdentity(); }, [loadIdentity]);
   useEffect(() => { void loadEvents(); }, [loadEvents]);
-
-  const handleRefresh = async () => {
-    if (isAdmin && token) {
-      setSyncing(true);
-      setError('');
-      try {
-        const response = await fetch('/api/events-sync', { headers: { 'x-identity-token': token, 'x-callsign': selectedCall }, cache: 'no-store' });
-        const payload = await readApiPayload(response, 'El servicio no está disponible temporalmente. Volvé a intentarlo.');
-        const failedSources = Array.isArray(payload?.results) ? payload.results.filter((item: any) => item.error).map((item: any) => item.source) : [];
-        if (failedSources.length) console.warn('[Eventos] Se omitieron fuentes sin actualización correcta:', failedSources);
-        if (!response.ok && !failedSources.length) console.warn('[Eventos] No se pudo completar la actualización de fuentes.');
-      } catch (syncError) {
-        console.warn('[Eventos] No se pudo completar la actualización. Se mostrarán únicamente los datos vigentes:', syncError);
-      } finally {
-        setSyncing(false);
-        await loadEvents();
-      }
-      return;
-    }
-    await loadEvents();
-  };
 
   const changeIdentity = (type: StationType) => {
     const identity = identities.find((item) => item.identity_type === type);
@@ -311,9 +289,9 @@ export const EventsAndContests: React.FC = () => {
               <p className="text-xs text-indigo-100/75">Agenda de radioafición y 11 metros · información con fuentes</p>
             </div>
           </div>
-          <button type="button" onClick={() => void handleRefresh()} disabled={loading || syncing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-sm font-bold hover:bg-white/15 disabled:opacity-60">
-            <RefreshCw className={`h-4 w-4 ${loading || syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Actualizando fuentes…' : isAdmin ? 'Actualizar fuentes' : 'Actualizar'}
-          </button>
+          <span className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/10 px-3 text-xs font-bold text-emerald-100">
+            <RadioTower className="h-4 w-4" /> Sincronización automática del servidor
+          </span>
         </div>
         <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Categoría de eventos">
           <button type="button" onClick={() => { setCategory('national'); setSelectedCountry(homeCountry); }} aria-pressed={category === 'national'} className={`rounded-full px-4 py-2 text-sm font-black transition ${category === 'national' ? 'bg-amber-300 text-slate-950' : 'border border-white/20 bg-white/5 text-white'}`}>NACIONALES</button>
