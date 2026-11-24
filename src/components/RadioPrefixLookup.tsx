@@ -33,7 +33,9 @@ export const RadioPrefixLookup: React.FC = () => {
     if (!needle) return [];
     if (mode === 'ham') {
       const entries = getRadioPrefixLookupEntries();
-      const isPrefixSearch = /^[a-z0-9]+$/i.test(query.trim()) && !/^[a-záéíóúñü\s.-]+$/i.test(query.trim());
+      const typed = query.trim();
+      const upperTyped = typed.toUpperCase();
+      const isPrefixSearch = /^[A-Z0-9]{1,8}$/.test(upperTyped) && (/[0-9]/.test(upperTyped) || typed === upperTyped || entries.some((entry) => entry.prefix === upperTyped));
       return entries.filter(({ prefix, country }) => {
         const normalizedPrefix = normalize(prefix);
         return isPrefixSearch
