@@ -372,9 +372,38 @@ export function startAutomaticUiTranslation(): () => void {
   };
 }
 
+export type ShareLanguageChoice = 'auto' | AppLanguage;
+
+/** Automático prioriza la división/prefijo de la SD o indicativo destinatario.
+ * Si no hay un destinatario identificable, usa el idioma activo de la aplicación.
+ */
+export function resolveShareLanguage(choice: ShareLanguageChoice = 'auto', recipientCallsign?: string | null): AppLanguage {
+  if (choice !== 'auto') return choice;
+  return languageFromCallsign(recipientCallsign) || getInitialAppLanguage();
+}
+
+/** Traduce textos libres de los flujos de compartir; si el servicio falla,
+ * conserva el original para no impedir que el usuario comparta.
+ */
+export async function translateShareText(text: string, language: AppLanguage): Promise<string> {
+  if (!text.trim() || language === 'es') return text;
+  try {
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, language }),
+    });
+    if (!response.ok) return text;
+    const data = await response.json();
+    return typeof data?.translated === 'string' && data.translated.trim() ? data.translated : text;
+  } catch {
+    return text;
+  }
+}
+
 export function getRecipientLanguage(_phone?: string | null, callsign?: string | null): AppLanguage {
-  // En eQSL manda siempre la SD/indicativo del destinatario; el teléfono no determina el idioma.
-  return languageFromCallsign(callsign) || detectBrowserLanguage();
+  // En eQSL manda la SD/indicativo del destinatario; sin identidad, idioma activo de la app.
+  return resolveShareLanguage('auto', callsign);
 }
 
 export function getLocalizedShareText(language: AppLanguage): string {

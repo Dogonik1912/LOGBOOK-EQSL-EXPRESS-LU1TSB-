@@ -7,7 +7,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QSO, DEFAULT_CALLSIGN } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
-import { getRecipientLanguage, getLocalizedEQSLNotification } from '../services/appLanguage';
+import { resolveShareLanguage, getLocalizedEQSLNotification, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { enqueueEqslDelivery, deliverEqslJob } from '../services/offlineEqslQueue';
 import {
   X,
@@ -93,6 +94,8 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
   const [rstSent, setRstSent] = useState('59');
   const [rstRcvd, setRstRcvd] = useState('59');
   const [emailTo, setEmailTo] = useState('');
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
+  useEffect(() => { if (isOpen) setShareLanguage('auto'); }, [isOpen, initialData?.replyToCall]);
   const [customBgImage, setCustomBgImage] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; name: string; dataUrl: string }>>(() => { try { return JSON.parse(localStorage.getItem('eqsl_gallery_images') || '[]'); } catch { return []; } });
   const [theme, setTheme] = useState<string>(() => localStorage.getItem('eqsl_theme') || 'navy');
@@ -448,7 +451,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', cardUrl);
+    const text = getLocalizedEQSLNotification(resolveShareLanguage(shareLanguage, replyToCall || initialData?.replyToCall), 'reply', cardUrl);
     const rawPhone = String(initialData?.whatsapp || '').trim();
     const digits = rawPhone.replace(/[^0-9]/g, '');
     const cleanPhone = !rawPhone.startsWith('@') && digits.length >= 7 && digits.length <= 15 ? digits : '';
@@ -477,7 +480,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
-    const text = getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', cardUrl);
+    const text = getLocalizedEQSLNotification(resolveShareLanguage(shareLanguage, replyToCall || initialData?.replyToCall), 'reply', cardUrl);
     if (await shareReplyCardFile(text)) return;
     const username = String(initialData?.telegram || '').replace(/^@+/, '');
     const url = username
@@ -496,7 +499,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     let cardUrl = '';
     try { cardUrl = await createReplyCardLink(); } catch (error) { window.alert(error instanceof Error ? error.message : 'No se pudo crear el enlace de la tarjeta.'); return; }
     const subject = encodeURIComponent(`Respuesta a tu eQSL de ${activeMyCall}`);
-    const body = encodeURIComponent(getLocalizedEQSLNotification(getRecipientLanguage(initialData?.whatsapp, initialData?.replyToCall), 'reply', cardUrl));
+    const body = encodeURIComponent(getLocalizedEQSLNotification(resolveShareLanguage(shareLanguage, replyToCall || initialData?.replyToCall), 'reply', cardUrl));
     requestChatInvitation('reply');
     window.open(`mailto:${emailTo.trim()}?subject=${subject}&body=${body}`, '_blank');
     returnToHome();
@@ -757,6 +760,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
 
         {/* Botones de acción */}
         {eqslPostStatus && <p role="status" className="mt-2 rounded-lg border border-amber-400/30 bg-amber-950/40 p-3 text-xs text-amber-100">{eqslPostStatus}</p>}
+        <ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} recipientCallsign={replyToCall || initialData?.replyToCall || ''} />
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800">
           <div>
             {onSaveQSO && (

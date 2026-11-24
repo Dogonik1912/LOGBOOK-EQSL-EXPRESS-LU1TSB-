@@ -5,6 +5,7 @@ import { supabase } from '../services/supabaseClient';
 import { capitalPointForCountry } from '../services/dxDistance';
 import { HAM_BANDS, HAM_MODES } from '../types';
 import { getInitialAppLanguage, languageFromPhone, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
@@ -945,13 +946,8 @@ export const PropagationReport: React.FC = () => {
           <div className="relative">
             <button type="button" onClick={() => setShowShareOptions(value => { if (!value) setShareLanguage('auto'); return !value; })} aria-expanded={showShareOptions} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
             {showShareOptions && <div className="mt-2 flex flex-col gap-3 rounded-xl border border-cyan-200/20 bg-slate-950/95 p-3 shadow-xl" role="group" aria-label="Elegir idioma y aplicación para compartir">
-              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-200">IDIOMA DEL MENSAJE
-                <select value={shareLanguage} onChange={event => chooseShareLanguage(event.target.value)} className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-3 text-sm text-white">
-                  <option value="auto">🌐 Automático (idioma habitual de la aplicación)</option>
-                  <option value="es">🇪🇸 Español</option><option value="en">🇬🇧 Inglés</option><option value="pt">🇵🇹 Portugués</option><option value="pt-br">🇧🇷 Portugués brasileño</option><option value="fr">🇫🇷 Francés</option><option value="de">🇩🇪 Alemán</option><option value="it">🇮🇹 Italiano</option><option value="nl">🇳🇱 Neerlandés</option><option value="pl">🇵🇱 Polaco</option><option value="ru">🇷🇺 Ruso</option><option value="uk">🇺🇦 Ucraniano</option><option value="zh">🇨🇳 Chino</option><option value="ja">🇯🇵 Japonés</option><option value="ko">🇰🇷 Coreano</option><option value="ar">🇸🇦 Árabe</option><option value="hi">🇮🇳 Hindi</option><option value="tr">🇹🇷 Turco</option><option value="sv">🇸🇪 Sueco</option><option value="no">🇳🇴 Noruego</option><option value="da">🇩🇰 Danés</option><option value="fi">🇫🇮 Finés</option><option value="cs">🇨🇿 Checo</option><option value="el">🇬🇷 Griego</option><option value="ro">🇷🇴 Rumano</option><option value="hu">🇭🇺 Húngaro</option><option value="id">🇮🇩 Indonesio</option><option value="th">🇹🇭 Tailandés</option>
-                </select>
-              </label>
-              <p className="text-[11px] leading-relaxed text-slate-400">El idioma elegido se recordará para el próximo envío. WhatsApp y Telegram se abrirán directamente para que selecciones el contacto.</p>
+              <ShareLanguageSelector value={shareLanguage as 'auto' | AppLanguage} onChange={chooseShareLanguage} label="Idioma del mensaje" />
+              <p className="text-[11px] leading-relaxed text-slate-400">La selección solo se aplica a este envío. Cada vez que abras Compartir volverá a Automático. WhatsApp y Telegram se abrirán para que selecciones el contacto.</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => sharePropagation('whatsapp')} className="rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500">WhatsApp</button>
                 <button type="button" onClick={() => sharePropagation('telegram')} className="rounded-lg bg-sky-600 px-4 py-3 text-sm font-bold text-white hover:bg-sky-500">Telegram</button>

@@ -7,7 +7,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { requestChatInvitation } from '../services/chatInvitation';
-import { getRecipientLanguage } from '../services/appLanguage';
+import { resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { enqueueEqslDelivery, deliverEqslJob } from '../services/offlineEqslQueue';
 import { publishQsoSpot } from './LiveSpots';
 import { loadLLOTAReferences } from '../services/llotaReferences';
@@ -136,6 +137,8 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   const [themeNotice, setThemeNotice] = useState('');
   const [signatureEnabled, setSignatureEnabled] = useState(() => localStorage.getItem('eqsl_signature_enabled') !== 'false');
   const [signatureText, setSignatureText] = useState(() => getFirma().slice(0, 30));
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
+  useEffect(() => { if (isOpen) setShareLanguage('auto'); }, [isOpen, qso?.callsign]);
 
   const myCallsign = getUserCallsign();
   // Distinguir los QSOs de banda ciudadana para mostrar la señal de estación CB.
@@ -493,7 +496,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
   };
 
   const getShareInvitation = () => {
-    const lang = getRecipientLanguage(qso.whatsapp, qso.callsign);
+    const lang = resolveShareLanguage(shareLanguage, qso.callsign);
     const copy: Record<string, [string, string]> = {
       es: ['HAY UNA eQSL para ti. Responde de manera rápida y gratuita en eQSL EXPRESS.', 'Abre la tarjeta y pulsa el botón para responder:'],
       en: ['YOU HAVE AN eQSL! Reply quickly and free with eQSL EXPRESS.', 'Open the card and tap the button to reply:'],
@@ -1006,6 +1009,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
           <p className="text-xs text-slate-400 mb-3">El correo guardado se propondrá automáticamente al elegir «Enviar por Email»; podés corregirlo antes de abrir tu aplicación de correo.</p>
         </div>
 
+        <ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} recipientCallsign={qso.callsign} />
         {/* Botones de acción principales */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2">
           <div className="text-xs text-slate-400">

@@ -6,6 +6,8 @@ import { countryForCallsign, is11MeterStationIdentifier } from '../services/call
 import { capitalPointForCountry, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 import { openUserProfile } from './UserPublicProfile';
 import { loadLeaflet } from '../services/leaflet';
+import { resolveShareLanguage, translateShareText, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 
 type Point = { lat: number; lon: number };
 type Place = { name: string; lat: number; lon: number; type?: string };
@@ -126,6 +128,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState('');
   const [shareStatus, setShareStatus] = useState('');
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
 
   // Crear Leaflet una sola vez. Cambiar el destino actualiza capas, nunca
@@ -216,7 +219,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     if (!destination || km === null || bearing === null) return;
     const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' +
       encodeURIComponent(destination.lat + ',' + destination.lon);
-    const message = [
+    const sourceMessage = [
       'LOGBOOK eQSL EXPRESS',
       'Búsqueda y medición de distancia',
       'Origen: ' + originLabel + ' (' + origin.lat.toFixed(5) + ', ' + origin.lon.toFixed(5) + ')',
@@ -228,6 +231,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       'Ver destino en el mapa: ' + mapUrl,
       'Calculador: ' + window.location.href,
     ].join('\n');
+    const message = await translateShareText(sourceMessage, resolveShareLanguage(shareLanguage));
 
     setShareStatus('');
     if (typeof navigator.share === 'function') {
@@ -266,6 +270,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       <button type="button" onClick={() => mapRef.current?.setView([20, 0], 2)} className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-bold hover:bg-slate-700">Ver todo el mundo</button>
     </div>
     <div ref={element} className="h-[58dvh] min-h-[360px] w-full bg-slate-800" />
+    {destination && <div className="bg-slate-900 px-3 pt-2"><ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} /></div>}
     {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><div className="flex gap-2"><button type="button" onClick={shareMeasurement} className="rounded-lg bg-cyan-700 px-3 py-1.5 font-bold text-white hover:bg-cyan-600">Compartir búsqueda</button><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div></div>}
     {shareStatus && <p role="status" className="bg-slate-900 px-3 pb-2 text-xs text-emerald-300">{shareStatus}</p>}\n    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Desplazate por todo el planeta, acercá o alejá y tocá cualquier lugar. También podés arrastrar el marcador. La distancia se mide en línea recta desde tu estación.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
