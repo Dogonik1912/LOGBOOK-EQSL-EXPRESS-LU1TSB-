@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 import { loadLeaflet } from '../services/leaflet';
-import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, TentTree, ChevronDown, MessageCircle, Camera, Link as LinkIcon, MapPin, Search, LocateFixed, Crosshair } from 'lucide-react';
+import { Settings, Check, X, Image as ImageIcon, Trash2, Mail, Copy, Trophy, ChevronDown, Camera, MapPin, Search, LocateFixed, Crosshair } from 'lucide-react';
 
 function gridPointToMaidenhead(latitude: number, longitude: number): string | null {
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
@@ -69,7 +69,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [gridSaveStatus, setGridSaveStatus] = useState('');
   const [callsignSaveBusy, setCallsignSaveBusy] = useState(false);
   const [callsignSaveStatus, setCallsignSaveStatus] = useState('');
-  const [communitySection, setCommunitySection] = useState<'competitions' | 'llota' | null>(null);
+  const [communitySection, setCommunitySection] = useState<'competitions' | null>(null);
   const [weeklyHistoryOpen, setWeeklyHistoryOpen] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<Array<{
     week_start: string;
@@ -1019,26 +1019,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 <p className="text-amber-300">Publicación compartida y borrado exclusivo del administrador: pendientes de implementar y probar.</p>
               </div>}
             </div>
-            <div className="rounded-xl border border-emerald-500/25 bg-slate-950/60 overflow-hidden">
-              <button type="button" onClick={() => setCommunitySection(communitySection === 'llota' ? null : 'llota')} aria-expanded={communitySection === 'llota'} className="w-full flex items-center gap-3 p-3.5 text-left">
-                <TentTree className="w-5 h-5 text-emerald-300 shrink-0" />
-                <span className="flex-1">
-                  <span className="block text-sm font-bold text-emerald-200">LLOTA</span>
-                  <span className="block text-[11px] text-slate-400 mt-0.5">Actividades de radio al aire libre: playas, parques, lagunas, lagos y montañas.</span>
-                </span>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${communitySection === 'llota' ? 'rotate-180' : ''}`} />
-              </button>
-              {communitySection === 'llota' && <div className="px-3.5 pb-3.5 space-y-2 text-xs text-slate-300">
-                <p>El espacio LLOTA permitirá anunciar activaciones y compartir fotografías, vídeos, enlaces, fecha y lugar de la actividad.</p>
-                <div className="flex flex-wrap gap-2 text-[11px]">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1"><Camera className="w-3 h-3" /> Fotos y vídeos</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1"><LinkIcon className="w-3 h-3" /> Enlaces</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1"><MessageCircle className="w-3 h-3" /> WhatsApp voluntario</span>
-                </div>
-                <p>La participación en WhatsApp será voluntaria. El enlace real de invitación deberá configurarlo el administrador.</p>
-                <p className="text-emerald-300">Publicaciones compartidas y moderación exclusiva del administrador: pendientes de implementar y probar.</p>
-              </div>}
-            </div>
+
           </section>
 
           <section className="px-1 py-2 border-t border-slate-700" aria-label="Contacto">
