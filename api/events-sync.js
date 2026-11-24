@@ -437,7 +437,7 @@ function parseUreContests(html) {
   for (const match of anchors) {
     const title = plainText(match[2]).trim();
     if (!title || title.length < 3) continue;
-    const before = plainText(String(html).slice(Math.max(0, match.index - 320), match.index));
+    const before = plainText(String(html).slice(Math.max(0, match.index - 1400), match.index));
     const date = before.match(/(\d{1,2})(?:\s*al\s*(\d{1,2}))?\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(20\d{2})/i);
     if (!date) continue;
     const month = MONTHS[date[3].toLowerCase()];
@@ -469,9 +469,10 @@ function parseUreContests(html) {
 
 function parseDaRcXmas(html) {
   const text = plainText(html);
-  const english = text.match(/Contest period:\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
-  const spanishStart = text.match(/Inicio:\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
-  const spanishEnd = text.match(/Final:\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
+  const english = text.match(/(?:Contest period:\s*)?(?:Starts?:\s*)(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(?:Ends?:\s*)?(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i)
+    || text.match(/Contest period:\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
+  const spanishStart = text.match(/(?:Inicio|Comienza):\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
+  const spanishEnd = text.match(/(?:Final|Termina):\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
   let range = null;
   if (english) {
     const monthStart = EN_MONTHS[english[2].toLowerCase()], monthEnd = EN_MONTHS[english[5].toLowerCase()];
