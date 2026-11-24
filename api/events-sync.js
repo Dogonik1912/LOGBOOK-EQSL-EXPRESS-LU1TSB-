@@ -160,15 +160,27 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Método no permitido.' });
   }
-  const secret = String(process.env.CRON_SECRET || '');
-  const authorization = String(req.headers.authorization || '');
-  if (!secret || authorization !== 'Bearer ' + secret) {
-    return res.status(401).json({ error: 'No autorizado.' });
-  }
-
   let supabase;
   try {
     supabase = config();
+    const secret = String(process.env.CRON_SECRET || '');
+    const authorization = String(req.headers.authorization || '');
+    const isCron = Boolean(secret && authorization === 'Bearer ' + secret);
+    if (!isCron) {
+      const token = String(req.headers['x-identity-token'] || '').trim();
+      const requestedCall = String(req.headers['x-callsign'] || '').trim().toUpperCase();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token) ||
+          !/^[A-Z0-9][A-Z0-9/]{2,23}$/.test(requestedCall)) {
+        return res.status(401).json({ error: 'No autorizado.' });
+      }
+      const { data: rootCall, error: resolveError } = await supabase.rpc('resolve_community_callsign', { p_token: token });
+      const canonical = String(rootCall || '').trim().toUpperCase();
+      if (resolveError || !canonical) return res.status(401).json({ error: 'La identificación no está validada.' });
+      const { data: identityOk, error: identityError } = await supabase.rpc('community_identity_authorized', { p_callsign: requestedCall, p_token: token });
+      if (identityError || identityOk !== true) return res.status(403).json({ error: 'La identificación seleccionada no pertenece a esta cuenta.' });
+      const { data: role } = await supabase.rpc('community_actor_role', { p_callsign: canonical, p_token: token });
+      if (role !== 'admin') return res.status(403).json({ error: 'Solo el administrador puede forzar la actualización.' });
+    }
     const { data: sources, error: sourceError } = await supabase.from('radio_event_sources').select('*').eq('enabled', true);
     if (sourceError) throw sourceError;
     const results = [];
