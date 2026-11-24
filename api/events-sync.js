@@ -479,6 +479,30 @@ function parseUreContests(html) {
 }
 
 
+
+async function enrichUreNationalContestTimes(rows) {
+  const monthIndex = (name) => MONTHS[String(name || '').toLowerCase()];
+  return Promise.all(rows.map(async (row) => {
+    if (row.event_scope !== 'national' || !row.rules_url || !/fon[ií]a|sufijos/i.test(row.title)) return row;
+    try {
+      const response = await fetchWithTimeout(row.rules_url, 'text/html');
+      const content = plainText(await response.text());
+      const match = content.match(/desde\s+las\s+(\d{3,4})\s+horas?\s+UTC\s+del\s+(?:s[aá]bado)\s+(\d{1,2})\s+de\s+([a-záéíóú]+)\s+(20\d{2})\s+hasta\s+las\s+(\d{3,4})\s+horas?\s+UTC\s+del\s+(?:domingo)\s+(\d{1,2})\s+de\s+([a-záéíóú]+)\s+(20\d{2})/i);
+      if (!match) return row;
+      const time = (value) => String(value).padStart(4, '0');
+      const startTime = time(match[1]), endTime = time(match[5]);
+      const startMonth = monthIndex(match[3]), endMonth = monthIndex(match[7]);
+      if (startMonth === undefined || endMonth === undefined) return row;
+      const start = new Date(Date.UTC(Number(match[4]), startMonth, Number(match[2]), Number(startTime.slice(0, 2)), Number(startTime.slice(2))));
+      const end = new Date(Date.UTC(Number(match[8]), endMonth, Number(match[6]), Number(endTime.slice(0, 2)), Number(endTime.slice(2))));
+      if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) return row;
+      return { ...row, start_at: start.toISOString(), end_at: end.toISOString() };
+    } catch {
+      return row;
+    }
+  }));
+}
+
 function parseRefCalendar(html, year) {
   const rows = [];
   const tableRows = [...String(html || '').matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
@@ -850,7 +874,8 @@ export default async function handler(req, res) {
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'ure-ham-contests') {
           const response = await fetchWithTimeout(URE_CONTESTS_URL, 'text/html');
-          const rows = parseUreContests(await response.text());
+          const parsedRows = parseUreContests(await response.text());
+          const rows = await enrichUreNationalContestTimes(parsedRows);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'da-rc-xmas-11m') {
           const response = await fetchWithTimeout(DA_RC_XMAS_URL, 'text/html');
