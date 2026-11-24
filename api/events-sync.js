@@ -4,6 +4,7 @@ const CONTESTCLOCK_API = 'https://contestclock.com/api/contests';
 const CQ11WW_URL = 'https://www.cq11ww.org/es/default.asp';
 const CQ11WW_RULES_URL = 'https://www.cq11ww.org/es/reglas-6.asp';
 const RCA_CALENDAR_URL = 'https://www.lu4aa.org/wp/calendario-actividades/';
+const CQWW_HOME_URL = 'https://cqww.com/';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
 
 function config() {
@@ -95,19 +96,19 @@ function decodeHtml(value) {
 }
 
 function rcaCalendarRows(html) {
-  const yearMatch = html.match(/Año\\s+(20\\d{2})/i);
+  const yearMatch = html.match(/Año\s+(20\d{2})/i);
   const defaultYear = yearMatch ? Number(yearMatch[1]) : new Date().getUTCFullYear();
-  const items = [...html.matchAll(/<li\\b[^>]*>([\\s\\S]*?)<\\/li>/gi)];
+  const items = [...html.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)];
   const rows = [];
   const seen = new Set();
   for (const match of items) {
     const raw = match[1];
-    const text = decodeHtml(raw.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ')).trim();
-    const dateMatch = text.match(/(\\d{1,2})(?:\\s*(?:al|a|y|–|—|-)\\s*(\\d{1,2}))?\\s+de\\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\\b/i);
+    const text = decodeHtml(raw.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim();
+    const dateMatch = text.match(/(\d{1,2})(?:\s*(?:al|a|y|–|—|-)\s*(\d{1,2}))?\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i);
     if (!dateMatch) continue;
     const month = MONTHS[dateMatch[3].toLowerCase()];
     if (month === undefined) continue;
-    const yearInText = text.match(/20\\d{2}/);
+    const yearInText = text.match(/20\d{2}/);
     const year = yearInText ? Number(yearInText[0]) : defaultYear;
     const startDay = Number(dateMatch[1]);
     const endDay = Number(dateMatch[2] || dateMatch[1]);
@@ -115,15 +116,15 @@ function rcaCalendarRows(html) {
     const end = new Date(Date.UTC(year, month, endDay, 23, 59, 0));
     if (start.getUTCFullYear() !== year || start.getUTCMonth() !== month || end.getUTCMonth() !== month || end < start) continue;
     if (end.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000) continue;
-    let title = text.slice(dateMatch.index + dateMatch[0].length).replace(/^\\s*[:–—-]\\s*/, '').trim();
-    title = title.replace(/[.\\s]+$/, '').slice(0, 220);
+    let title = text.slice(dateMatch.index + dateMatch[0].length).replace(/^\s*[:–—-]\s*/, '').trim();
+    title = title.replace(/[.\s]+$/, '').slice(0, 220);
     if (title.length < 3) continue;
     const key = title.toLowerCase() + '|' + start.toISOString();
     if (seen.has(key)) continue;
     seen.add(key);
-    const international = /\\bYOTA\\b/i.test(title);
-    const slug = title.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
-    const anchor = raw.match(/href=["'](https?:\\/\\/[^"']+)["']/i);
+    const international = /\bYOTA\b/i.test(title);
+    const slug = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+    const anchor = raw.match(/href=["'](https?:\/\/[^"']+)["']/i);
     rows.push({
       external_id: 'rca-calendar:' + slug + ':' + year,
       title,
@@ -139,6 +140,51 @@ function rcaCalendarRows(html) {
       rules_url: anchor ? anchor[1] : null,
       source_url: RCA_CALENDAR_URL,
       source_name: 'Radio Club Argentino (RCA) · calendario oficial',
+      image_url: null,
+      status: 'published',
+      verified: true,
+      is_auto: true,
+      source_updated_at: null,
+      last_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  return rows;
+}
+
+
+function cqwwRows(html) {
+  const text = decodeHtml(String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+  const rows = [];
+  const definitions = [
+    { mode: 'SSB', month: 9, regex: /SSB:\s*October\s+(\d{1,2})\s*-\s*(\d{1,2}),?\s*(20\d{2})/i },
+    { mode: 'CW', month: 10, regex: /CW:\s*November\s+(\d{1,2})\s*-\s*(\d{1,2}),?\s*(20\d{2})/i },
+  ];
+  for (const definition of definitions) {
+    const match = text.match(definition.regex);
+    if (!match) continue;
+    const year = Number(match[3]);
+    const startDay = Number(match[1]);
+    const endDay = Number(match[2]);
+    const start = new Date(Date.UTC(year, definition.month, startDay, 0, 0, 0));
+    const end = new Date(Date.UTC(year, definition.month, endDay, 23, 59, 59));
+    if (start.getUTCFullYear() !== year || start.getUTCMonth() !== definition.month || end.getUTCMonth() !== definition.month || end < start) continue;
+    if (end.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000 || start.getTime() > Date.now() + 370 * 24 * 60 * 60 * 1000) continue;
+    rows.push({
+      external_id: 'cqww-' + definition.mode.toLowerCase() + '-' + year,
+      title: 'CQ World Wide DX Contest ' + definition.mode + ' ' + year,
+      description: 'Concurso mundial de radioafición. Horario oficial: desde las 00:00 UTC del sábado hasta las 23:59:59 UTC del domingo. Consultá las bases oficiales para bandas, categorías y condiciones de participación.',
+      event_scope: 'international',
+      station_type: 'ham',
+      country_code: null,
+      country_name: 'Internacional',
+      organizer: 'CQ Magazine / CQ WW DX Contest',
+      start_at: start.toISOString(),
+      end_at: end.toISOString(),
+      timezone: 'UTC',
+      rules_url: 'https://www.cqww.com/rules/',
+      source_url: CQWW_HOME_URL,
+      source_name: 'CQ World Wide DX Contest · sitio oficial',
       image_url: null,
       status: 'published',
       verified: true,
@@ -263,6 +309,11 @@ export default async function handler(req, res) {
           }));
           const combined = { occurrences: yearPayloads.flatMap((payload) => Array.isArray(payload?.occurrences) ? payload.occurrences : []) };
           const rows = contestClockRows(combined);
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'cqww-ham') {
+          const response = await fetchWithTimeout(CQWW_HOME_URL, 'text/html');
+          const html = await response.text();
+          const rows = cqwwRows(html);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'radio-club-argentina') {
           const response = await fetchWithTimeout(RCA_CALENDAR_URL, 'text/html');
