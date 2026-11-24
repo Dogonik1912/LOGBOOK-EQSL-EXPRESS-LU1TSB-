@@ -31,7 +31,7 @@ const DIVISION_COUNTRY: Record<string, string> = {
   "142":"Lesoto","143":"Santa Lucía","144":"Isla de Pascua","145":"Islas Galápagos","146":"Argelia","147":"Túnez",
   "148":"Isla Ascensión","149":"Islas Laquedivas","150":"Baréin","151":"Irak","152":"Maldivas","153":"Tailandia",
   "154":"Irán","155":"Taiwán","156":"Camerún","157":"Montserrat","158":"Trinidad y Tobago","159":"Somalia",
-  "160":"Sudán","161":"Polonia","162":"República Democrática del Congo","163":"Gales",
+  "160":"Sudán","161":"Polonia","162":"República Democrática del Congo","163":"Gales","164":"Togo","165":"Cerdeña (Italia)",
   "341":"Timor Oriental","342":"Islas Chesterfield","343":"Isla Ducie","344":"Montenegro","345":"Isla Swains",
   "346":"San Bartolomé","347":"Curazao","348":"Sint Maarten","349":"Saba y San Eustaquio","350":"Bonaire",
   "351":"Sudán del Sur","352":"Kosovo"
