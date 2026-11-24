@@ -34,7 +34,7 @@ const COUNTRY_CODES: Record<string, string> = {
   Austria:'AT',Bélgica:'BE',Polonia:'PL',Rumanía:'RO',Hungría:'HU',Chequia:'CZ',Eslovaquia:'SK',Croacia:'HR',Eslovenia:'SI',
   Rusia:'RU',Ucrania:'UA',Japón:'JP','Corea del Sur':'KR',Indonesia:'ID',Malasia:'MY',Singapur:'SG',Marruecos:'MA',Egipto:'EG',
   Nigeria:'NG',Ghana:'GH',Kenia:'KE',Namibia:'NA','Arabia Saudita':'SA','Emiratos Árabes Unidos':'AE',Turquía:'TR',Irlanda:'IE',
-  Luxemburgo:'LU',Andorra:'AD',Malta:'MT',Gibraltar:'GI',Puerto Rico:'PR','República Dominicana':'DO',Haití:'HT',Guayana Francesa:'GF',
+  Luxemburgo:'LU',Andorra:'AD',Malta:'MT',Gibraltar:'GI',Puerto Rico:'PR','República Dominicana':'DO',Haití:'HT','Guayana Francesa':'GF',
 };
 
 const countryCodeFromFlag = (flag: string) => {
