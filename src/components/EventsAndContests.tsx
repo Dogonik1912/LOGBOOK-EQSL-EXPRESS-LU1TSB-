@@ -242,7 +242,8 @@ export const EventsAndContests: React.FC = () => {
       const payload = await readApiPayload(response, 'No se pudo preparar el enlace de la publicación en este momento.');
       if (!response.ok || !payload?.token) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo preparar el enlace de la publicación.');
       const url = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin).toString();
-      const text = [item.title, item.organizer, formatDate(item.start_at), 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\n');
+      const utcNote = item.source_url?.includes('rcqsl.com/news.php?id=62') ? 'Fechas expresadas en UTC, no hora local. El reglamento no especifica horas diarias de activación.' : '';
+      const text = [item.title, item.organizer, formatDate(item.start_at), utcNote, 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\\n');
       if (navigator.share) await navigator.share({ title: item.title, text, url });
       else { await navigator.clipboard.writeText([text, url].join('\n')); window.alert('Enlace de LogBook copiado para compartir.'); }
     } catch (shareError) {
@@ -345,6 +346,7 @@ export const EventsAndContests: React.FC = () => {
                   </div>
                   <h3 className="text-sm font-black leading-snug">{item.title}</h3>
                   <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</p>
+                  {item.source_url?.includes('rcqsl.com/news.php?id=62') && <p className="mt-1 rounded-md border border-amber-300/30 bg-amber-300/10 px-2 py-1.5 text-[11px] font-semibold text-amber-100">HORARIO DE REFERENCIA: UTC (Tiempo Universal Coordinado), no hora local. El reglamento oficial solo indica las fechas 11–27 de diciembre; no publica horas diarias de activación. Los límites 00:00 y 23:59 UTC representan los días completos.</p>}
                   {(item.country_name || item.country_code || item.organizer) && <p className="mt-1 text-xs text-indigo-100/80">{[item.organizer, item.country_name && item.country_name.length > 2 ? item.country_name : (item.country_code ? countryLabel(item.country_code) : '')].filter(Boolean).join(' · ')}</p>}
                   {item.description && <details className="mt-1 text-xs text-white/80"><summary className="cursor-pointer font-semibold text-cyan-200">Ver descripción y detalles</summary><p className="mt-1 whitespace-pre-line leading-relaxed">{item.description}</p></details>}
                   <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-white/10 pt-2 text-[11px] font-bold">
