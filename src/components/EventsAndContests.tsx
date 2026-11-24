@@ -191,7 +191,7 @@ export const EventsAndContests: React.FC = () => {
     setSelectedType(type);
     const country = countryCodeForCallsign(identity.callsign, type);
     setHomeCountry(country);
-    setSelectedCountry(country);
+    setSelectedCountry(category === 'national' ? country : '');
     setForm((current) => ({ ...current, station_type: type, country_code: country }));
   };
 
@@ -252,6 +252,7 @@ export const EventsAndContests: React.FC = () => {
 
   const countryOptions = useMemo(() => {
     const values = new Set(countries);
+    Object.values(COUNTRY_CODES).forEach((code) => values.add(code));
     if (effectiveHomeCountry) values.add(effectiveHomeCountry);
     return [...values].sort().map((code) => ({ code, label: countryLabel(code) }));
   }, [countries, effectiveHomeCountry]);
@@ -272,8 +273,8 @@ export const EventsAndContests: React.FC = () => {
           </button>
         </div>
         <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Categoría de eventos">
-          <button type="button" onClick={() => setCategory('national')} aria-pressed={category === 'national'} className={`rounded-full px-4 py-2 text-sm font-black transition ${category === 'national' ? 'bg-amber-300 text-slate-950' : 'border border-white/20 bg-white/5 text-white'}`}>NACIONALES</button>
-          <button type="button" onClick={() => setCategory('international')} aria-pressed={category === 'international'} className={`rounded-full px-4 py-2 text-sm font-black transition ${category === 'international' ? 'bg-amber-300 text-slate-950' : 'border border-white/20 bg-white/5 text-white'}`}>INTERNACIONALES</button>
+          <button type="button" onClick={() => { setCategory('national'); setSelectedCountry(homeCountry); }} aria-pressed={category === 'national'} className={`rounded-full px-4 py-2 text-sm font-black transition ${category === 'national' ? 'bg-amber-300 text-slate-950' : 'border border-white/20 bg-white/5 text-white'}`}>NACIONALES</button>
+          <button type="button" onClick={() => { setCategory('international'); setSelectedCountry(''); }} aria-pressed={category === 'international'} className={`rounded-full px-4 py-2 text-sm font-black transition ${category === 'international' ? 'bg-amber-300 text-slate-950' : 'border border-white/20 bg-white/5 text-white'}`}>INTERNACIONALES</button>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {identities.length > 1 && (
