@@ -539,6 +539,11 @@ export const DistanceCalculator: React.FC = () => {
           </div>
         </>}
         <RegisteredGridStations origin={origin} destination={selected} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
+        <div className="sticky bottom-0 z-20 mt-4 -mx-4 border-t border-cyan-500/50 bg-slate-900/95 px-4 py-3 shadow-[0_-8px_20px_rgba(2,6,23,0.65)] backdrop-blur">
+          <button type="button" onClick={() => setOpen(false)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-300 bg-cyan-900 px-4 py-3 text-sm font-black tracking-wide text-white hover:bg-cyan-800">
+            <X className="h-5 w-5" /> CERRAR MEDIDOR
+          </button>
+        </div>
       </section>
     </div>}
   </>;
