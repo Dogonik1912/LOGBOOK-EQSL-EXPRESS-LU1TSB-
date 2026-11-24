@@ -13,6 +13,7 @@ const SUGAR_CONTESTS_URL = 'https://sugardelta.org/concursos.php';
 const SUGAR_ACTIVATIONS_URL = 'https://sugardelta.org/activaciones.php';
 const ALFA_TANGO_URL = 'https://www.alfatango.org/';
 const URE_CONTESTS_URL = 'https://www.ure.es/proximos-concursos/';
+const REF_CALENDAR_URL = 'https://concours.r-e-f.org/calendrier/calendrier.php?annee=';
 const DA_RC_XMAS_URL = 'https://da-rcxmas.org/es/';
 const RCQSL_TROPHY_URL = 'https://www.rcqsl.com/news.php?id=62';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
@@ -477,6 +478,66 @@ function parseUreContests(html) {
   return [...new Map(rows.map(row => [row.external_id, row])).values()];
 }
 
+
+function parseRefCalendar(html, year) {
+  const rows = [];
+  const tableRows = [...String(html || '').matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
+  const parseDateTime = (value, isEnd) => {
+    const match = String(value || '').match(/(\\d{1,2})\\/(\\d{1,2})\\/(20\\d{2})(?:\\s+(\\d{1,2}):(\\d{2}))?/);
+    if (!match) return null;
+    const day = Number(match[1]), month = Number(match[2]) - 1, y = Number(match[3]);
+    const hour = match[4] === undefined ? (isEnd ? 23 : 0) : Number(match[4]);
+    const minute = match[5] === undefined ? (isEnd ? 59 : 0) : Number(match[5]);
+    const date = new Date(Date.UTC(y, month, day, hour, minute, isEnd ? 59 : 0));
+    if (date.getUTCFullYear() !== y || date.getUTCMonth() !== month || date.getUTCDate() !== day) return null;
+    return date.toISOString();
+  };
+  for (const row of tableRows) {
+    const cells = [...row[1].matchAll(/<td\\b[^>]*>([\\s\\S]*?)<\\/td>/gi)].map(cell => cell[1]);
+    if (cells.length < 3) continue;
+    const title = plainText(cells[0]);
+    if (!title || /^concours$/i.test(title)) continue;
+    const startAt = parseDateTime(plainText(cells[1]), false);
+    const endAt = parseDateTime(plainText(cells[2]), true);
+    if (!startAt || !endAt || new Date(endAt) < new Date(startAt)) continue;
+    const startMs = new Date(startAt).getTime();
+    if (startMs < Date.now() - 30 * 86400000 || startMs > Date.now() + 400 * 86400000) continue;
+    // Les épreuves IARU sont régionales/internationales; les autres lignes du calendrier REF sont nationales françaises.
+    const international = /\\bIARU\\b/i.test(title);
+    const slug = title.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+    const linkMatch = String(cells[5] || cells[0]).match(/href=["']([^"']+)["']/i);
+    let rulesUrl = null;
+    if (linkMatch) {
+      try { rulesUrl = new URL(linkMatch[1], 'https://concours.r-e-f.org/').toString(); } catch { /* optional */ }
+    }
+    rows.push({
+      external_id: 'ref-calendar:' + slug + ':' + startAt.slice(0, 10),
+      event_kind: 'contest',
+      title: title.slice(0, 220),
+      description: 'Concurso publicado en el calendario oficial de la Commission des concours del Réseau des Émetteurs Français. Los horarios están expresados en UTC; consultá el reglamento oficial para categorías y condiciones.',
+      event_scope: international ? 'international' : 'national',
+      station_type: 'ham',
+      country_code: international ? null : 'FR',
+      country_name: international ? 'Internacional' : 'Francia',
+      organizer: 'Réseau des Émetteurs Français (REF) · Commission des concours',
+      start_at: startAt,
+      end_at: endAt,
+      timezone: 'UTC',
+      rules_url: rulesUrl,
+      source_url: REF_CALENDAR_URL + year,
+      source_name: 'REF · calendario oficial de concursos',
+      image_url: null,
+      status: 'published',
+      verified: true,
+      is_auto: true,
+      source_updated_at: null,
+      last_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  return rows;
+}
+
 function parseDaRcXmas(html) {
   const text = plainText(html);
   const startMatch = text.match(/(?:Starts?|Inicio|Comienza)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
@@ -778,6 +839,14 @@ export default async function handler(req, res) {
         } else if (source.source_key === 'lu4aao-activities') {
           const response = await fetchWithTimeout(LU4AAO_PROGRAMMED_URL, 'text/html');
           const rows = parseLu4aaoActivities(await response.text());
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'ref-ham-contests') {
+          const years = [new Date().getUTCFullYear(), new Date().getUTCFullYear() + 1];
+          const pages = await Promise.all(years.map(async (year) => {
+            const response = await fetchWithTimeout(REF_CALENDAR_URL + year, 'text/html');
+            return parseRefCalendar(await response.text(), year);
+          }));
+          const rows = pages.flat();
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'ure-ham-contests') {
           const response = await fetchWithTimeout(URE_CONTESTS_URL, 'text/html');
