@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const json = (res, status, body) => res.status(status).json(body);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -16,6 +17,43 @@ function safeUrl(value) {
     const url = new URL(String(value));
     return ['https:', 'http:'].includes(url.protocol) ? url.toString() : null;
   } catch { return null; }
+}
+
+function shareSignature(id, secret) {
+  return createHmac('sha256', secret).update('logbook-radio-event-share:' + id).digest('base64url');
+}
+
+function verifyShareToken(token, secret) {
+  const [id, supplied, extra] = String(token || '').split('.');
+  if (extra || !UUID_RE.test(id || '') || !supplied) return null;
+  const expected = Buffer.from(shareSignature(id, secret));
+  const actual = Buffer.from(supplied);
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
+  return id;
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+}
+
+function renderSharedEvent(event) {
+  const date = event.start_at ? new Date(event.start_at) : null;
+  const dateText = date && !Number.isNaN(date.getTime())
+    ? date.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC'
+    : 'Fecha pendiente de publicación oficial';
+  const endDate = event.end_at ? new Date(event.end_at) : null;
+  const endText = endDate && !Number.isNaN(endDate.getTime())
+    ? ' — ' + endDate.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '';
+  const official = [event.rules_url, event.source_url].map(safeUrl).find((url) => url && url.startsWith('https://'));
+  const officialLink = official
+    ? '<a class="official" href="' + escapeHtml(official) + '" target="_blank" rel="noopener noreferrer">Consultar bases / publicación oficial ↗</a>'
+    : '<p class="muted">El organizador todavía no publicó un enlace oficial.</p>';
+  const type = event.event_kind === 'contest' ? 'Concurso' : 'Evento';
+  const station = event.station_type === '11m' ? '11 metros' : event.station_type === 'both' ? 'Ambas modalidades' : 'Radioafición';
+  const country = event.country_name || event.country_code || (event.event_scope === 'international' ? 'Internacional' : '');
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>' + escapeHtml(event.title) + ' · LogBook eQSL EXPRESS</title><style>*{box-sizing:border-box}body{margin:0;padding:28px 14px;background:linear-gradient(135deg,#e0f2fe,#fff,#cffafe);font:16px system-ui,sans-serif;color:#0f172a}.wrap{max-width:720px;margin:auto}.brand{text-align:center;margin:0 auto 20px;color:#fff;background:#083344;border-radius:999px;padding:11px 18px;width:max-content;max-width:100%;font-weight:900}.card,.invite{background:#fff;border:1px solid #cbd5e1;border-radius:18px;padding:22px;box-shadow:0 8px 24px #0f172a12}.pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}.pill{border-radius:30px;padding:5px 11px;background:#e0e7ff;color:#3730a3;font-size:12px;font-weight:800}h1{font-size:clamp(22px,5vw,32px);line-height:1.15;margin:0 0 12px}.muted{color:#64748b;font-size:14px}.description{white-space:pre-wrap;line-height:1.6;color:#334155;margin:18px 0}.official,.register{display:inline-block;margin-top:14px;padding:12px 16px;border-radius:9px;text-decoration:none;font-weight:800}.official{background:#155e75;color:#fff}.invite{margin-top:18px;text-align:center;border-color:#a5f3fc}.register{background:#059669;color:#fff}.source{border-top:1px solid #e2e8f0;margin-top:20px;padding-top:12px;color:#64748b;font-size:12px}</style></head><body><main class="wrap"><header class="brand">◉ LogBook eQSL EXPRESS</header><article class="card"><div class="pills"><span class="pill">' + type + '</span><span class="pill">' + escapeHtml(event.event_scope === 'national' ? 'Nacional' : 'Internacional') + '</span><span class="pill">' + station + '</span></div><h1>' + escapeHtml(event.title) + '</h1><p class="muted">📅 ' + escapeHtml(dateText + endText) + '</p>' + (event.organizer || country ? '<p class="muted">' + escapeHtml([event.organizer, country].filter(Boolean).join(' · ')) + '</p>' : '') + (event.description ? '<p class="description">' + escapeHtml(event.description) + '</p>' : '') + officialLink + '<p class="source">Fuente: ' + escapeHtml(event.source_name || 'LogBook eQSL EXPRESS') + (event.verified ? ' · fuente verificada' : '') + '</p></article><section class="invite"><h2>Descubrí LogBook eQSL EXPRESS</h2><p class="muted">Este enlace permite consultar solamente la publicación compartida. Registrate para acceder a la agenda completa y a las demás funciones de la aplicación.</p><a class="register" href="/">Registrarme o entrar a la aplicación</a></section></main></body></html>';
 }
 
 async function authorize(req, supabase) {
@@ -47,7 +85,27 @@ export default async function handler(req, res) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
 
   try {
-    const supabase = config();
+    const { client: supabase, secret } = (() => {
+      const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\\/$/, '');
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+      if (!url || !key) throw new Error('EVENTS_NOT_CONFIGURED');
+      return { client: createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }), secret: key };
+    })();
+
+    if (req.method === 'GET' && req.query?.share) {
+      const sharedId = verifyShareToken(req.query.share, secret);
+      if (!sharedId) return res.status(404).send(renderSharedEvent({ title: 'Enlace no válido', event_scope: 'international', event_kind: 'event', station_type: 'ham' }));
+      const { data: sharedEvent, error: shareError } = await supabase.from('radio_events')
+        .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,verified')
+        .eq('id', sharedId).eq('status', 'published').maybeSingle();
+      if (shareError) throw shareError;
+      if (!sharedEvent) return res.status(404).send(renderSharedEvent({ title: 'Esta publicación ya no está disponible', event_scope: 'international', event_kind: 'event', station_type: 'ham' }));
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+      return res.status(200).send(renderSharedEvent(sharedEvent));
+    }
+
     const identity = await authorize(req, supabase);
     if (identity.error) return json(res, identity.error.status, { error: identity.error.message });
 
@@ -90,8 +148,16 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      if (!identity.isAdmin) return json(res, 403, { error: 'Solo el administrador puede publicar eventos.' });
       const body = req.body || {};
+      if (body.action === 'share') {
+        const id = String(body.id || '').trim();
+        if (!UUID_RE.test(id)) return json(res, 400, { error: 'Identificador de publicación no válido.' });
+        const { data: event, error: eventError } = await supabase.from('radio_events').select('id').eq('id', id).eq('status', 'published').maybeSingle();
+        if (eventError) throw eventError;
+        if (!event) return json(res, 404, { error: 'La publicación ya no está disponible.' });
+        return json(res, 200, { token: id + '.' + shareSignature(id, secret) });
+      }
+      if (!identity.isAdmin) return json(res, 403, { error: 'Solo el administrador puede publicar eventos.' });
       const title = String(body.title || '').trim().slice(0, 220);
       const scope = String(body.event_scope || '');
       const stationType = String(body.station_type || '');
