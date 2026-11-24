@@ -275,7 +275,9 @@ export const EventsAndContests: React.FC = () => {
   }, [countries, effectiveHomeCountry]);
 
   return (
-    <section className="mb-3">\n      <button type="button" onClick={() => setIsExpanded((value) => !value)} aria-expanded={isExpanded} className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-between gap-1.5 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300 sm:text-sm">\n        <span className="inline-flex items-center gap-2"><CalendarDays className="h-5 w-5 shrink-0" /> EVENTOS Y CONCURSOS</span>\n        <ChevronDown className={"h-4 w-4 shrink-0 transition-transform " + (isExpanded ? "rotate-180" : "")} />\n      </button>\n      {isExpanded && <div className="mt-2 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white shadow-lg">
+    <section className="mb-3">
+      <button type="button" onClick={() => setIsExpanded((value) => !value)} aria-expanded={isExpanded} className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-between gap-1.5 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300 sm:text-sm">\n        <span className="inline-flex items-center gap-2"><CalendarDays className="h-5 w-5 shrink-0" /> EVENTOS Y CONCURSOS</span>\n        <ChevronDown className={"h-4 w-4 shrink-0 transition-transform " + (isExpanded ? "rotate-180" : "")} />\n      </button>
+      {isExpanded && <div className="mt-2 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white shadow-lg">
       <div className="border-b border-white/10 bg-white/5 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
