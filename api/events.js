@@ -54,8 +54,9 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const category = String(req.query?.category || 'national');
       const stationType = String(req.query?.station_type || 'ham');
+      const eventKind = String(req.query?.event_kind || 'event');
       const country = String(req.query?.country || '').trim().toUpperCase();
-      if (!['national', 'international'].includes(category) || !['ham', '11m'].includes(stationType)) {
+      if (!['national', 'international'].includes(category) || !['ham', '11m'].includes(stationType) || !['event', 'contest'].includes(eventKind)) {
         return json(res, 400, { error: 'Filtro de categoría o modalidad no válido.' });
       }
       if (country && !/^[A-Z]{2}$/.test(country)) return json(res, 400, { error: 'Código de país no válido.' });
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
         .eq('status', 'published')
         .in('station_type', [stationType, 'both'])
         .eq('event_scope', category)
+        .eq('event_kind', eventKind)
         .or('start_at.is.null,start_at.gte.' + new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('start_at', { ascending: true, nullsFirst: false })
         .limit(200);
@@ -93,8 +95,9 @@ export default async function handler(req, res) {
       const title = String(body.title || '').trim().slice(0, 220);
       const scope = String(body.event_scope || '');
       const stationType = String(body.station_type || '');
+      const eventKind = String(body.event_kind || 'event');
       const country = String(body.country_code || '').trim().toUpperCase();
-      if (title.length < 3 || !['national', 'international'].includes(scope) || !['ham', '11m'].includes(stationType)) {
+      if (title.length < 3 || !['national', 'international'].includes(scope) || !['ham', '11m'].includes(stationType) || !['event', 'contest'].includes(eventKind)) {
         return json(res, 400, { error: 'Completá el título, la categoría y la modalidad del evento.' });
       }
       if (scope === 'national' && !/^[A-Z]{2}$/.test(country)) {
@@ -109,6 +112,7 @@ export default async function handler(req, res) {
         title,
         description: String(body.description || '').trim().slice(0, 5000) || null,
         event_scope: scope,
+        event_kind: eventKind,
         station_type: stationType,
         country_code: scope === 'national' ? country : null,
         country_name: scope === 'national' ? String(body.country_name || country).slice(0, 100) : 'Internacional',

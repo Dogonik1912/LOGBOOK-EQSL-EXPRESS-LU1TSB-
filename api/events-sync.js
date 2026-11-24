@@ -11,6 +11,8 @@ const EK_HOME_URL = 'https://ekdxgroup.com/';
 const SUGAR_CONTESTS_URL = 'https://sugardelta.org/concursos.php';
 const SUGAR_ACTIVATIONS_URL = 'https://sugardelta.org/activaciones.php';
 const ALFA_TANGO_URL = 'https://www.alfatango.org/';
+const URE_CONTESTS_URL = 'https://www.ure.es/proximos-concursos/';
+const DA_RC_XMAS_URL = 'https://da-rcxmas.org/';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
 
 function config() {
@@ -66,6 +68,7 @@ function contestClockRows(payload) {
     const uid = String(item.uid || (String(item.contest_id || item.name || 'contest') + '-' + startAt)).slice(0, 240);
     rows.push({
       external_id: 'contestclock:' + uid,
+      event_kind: 'contest',
       title: String(item.name || item.contest_id || 'Concurso de radioafición').slice(0, 220),
       description: details || null,
       event_scope: scope,
@@ -133,6 +136,7 @@ function rcaCalendarRows(html) {
     const anchor = raw.match(/href=["'](https?:\/\/[^"']+)["']/i);
     rows.push({
       external_id: 'rca-calendar:' + slug + ':' + year,
+      event_kind: /contest|concurso|championship|copa|trofeo/i.test(title) ? 'contest' : 'event',
       title,
       description: 'Actividad publicada en el calendario oficial del Radio Club Argentino. Confirmá horarios, condiciones y posibles cambios en la publicación original.',
       event_scope: international ? 'international' : 'national',
@@ -178,6 +182,7 @@ function cqwwRows(html) {
     if (end.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000 || start.getTime() > Date.now() + 370 * 24 * 60 * 60 * 1000) continue;
     rows.push({
       external_id: 'cqww-' + definition.mode.toLowerCase() + '-' + year,
+      event_kind: 'contest',
       title: 'CQ World Wide DX Contest ' + definition.mode + ' ' + year,
       description: 'Concurso mundial de radioafición. Horario oficial: desde las 00:00 UTC del sábado hasta las 23:59:59 UTC del domingo. Consultá las bases oficiales para bandas, categorías y condiciones de participación.',
       event_scope: 'international',
@@ -219,9 +224,10 @@ function validRange(year, month, startDay, endDay) {
   return { start_at: start.toISOString(), end_at: end.toISOString() };
 }
 
-function make11mEvent({ id, title, description, organizer, sourceUrl, sourceName, startAt, endAt, rulesUrl }) {
+function make11mEvent({ id, title, description, organizer, sourceUrl, sourceName, startAt, endAt, rulesUrl, eventKind = 'event' }) {
   return {
     external_id: id.slice(0, 240),
+    event_kind: eventKind,
     title: title.slice(0, 220),
     description: description ? description.slice(0, 5000) : null,
     event_scope: 'international',
@@ -307,6 +313,7 @@ function parseRomeoCharlieContests(html) {
       organizer: 'Romeo Charlie DX Group',
       sourceUrl: RC_CONTESTS_URL,
       sourceName: 'Romeo Charlie · concursos y trofeos oficiales',
+      eventKind: 'contest',
       startAt: range.start_at,
       endAt: range.end_at,
     }));
@@ -337,7 +344,7 @@ function parseRomeoCharlie(html) {
   return rows;
 }
 
-function parseSugarDelta(html, sourceUrl, sourceName) {
+function parseSugarDelta(html, sourceUrl, sourceName, eventKind = 'event') {
   const rows = [];
   for (const block of eventBlocks(html)) {
     const text = plainText(block);
@@ -353,6 +360,7 @@ function parseSugarDelta(html, sourceUrl, sourceName) {
       organizer: 'Sugar Delta International DX Group',
       sourceUrl,
       sourceName,
+      eventKind,
       startAt: range.start_at,
       endAt: range.end_at,
     }));
@@ -400,12 +408,70 @@ function parseAlfaTango(html) {
       organizer: 'Alfa Tango Worldwide DX Group',
       sourceUrl: ALFA_TANGO_URL,
       sourceName: 'Alfa Tango · calendario oficial',
+      eventKind: /contest|sprint|award/i.test(title) ? 'contest' : 'event',
       startAt: range.start_at,
       endAt: range.end_at,
       rulesUrl: href,
     }));
   }
   return rows;
+}
+
+
+function parseUreContests(html) {
+  const rows = [];
+  const anchors = [...String(html || '').matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+  for (const match of anchors) {
+    const title = plainText(match[2]).trim();
+    if (!title || title.length < 3) continue;
+    const before = plainText(String(html).slice(Math.max(0, match.index - 320), match.index));
+    const date = before.match(/(\d{1,2})(?:\s*al\s*(\d{1,2}))?\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(20\d{2})/i);
+    if (!date) continue;
+    const month = MONTHS[date[3].toLowerCase()];
+    if (month === undefined) continue;
+    const year = Number(date[4]), startDay = Number(date[1]), endDay = Number(date[2] || date[1]);
+    const range = normalizeDateRange(year, month, startDay, year, month, endDay);
+    if (!range) continue;
+    const national = /nacional|ure|sufijos|fon[ií]a|invierno v-?uhf/i.test(title);
+    const href = match[1].startsWith('http') ? match[1] : new URL(match[1], URE_CONTESTS_URL).toString();
+    const slug = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 90);
+    rows.push({
+      external_id: 'ure-contest:' + slug + ':' + range.start_at.slice(0, 10),
+      event_kind: 'contest',
+      title: title.slice(0, 220),
+      description: 'Concurso incluido en el calendario público de la Unión de Radioaficionados Españoles. Consultá las bases oficiales del organizador para confirmar bandas, modos, horarios y elegibilidad.',
+      event_scope: national ? 'national' : 'international',
+      station_type: 'ham',
+      country_code: national ? 'ES' : null,
+      country_name: national ? 'España' : 'Internacional',
+      organizer: 'Unión de Radioaficionados Españoles (URE) / organizador del concurso',
+      start_at: range.start_at, end_at: range.end_at, timezone: 'UTC',
+      rules_url: href, source_url: URE_CONTESTS_URL, source_name: 'URE · próximos concursos oficiales',
+      image_url: null, status: 'published', verified: true, is_auto: true,
+      source_updated_at: null, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    });
+  }
+  return [...new Map(rows.map(row => [row.external_id, row])).values()];
+}
+
+function parseDaRcXmas(html) {
+  const text = plainText(html);
+  const match = text.match(/Contest period:\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
+  if (!match) return [];
+  const monthStart = EN_MONTHS[match[2].toLowerCase()], monthEnd = EN_MONTHS[match[5].toLowerCase()];
+  if (monthStart === undefined || monthEnd === undefined) return [];
+  const range = normalizeDateRange(Number(match[3]), monthStart, Number(match[1]), Number(match[6]), monthEnd, Number(match[4]));
+  if (!range) return [];
+  return [{
+    external_id: 'da-rc-xmas:' + range.start_at.slice(0, 10), event_kind: 'contest',
+    title: 'DA-RC Christmas Contest 2026',
+    description: 'Concurso internacional de 11 metros organizado por Dx Adventure Radio Club Delta-Alfa. La web oficial ofrece bases, activadores y seguimiento de clasificaciones.',
+    event_scope: 'international', station_type: '11m', country_code: null, country_name: 'Internacional',
+    organizer: 'Dx Adventure Radio Club Delta-Alfa', start_at: range.start_at, end_at: range.end_at, timezone: 'UTC',
+    rules_url: DA_RC_XMAS_URL, source_url: DA_RC_XMAS_URL, source_name: 'DA-RC Xmas Contest · sitio oficial',
+    image_url: null, status: 'published', verified: true, is_auto: true, source_updated_at: null,
+    last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }];
 }
 
 function parseCqEleven(html) {
@@ -422,6 +488,7 @@ function parseCqEleven(html) {
   if (start.getUTCFullYear() !== year || start.getUTCMonth() !== month || end.getUTCMonth() !== month || end < start) return null;
   return {
     external_id: 'cq-eleven-ww:' + year,
+    event_kind: 'contest',
     title: 'Eleven World Wide Contest ' + year,
     description: 'Concurso mundial dedicado exclusivamente a 11 metros. La organización indica una duración de 48 horas, desde las 00:00 UTC del sábado hasta las 23:59 UTC del domingo. Consultá siempre las bases oficiales antes de participar.',
     event_scope: 'international',
@@ -537,7 +604,7 @@ export default async function handler(req, res) {
             fetchWithTimeout(SUGAR_ACTIVATIONS_URL, 'text/html'),
           ]);
           const rows = [
-            ...parseSugarDelta(await contestsResponse.text(), SUGAR_CONTESTS_URL, 'Sugar Delta · concursos oficiales'),
+            ...parseSugarDelta(await contestsResponse.text(), SUGAR_CONTESTS_URL, 'Sugar Delta · concursos oficiales', 'contest'),
             ...parseSugarDelta(await activationsResponse.text(), SUGAR_ACTIVATIONS_URL, 'Sugar Delta · activaciones oficiales'),
           ];
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
@@ -558,6 +625,14 @@ export default async function handler(req, res) {
           const response = await fetchWithTimeout(RCA_CALENDAR_URL, 'text/html');
           const html = await response.text();
           const rows = rcaCalendarRows(html);
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'ure-ham-contests') {
+          const response = await fetchWithTimeout(URE_CONTESTS_URL, 'text/html');
+          const rows = parseUreContests(await response.text());
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'da-rc-xmas-11m') {
+          const response = await fetchWithTimeout(DA_RC_XMAS_URL, 'text/html');
+          const rows = parseDaRcXmas(await response.text());
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'cq-eleven-ww') {
           const response = await fetchWithTimeout(CQ11WW_URL, 'text/html');

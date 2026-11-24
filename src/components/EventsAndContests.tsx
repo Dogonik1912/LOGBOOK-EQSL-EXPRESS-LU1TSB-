@@ -5,12 +5,14 @@ import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from 
 
 type StationType = 'ham' | '11m';
 type EventScope = 'national' | 'international';
+type EventKind = 'event' | 'contest';
 type StationIdentity = { callsign: string; identity_type: StationType; is_primary?: boolean };
 type RadioEvent = {
   id: string;
   title: string;
   description: string | null;
   event_scope: EventScope;
+  event_kind: EventKind;
   station_type: StationType | 'both';
   country_code: string | null;
   country_name: string | null;
@@ -68,6 +70,7 @@ export const EventsAndContests: React.FC = () => {
   const [identities, setIdentities] = useState<StationIdentity[]>([]);
   const [selectedType, setSelectedType] = useState<StationType>('ham');
   const [category, setCategory] = useState<EventScope>('national');
+  const [selectedKind, setSelectedKind] = useState<EventKind>('event');
   const [homeCountry, setHomeCountry] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [countries, setCountries] = useState<string[]>([]);
@@ -80,7 +83,7 @@ export const EventsAndContests: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [form, setForm] = useState({
-    title: '', description: '', event_scope: 'national' as EventScope, station_type: 'ham' as StationType,
+    title: '', description: '', event_scope: 'national' as EventScope, event_kind: 'event' as EventKind, station_type: 'ham' as StationType,
     country_code: '', organizer: '', start_at: '', end_at: '', rules_url: '', image_url: '',
   });
 
@@ -141,6 +144,7 @@ export const EventsAndContests: React.FC = () => {
     try {
       const params = new URLSearchParams({
         category,
+        event_kind: selectedKind,
         station_type: selectedType,
         country: category === 'national' ? (selectedCountry || effectiveHomeCountry) : selectedCountry,
       });
@@ -159,7 +163,7 @@ export const EventsAndContests: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, effectiveHomeCountry, selectedCall, selectedCountry, selectedType, token]);
+  }, [category, effectiveHomeCountry, selectedCall, selectedCountry, selectedKind, selectedType, token]);
 
   useEffect(() => { void loadIdentity(); }, [loadIdentity]);
   useEffect(() => { void loadEvents(); }, [loadEvents]);
@@ -252,7 +256,7 @@ export const EventsAndContests: React.FC = () => {
   };
 
   const shareAgenda = async () => {
-    const heading = 'EVENTOS Y CONCURSOS · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
+    const heading = (selectedKind === 'event' ? 'EVENTOS' : 'CONCURSOS') + ' · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
     const lines = events.map((item) => {
       const dates = [formatDate(item.start_at), item.end_at ? formatDate(item.end_at) : ''].filter(Boolean).join(' — ');
       const country = item.country_name || (item.country_code ? countryLabel(item.country_code) : '');
@@ -314,6 +318,10 @@ export const EventsAndContests: React.FC = () => {
             </select>
           </label>
         </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-black/20 p-1" role="group" aria-label="Tipo de publicación">
+          <button type="button" onClick={() => setSelectedKind('event')} aria-pressed={selectedKind === 'event'} className={`min-h-10 rounded-md px-2 py-2 text-xs font-black transition ${selectedKind === 'event' ? 'bg-amber-300 text-slate-950' : 'text-white hover:bg-white/10'}`}>EVENTOS</button>
+          <button type="button" onClick={() => setSelectedKind('contest')} aria-pressed={selectedKind === 'contest'} className={`min-h-10 rounded-md px-2 py-2 text-xs font-black transition ${selectedKind === 'contest' ? 'bg-amber-300 text-slate-950' : 'text-white hover:bg-white/10'}`}>CONCURSOS</button>
+        </div>
         <p className="mt-2 text-[11px] text-indigo-100/65">
           {selectedCall ? `Identificación: ${selectedCall} · ${selectedType === '11m' ? '11 metros' : 'Radioaficionado'}` : 'Identificación no disponible'}
           {homeCountry ? ` · País inicial: ${countryLabel(homeCountry)}` : ''}
@@ -326,7 +334,7 @@ export const EventsAndContests: React.FC = () => {
         {loading ? <div className="py-8 text-center text-sm text-indigo-100">Consultando eventos y concursos…</div>
           : events.length === 0 ? <div className="rounded-xl border border-dashed border-white/20 bg-black/15 px-4 py-8 text-center">
             <Globe2 className="mx-auto mb-2 h-8 w-8 text-indigo-200/70" />
-            <p className="font-bold">Todavía no hay publicaciones para esta selección.</p>
+            <p className="font-bold">Todavía no hay {selectedKind === 'event' ? 'eventos' : 'concursos'} confirmados para esta selección.</p>
             <p className="mt-1 text-xs text-indigo-100/65">Probá otro país o la agenda internacional. Las novedades se incorporan con las próximas actualizaciones automáticas.</p>
           </div>
           : <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
@@ -336,6 +344,7 @@ export const EventsAndContests: React.FC = () => {
                 <div className="p-2">
                   <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[9px] font-black uppercase tracking-wide">
                     <span className="rounded-full bg-indigo-300/15 px-2 py-1 text-indigo-100">{item.event_scope === 'national' ? 'Nacional' : 'Internacional'}</span>
+                    <span className="rounded-full bg-amber-300/15 px-2 py-1 text-amber-100">{item.event_kind === 'contest' ? 'Concurso' : 'Evento'}</span>
                     <span className="rounded-full bg-emerald-300/15 px-2 py-1 text-emerald-100">{item.station_type === '11m' ? '11 metros' : item.station_type === 'both' ? 'Ambas modalidades' : 'Radioafición'}</span>
                     {item.verified && <span className="inline-flex items-center gap-1 text-emerald-200"><ShieldCheck className="h-3 w-3" /> Fuente verificada</span>}
                   </div>
@@ -362,6 +371,7 @@ export const EventsAndContests: React.FC = () => {
             <input required maxLength={220} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Nombre del evento o concurso" className="rounded-lg bg-slate-950/80 px-3 py-2 text-sm sm:col-span-2" />
             <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Descripción, bases resumidas y detalles" rows={3} className="rounded-lg bg-slate-950/80 px-3 py-2 text-sm sm:col-span-2" />
             <select value={form.event_scope} onChange={(event) => setForm({ ...form, event_scope: event.target.value as EventScope })} className="rounded-lg bg-slate-950 px-3 py-2 text-sm"><option value="national">Nacional</option><option value="international">Internacional</option></select>
+            <select value={form.event_kind} onChange={(event) => setForm({ ...form, event_kind: event.target.value as EventKind })} className="rounded-lg bg-slate-950 px-3 py-2 text-sm"><option value="event">Evento / Activación</option><option value="contest">Concurso</option></select>
             <select value={form.station_type} onChange={(event) => setForm({ ...form, station_type: event.target.value as StationType })} className="rounded-lg bg-slate-950 px-3 py-2 text-sm"><option value="ham">Radioaficionado</option><option value="11m">11 metros</option></select>
             {form.event_scope === 'national' && <input required maxLength={2} value={form.country_code} onChange={(event) => setForm({ ...form, country_code: event.target.value.toUpperCase() })} placeholder="País ISO (AR, ES, BR…)" className="rounded-lg bg-slate-950 px-3 py-2 text-sm" />}
             <input value={form.organizer} onChange={(event) => setForm({ ...form, organizer: event.target.value })} placeholder="Organizador" className="rounded-lg bg-slate-950 px-3 py-2 text-sm" />
