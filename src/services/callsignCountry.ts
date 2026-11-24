@@ -229,7 +229,7 @@ const FLAGS: Record<string, string> = {
   'Zimbabue':'🇿🇼','Nepal':'🇳🇵','Yemen':'🇾🇪','Nigeria':'🇳🇬','Namibia':'🇳🇦','Marruecos':'🇲🇦',
   'Ghana':'🇬🇭','Zambia':'🇿🇲','Surinam':'🇸🇷','Samoa Americana':'🇦🇸','Guam':'🇬🇺','Tanzania':'🇹🇿',
   'Libia':'🇱🇾','Malta':'🇲🇹','Emiratos Árabes Unidos':'🇦🇪','Mongolia':'🇲🇳','Tonga':'🇹🇴','Andorra':'🇦🇩',
-  'Samoa':'🇼🇸','Hong Kong':'🇭🇰'
+  'Samoa':'🇼🇸','Hong Kong':'🇭🇰','Indonesia':'🇮🇩'
 };
 
 const HAM_PREFIX_COUNTRY: Record<string, string> = {
