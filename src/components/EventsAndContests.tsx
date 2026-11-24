@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Globe2, MapPin, RefreshCw, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck } from 'lucide-react';
+import { CalendarDays, Globe2, MapPin, RefreshCw, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
@@ -64,6 +64,7 @@ const formatDate = (value: string | null) => {
 };
 
 export const EventsAndContests: React.FC = () => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [identities, setIdentities] = useState<StationIdentity[]>([]);
   const [selectedType, setSelectedType] = useState<StationType>('ham');
   const [category, setCategory] = useState<EventScope>('national');
@@ -250,6 +251,22 @@ export const EventsAndContests: React.FC = () => {
     }
   };
 
+  const shareAgenda = async () => {
+    const heading = 'EVENTOS Y CONCURSOS · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
+    const lines = events.map((item) => {
+      const dates = [formatDate(item.start_at), item.end_at ? formatDate(item.end_at) : ''].filter(Boolean).join(' — ');
+      const country = item.country_name || (item.country_code ? countryLabel(item.country_code) : '');
+      const source = item.rules_url || item.source_url || '';
+      return [item.title, dates, [item.organizer, country].filter(Boolean).join(' · '), source].filter(Boolean).join('\n');
+    });
+    const message = [heading, selectedCountry ? 'País: ' + countryLabel(selectedCountry) : 'País: todos', lines.length ? lines.join('\n\n') : 'No hay eventos confirmados para los filtros seleccionados en este momento.', window.location.href].join('\n\n');
+    try {
+      if (navigator.share) await navigator.share({ title: 'Eventos y Concursos · LogBook eQSL EXPRESS', text: message });
+      else { await navigator.clipboard.writeText(message); window.alert('Agenda copiada para compartir.'); }
+    } catch (shareError) {
+      if (shareError && shareError.name !== 'AbortError') setError('No se pudo compartir la agenda desde este dispositivo.');
+    }
+  };
   const countryOptions = useMemo(() => {
     const values = new Set(countries);
     Object.values(COUNTRY_CODES).forEach((code) => values.add(code));
@@ -258,13 +275,13 @@ export const EventsAndContests: React.FC = () => {
   }, [countries, effectiveHomeCountry]);
 
   return (
-    <section className="mb-4 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white shadow-lg">
+    <section className="mb-3">\n      <button type="button" onClick={() => setIsExpanded((value) => !value)} aria-expanded={isExpanded} className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-between gap-1.5 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300 sm:text-sm">\n        <span className="inline-flex items-center gap-2"><CalendarDays className="h-5 w-5 shrink-0" /> EVENTOS Y CONCURSOS</span>\n        <ChevronDown className={"h-4 w-4 shrink-0 transition-transform " + (isExpanded ? "rotate-180" : "")} />\n      </button>\n      {isExpanded && <div className="mt-2 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white shadow-lg">
       <div className="border-b border-white/10 bg-white/5 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="rounded-xl bg-indigo-400/15 p-2 text-indigo-200"><CalendarDays className="h-6 w-6" /></span>
             <div>
-              <h2 className="text-lg font-black tracking-wide sm:text-xl">EVENTOS Y CONCURSOS</h2>
+              <h2 className="text-sm font-black tracking-wide sm:text-base">AGENDA DE LA COMUNIDAD</h2>
               <p className="text-xs text-indigo-100/75">Agenda de radioafición y 11 metros · información con fuentes</p>
             </div>
           </div>
@@ -307,26 +324,26 @@ export const EventsAndContests: React.FC = () => {
             <p className="font-bold">Todavía no hay publicaciones para esta selección.</p>
             <p className="mt-1 text-xs text-indigo-100/65">Probá otro país o la agenda internacional. Las novedades se incorporan con las próximas actualizaciones automáticas.</p>
           </div>
-          : <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          : <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
             {events.map((item) => (
-              <article key={item.id} className="overflow-hidden rounded-xl border border-white/15 bg-white/[0.07]">
-                {item.image_url && <img src={item.image_url} alt="" loading="lazy" className="h-40 w-full object-cover" referrerPolicy="no-referrer" />}
+              <article key={item.id} className="overflow-hidden rounded-lg border border-white/15 bg-white/[0.07]">
+                {item.image_url && <img src={item.image_url} alt="" loading="lazy" className="h-20 w-full object-cover" referrerPolicy="no-referrer" />}
                 <div className="p-3">
                   <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wide">
                     <span className="rounded-full bg-indigo-300/15 px-2 py-1 text-indigo-100">{item.event_scope === 'national' ? 'Nacional' : 'Internacional'}</span>
                     <span className="rounded-full bg-emerald-300/15 px-2 py-1 text-emerald-100">{item.station_type === '11m' ? '11 metros' : item.station_type === 'both' ? 'Ambas modalidades' : 'Radioafición'}</span>
                     {item.verified && <span className="inline-flex items-center gap-1 text-emerald-200"><ShieldCheck className="h-3 w-3" /> Fuente verificada</span>}
                   </div>
-                  <h3 className="text-base font-black leading-snug">{item.title}</h3>
+                  <h3 className="text-sm font-black leading-snug">{item.title}</h3>
                   <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</p>
                   {(item.country_name || item.country_code || item.organizer) && <p className="mt-1 text-xs text-indigo-100/80">{[item.organizer, item.country_name && item.country_name.length > 2 ? item.country_name : (item.country_code ? countryLabel(item.country_code) : '')].filter(Boolean).join(' · ')}</p>}
-                  {item.description && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/85">{item.description}</p>}
-                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3 text-xs font-bold">
+                  {item.description && <details className="mt-1 text-xs text-white/80"><summary className="cursor-pointer font-semibold text-cyan-200">Ver descripción y detalles</summary><p className="mt-1 whitespace-pre-line leading-relaxed">{item.description}</p></details>}
+                  <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-white/10 pt-2 text-[11px] font-bold">
                     {(item.rules_url || item.source_url) && <a href={item.rules_url || item.source_url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Bases / información oficial <ExternalLink className="h-3 w-3" /></a>}
                     <button type="button" onClick={() => void shareEvent(item)} className="inline-flex items-center gap-1 text-emerald-200"><Share2 className="h-3 w-3" /> Compartir</button>
                     {isAdmin && <button type="button" onClick={() => void deleteEvent(item.id)} className="inline-flex items-center gap-1 text-rose-200"><Trash2 className="h-3 w-3" /> Borrar</button>}
                   </div>
-                  <p className="mt-2 text-[10px] text-indigo-100/55">Fuente: {item.source_name || 'Publicación de administración'}{item.is_auto ? ' · actualización automática' : ''}</p>
+                  <p className="mt-1 text-[9px] text-indigo-100/55">Fuente: {item.source_name || 'Publicación de administración'}{item.is_auto ? ' · actualización automática' : ''}</p>
                 </div>
               </article>
             ))}
@@ -355,7 +372,11 @@ export const EventsAndContests: React.FC = () => {
           <span className="inline-flex items-center gap-1"><RadioTower className="h-3 w-3" /> Datos por servidor · no requiere abrir la app para actualizar</span>
           <span>{lastUpdated ? `Última actualización: ${new Date(lastUpdated).toLocaleString()}` : 'Actualización pendiente'}</span>
         </div>
-      </div>
+        <div className="mt-3 flex flex-col-reverse gap-2 border-t border-white/10 pt-3 sm:flex-row">
+          <button type="button" onClick={() => setIsExpanded(false)} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15">CERRAR</button>
+          <button type="button" onClick={() => void shareAgenda()} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 text-xs font-black text-white shadow-sm hover:bg-emerald-600"><Share2 className="h-4 w-4" /> COMPARTIR AGENDA</button>
+        </div>
+      </div>}
     </section>
   );
 };
