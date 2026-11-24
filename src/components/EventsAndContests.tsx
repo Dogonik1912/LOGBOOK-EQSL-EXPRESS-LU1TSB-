@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Globe2, MapPin, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
+import { getInitialAppLanguage } from '../services/appLanguage';
 
 type StationType = 'ham' | '11m';
 type EventScope = 'national' | 'international';
@@ -241,7 +242,10 @@ export const EventsAndContests: React.FC = () => {
       });
       const payload = await readApiPayload(response, 'No se pudo preparar el enlace de la publicación en este momento.');
       if (!response.ok || !payload?.token) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo preparar el enlace de la publicación.');
-      const url = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin).toString();
+      const language = getInitialAppLanguage();
+      const urlObject = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin);
+      urlObject.searchParams.set('lang', language);
+      const url = urlObject.toString();
       const utcNote = item.source_url?.includes('rcqsl.com/news.php?id=62') ? 'Fechas expresadas en UTC, no hora local. El reglamento no especifica horas diarias de activación.' : '';
       const text = [item.title, item.organizer, formatDate(item.start_at), utcNote, 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\\n');
       if (navigator.share) await navigator.share({ title: item.title, text, url });
@@ -252,14 +256,22 @@ export const EventsAndContests: React.FC = () => {
   };
 
   const shareAgenda = async () => {
-    const heading = (selectedKind === 'event' ? 'EVENTOS' : 'CONCURSOS') + ' · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
+    const language = getInitialAppLanguage();
+    const english = language === 'en';
+    const heading = english
+      ? (selectedKind === 'event' ? 'EVENTS' : 'CONTESTS') + ' · ' + (selectedType === '11m' ? '11 METERS' : 'AMATEUR RADIO') + ' · ' + (category === 'national' ? 'NATIONAL' : 'INTERNATIONAL')
+      : (selectedKind === 'event' ? 'EVENTOS' : 'CONCURSOS') + ' · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
     const url = new URL('/', window.location.origin);
     url.searchParams.set('open_events', '1');
+    url.searchParams.set('lang', language);
     url.searchParams.set('event_kind', selectedKind);
     url.searchParams.set('station_type', selectedType);
     url.searchParams.set('category', category);
     if (selectedCountry) url.searchParams.set('country', selectedCountry);
-    const message = [heading, 'Consultá la agenda dentro de LogBook eQSL EXPRESS. Para acceder a las publicaciones y sus enlaces oficiales, ingresá o registrate en la aplicación.', url.toString()].join('\n\n');
+    const invitation = english
+      ? 'View the calendar in LogBook eQSL EXPRESS. Sign in or register to access the event listings and their official links.'
+      : 'Consultá la agenda dentro de LogBook eQSL EXPRESS. Para acceder a las publicaciones y sus enlaces oficiales, ingresá o registrate en la aplicación.';
+    const message = [heading, invitation, url.toString()].join('\n\n');
     try {
       if (navigator.share) await navigator.share({ title: 'Eventos y Concursos · LogBook eQSL EXPRESS', text: message });
       else { await navigator.clipboard.writeText(message); window.alert('Agenda copiada para compartir.'); }
