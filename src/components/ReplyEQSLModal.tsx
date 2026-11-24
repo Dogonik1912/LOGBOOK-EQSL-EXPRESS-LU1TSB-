@@ -25,7 +25,16 @@ import {
   Palette
 } from 'lucide-react';
 
-const isCBStationBand = (value?: string) => /11\\s*metros|11m|27\\s*mhz|banda ciudadana|\\bcb\\b/i.test(String(value || ''));
+const isCBStationBand = (value?: string) => /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(value || ''));
+const isCBStationCallsign = (value: string) => /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/.test(String(value || '').trim().toUpperCase());
+const isHamStationCallsign = (value: string) => /^[A-Z0-9]{1,3}[0-9][A-Z]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(String(value || '').trim().toUpperCase());
+const hasMatchingStationCategory = (from: string, to: string, bandValue: string, frequencyValue: string) => {
+  const cb = isCBStationBand(bandValue);
+  const validType = (value: string) => cb ? isCBStationCallsign(value) : isHamStationCallsign(value);
+  const frequencyNumber = Number(String(frequencyValue || '').trim().replace(',', '.'));
+  const is11mFrequency = Number.isFinite(frequencyNumber) && frequencyNumber >= 26.965 && frequencyNumber <= 27.999;
+  return validType(from) && validType(to) && (cb ? is11mFrequency : !is11mFrequency);
+};
 
 const REPLY_EQSL_THEMES = [
   { id: 'navy', name: 'Clásico azul', start: '#0f172a', mid: '#1e293b', end: '#090d16', accent: '#f59e0b', motif: '📡' },
@@ -370,7 +379,11 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) throw new Error('La vista previa de la eQSL todavía no está lista.');
     const activeMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
-    const cardData = { from: activeMyCall, to: replyToCall.trim().toUpperCase(), date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.72) };
+    const normalizedRecipient = replyToCall.trim().toUpperCase();
+    if (!hasMatchingStationCategory(activeMyCall, normalizedRecipient, band, frequency)) {
+      throw new Error('No se puede enviar esta respuesta: radioafición y 11 metros son categorías separadas. Comprobá ambas señales distintivas, la banda y la frecuencia.');
+    }
+    const cardData = { from: activeMyCall, to: normalizedRecipient, date, time, band, frequency, mode, rstSent, rstRcvd, isResponse: true, imageDataUrl: canvas.toDataURL('image/jpeg', 0.72) };
     if (sendToInbox) {
       const identityCallsign = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
       if (!identityCallsign) throw new Error('Primero guardá y verificá tu señal distintiva en el chat comunitario de este dispositivo.');
@@ -512,6 +525,10 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
     const normalizedMyCall = myCall.trim().toUpperCase() || (isCBStationBand(band) ? (localStorage.getItem('cb_station_callsign') || '') : DEFAULT_CALLSIGN);
     if (!normalizedCall || !normalizedMyCall || !date || !time || !frequency.trim() || !mode) {
       window.alert('Completá indicativos, fecha, hora, frecuencia y modo antes de guardar o enviar la eQSL.');
+      return false;
+    }
+    if (!hasMatchingStationCategory(normalizedMyCall, normalizedCall, band, frequency)) {
+      window.alert('No se guardó ni se envió la respuesta: radioafición y 11 metros son categorías separadas. Revisá las señales distintivas, la banda y la frecuencia.');
       return false;
     }
     const newQSO: QSO = {
