@@ -1,20 +1,20 @@
-const CACHE_NAME = 'lb-eqsl-express-shell-v12';
+const CACHE_NAME = 'lb-eqsl-express-shell-v13';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/logbook-header.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
 
-    // Cache each shell file independently so a missing optional asset cannot
-    // prevent installation or updating in a supported browser.
+    // Cache each shell resource independently so one optional file cannot
+    // prevent the new worker from downloading the next app version.
     await Promise.all(APP_SHELL.map(async (path) => {
       try {
         const response = await fetch(path, { cache: 'reload' });
         if (response.ok) await cache.put(path, response);
-      } catch { /* Optional shell resource; continue installing. */ }
+      } catch { /* Keep installing if an optional resource is unavailable. */ }
     }));
 
-    // Cache the built JS/CSS referenced by index.html for offline launches.
+    // Pre-cache the exact versioned JS/CSS referenced by the freshly fetched HTML.
     try {
       const response = await fetch('/index.html', { cache: 'reload' });
       if (response.ok) {
@@ -26,22 +26,27 @@ self.addEventListener('install', (event) => {
           try {
             const asset = await fetch(url, { cache: 'reload' });
             if (asset.ok) await cache.put(url, asset);
-          } catch { /* Keep installation usable if an asset is temporarily offline. */ }
+          } catch { /* The new worker can still wait safely for activation. */ }
         }));
         await cache.put('/index.html', response);
       }
-    } catch { /* Do not block service-worker installation on a temporary network error. */ }
+    } catch { /* Do not fail installation because of a temporary network issue. */ }
   })());
-  event.waitUntil(self.skipWaiting());
+
+  // Intentionally do NOT call skipWaiting(): existing sessions keep their
+  // current worker and app code until every old client has naturally closed.
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => key.startsWith('lb-eqsl-express-shell-') && key !== CACHE_NAME)
-        .map((key) => caches.delete(key))
-    )).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    // Activation only happens after the previous worker has no controlled
+    // clients, so old shell caches can now be retired safely.
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter((key) => key.startsWith('lb-eqsl-express-shell-') && key !== CACHE_NAME)
+      .map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -52,7 +57,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        const response = await fetch(request);
+        const response = await fetch(request, { cache: 'no-store' });
         if (response.ok) {
           const cache = await caches.open(CACHE_NAME);
           await cache.put('/index.html', response.clone());
@@ -65,11 +70,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Serve built app assets from cache when offline, refreshing them when online.
   if (/\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\?)/i.test(url.pathname)) {
     event.respondWith((async () => {
-      // Network-first while online: do not let an old cached asset mask a newer release.
-      // The cached copy is only the offline fallback.
       try {
         const response = await fetch(request, { cache: 'no-cache' });
         if (response.ok) {
@@ -77,13 +79,12 @@ self.addEventListener('fetch', (event) => {
           await cache.put(request, response.clone());
           return response;
         }
-      } catch { /* Offline: use the last cached copy below. */ }
-      const cached = await caches.match(request);
+      } catch { /* Offline: use the matching cached copy. */ }
+      const cached = await caches.match(request) || await caches.match(request, { ignoreSearch: true });
       return cached || new Response('', { status: 504, statusText: 'Offline asset unavailable' });
     })());
   }
 });
-
 
 // Push notifications for incoming eQSL cards.
 self.addEventListener('push', (event) => {
@@ -92,7 +93,6 @@ self.addEventListener('push', (event) => {
     try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
     const title = data.title || 'LogBook eQSL EXPRESS';
 
-    // The Badging API is optional; never let it prevent the notification itself.
     try {
       if (Object.prototype.hasOwnProperty.call(data, 'unreadCount')) {
         const count = Math.max(0, Number(data.unreadCount) || 0);
@@ -102,19 +102,17 @@ self.addEventListener('push', (event) => {
           await self.navigator.clearAppBadge();
         }
       }
-    } catch { /* Badge support varies by browser and operating system. */ }
+    } catch { /* Badge support is optional. */ }
 
-    const options = {
+    await self.registration.showNotification(title, {
       body: data.body || 'Has recibido una nueva eQSL.',
       icon: '/icon.svg',
       badge: '/icon.svg',
       tag: data.tag || 'eqsl-incoming',
       renotify: true,
       data: { url: data.url || '/?open_eqsl_inbox=1' },
-      // Leave silent=false by default so the OS may play its notification sound.
       silent: data.silent === true,
-    };
-    await self.registration.showNotification(title, options);
+    });
   })());
 });
 
