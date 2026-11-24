@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Activity, AudioLines, Check, Copy, Gauge, Mic, MicOff, Radio, Trash2 } from 'lucide-react';
 import { getInitialAppLanguage } from '../services/appLanguage';
 import { CWAudioDecoder, type CWStats } from '../services/cwAudioDecoder';
+import { MorseTextTrainer } from './MorseTextTrainer';
 
 type AudioSession = { stream: MediaStream; context: AudioContext; source: MediaStreamAudioSourceNode; processor: ScriptProcessorNode; silentGain: GainNode; decoder: CWAudioDecoder };
 
@@ -103,6 +104,7 @@ export function MorseDecoder() {
         <div className="min-w-0 flex-1"><h2 className="text-lg font-bold text-slate-900">{label[language]||label.es}</h2><p className="text-xs text-slate-600">CW · Micrófono del teléfono · Procesamiento local</p></div>
         <span className={'rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide '+(active?'bg-emerald-100 text-emerald-800':'bg-slate-100 text-slate-600')}>{active?t.receiving:t.monitoring}</span>
       </div>
+      <MorseTextTrainer language={language} />
       <div className="mb-4 flex flex-wrap gap-2">
         {!active?<button type="button" onClick={start} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"><Mic className="h-4 w-4"/>{t.start}</button>
           :<button type="button" onClick={stop} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"><MicOff className="h-4 w-4"/>{t.stop}</button>}
