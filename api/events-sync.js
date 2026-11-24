@@ -6,6 +6,7 @@ const CQ11WW_RULES_URL = 'https://www.cq11ww.org/es/reglas-6.asp';
 const RCA_CALENDAR_URL = 'https://www.lu4aa.org/wp/calendario-actividades/';
 const CQWW_HOME_URL = 'https://cqww.com/';
 const RC_ACTIVATIONS_URL = 'https://www.rcqsl.com/activation.php';
+const RC_CONTESTS_URL = 'https://www.rcqsl.com/contest.php';
 const EK_HOME_URL = 'https://ekdxgroup.com/';
 const SUGAR_CONTESTS_URL = 'https://sugardelta.org/concursos.php';
 const SUGAR_ACTIVATIONS_URL = 'https://sugardelta.org/activaciones.php';
@@ -280,6 +281,31 @@ function eventBlocks(html) {
   return blocks.length ? blocks : [String(html || '')];
 }
 
+function parseRomeoCharlieContests(html) {
+  const rows = [];
+  for (const block of eventBlocks(html)) {
+    const text = plainText(block);
+    const m = text.match(/(.{3,180}?)\\s+(20\\d{2}-\\d{2}-\\d{2})\\s+to\\s+(20\\d{2}-\\d{2}-\\d{2})/i);
+    if (!m) continue;
+    const range = parseIsoRange(m[2] + ' to ' + m[3]);
+    if (!range) continue;
+    const title = m[1].replace(/^\\W+/, '').trim();
+    if (!title || /QRZ|Station|Dates|Status/i.test(title)) continue;
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,90);
+    rows.push(make11mEvent({
+      id: 'romeo-charlie-contest:' + slug + ':' + range.start_at.slice(0,10),
+      title,
+      description: 'Concurso o trofeo publicado en el calendario oficial de Romeo Charlie. Consultá las reglas y la vigencia en la página original.',
+      organizer: 'Romeo Charlie DX Group',
+      sourceUrl: RC_CONTESTS_URL,
+      sourceName: 'Romeo Charlie · concursos y trofeos oficiales',
+      startAt: range.start_at,
+      endAt: range.end_at,
+    }));
+  }
+  return rows;
+}
+
 function parseRomeoCharlie(html) {
   const rows = [];
   for (const block of eventBlocks(html)) {
@@ -488,8 +514,14 @@ export default async function handler(req, res) {
           const rows = contestClockRows(combined);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'romeo-charlie-11m') {
-          const response = await fetchWithTimeout(RC_ACTIVATIONS_URL, 'text/html');
-          const rows = parseRomeoCharlie(await response.text());
+          const [activationsResponse, contestsResponse] = await Promise.all([
+            fetchWithTimeout(RC_ACTIVATIONS_URL, 'text/html'),
+            fetchWithTimeout(RC_CONTESTS_URL, 'text/html'),
+          ]);
+          const rows = [
+            ...parseRomeoCharlie(await activationsResponse.text()),
+            ...parseRomeoCharlieContests(await contestsResponse.text()),
+          ];
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'sugar-delta-11m') {
           const [contestsResponse, activationsResponse] = await Promise.all([
