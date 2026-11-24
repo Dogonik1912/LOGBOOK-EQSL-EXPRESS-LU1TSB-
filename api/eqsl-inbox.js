@@ -7,6 +7,10 @@ import { sendEqslPush } from './push-subscription.js';
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9][A-Z0-9/ _-]{2,39}$/;
+const HAM_CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
+const CB_CALL_RE = /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/;
+const is11mBand = (band) => /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(band || ''));
+const stationType = (value) => CB_CALL_RE.test(String(value || '').trim().toUpperCase()) ? '11m' : HAM_CALL_RE.test(String(value || '').trim().toUpperCase()) ? 'ham' : '';
 
 function config() {
   const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
@@ -123,8 +127,14 @@ export default async function handler(req, res) {
         return json(res, 200, { ok: true, pendingReplies: ownItems.filter(item => !item.isResponse && !item.answeredAt).length });
       }
       const recipient = clean(req.body?.to, 40).toUpperCase();
+      const senderStation = clean(req.body?.from, 40).toUpperCase();
+      const band = clean(req.body?.band, 24);
       const id = clean(req.body?.id, 24);
       if (!CALL_RE.test(recipient) || !/^[a-f0-9]{12,24}$/i.test(id)) return json(res, 400, { error: 'Destinatario o identificador eQSL inválido.' });
+      const expectedType = is11mBand(band) ? '11m' : 'ham';
+      if (stationType(sender) !== expectedType || stationType(senderStation) !== expectedType || stationType(recipient) !== expectedType) {
+        return json(res, 422, { error: 'No se permite enviar eQSL entre radioafición y 11 metros. Verificá las señales distintivas y la categoría de la banda.' });
+      }
       if (recipient === 'LU1TSB/4RC978') return json(res, 403, { error: 'La identidad técnica no recibe eQSL ordinarias.' });
       const mailbox = recipient;
       const items = await readInbox(recipient, cfg);
