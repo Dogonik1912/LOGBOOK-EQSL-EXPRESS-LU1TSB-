@@ -482,11 +482,11 @@ function MainApp() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="mb-3 flex items-center">
-          <details className="group relative">
-            <summary className="inline-flex min-h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300">
-              <Waves className="h-5 w-5" aria-hidden="true" />
-              LLOTA oficial
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <details className="group relative min-w-0">
+            <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+              <Waves className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span>LLOTA OFICIAL</span>
               <span className="text-xs transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
             </summary>
             <div className="absolute left-0 top-full z-30 mt-2 flex min-w-56 flex-col gap-1 rounded-xl border border-cyan-300/40 bg-slate-950 p-2 text-white shadow-xl">
@@ -499,8 +499,15 @@ function MainApp() {
               <a href="https://llota.app/referencias.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-white/10">
                 Ver referencias oficiales <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
-              <div className="my-1 border-t border-slate-700" />
-              <p className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300">Consultas de prefijos y divisiones</p>
+            </div>
+          </details>
+          <details className="group relative min-w-0">
+            <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+              <RadioTower className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span>PREFIJOS Y DIVISIONES DX</span>
+              <span className="text-xs transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-2 flex min-w-56 flex-col gap-1 rounded-xl border border-cyan-300/40 bg-slate-950 p-2 text-white shadow-xl">
               <button type="button" onClick={() => openRadioPrefixLookup('ham')} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition hover:bg-white/10">
                 Prefijos de radioaficionado <span className="text-cyan-300">→</span>
               </button>
