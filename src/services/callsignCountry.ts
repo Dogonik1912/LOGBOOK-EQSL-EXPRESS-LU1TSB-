@@ -454,7 +454,7 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   EA6:'Islas Baleares',EB6:'Islas Baleares',EH6:'Islas Baleares',
   EA8:'Canarias',EB8:'Canarias',EH8:'Canarias',
   EA9:'Ceuta y Melilla',EB9:'Ceuta y Melilla',EH9:'Ceuta y Melilla',
-  CT3:'Madeira',CQ3:'Madeira',CS3:'Madeira',CU:'Azores',
+  CT3:'Madeira',CQ3:'Madeira',CS3:'Madeira',
   VR2:'Hong Kong',OH0:'Islas Åland',JW:'Svalbard',JX:'Jan Mayen',
   AL:'Alaska',KL:'Alaska',NL:'Alaska',WL:'Alaska',
   KH6:'Hawái',KH7:'Hawái',KH8:'Samoa Americana',KH2:'Guam',KH0:'Islas Marianas del Norte',
