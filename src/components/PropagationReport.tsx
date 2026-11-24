@@ -564,15 +564,15 @@ export const PropagationReport: React.FC = () => {
         <section className="grid gap-4 xl:grid-cols-2">
           <article className="overflow-hidden rounded-2xl border border-amber-300/25 bg-gradient-to-br from-[#3b260f] via-[#251b20] to-[#111827] shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-2 p-4 pb-3">
-              <div><span className="text-[10px] font-black tracking-[.2em] text-amber-200">MONITOREO SOLAR · NOAA / GOES</span><h3 className="mt-1 text-lg font-black text-white">El Sol y la ionización</h3></div>
+              <div><span className="text-[10px] font-black tracking-[.2em] text-amber-200">MONITOREO SOLAR · NASA SDO / NOAA SWPC</span><h3 className="mt-1 text-lg font-black text-white">El Sol y la ionización</h3></div>
               <span className="rounded-full border border-amber-200/30 bg-amber-200/10 px-3 py-1 text-xs font-bold text-amber-100">SFI {solarFluxValue == null ? '—' : Math.round(Number(solarFluxValue))}</span>
             </div>
             <div className="grid gap-2 px-3 sm:grid-cols-[1.15fr_.85fr]">
-              <a href="https://www.spaceweather.gov/products/solar-ultraviolet-imager" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
+              <a href="https://sdo.gsfc.nasa.gov/data/" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
                 <img src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg" alt="Imagen científica reciente del disco solar en ultravioleta extremo, captada por el observatorio NASA SDO en 171 angstroms" loading="lazy" className="h-56 w-full object-contain bg-black transition duration-500 group-hover:scale-[1.02] sm:h-64"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">NASA SDO · ULTRAVIOLETA EXTREMO · 171 Å</span>
               </a>
-              <a href="https://www.spaceweather.gov/products/goes-x-ray-flux" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
+              <a href="https://sdo.gsfc.nasa.gov/data/" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
                 <img src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0304.jpg" alt="Imagen científica reciente del Sol en ultravioleta extremo, canal NASA SDO 304 angstroms" loading="lazy" className="h-56 w-full object-contain bg-black transition duration-500 group-hover:scale-[1.02] sm:h-64"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">NASA SDO · ULTRAVIOLETA EXTREMO · 304 Å</span>
               </a>
@@ -582,7 +582,7 @@ export const PropagationReport: React.FC = () => {
               <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-amber-100/70">ESTADO SOLAR</span><strong className="mt-1 block text-sm font-black text-amber-100">{solarFluxLabel}</strong></div>
               <div className="col-span-2 rounded-xl border border-white/10 bg-black/25 p-3 sm:col-span-1"><span className="text-[10px] text-amber-100/70">IMPACTO EN HF</span><p className="mt-1 text-xs leading-relaxed text-slate-100">Un flujo más alto suele favorecer la ionización y las bandas altas. Una llamarada intensa de rayos X puede provocar apagones HF en la zona diurna.</p></div>
             </div>
-            <p className="px-4 pb-4 text-[10px] text-amber-100/60">Imagen solar y rayos X en tiempo casi real · NOAA SWPC / GOES. Tocá cada imagen para abrir el producto oficial.</p>
+            <p className="px-4 pb-4 text-[10px] text-amber-100/60">Imágenes científicas del Sol en ultravioleta extremo, actualizadas por NASA/SDO. No son fotografías en luz visible.</p>
           </article>
 
           <article className="overflow-hidden rounded-2xl border border-violet-300/25 bg-gradient-to-br from-[#211b45] via-[#151d3a] to-[#0b172d] shadow-xl">
@@ -591,7 +591,7 @@ export const PropagationReport: React.FC = () => {
               <span className="rounded-full border border-violet-200/30 bg-violet-200/10 px-3 py-1 text-xs font-bold text-violet-100">Kp {geomagneticKpValue == null ? '—' : Number(geomagneticKpValue).toFixed(1)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2 px-3">
-              <a href="https://www.spaceweather.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
+              <a href="https://www.nasa.gov/image-article/aurora-borealis-from-station/" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
                 <img src="https://images-assets.nasa.gov/image/iss039e005427/iss039e005427~large.jpg" alt="Fotografía real de una aurora boreal tomada desde la Estación Espacial Internacional, NASA" loading="lazy" className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.04] sm:h-56"/>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">AURORA BOREAL · FOTOGRAFÍA NASA/ISS</span>
               </a>
@@ -610,7 +610,7 @@ export const PropagationReport: React.FC = () => {
               <div className="grid grid-cols-5 gap-1 text-center text-[10px] font-black">{['G1','G2','G3','G4','G5'].map((level,index)=><div key={level} className={'rounded-md py-2 '+(geomagneticKpValue != null && geomagneticKpValue >= index+5 ? 'bg-violet-400/40 text-white' : 'bg-white/5 text-violet-100/50')}>{level}</div>)}</div>
               <p className="mt-2 text-xs leading-relaxed text-slate-100">Cuando Kp aumenta, crece la perturbación del campo magnético: puede degradar la propagación HF, especialmente en latitudes altas, aunque también favorece auroras más extensas.</p>
             </div>
-            <p className="px-4 pb-4 text-[10px] text-violet-100/60">Pronóstico auroral OVATION actualizado por NOAA SWPC · no indica visibilidad garantizada desde tu ubicación.</p>
+            <p className="px-4 pb-4 text-[10px] text-violet-100/60">Fotografías reales de auroras tomadas desde la Estación Espacial Internacional (NASA). Son imágenes ilustrativas, no una transmisión en vivo ni una garantía de visibilidad local.</p>
           </article>
         </section>
         <p className="break-words rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-[#153452] to-[#252044] p-4 text-sm font-medium leading-relaxed text-slate-100 shadow-lg">{summary}</p>
