@@ -456,19 +456,30 @@ function parseUreContests(html) {
 
 function parseDaRcXmas(html) {
   const text = plainText(html);
-  const match = text.match(/Contest period:\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
-  if (!match) return [];
-  const monthStart = EN_MONTHS[match[2].toLowerCase()], monthEnd = EN_MONTHS[match[5].toLowerCase()];
-  if (monthStart === undefined || monthEnd === undefined) return [];
-  const range = normalizeDateRange(Number(match[3]), monthStart, Number(match[1]), Number(match[6]), monthEnd, Number(match[4]));
+  const english = text.match(/Contest period:\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
+  const spanishStart = text.match(/Inicio:\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
+  const spanishEnd = text.match(/Final:\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
+  let range = null;
+  if (english) {
+    const monthStart = EN_MONTHS[english[2].toLowerCase()], monthEnd = EN_MONTHS[english[5].toLowerCase()];
+    if (monthStart !== undefined && monthEnd !== undefined) {
+      range = normalizeDateRange(Number(english[3]), monthStart, Number(english[1]), Number(english[6]), monthEnd, Number(english[4]));
+    }
+  } else if (spanishStart && spanishEnd) {
+    const monthStart = MONTHS[spanishStart[2].toLowerCase()], monthEnd = MONTHS[spanishEnd[2].toLowerCase()];
+    if (monthStart !== undefined && monthEnd !== undefined) {
+      range = normalizeDateRange(Number(spanishStart[3]), monthStart, Number(spanishStart[1]), Number(spanishEnd[3]), monthEnd, Number(spanishEnd[1]));
+    }
+  }
   if (!range) return [];
+  const year = range.start_at.slice(0, 4);
   return [{
     external_id: 'da-rc-xmas:' + range.start_at.slice(0, 10), event_kind: 'contest',
-    title: 'DA-RC Christmas Contest 2026',
+    title: 'DA-RC Christmas Contest ' + year,
     description: 'Concurso internacional de 11 metros organizado por Dx Adventure Radio Club Delta-Alfa. La web oficial ofrece bases, activadores y seguimiento de clasificaciones.',
     event_scope: 'international', station_type: '11m', country_code: null, country_name: 'Internacional',
     organizer: 'Dx Adventure Radio Club Delta-Alfa', start_at: range.start_at, end_at: range.end_at, timezone: 'UTC',
-    rules_url: DA_RC_XMAS_URL, source_url: DA_RC_XMAS_URL, source_name: 'DA-RC Xmas Contest · sitio oficial',
+    rules_url: 'https://da-rcxmas.org/es/', source_url: 'https://da-rcxmas.org/es/', source_name: 'DA-RC Xmas Contest · sitio oficial',
     image_url: null, status: 'published', verified: true, is_auto: true, source_updated_at: null,
     last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   }];
@@ -581,12 +592,11 @@ export default async function handler(req, res) {
       try {
         if (source.source_key === 'contestclock-ham') {
           const currentYear = new Date().getUTCFullYear();
-          const yearPayloads = await Promise.all([currentYear, currentYear + 1].map(async (year) => {
-            const response = await fetchWithTimeout(CONTESTCLOCK_API + '?year=' + year, 'application/json');
-            return response.json();
-          }));
-          const combined = { occurrences: yearPayloads.flatMap((payload) => Array.isArray(payload?.occurrences) ? payload.occurrences : []) };
-          const rows = contestClockRows(combined);
+          // ContestClock solo publica años disponibles; pedir el siguiente año antes de
+          // que exista devuelve HTTP 400 y hacía fallar toda esta fuente.
+          const response = await fetchWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear, 'application/json');
+          const payload = await response.json();
+          const rows = contestClockRows(payload);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'romeo-charlie-11m') {
           const [activationsResponse, contestsResponse] = await Promise.all([
