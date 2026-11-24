@@ -138,6 +138,7 @@ const guestInvitationCopy: Record<AppLanguage, { title: string; body: string; cl
 export const PropagationReport: React.FC = () => {
   const [uiLanguage, setUiLanguage] = useState<AppLanguage>(() => getInitialAppLanguage());
   const [open, setOpen] = useState(false);
+  const [showShareOptions, setShowShareOptions] = useState(false);
   const guestInvitation = guestInvitationCopy[uiLanguage] || guestInvitationCopy.en;
   const [showGuestInvitation, setShowGuestInvitation] = useState(() => {
     const sharedReport = new URLSearchParams(window.location.search).get('shared') === 'propagation';
@@ -502,30 +503,8 @@ export const PropagationReport: React.FC = () => {
     }
   };
 
-  const sharePropagation = async () => {
-    type ContactPicker = { select: (properties: string[], options?: { multiple?: boolean }) => Promise<Array<{ tel?: string[] }>> };
-    let phone = '';
-    let recipientLanguage: AppLanguage = 'en';
-    const contacts = (navigator as Navigator & { contacts?: ContactPicker }).contacts;
-    if (contacts?.select) {
-      try {
-        const selected = await contacts.select(['tel'], { multiple: false });
-        phone = String(selected?.[0]?.tel?.[0] || '').trim();
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    }
-    if (!phone) {
-      const entered = window.prompt('Seleccioná un contacto de WhatsApp o ingresá su número con prefijo internacional (ej.: +54911...).');
-      if (!entered) return;
-      phone = entered.trim();
-    }
-    const detected = languageFromPhone(phone);
-    if (!detected) {
-      window.alert('No se pudo reconocer el prefijo internacional. Ingresá el número completo, incluyendo + y código de país.');
-      return;
-    }
-    recipientLanguage = detected;
+  const sharePropagation = (channel: 'whatsapp' | 'telegram' | 'email') => {
+    const recipientLanguage = uiLanguage || getInitialAppLanguage();
     const copy: Record<AppLanguage, { title: string; station: string; mode: string; grid: string; solar: string; kp: string; reports: string }> = {
       es:{title:'LogBook eQSL EXPRESS · Centro Mundial de Propagación DX',station:'Estación',mode:'Modalidad',grid:'Grid Locator',solar:'Flujo solar (SFI)',kp:'Índice geomagnético (Kp)',reports:'Informes DX'},
       en:{title:'LogBook eQSL EXPRESS · World DX Propagation Center',station:'Station',mode:'Mode',grid:'Grid Locator',solar:'Solar Flux (SFI)',kp:'Geomagnetic Index (Kp)',reports:'DX Reports'},
@@ -566,15 +545,19 @@ export const PropagationReport: React.FC = () => {
       labels.kp + ': ' + (kp === null ? '—' : kp.toFixed(1)),
       labels.reports + ': ' + dxReports.length,
       shareUrl,
-    ].join('\\n');
-    const digits = phone.replace(/[^0-9]/g, '');
-    const internationalDigits = phone.trim().startsWith('00') ? digits.slice(2) : digits;
-    if (!internationalDigits) {
-      window.alert('El contacto no tiene un número válido para WhatsApp.');
+    ].join('\n');
+    const encodedText = encodeURIComponent(shareText);
+    setShowShareOptions(false);
+    if (channel === 'whatsapp') {
+      window.location.assign('https://wa.me/?text=' + encodedText);
       return;
     }
-    window.location.assign('https://wa.me/' + internationalDigits + '?text=' + encodeURIComponent(shareText));
-  };
+    if (channel === 'telegram') {
+      window.location.assign('https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText.replace('\n' + shareUrl, '')));
+      return;
+    }
+    window.location.assign('mailto:?subject=' + encodeURIComponent(labels.title) + '&body=' + encodedText);
+  };;
 
   useEffect(() => {
     if (open && stationIdentity.selectedType === 'ham' && stationIdentity.selectedCallsign) void refreshDx();
@@ -957,7 +940,14 @@ export const PropagationReport: React.FC = () => {
         {error && <p role="status" className="break-words text-sm text-amber-200">{error}</p>}
         {updated && <p className="break-words text-xs text-slate-400">Actualizado: {updated} · Fuente: NOAA, Centro de Predicción del Clima Espacial.</p>}
         <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
-          <button type="button" onClick={() => void sharePropagation()} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
+          <div className="relative">
+            <button type="button" onClick={() => setShowShareOptions(value => !value)} aria-expanded={showShareOptions} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
+            {showShareOptions && <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-cyan-200/20 bg-slate-950/95 p-3 shadow-xl" role="group" aria-label="Elegir aplicación para compartir">
+              <button type="button" onClick={() => sharePropagation('whatsapp')} className="rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500">WhatsApp</button>
+              <button type="button" onClick={() => sharePropagation('telegram')} className="rounded-lg bg-sky-600 px-4 py-3 text-sm font-bold text-white hover:bg-sky-500">Telegram</button>
+              <button type="button" onClick={() => sharePropagation('email')} className="rounded-lg bg-slate-700 px-4 py-3 text-sm font-bold text-white hover:bg-slate-600">Correo electrónico</button>
+            </div>}
+          </div>
           <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 disabled:opacity-60">
             <RefreshCw className={'h-4 w-4 shrink-0 ' + (loading ? 'animate-spin' : '')} />{loading ? 'Actualizando…' : 'Actualizar datos'}
           </button>
