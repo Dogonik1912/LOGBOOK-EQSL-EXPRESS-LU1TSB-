@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const CONTESTCLOCK_API = 'https://contestclock.com/api/contests';
 const CQ11WW_URL = 'https://www.cq11ww.org/es/default.asp';
 const CQ11WW_RULES_URL = 'https://www.cq11ww.org/es/reglas-6.asp';
+const RCA_CALENDAR_URL = 'https://www.lu4aa.org/wp/calendario-actividades/';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
 
 function config() {
@@ -76,6 +77,73 @@ function contestClockRows(payload) {
       verified: true,
       is_auto: true,
       source_updated_at: safeDate(item.rules_url_checked),
+      last_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  return rows;
+}
+
+
+function decodeHtml(value) {
+  return String(value || '')
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'").replace(/&ndash;/gi, '–').replace(/&mdash;/gi, '—')
+    .replace(/&aacute;/gi, 'á').replace(/&eacute;/gi, 'é').replace(/&iacute;/gi, 'í')
+    .replace(/&oacute;/gi, 'ó').replace(/&uacute;/gi, 'ú').replace(/&ntilde;/gi, 'ñ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+}
+
+function rcaCalendarRows(html) {
+  const yearMatch = html.match(/Año\\s+(20\\d{2})/i);
+  const defaultYear = yearMatch ? Number(yearMatch[1]) : new Date().getUTCFullYear();
+  const items = [...html.matchAll(/<li\\b[^>]*>([\\s\\S]*?)<\\/li>/gi)];
+  const rows = [];
+  const seen = new Set();
+  for (const match of items) {
+    const raw = match[1];
+    const text = decodeHtml(raw.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ')).trim();
+    const dateMatch = text.match(/(\\d{1,2})(?:\\s*(?:al|a|y|–|—|-)\\s*(\\d{1,2}))?\\s+de\\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\\b/i);
+    if (!dateMatch) continue;
+    const month = MONTHS[dateMatch[3].toLowerCase()];
+    if (month === undefined) continue;
+    const yearInText = text.match(/20\\d{2}/);
+    const year = yearInText ? Number(yearInText[0]) : defaultYear;
+    const startDay = Number(dateMatch[1]);
+    const endDay = Number(dateMatch[2] || dateMatch[1]);
+    const start = new Date(Date.UTC(year, month, startDay, 0, 0, 0));
+    const end = new Date(Date.UTC(year, month, endDay, 23, 59, 0));
+    if (start.getUTCFullYear() !== year || start.getUTCMonth() !== month || end.getUTCMonth() !== month || end < start) continue;
+    if (end.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000) continue;
+    let title = text.slice(dateMatch.index + dateMatch[0].length).replace(/^\\s*[:–—-]\\s*/, '').trim();
+    title = title.replace(/[.\\s]+$/, '').slice(0, 220);
+    if (title.length < 3) continue;
+    const key = title.toLowerCase() + '|' + start.toISOString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const international = /\\bYOTA\\b/i.test(title);
+    const slug = title.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+    const anchor = raw.match(/href=["'](https?:\\/\\/[^"']+)["']/i);
+    rows.push({
+      external_id: 'rca-calendar:' + slug + ':' + year,
+      title,
+      description: 'Actividad publicada en el calendario oficial del Radio Club Argentino. Confirmá horarios, condiciones y posibles cambios en la publicación original.',
+      event_scope: international ? 'international' : 'national',
+      station_type: 'ham',
+      country_code: international ? null : 'AR',
+      country_name: international ? 'Internacional' : 'Argentina',
+      organizer: 'Radio Club Argentino (RCA)',
+      start_at: start.toISOString(),
+      end_at: end.toISOString(),
+      timezone: 'UTC',
+      rules_url: anchor ? anchor[1] : null,
+      source_url: RCA_CALENDAR_URL,
+      source_name: 'Radio Club Argentino (RCA) · calendario oficial',
+      image_url: null,
+      status: 'published',
+      verified: true,
+      is_auto: true,
+      source_updated_at: null,
       last_seen_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -195,6 +263,11 @@ export default async function handler(req, res) {
           }));
           const combined = { occurrences: yearPayloads.flatMap((payload) => Array.isArray(payload?.occurrences) ? payload.occurrences : []) };
           const rows = contestClockRows(combined);
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'radio-club-argentina') {
+          const response = await fetchWithTimeout(RCA_CALENDAR_URL, 'text/html');
+          const html = await response.text();
+          const rows = rcaCalendarRows(html);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'cq-eleven-ww') {
           const response = await fetchWithTimeout(CQ11WW_URL, 'text/html');

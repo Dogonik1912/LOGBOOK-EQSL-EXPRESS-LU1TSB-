@@ -63,6 +63,7 @@ export default async function handler(req, res) {
         .eq('status', 'published')
         .in('station_type', [stationType, 'both'])
         .eq('event_scope', category)
+        .or('start_at.is.null,start_at.gte.' + new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('start_at', { ascending: true, nullsFirst: false })
         .limit(200);
       if (category === 'national') {
