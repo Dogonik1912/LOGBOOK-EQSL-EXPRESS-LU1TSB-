@@ -308,7 +308,7 @@ export const PropagationReport: React.FC = () => {
     };
     void loadAuroraFrames();
     const refreshTimer = window.setInterval(() => { void loadAuroraFrames(); }, 5 * 60 * 1000);
-    const animationTimer = window.setInterval(() => setAuroraFrameIndex(index => index + 1), 700);
+    const animationTimer = window.setInterval(() => setAuroraFrameIndex(index => index + 1), 2500);
     return () => {
       cancelled = true;
       window.clearInterval(refreshTimer);
