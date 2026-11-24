@@ -82,6 +82,26 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
   HS:'Tailandia',E2:'Tailandia',TI:'Costa Rica',HP:'Panamá',HL:'Corea del Sur',DS:'Corea del Sur',D7:'Corea del Sur',D8:'Corea del Sur',D9:'Corea del Sur',
   YB:'Indonesia',YC:'Indonesia',YD:'Indonesia',YE:'Indonesia',YF:'Indonesia',YG:'Indonesia',YH:'Indonesia','8A':'Indonesia','8B':'Indonesia','8E':'Indonesia','8I':'Indonesia',
   UA:'Rusia',RA:'Rusia',RZ:'Rusia',UR:'Ucrania',UT:'Ucrania',UU:'Ucrania',UV:'Ucrania',UW:'Ucrania',UX:'Ucrania',UY:'Ucrania',UZ:'Ucrania'
+
+  // Territorios y prefijos geográficos especiales de radioafición.
+  EA6:'Islas Baleares',EB6:'Islas Baleares',EH6:'Islas Baleares',
+  EA8:'Canarias',EB8:'Canarias',EH8:'Canarias',
+  EA9:'Ceuta y Melilla',EB9:'Ceuta y Melilla',EH9:'Ceuta y Melilla',
+  CT3:'Madeira',CQ3:'Madeira',CS3:'Madeira',CU:'Azores',
+  VR2:'Hong Kong',OH0:'Islas Åland',JW:'Svalbard',JX:'Jan Mayen',
+  AL:'Alaska',KL:'Alaska',NL:'Alaska',WL:'Alaska',
+  KH6:'Hawái',KH7:'Hawái',KH8:'Samoa Americana',KH2:'Guam',KH0:'Islas Marianas del Norte',
+  KP2:'Islas Vírgenes de EE. UU.',KP4:'Puerto Rico',
+  GM:'Escocia',GI:'Irlanda del Norte',GW:'Gales',GD:'Isla de Man',GJ:'Jersey',GU:'Guernsey',
+  CE0Y:'Isla de Pascua',CE0Z:'Islas Juan Fernández',CE0X:'Islas San Félix y San Ambrosio',
+  FY:'Guayana Francesa',FK:'Nueva Caledonia',FO:'Polinesia Francesa',FP:'San Pedro y Miquelón',
+  FM:'Martinica',FG:'Guadalupe',FR:'Reunión',FS:'San Martín',FW:'Wallis y Futuna',
+  3A:'Mónaco',3B8:'Mauricio',3B9:'Rodrigues',3C:'Guinea Ecuatorial',3D2:'Fiyi',3DA:'Esuatini',
+  5B:'Chipre',5H:'Tanzania',5N:'Nigeria',5R:'Madagascar',5T:'Mauritania',5U:'Níger',5W:'Samoa',
+  5X:'Uganda',5Z:'Kenia',6W:'Senegal',6Y:'Jamaica',7P:'Lesoto',7Q:'Malaui',7X:'Argelia',
+  8P:'Barbados',8Q:'Maldivas',9A:'Croacia',9G:'Ghana',9H:'Malta',9J:'Zambia',9K:'Kuwait',
+  9L:'Sierra Leona',9M:'Malasia',9N:'Nepal',9Q:'República Democrática del Congo',
+  9U:'Burundi',9V:'Singapur',9X:'Ruanda',9Y:'Trinidad y Tobago',
 };
 
 
