@@ -217,7 +217,7 @@ export default async function handler(req, res) {
     return res.status(failures.length === results.length && results.length ? 502 : 200).json({
       ok: failures.length === 0,
       checked_at: new Date().toISOString(),
-      interval_hours: 12,
+      interval_hours: 24,
       results,
     });
   } catch (error) {
