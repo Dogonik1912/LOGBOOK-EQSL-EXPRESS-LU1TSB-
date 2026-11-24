@@ -63,6 +63,7 @@ export const EventsAndContests: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPublisher, setShowPublisher] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', event_scope: 'national' as EventScope, station_type: 'ham' as StationType,
     country_code: '', organizer: '', start_at: '', end_at: '', rules_url: '', image_url: '',
@@ -150,6 +151,25 @@ export const EventsAndContests: React.FC = () => {
   useEffect(() => { void loadIdentity(); }, [loadIdentity]);
   useEffect(() => { void loadEvents(); }, [loadEvents]);
 
+  const handleRefresh = async () => {
+    if (isAdmin && token) {
+      setSyncing(true);
+      setError('');
+      try {
+        const response = await fetch('/api/events-sync', { headers: { 'x-identity-token': token, 'x-callsign': selectedCall }, cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'No se pudieron actualizar las fuentes.');
+      } catch (syncError) {
+        setError(syncError instanceof Error ? syncError.message : 'No se pudieron actualizar las fuentes.');
+      } finally {
+        setSyncing(false);
+        await loadEvents();
+      }
+      return;
+    }
+    await loadEvents();
+  };
+
   const changeIdentity = (type: StationType) => {
     const identity = identities.find((item) => item.identity_type === type);
     if (!identity) return;
@@ -232,7 +252,7 @@ export const EventsAndContests: React.FC = () => {
               <p className="text-xs text-indigo-100/75">Agenda de radioafición y 11 metros · información con fuentes</p>
             </div>
           </div>
-          <button type="button" onClick={() => void loadEvents()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-sm font-bold hover:bg-white/15 disabled:opacity-60">
+          <button type="button" onClick={() => void handleRefresh()} disabled={loading || syncing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-sm font-bold hover:bg-white/15 disabled:opacity-60">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
           </button>
         </div>
