@@ -492,7 +492,6 @@ export const PropagationReport: React.FC = () => {
         L.circleMarker([p.lat,p.lon],{radius:7,color:'#fff',weight:2,fillColor:'#06b6d4',fillOpacity:1}).bindPopup('<b>DX reportado · PSK Reporter</b><br>TX: '+esc(report.senderCallsign)+'<br>Receptor: '+esc(report.receiverCallsign)+'<br>Locator: '+esc(report.receiverLocator||'')+'<br>Frecuencia: '+(report.frequency?(report.frequency/1e6).toFixed(3)+' MHz':'—')+'<br>UTC: '+(report.flowStartSeconds?new Date(report.flowStartSeconds*1000).toISOString().slice(11,16):'—')).addTo(layers);});
       const reg=mapRegions.find(x=>x.name===ownContinent);
       if(mapZone==='world')map.setView([15,0],2);else if(ownGeo&&mapZone==='zone')map.setView([ownGeo.lat,ownGeo.lon],5);else if(ownGeo&&mapZone==='continent'&&reg)map.fitBounds([[reg.bounds.south,reg.bounds.west],[reg.bounds.north,reg.bounds.east]]);else if(ownGeo)map.setView([ownGeo.lat,ownGeo.lon],4);
-        setMapStatus(visibleLiveContacts.length + ' contactos válidos · ' + visibleExternalSpots.length + ' estaciones con actividad DX · ' + visibleDxReports.length + ' recepciones de tu indicativo.');
       window.setTimeout(()=>map.invalidateSize(),100);
     };
     load().catch(e=>setMapStatus(e instanceof Error?e.message:'Mapa no disponible.'));
