@@ -245,10 +245,12 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800 px-3 py-3 text-sm text-white">
       {destination && km !== null ? <div className="flex flex-wrap gap-x-5 gap-y-1"><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span><span>Rumbo: <strong>{bearing!.toFixed(0)}°</strong></span></div> : <strong className="text-cyan-200">Mapa mundial: tocá cualquier punto para medir</strong>}
       <div className="flex flex-wrap items-center gap-2">
-        {destination && <button type="button" onClick={() => void openShareModal()} disabled={loadingRecipients} className="rounded-lg bg-cyan-600 px-3 py-2 text-xs font-black text-white hover:bg-cyan-500 disabled:opacity-50">{loadingRecipients ? 'Preparando…' : 'COMPARTIR DISTANCIA'}</button>}
         <button type="button" onClick={() => mapRef.current?.setView([20, 0], 2)} className="rounded-lg border border-slate-500 px-3 py-2 text-xs font-bold hover:bg-slate-700">Ver todo el mundo</button>
       </div>
     </div>
+    {destination && <div className="border-b border-cyan-400/40 bg-slate-950 px-3 py-3">
+      <button type="button" onClick={() => void openShareModal()} disabled={loadingRecipients} className="w-full rounded-xl bg-cyan-500 px-4 py-4 text-base font-black tracking-wide text-slate-950 shadow-lg shadow-cyan-950/40 hover:bg-cyan-300 disabled:opacity-60">{loadingRecipients ? 'PREPARANDO PARA COMPARTIR…' : '📤 COMPARTIR DISTANCIA'}</button>
+    </div>}
     <div ref={element} className="h-[58dvh] min-h-[360px] w-full bg-slate-800" />
     
     {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div>}
