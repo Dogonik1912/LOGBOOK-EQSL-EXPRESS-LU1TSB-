@@ -601,7 +601,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShareMenuOpen((open) => { if (!open) setShareLanguage('auto'); return !open; })}
+                onClick={() => { if (!shareMenuOpen) setShareLanguage('auto'); setShareMenuOpen(!shareMenuOpen); }}
                 aria-expanded={shareMenuOpen}
                 aria-haspopup="menu"
                 className="inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"

@@ -188,7 +188,9 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const shareWindow = window.open('about:blank', '_blank');
+    if (shareWindow) shareWindow.location.href = url;
+    else window.location.assign(url);
   };
 
   // Enviar email directo con mailto conteniendo firma dinámica
@@ -222,7 +224,10 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     ]);
     const subject = encodeURIComponent(translatedSubject);
     const body = encodeURIComponent(translatedBody);
-    window.open(`mailto:${qso.email}?subject=${subject}&body=${body}`);
+    const mailto = `mailto:${qso.email}?subject=${subject}&body=${body}`;
+    const mailWindow = window.open('about:blank', '_blank');
+    if (mailWindow) mailWindow.location.href = mailto;
+    else window.location.href = mailto;
     // Abrir el correo no confirma que el usuario haya enviado el mensaje.
   };
 
