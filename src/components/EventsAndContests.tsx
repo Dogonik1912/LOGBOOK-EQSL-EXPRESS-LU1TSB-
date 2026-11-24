@@ -80,9 +80,7 @@ export const EventsAndContests: React.FC = () => {
   const selectedCall = selectedIdentity?.callsign || primaryCall;
   const countryName = countryForCallsign(selectedCall, '', selectedType === '11m');
   const inferredCountry = COUNTRY_CODES[countryName] || '';
-  const effectiveHomeCountry = homeCountry || inferredCountry || (() => {
-    try { return (localStorage.getItem('user_country') || '').trim().toUpperCase(); } catch { return ''; }
-  })();
+  const effectiveHomeCountry = homeCountry || inferredCountry;
 
   const loadIdentity = useCallback(async () => {
     const fallbackType: StationType = is11MeterStationIdentifier(primaryCall) ? '11m' : 'ham';
@@ -253,7 +251,7 @@ export const EventsAndContests: React.FC = () => {
             </div>
           </div>
           <button type="button" onClick={() => void handleRefresh()} disabled={loading || syncing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-sm font-bold hover:bg-white/15 disabled:opacity-60">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+            <RefreshCw className={`h-4 w-4 ${loading || syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Actualizando fuentes…' : isAdmin ? 'Actualizar fuentes' : 'Actualizar'}
           </button>
         </div>
         <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Categoría de eventos">
@@ -284,6 +282,7 @@ export const EventsAndContests: React.FC = () => {
 
       <div className="space-y-3 p-3 sm:p-4">
         {error && <div className="rounded-lg border border-rose-300/40 bg-rose-950/50 px-3 py-2 text-sm text-rose-100" role="alert">{error}</div>}
+        {!homeCountry && category === 'national' && <p className="rounded-lg border border-amber-200/30 bg-amber-200/10 px-3 py-2 text-xs text-amber-100">No pudimos asociar automáticamente un país a esta identificación. Elegí el país que querés consultar.</p>}
         {loading ? <div className="py-8 text-center text-sm text-indigo-100">Consultando eventos y concursos…</div>
           : events.length === 0 ? <div className="rounded-xl border border-dashed border-white/20 bg-black/15 px-4 py-8 text-center">
             <Globe2 className="mx-auto mb-2 h-8 w-8 text-indigo-200/70" />
