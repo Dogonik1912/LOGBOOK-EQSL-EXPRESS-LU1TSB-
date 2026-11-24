@@ -139,14 +139,8 @@ export const PropagationReport: React.FC = () => {
   const [uiLanguage, setUiLanguage] = useState<AppLanguage>(() => getInitialAppLanguage());
   const [open, setOpen] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
-  const [shareLanguage, setShareLanguage] = useState<string>(() => {
-    const saved = localStorage.getItem('logbook_propagation_share_language');
-    return saved === 'auto' || ['es','en','pt','pt-br','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi','tr','sv','no','da','fi','cs','el','ro','hu','id','th'].includes(saved || '') ? (saved || 'auto') : 'auto';
-  });
-  const chooseShareLanguage = (value: string) => {
-    setShareLanguage(value);
-    try { localStorage.setItem('logbook_propagation_share_language', value); } catch { /* Preferencia opcional. */ }
-  };
+  const [shareLanguage, setShareLanguage] = useState<string>('auto');
+  const chooseShareLanguage = (value: string) => setShareLanguage(value);
   const guestInvitation = guestInvitationCopy[uiLanguage] || guestInvitationCopy.en;
   const [showGuestInvitation, setShowGuestInvitation] = useState(() => {
     const sharedReport = new URLSearchParams(window.location.search).get('shared') === 'propagation';
@@ -949,7 +943,7 @@ export const PropagationReport: React.FC = () => {
         {updated && <p className="break-words text-xs text-slate-400">Actualizado: {updated} · Fuente: NOAA, Centro de Predicción del Clima Espacial.</p>}
         <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
           <div className="relative">
-            <button type="button" onClick={() => setShowShareOptions(value => !value)} aria-expanded={showShareOptions} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
+            <button type="button" onClick={() => setShowShareOptions(value => { if (!value) setShareLanguage('auto'); return !value; })} aria-expanded={showShareOptions} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
             {showShareOptions && <div className="mt-2 flex flex-col gap-3 rounded-xl border border-cyan-200/20 bg-slate-950/95 p-3 shadow-xl" role="group" aria-label="Elegir idioma y aplicación para compartir">
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-200">IDIOMA DEL MENSAJE
                 <select value={shareLanguage} onChange={event => chooseShareLanguage(event.target.value)} className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-3 text-sm text-white">
