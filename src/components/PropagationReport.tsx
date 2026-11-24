@@ -139,6 +139,14 @@ export const PropagationReport: React.FC = () => {
   const [uiLanguage, setUiLanguage] = useState<AppLanguage>(() => getInitialAppLanguage());
   const [open, setOpen] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
+  const [shareLanguage, setShareLanguage] = useState<string>(() => {
+    const saved = localStorage.getItem('logbook_propagation_share_language');
+    return saved === 'auto' || ['es','en','pt','pt-br','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi','tr','sv','no','da','fi','cs','el','ro','hu','id','th'].includes(saved || '') ? (saved || 'auto') : 'auto';
+  });
+  const chooseShareLanguage = (value: string) => {
+    setShareLanguage(value);
+    try { localStorage.setItem('logbook_propagation_share_language', value); } catch { /* Preferencia opcional. */ }
+  };
   const guestInvitation = guestInvitationCopy[uiLanguage] || guestInvitationCopy.en;
   const [showGuestInvitation, setShowGuestInvitation] = useState(() => {
     const sharedReport = new URLSearchParams(window.location.search).get('shared') === 'propagation';
@@ -504,7 +512,7 @@ export const PropagationReport: React.FC = () => {
   };
 
   const sharePropagation = (channel: 'whatsapp' | 'telegram' | 'email') => {
-    const recipientLanguage = uiLanguage || getInitialAppLanguage();
+    const recipientLanguage: AppLanguage = shareLanguage === 'auto' ? (uiLanguage || getInitialAppLanguage()) : shareLanguage as AppLanguage;
     const copy: Record<AppLanguage, { title: string; station: string; mode: string; grid: string; solar: string; kp: string; reports: string }> = {
       es:{title:'LogBook eQSL EXPRESS · Centro Mundial de Propagación DX',station:'Estación',mode:'Modalidad',grid:'Grid Locator',solar:'Flujo solar (SFI)',kp:'Índice geomagnético (Kp)',reports:'Informes DX'},
       en:{title:'LogBook eQSL EXPRESS · World DX Propagation Center',station:'Station',mode:'Mode',grid:'Grid Locator',solar:'Solar Flux (SFI)',kp:'Geomagnetic Index (Kp)',reports:'DX Reports'},
@@ -942,10 +950,19 @@ export const PropagationReport: React.FC = () => {
         <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
           <div className="relative">
             <button type="button" onClick={() => setShowShareOptions(value => !value)} aria-expanded={showShareOptions} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
-            {showShareOptions && <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-cyan-200/20 bg-slate-950/95 p-3 shadow-xl" role="group" aria-label="Elegir aplicación para compartir">
-              <button type="button" onClick={() => sharePropagation('whatsapp')} className="rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500">WhatsApp</button>
-              <button type="button" onClick={() => sharePropagation('telegram')} className="rounded-lg bg-sky-600 px-4 py-3 text-sm font-bold text-white hover:bg-sky-500">Telegram</button>
-              <button type="button" onClick={() => sharePropagation('email')} className="rounded-lg bg-slate-700 px-4 py-3 text-sm font-bold text-white hover:bg-slate-600">Correo electrónico</button>
+            {showShareOptions && <div className="mt-2 flex flex-col gap-3 rounded-xl border border-cyan-200/20 bg-slate-950/95 p-3 shadow-xl" role="group" aria-label="Elegir idioma y aplicación para compartir">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-200">IDIOMA DEL MENSAJE
+                <select value={shareLanguage} onChange={event => chooseShareLanguage(event.target.value)} className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-3 text-sm text-white">
+                  <option value="auto">🌐 Automático (idioma habitual de la aplicación)</option>
+                  <option value="es">🇪🇸 Español</option><option value="en">🇬🇧 Inglés</option><option value="pt">🇵🇹 Portugués</option><option value="pt-br">🇧🇷 Portugués brasileño</option><option value="fr">🇫🇷 Francés</option><option value="de">🇩🇪 Alemán</option><option value="it">🇮🇹 Italiano</option><option value="nl">🇳🇱 Neerlandés</option><option value="pl">🇵🇱 Polaco</option><option value="ru">🇷🇺 Ruso</option><option value="uk">🇺🇦 Ucraniano</option><option value="zh">🇨🇳 Chino</option><option value="ja">🇯🇵 Japonés</option><option value="ko">🇰🇷 Coreano</option><option value="ar">🇸🇦 Árabe</option><option value="hi">🇮🇳 Hindi</option><option value="tr">🇹🇷 Turco</option><option value="sv">🇸🇪 Sueco</option><option value="no">🇳🇴 Noruego</option><option value="da">🇩🇰 Danés</option><option value="fi">🇫🇮 Finés</option><option value="cs">🇨🇿 Checo</option><option value="el">🇬🇷 Griego</option><option value="ro">🇷🇴 Rumano</option><option value="hu">🇭🇺 Húngaro</option><option value="id">🇮🇩 Indonesio</option><option value="th">🇹🇭 Tailandés</option>
+                </select>
+              </label>
+              <p className="text-[11px] leading-relaxed text-slate-400">El idioma elegido se recordará para el próximo envío. WhatsApp y Telegram se abrirán directamente para que selecciones el contacto.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => sharePropagation('whatsapp')} className="rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500">WhatsApp</button>
+                <button type="button" onClick={() => sharePropagation('telegram')} className="rounded-lg bg-sky-600 px-4 py-3 text-sm font-bold text-white hover:bg-sky-500">Telegram</button>
+                <button type="button" onClick={() => sharePropagation('email')} className="rounded-lg bg-slate-700 px-4 py-3 text-sm font-bold text-white hover:bg-slate-600">Correo electrónico</button>
+              </div>
             </div>}
           </div>
           <button type="button" onClick={() => void refresh()} disabled={loading} className="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 disabled:opacity-60">
