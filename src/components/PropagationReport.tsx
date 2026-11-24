@@ -701,7 +701,6 @@ export const PropagationReport: React.FC = () => {
           {stationIdentity.selectedType === '11m' && <a href="https://log11dx.com/" target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-sky-500/50 px-3 py-2 text-xs font-semibold text-sky-200">Abrir cluster mundial de 11 metros (LOG11DX)</a>}
         </section>
         <h3 className="text-base font-black uppercase tracking-wider text-white">PANORAMA POR REGIONES DEL MUNDO</h3>
-        <p className="break-words text-xs leading-relaxed text-violet-100/70">Orientación calculada con índices globales y hora local; no son reportes medidos de cada región.</p>
         <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {zones.map(zone => <div key={zone.name} className="grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-white/10 bg-gradient-to-br from-violet-400/10 to-sky-400/5 p-3 transition hover:border-violet-200/30 hover:from-violet-400/15 sm:items-start">
             <strong className="break-words text-sm font-bold text-white">{zone.name}</strong>
