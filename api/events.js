@@ -86,6 +86,7 @@ function sourceKeyForEvent(event) {
   if (host === 'contestclock.com') return 'contestclock-ham';
   if (host === 'alfatango.org') return 'alfa-tango-11m';
   if (host === 'ure.es') return 'ure-ham-contests';
+  if (host === 'concours.r-e-f.org') return 'ref-ham-contests';
   if (host === 'da-rcxmas.org') return 'da-rc-xmas-11m';
   if (host === 'lu4aa.org') return 'radio-club-argentina';
   if (host === 'lu4aao.org') return 'lu4aao-activities';
