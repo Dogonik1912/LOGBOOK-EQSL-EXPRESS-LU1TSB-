@@ -6,7 +6,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { getInitialAppLanguage, getLocalizedShareText } from '../services/appLanguage';
+import { getLocalizedShareText, resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
@@ -240,9 +241,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [isInstalled, setIsInstalled] = useState(false);
   const [appUserCount, setAppUserCount] = useState<number | null>(null);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
-  const [shareLanguage, setShareLanguage] = useState(() => getInitialAppLanguage());
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
-  const shareText = getLocalizedShareText(shareLanguage);
+  const shareText = getLocalizedShareText(resolveShareLanguage(shareLanguage));
   const shareOptions = [
     { name: 'WhatsApp', mark: 'wa', color: 'bg-green-600', url: () => 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl) },
     { name: 'Telegram', mark: 'tg', color: 'bg-sky-500', url: () => 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText) },
@@ -600,7 +601,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShareMenuOpen((open) => !open)}
+                onClick={() => setShareMenuOpen((open) => { if (!open) setShareLanguage('auto'); return !open; })}
                 aria-expanded={shareMenuOpen}
                 aria-haspopup="menu"
                 className="inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-500 bg-emerald-600 px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-white shadow-sm transition-all cursor-pointer hover:bg-emerald-500"
@@ -612,6 +613,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               {shareMenuOpen && (
                 <div role="menu" className="fixed left-1/2 top-auto z-[100] mt-2 w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-2xl sm:absolute sm:left-1/2 sm:top-full sm:w-60 sm:-translate-x-1/2">
+                  <ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} label="Idioma del mensaje" />
                   <p className="px-2 py-1.5 text-[11px] text-slate-400">Elegí dónde compartir</p>
                   <div className="grid grid-cols-2 gap-1">
                     {shareOptions.map((option) => (

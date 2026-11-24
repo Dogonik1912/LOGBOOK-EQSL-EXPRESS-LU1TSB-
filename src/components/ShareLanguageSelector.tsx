@@ -16,15 +16,16 @@ type Props = {
   recipientCallsign?: string;
   label?: string;
   dark?: boolean;
+  autoLabel?: string;
 };
 
 export const ShareLanguageSelector: React.FC<Props> = ({
-  value, onChange, recipientCallsign, label = 'Idioma del mensaje', dark = true,
+  value, onChange, recipientCallsign, label = 'Idioma del mensaje', dark = true, autoLabel,
 }) => {
   const styles = dark ? 'border-slate-700 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900';
-  const automaticLabel = recipientCallsign
+  const automaticLabel = autoLabel || (recipientCallsign
     ? '🌐 Automático (idioma identificado por SD/indicativo)'
-    : '🌐 Automático (idioma habitual de la aplicación)';
+    : '🌐 Automático (idioma habitual de la aplicación)');
   return (
     <label className="my-2 block text-xs font-semibold">
       <span className="mb-1 block">{label}</span>

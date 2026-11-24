@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { flagForCallsign } from '../services/callsignCountry';
+import { resolveShareLanguage, translateShareText, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 import {
   Mail,
   Share2,
@@ -54,6 +56,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   onOpenReply,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   const [selectedQsoIds, setSelectedQsoIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
@@ -168,18 +171,19 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   };
 
   // PRIORIDAD 1: Compartir QSO con firma dinámica y targeting a número de WhatsApp si existe
-  const handleShareQSOWhatsApp = (qso: QSO) => {
+  const handleShareQSOWhatsApp = async (qso: QSO) => {
     const callsign = localStorage.getItem('user_callsign') || 'LU1TSB';
     const firma = `73 cordiales de ${callsign}`;
-
-    const text = `📻 *QSO Confirmado con ${qso.callsign}*\n` +
+    const language = resolveShareLanguage(shareLanguage, qso.callsign);
+    const sourceText = `📻 *QSO Confirmado con ${qso.callsign}*\n` +
       `📅 Fecha: ${qso.date} ${qso.time} UTC\n` +
       `📡 Banda: ${qso.band} (${qso.frequency} MHz) - Modo: ${qso.mode}\n` +
       `📶 RST: ${qso.rstSent} / ${qso.rstRcvd}\n` +
       (qso.grid ? `🌐 Grid: ${qso.grid}\n` : '') +
       (qso.llotaReference ? `🌊 LLOTA: ${qso.llotaReference}\n` : '') +
       `\n${firma}\nLogBook eQSL Express`;
-
+    setShareLanguage('auto');
+    const text = await translateShareText(sourceText, language);
     const cleanPhone = qso.whatsapp ? qso.whatsapp.replace(/[^0-9]/g, '') : '';
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
@@ -188,7 +192,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   };
 
   // Enviar email directo con mailto conteniendo firma dinámica
-  const handleSendEmailDirect = (qso: QSO) => {
+  const handleSendEmailDirect = async (qso: QSO) => {
     const myCallsign = getUserCallsign();
     const firma = getFirma();
 
@@ -197,8 +201,9 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       return;
     }
 
-    const subject = encodeURIComponent(`eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`);
-    const body = encodeURIComponent(
+    const language = resolveShareLanguage(shareLanguage, qso.callsign);
+    const sourceSubject = `eQSL de ${myCallsign} para ${qso.callsign} [${qso.band} ${qso.mode}]`;
+    const sourceBody =
       `Estimado operador de ${qso.callsign},\n\n` +
       `Ha sido un gusto contactarte. Te adjunto los detalles de nuestro QSO registrado en LogBook eQSL Express:\n\n` +
       `• Indicativo: ${qso.callsign}\n` +
@@ -209,11 +214,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
       (qso.grid ? `• Grid Locator: ${qso.grid}\n` : '') +
       (qso.llotaReference ? `• LLOTA: ${qso.llotaReference}\n` : '') +
       `\n¡Gracias por el QSO y nos encontramos en las bandas!\n\n` +
-      `${firma}`
-    );
-
+      `${firma}`;
+    setShareLanguage('auto');
+    const [translatedSubject, translatedBody] = await Promise.all([
+      translateShareText(sourceSubject, language),
+      translateShareText(sourceBody, language),
+    ]);
+    const subject = encodeURIComponent(translatedSubject);
+    const body = encodeURIComponent(translatedBody);
     window.open(`mailto:${qso.email}?subject=${subject}&body=${body}`);
-
     // Abrir el correo no confirma que el usuario haya enviado el mensaje.
   };
 
@@ -475,7 +484,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
     <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
       <button
         type="button"
-        onClick={() => setIsExpanded((expanded) => !expanded)}
+        onClick={() => setIsExpanded((expanded) => { if (!expanded) setShareLanguage('auto'); return !expanded; })}
         aria-expanded={isExpanded}
         className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 py-2.5 sm:px-4 text-left hover:bg-slate-800/70 transition-colors"
       >
@@ -554,6 +563,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
             ))}
           </select>
 
+          <div className="min-w-[220px]"><ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} label="Idioma al compartir QSO" autoLabel="🌐 Automático (según la SD/indicativo de cada QSO)" /></div>
           <div className="flex flex-col gap-1 min-w-[220px]"><label className="text-[11px] text-teal-300">Archivo independiente LLOTA</label><select value={selectedLLOTAId} onChange={e => { setSelectedLLOTAId(e.target.value); setSelectedContestLogName(''); }} className="rounded-lg border border-teal-500/50 bg-slate-950 px-2.5 py-1.5 text-xs text-teal-100"><option value="">Seleccionar log LLOTA…</option>{llotaLogs.map(log => <option key={log.id} value={log.id}>{log.name} · {log.reference} · {log.finishedAt.slice(0,10)}</option>)}</select></div>
           <input
             type="text"
