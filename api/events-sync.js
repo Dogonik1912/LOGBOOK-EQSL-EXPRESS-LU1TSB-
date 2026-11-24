@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const CONTESTCLOCK_URL = 'https://contestclock.com/api/contests?days=365';
+const CONTESTCLOCK_API = 'https://contestclock.com/api/contests';
 const CQ11WW_URL = 'https://www.cq11ww.org/es/default.asp';
 const CQ11WW_RULES_URL = 'https://www.cq11ww.org/es/reglas-6.asp';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
@@ -174,13 +174,15 @@ export default async function handler(req, res) {
     const results = [];
 
     for (const source of sources || []) {
-      const startedAt = new Date().toISOString();
-      await supabase.from('radio_event_sync_runs').insert({ source_key: source.source_key, started_at: startedAt, status: 'running' });
       try {
         if (source.source_key === 'contestclock-ham') {
-          const response = await fetchWithTimeout(CONTESTCLOCK_URL, 'application/json');
-          const payload = await response.json();
-          const rows = contestClockRows(payload);
+          const currentYear = new Date().getUTCFullYear();
+          const yearPayloads = await Promise.all([currentYear, currentYear + 1].map(async (year) => {
+            const response = await fetchWithTimeout(CONTESTCLOCK_API + '?year=' + year, 'application/json');
+            return response.json();
+          }));
+          const combined = { occurrences: yearPayloads.flatMap((payload) => Array.isArray(payload?.occurrences) ? payload.occurrences : []) };
+          const rows = contestClockRows(combined);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'cq-eleven-ww') {
           const response = await fetchWithTimeout(CQ11WW_URL, 'text/html');
