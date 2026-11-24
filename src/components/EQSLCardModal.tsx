@@ -782,14 +782,18 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
     const time = qso?.time || '';
     const frequency = Number(String(qso?.frequency || '').trim().replace(',', '.'));
     const mode = qso?.mode || '';
-    const validCall = isCBQSO
-      ? /^[A-Z0-9][A-Z0-9 /_-]{0,39}$/.test(call)
-      : /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(call);
+    const validStation = (value: string) => isCBQSO
+      ? /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/.test(value.trim().toUpperCase())
+      : /^[A-Z0-9]{1,3}[0-9][A-Z]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(value.trim().toUpperCase());
+    const validCall = validStation(call);
+    const validSender = validStation(cardSenderCallsign);
+    const is11mFrequency = Number.isFinite(frequency) && frequency >= 26.965 && frequency <= 27.999;
+    const validBandFrequency = isCBQSO ? is11mFrequency : !is11mFrequency;
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
     const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
     const validFrequency = Number.isFinite(frequency) && frequency > 0 && frequency <= 100000;
     const validMode = ['SSB', 'CW', 'FT8', 'FT4', 'AM', 'FM', 'RTTY', 'PSK31', 'SSTV', 'JS8', 'D-STAR', 'DMR'].includes(mode);
-    if (!(validCall && validDate && validTime && validFrequency && validMode)) {
+    if (!(validCall && validSender && validBandFrequency && validDate && validTime && validFrequency && validMode)) {
       window.alert('No se puede emitir la eQSL: el QSO tiene un campo obligatorio vacío o incorrecto. Revisá indicativo, fecha, hora UTC, frecuencia y modo.');
       return false;
     }
