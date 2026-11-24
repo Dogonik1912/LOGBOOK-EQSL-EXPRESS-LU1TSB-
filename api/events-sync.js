@@ -727,12 +727,13 @@ export default async function handler(req, res) {
       try {
         if (source.source_key === 'contestclock-ham') {
           const currentYear = new Date().getUTCFullYear();
-          // ContestClock solo publica años disponibles; pedir el siguiente año antes de
-          // que exista devuelve HTTP 400 y hacía fallar toda esta fuente.
-          const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-          const to = new Date(Date.now() + 400 * 86400000).toISOString().slice(0, 10);
-          const payload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?from=' + from + '&to=' + to);
-          const rows = contestClockRows(payload);
+          // ContestClock publica el catálogo anual mediante ?year=YYYY. El rango
+          // from/to no es un parámetro admitido y provocaba HTTP 400.
+          const [currentPayload, nextPayload] = await Promise.all([
+            fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear),
+            fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + (currentYear + 1)),
+          ]);
+          const rows = [...contestClockRows(currentPayload), ...contestClockRows(nextPayload)];
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'romeo-charlie-11m') {
           const [activationsResponse, contestsResponse] = await Promise.all([
