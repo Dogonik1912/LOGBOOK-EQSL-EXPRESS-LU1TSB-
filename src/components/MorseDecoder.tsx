@@ -95,7 +95,7 @@ export function MorseDecoder() {
   const toggleOpen=()=>{if(open&&active)stop();setOpen(value=>!value);if(!open)setStatus(t.idle);};
 
   return <section className="my-4" data-no-translate>
-    <button type="button" aria-expanded={open} onClick={toggleOpen} className="mb-2 flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-blue-700 bg-blue-500 px-4 py-2.5 text-left font-bold text-black shadow-sm hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-700">
+    <button type="button" aria-expanded={open} onClick={toggleOpen} className="mb-2 flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-emerald-400 bg-emerald-600 px-4 py-2.5 text-left font-bold text-white shadow-md shadow-emerald-950/20 transition-colors hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300">
       <Radio className="h-5 w-5"/><span>Decodificador Morse (CW)</span><span className="ml-auto text-xs font-semibold">{open?'−':'+'}</span>
     </button>
     {open&&<div className="rounded-2xl border border-cyan-300 bg-white p-4 shadow-sm">
