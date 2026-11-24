@@ -64,6 +64,16 @@ const formatDate = (value: string | null) => {
   if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC';
 };
+async function readApiPayload(response: Response, fallback: string): Promise<any> {
+  const body = await response.text();
+  if (!body.trim()) throw new Error(fallback);
+  try {
+    const payload = JSON.parse(body);
+    if (payload && typeof payload === 'object') return payload;
+  } catch { /* A Vercel HTML/text error page is not an API payload. */ }
+  throw new Error(fallback);
+}
+
 
 export const EventsAndContests: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -152,8 +162,8 @@ export const EventsAndContests: React.FC = () => {
         headers: { 'x-identity-token': token, 'x-callsign': selectedCall },
         cache: 'no-store',
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo cargar la agenda.');
+      const payload = await readApiPayload(response, 'La agenda no está disponible temporalmente. Volvé a intentarlo.');
+      if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo cargar la agenda.');
       setEvents(Array.isArray(payload.events) ? payload.events : []);
       setCountries(Array.isArray(payload.countries) ? payload.countries : []);
       setIsAdmin(payload.is_admin === true);
@@ -174,7 +184,7 @@ export const EventsAndContests: React.FC = () => {
       setError('');
       try {
         const response = await fetch('/api/events-sync', { headers: { 'x-identity-token': token, 'x-callsign': selectedCall }, cache: 'no-store' });
-        const payload = await response.json();
+        const payload = await readApiPayload(response, 'El servicio no está disponible temporalmente. Volvé a intentarlo.');
         const failedSources = Array.isArray(payload?.results) ? payload.results.filter((item: any) => item.error).map((item: any) => item.source) : [];
         if (failedSources.length) console.warn('[Eventos] Se omitieron fuentes sin actualización correcta:', failedSources);
         if (!response.ok && !failedSources.length) console.warn('[Eventos] No se pudo completar la actualización de fuentes.');
@@ -216,8 +226,8 @@ export const EventsAndContests: React.FC = () => {
         headers: { 'Content-Type': 'application/json', 'x-identity-token': token, 'x-callsign': selectedCall },
         body: JSON.stringify(body),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo publicar el evento.');
+      const payload = await readApiPayload(response, 'No se pudo publicar el evento en este momento.');
+      if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo publicar el evento.');
       setShowPublisher(false);
       setForm((current) => ({ ...current, title: '', description: '', organizer: '', start_at: '', end_at: '', rules_url: '', image_url: '' }));
       await loadEvents();
@@ -235,8 +245,8 @@ export const EventsAndContests: React.FC = () => {
         method: 'DELETE',
         headers: { 'x-identity-token': token, 'x-callsign': selectedCall },
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'No se pudo borrar el evento.');
+      const payload = await readApiPayload(response, 'No se pudo borrar el evento en este momento.');
+      if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo borrar el evento.');
       setEvents((current) => current.filter((item) => item.id !== id));
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'No se pudo borrar el evento.');
@@ -251,8 +261,8 @@ export const EventsAndContests: React.FC = () => {
         body: JSON.stringify({ action: 'share', id: item.id }),
         cache: 'no-store',
       });
-      const payload = await response.json();
-      if (!response.ok || !payload?.token) throw new Error(payload?.error || 'No se pudo preparar el enlace de la publicación.');
+      const payload = await readApiPayload(response, 'No se pudo preparar el enlace de la publicación en este momento.');
+      if (!response.ok || !payload?.token) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo preparar el enlace de la publicación.');
       const url = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin).toString();
       const text = [item.title, item.organizer, formatDate(item.start_at), 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\n');
       if (navigator.share) await navigator.share({ title: item.title, text, url });

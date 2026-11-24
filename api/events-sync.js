@@ -4,6 +4,7 @@ const CONTESTCLOCK_API = 'https://contestclock.com/api/contests';
 const CQ11WW_URL = 'https://www.cq11ww.org/es/default.asp';
 const CQ11WW_RULES_URL = 'https://www.cq11ww.org/es/reglas-6.asp';
 const RCA_CALENDAR_URL = 'https://www.lu4aa.org/wp/calendario-actividades/';
+const LU4AAO_PROGRAMMED_URL = 'https://lu4aao.org/actividades_programadas.htm';
 const CQWW_HOME_URL = 'https://cqww.com/';
 const RC_ACTIVATIONS_URL = 'https://www.rcqsl.com/activation.php';
 const RC_CONTESTS_URL = 'https://www.rcqsl.com/contest.php';
@@ -26,10 +27,21 @@ async function fetchWithTimeout(url, accept) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 18000);
   try {
-    const response = await fetch(url, { headers: { Accept: accept, 'User-Agent': 'LogBook-eQSL-Express-Events/1.0 (+https://logbook-eqsl-express-lu-1-tsb.vercel.app)' }, signal: controller.signal });
+    const response = await fetch(url, { redirect: 'follow', cache: 'no-store', headers: { Accept: accept, 'Accept-Language': 'en-US,en;q=0.9,es;q=0.8', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' }, signal: controller.signal });
     if (!response.ok) throw new Error('HTTP ' + response.status + ' from ' + new URL(url).hostname);
     return response;
   } finally { clearTimeout(timeout); }
+}
+
+async function fetchJsonWithTimeout(url) {
+  const response = await fetchWithTimeout(url, 'application/json');
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  const body = await response.text();
+  if (!contentType.includes('json')) throw new Error('La fuente devolvió un formato distinto de JSON.');
+  let payload;
+  try { payload = JSON.parse(body); } catch { throw new Error('La fuente devolvió JSON no válido.'); }
+  if (!payload || !Array.isArray(payload.occurrences)) throw new Error('La fuente no devolvió una lista de concursos válida.');
+  return payload;
 }
 
 function safeDate(value) {
@@ -485,6 +497,77 @@ function parseDaRcXmas(html) {
   }];
 }
 
+function parseLu4aaoActivities(html) {
+  const blocks = String(html || '').split(/<hr\b[^>]*>|(?:\*\s*){4,}\*/gi);
+  const rows = [];
+  for (const block of blocks) {
+    const text = plainText(block);
+    if (!text || text.length < 20) continue;
+    let dateMatch = text.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(20\d{2})\s+al\s+(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(20\d{2})/i);
+    let range = null;
+    let matchedDate = '';
+    if (dateMatch) {
+      const monthStart = MONTHS[dateMatch[2].toLowerCase()];
+      const monthEnd = MONTHS[dateMatch[5].toLowerCase()];
+      if (monthStart !== undefined && monthEnd !== undefined) {
+        range = normalizeDateRange(Number(dateMatch[3]), monthStart, Number(dateMatch[1]), Number(dateMatch[6]), monthEnd, Number(dateMatch[4]));
+        matchedDate = dateMatch[0];
+      }
+    }
+    if (!range) {
+      dateMatch = text.match(/(\d{1,2})\s*(?:al|a)\s*(?:[A-Za-zÁÉÍÓÚáéíóú]+\s+)?(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})/i);
+      if (dateMatch) {
+        const month = MONTHS[dateMatch[3].toLowerCase()];
+        if (month !== undefined) {
+          const startDay = Number(dateMatch[1]);
+          const endDay = Number(dateMatch[2]);
+          const year = Number(dateMatch[4]);
+          let startMonth = month;
+          let startYear = year;
+          if (endDay < startDay) {
+            startMonth -= 1;
+            if (startMonth < 0) { startMonth = 11; startYear -= 1; }
+          }
+          range = normalizeDateRange(startYear, startMonth, startDay, year, month, endDay);
+          matchedDate = dateMatch[0];
+        }
+      }
+    }
+    if (!range) {
+      dateMatch = text.match(/(?:hasta el\s+)?(?:[A-Za-zÁÉÍÓÚáéíóú]+\s+)?(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})/i);
+      if (dateMatch) {
+        const month = MONTHS[dateMatch[2].toLowerCase()];
+        if (month !== undefined) {
+          range = normalizeDateRange(Number(dateMatch[3]), month, Number(dateMatch[1]), Number(dateMatch[3]), month, Number(dateMatch[1]));
+          matchedDate = dateMatch[0];
+        }
+      }
+    }
+    if (!range) continue;
+    let title = text.replace(matchedDate, '').replace(/^\s*[:–—-]\s*/, '').trim();
+    title = title.replace(/[.\s]+$/, '').slice(0, 220);
+    if (title.length < 4 || /^actividades programadas|^actualización\b/i.test(title)) continue;
+    const slug = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+    const link = block.match(/href=["']([^"']+)["']/i);
+    let rulesUrl = LU4AAO_PROGRAMMED_URL;
+    if (link?.[1]) { try { rulesUrl = new URL(link[1], LU4AAO_PROGRAMMED_URL).toString(); } catch { /* Keep the calendar link. */ } }
+    const isLu1aas = /\bLU1AAS\b/i.test(title);
+    const organizer = isLu1aas && /prefectura/i.test(title) ? 'Prefectura Naval Argentina · LU1AAS'
+      : ((title.match(/Radio Club [^,.;]{2,90}/i) || [])[0] || (isLu1aas ? 'LU1AAS · Prefectura Naval Argentina' : 'Radio Club / grupo organizador'));
+    rows.push({
+      external_id: 'lu4aao-programmed:' + slug + ':' + range.start_at.slice(0, 10),
+      event_kind: /concurso|contest|trofeo/i.test(title) ? 'contest' : 'event',
+      title,
+      description: text.slice(0, 5000) + '\n\nCalendario recopilado por LU4AAO a partir de información de las entidades organizadoras. Confirmá posibles cambios en la publicación original.',
+      event_scope: 'national', station_type: 'ham', country_code: 'AR', country_name: 'Argentina', organizer,
+      start_at: range.start_at, end_at: range.end_at, timezone: 'UTC', rules_url: rulesUrl,
+      source_url: LU4AAO_PROGRAMMED_URL, source_name: 'LU4AAO · actividades programadas de radioclubes argentinos',
+      image_url: null, status: 'published', verified: false, is_auto: true,
+      source_updated_at: null, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    });
+  }
+  return [...new Map(rows.map(row => [row.external_id, row])).values()];
+}
 function parseCqEleven(html) {
   const yearMatch = html.match(/CONCURSO\s+(20\d{2})/i);
   const dateMatch = html.match(/(?:Para\s+)?20\d{2}[^.]{0,60}?s[áa]bado\s+(\d{1,2})\s+y\s+domingo\s+(\d{1,2})\s+de\s+([a-záéíóú]+)/i);
@@ -533,9 +616,10 @@ async function recordRun(supabase, sourceKey, status, inserted, updated, errorMe
     error_message: errorMessage || null,
     details: details || {},
   });
+  const finishedAt = new Date().toISOString();
   await supabase.from('radio_event_sources').update({
-    last_checked_at: new Date().toISOString(),
-    ...(status === 'success' || status === 'partial' ? { last_success_at: new Date().toISOString(), last_error: null } : { last_error: String(errorMessage || 'Error de sincronización').slice(0, 500) }),
+    last_checked_at: finishedAt,
+    ...(status === 'success' ? { last_success_at: finishedAt, last_error: null } : { last_error: String(errorMessage || 'La fuente no pudo actualizarse completamente.').slice(0, 500) }),
   }).eq('source_key', sourceKey);
 }
 
@@ -544,15 +628,22 @@ async function upsertRows(supabase, sourceKey, rows) {
     await recordRun(supabase, sourceKey, 'success', 0, 0, null, { received: 0 });
     return { inserted: 0, updated: 0, received: 0 };
   }
-  const ids = rows.map((row) => row.external_id);
-  const { data: existing, error: lookupError } = await supabase.from('radio_events').select('external_id').in('external_id', ids);
-  if (lookupError) throw lookupError;
-  const oldIds = new Set((existing || []).map((row) => row.external_id));
-  const { error } = await supabase.from('radio_events').upsert(rows, { onConflict: 'external_id' });
-  if (error) throw error;
-  const inserted = rows.filter((row) => !oldIds.has(row.external_id)).length;
-  const updated = rows.length - inserted;
-  await recordRun(supabase, sourceKey, 'success', inserted, updated, null, { received: rows.length });
+  let inserted = 0;
+  let updated = 0;
+  // Keep each PostgREST write small enough for large calendars such as ContestClock.
+  for (let offset = 0; offset < rows.length; offset += 100) {
+    const batch = rows.slice(offset, offset + 100);
+    const ids = batch.map((row) => row.external_id);
+    const { data: existing, error: lookupError } = await supabase.from('radio_events').select('external_id').in('external_id', ids);
+    if (lookupError) throw lookupError;
+    const oldIds = new Set((existing || []).map((row) => row.external_id));
+    const { error } = await supabase.from('radio_events').upsert(batch, { onConflict: 'external_id' });
+    if (error) throw error;
+    const batchInserted = batch.filter((row) => !oldIds.has(row.external_id)).length;
+    inserted += batchInserted;
+    updated += batch.length - batchInserted;
+  }
+  await recordRun(supabase, sourceKey, 'success', inserted, updated, null, { received: rows.length, batches: Math.ceil(rows.length / 100) });
   return { inserted, updated, received: rows.length };
 }
 
@@ -594,8 +685,7 @@ export default async function handler(req, res) {
           const currentYear = new Date().getUTCFullYear();
           // ContestClock solo publica años disponibles; pedir el siguiente año antes de
           // que exista devuelve HTTP 400 y hacía fallar toda esta fuente.
-          const response = await fetchWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear, 'application/json');
-          const payload = await response.json();
+          const payload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear);
           const rows = contestClockRows(payload);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'romeo-charlie-11m') {
@@ -636,6 +726,10 @@ export default async function handler(req, res) {
           const html = await response.text();
           const rows = rcaCalendarRows(html);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'lu4aao-activities') {
+          const response = await fetchWithTimeout(LU4AAO_PROGRAMMED_URL, 'text/html');
+          const rows = parseLu4aaoActivities(await response.text());
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'ure-ham-contests') {
           const response = await fetchWithTimeout(URE_CONTESTS_URL, 'text/html');
           const rows = parseUreContests(await response.text());
@@ -651,7 +745,7 @@ export default async function handler(req, res) {
           const rows = event ? [event] : [];
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else {
-          await recordRun(supabase, source.source_key, 'partial', 0, 0, 'No existe un adaptador para esta fuente.', {});
+          await recordRun(supabase, source.source_key, 'error', 0, 0, 'No existe un adaptador para esta fuente.', {});
           results.push({ source: source.source_key, error: 'No existe un adaptador para esta fuente.' });
         }
       } catch (error) {

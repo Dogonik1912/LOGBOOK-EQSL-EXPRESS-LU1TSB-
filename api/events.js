@@ -88,6 +88,7 @@ function sourceKeyForEvent(event) {
   if (host === 'ure.es') return 'ure-ham-contests';
   if (host === 'da-rcxmas.org') return 'da-rc-xmas-11m';
   if (host === 'lu4aa.org') return 'radio-club-argentina';
+  if (host === 'lu4aao.org') return 'lu4aao-activities';
   if (host === 'cqww.com') return 'cqww-ham';
   if (host === 'cq11ww.org') return 'cq-eleven-ww';
   if (host === 'rcqsl.com') return 'romeo-charlie-11m';
@@ -97,20 +98,33 @@ function sourceKeyForEvent(event) {
 }
 
 function normalizedEventTitle(value) {
-  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
-    .toLowerCase().replace(/\\b20\\d{2}\\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\\s+/g, ' ');
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/\b20\d{2}\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+}
+
+function canonicalEventTitle(event) {
+  const text = [event.title, event.organizer, event.source_name].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const aliases = [
+    [/\byota\b|youngsters on the air|mes yota/, 'yota'],
+    [/world radio day|dia mundial de la radio|journee mondiale de la radio|giornata mondiale della radio/, 'world-radio-day'],
+    [/international marconi day|dia internacional de marconi|giornata internazionale di marconi|journee internationale marconi/, 'international-marconi-day'],
+    [/cq world wide dx|\bcqww\b/, 'cq-world-wide-dx'],
+    [/eleven world wide|cq eleven world wide/, 'eleven-world-wide'],
+    [/santa award|premio santa/, 'santa-award'],
+  ];
+  for (const [pattern, canonical] of aliases) if (pattern.test(text)) return canonical;
+  return normalizedEventTitle(event.title);
 }
 
 function eventDeduplicationKey(event) {
   const start = event.start_at ? new Date(event.start_at).toISOString().slice(0, 10) : 'no-date';
   const end = event.end_at ? new Date(event.end_at).toISOString().slice(0, 10) : 'no-end';
   const scope = [event.event_scope, event.station_type, event.event_kind, event.country_code || ''];
-  if (/\\byota\\b/i.test([event.title, event.organizer, event.source_name].join(' '))) {
+  if (/\byota\b/i.test([event.title, event.organizer, event.source_name].join(' '))) {
     return ['yota-month', ...scope, start, end].join('|');
   }
-  return [...scope, start, end, normalizedEventTitle(event.title)].join('|');
+  return [...scope, start, end, canonicalEventTitle(event)].join('|');
 }
-
 function deduplicateEvents(events) {
   const selected = new Map();
   for (const event of events || []) {
@@ -180,20 +194,14 @@ export default async function handler(req, res) {
       } else if (country) {
         query = query.eq('country_code', country);
       }
-      const [{ data: events, error }, { data: countryRows, error: countryError }, { data: sourceRows, error: sourceError }, { data: syncRuns, error: syncError }] = await Promise.all([
+      const [{ data: events, error }, { data: countryRows, error: countryError }, { data: sourceRows, error: sourceError }] = await Promise.all([
         query,
         supabase.from('radio_events').select('country_code').eq('status', 'published').in('station_type', [stationType, 'both']).not('country_code', 'is', null).limit(1000),
         supabase.from('radio_event_sources').select('last_success_at').not('last_success_at', 'is', null).order('last_success_at', { ascending: false }).limit(1),
-        supabase.from('radio_event_sync_runs').select('source_key,status,finished_at').order('finished_at', { ascending: false }).limit(200),
       ]);
-      if (error || countryError || sourceError || syncError) throw error || countryError || sourceError || syncError;
-      const latestSync = new Map();
-      for (const run of syncRuns || []) if (!latestSync.has(run.source_key)) latestSync.set(run.source_key, run.status);
-      const visibleEvents = deduplicateEvents((events || []).filter((event) => {
-        if (!event.is_auto) return true;
-        const sourceKey = sourceKeyForEvent(event);
-        return sourceKey ? latestSync.get(sourceKey) === 'success' : false;
-      }));
+      if (error || countryError || sourceError) throw error || countryError || sourceError;
+      // A transient failure in today's sync must not hide events saved by the last good run.
+      const visibleEvents = deduplicateEvents((events || []).filter((event) => !event.is_auto || Boolean(sourceKeyForEvent(event))));
       const countries = [...new Set((countryRows || []).map((row) => String(row.country_code || '').toUpperCase()).filter((code) => /^[A-Z]{2}$/.test(code)))].sort();
       return json(res, 200, {
         events: visibleEvents,

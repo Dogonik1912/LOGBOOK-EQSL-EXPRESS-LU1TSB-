@@ -1,6 +1,6 @@
 const SUPPORTED_LANGUAGES = new Set([
   'en', 'pt', 'pt-br', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'uk', 'zh', 'ja', 'ko',
-  'ar', 'hi', 'tr', 'sv', 'no', 'da', 'fi', 'cs', 'el', 'ro', 'hu', 'id',
+  'ar', 'hi', 'tr', 'sv', 'no', 'da', 'fi', 'cs', 'el', 'ro', 'hu', 'id', 'th',
 ]);
 
 const cache = new Map<string, string>();
