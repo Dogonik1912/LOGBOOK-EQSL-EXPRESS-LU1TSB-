@@ -35,7 +35,7 @@ function contestClockRows(payload) {
   const occurrences = Array.isArray(payload?.occurrences) ? payload.occurrences : [];
   const rows = [];
   for (const item of occurrences) {
-    if (!item || item.verified !== true || item.can_enter === false) continue;
+    if (!item || item.verified !== true) continue;
     const startAt = safeDate(item.start);
     const endAt = safeDate(item.end);
     if (!startAt || !endAt) continue;
