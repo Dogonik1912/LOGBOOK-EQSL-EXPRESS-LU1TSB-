@@ -12,6 +12,7 @@ type ExternalSpot = { dxCall: string; band: string; mode: string; frequency: num
 type SpotSourceState = { state: string; lastAcceptedAt?: number | null };
 type RadioStats = { totalSpots?: number; activeEntities?: number; byBand?: Record<string,{spots?:number;entities?:number;rareCount?:number}>; byMode?: Record<string,{spots?:number;entities?:number}>; rareActive?: Array<{dxcc:number;entity:string;rank:number;bands:string[];modes:string[]}> };
 type RadioConditions = { sfi?:number|null; kp?:number|null; aIndex?:number|null; updatedAt?:number|null; bandConditions?:Record<string,string> };
+type AuroraFrame = { url: string; time_tag: string };
 type IonosondeStation = { name:string; lat:number; lon:number; muf:number; updated:number };
 type RadioHistory = { period?:string; bucketSizeSeconds?:number; data?:Array<{bucket:number;spots:number;entities:number;band?:string}> };
 
@@ -165,6 +166,9 @@ export const PropagationReport: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sfi, setSfi] = useState<number | null>(null);
   const [kp, setKp] = useState<number | null>(null);
+  const [auroraFrames, setAuroraFrames] = useState<{ north: AuroraFrame[]; south: AuroraFrame[] }>({ north: [], south: [] });
+  const [auroraFrameIndex, setAuroraFrameIndex] = useState(0);
+  const [auroraFrameError, setAuroraFrameError] = useState('');
   const [updated, setUpdated] = useState('');
   const [error, setError] = useState('');
   const [dxReports, setDxReports] = useState<DXReception[]>([]);
@@ -298,6 +302,50 @@ export const PropagationReport: React.FC = () => {
   };
 
   useEffect(() => { if (open && sfi === null && !loading) void refresh(); }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const loadAuroraFrames = async () => {
+      try {
+        const [northResponse, southResponse] = await Promise.all([
+          fetch('https://services.swpc.noaa.gov/products/animations/ovation_north_24h.json', { cache: 'no-store' }),
+          fetch('https://services.swpc.noaa.gov/products/animations/ovation_south_24h.json', { cache: 'no-store' }),
+        ]);
+        if (!northResponse.ok || !southResponse.ok) throw new Error('NOAA no pudo entregar la secuencia auroral.');
+        const [northRaw, southRaw] = await Promise.all([northResponse.json(), southResponse.json()]);
+        const normalizeFrames = (raw: unknown): AuroraFrame[] => {
+          if (!Array.isArray(raw)) return [];
+          return raw.filter((frame: any) => frame && typeof frame.url === 'string' && Number.isFinite(Date.parse(String(frame.time_tag || ''))))
+            .slice(-24)
+            .map((frame: any) => ({
+              url: new URL(frame.url, 'https://services.swpc.noaa.gov').toString(),
+              time_tag: String(frame.time_tag),
+            }));
+        };
+        const north = normalizeFrames(northRaw);
+        const south = normalizeFrames(southRaw);
+        if (!north.length || !south.length) throw new Error('La secuencia de imágenes de NOAA está vacía.');
+        if (!cancelled) {
+          setAuroraFrames({ north, south });
+          setAuroraFrameIndex(0);
+          setAuroraFrameError('');
+        }
+      } catch (e) {
+        if (!cancelled) setAuroraFrameError(e instanceof Error ? e.message : 'Visualización auroral temporalmente no disponible.');
+      }
+    };
+    void loadAuroraFrames();
+    const refreshTimer = window.setInterval(() => { void loadAuroraFrames(); }, 5 * 60 * 1000);
+    const animationTimer = window.setInterval(() => setAuroraFrameIndex(index => index + 1), 700);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+      window.clearInterval(animationTimer);
+    };
+  }, [open]);
+
+
 
 
   const refreshExternalActivity = async () => {
@@ -727,16 +775,21 @@ export const PropagationReport: React.FC = () => {
               <div><span className="text-[10px] font-black tracking-[.2em] text-violet-200">TIERRA · CAMPO MAGNÉTICO</span><h3 className="mt-1 text-lg font-black text-white">Actividad geomagnética</h3></div>
               <span className="rounded-full border border-violet-200/30 bg-violet-200/10 px-3 py-1 text-xs font-bold text-violet-100">Kp {geomagneticKpValue == null ? '—' : Number(geomagneticKpValue).toFixed(1)}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 px-3">
-              <a href="https://www.nasa.gov/image-article/aurora-borealis-from-station/" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
-                <img src="https://images-assets.nasa.gov/image/iss039e005427/iss039e005427~large.jpg" alt="Fotografía real de una aurora boreal tomada desde la Estación Espacial Internacional, NASA" loading="lazy" className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.04] sm:h-56"/>
-                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">AURORA BOREAL · FOTOGRAFÍA NASA/ISS</span>
-              </a>
-              <a href="https://www.spaceweather.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
-                <img src="https://svs.gsfc.nasa.gov/vis/a000000/a003100/a003128/ISS067_20220817_192407_aurora_print.jpg" alt="Fotografía real de una aurora austral tomada desde la Estación Espacial Internacional, NASA" loading="lazy" className="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-40"/>
-                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">AURORA AUSTRAL · FOTOGRAFÍA NASA/ISS</span>
-              </a>
+            <div className="grid grid-cols-1 gap-3 px-3 sm:grid-cols-2">
+              {([
+                { key: 'south' as const, label: 'AURORA AUSTRAL · HEMISFERIO SUR', frames: auroraFrames.south },
+                { key: 'north' as const, label: 'AURORA BOREAL · HEMISFERIO NORTE', frames: auroraFrames.north },
+              ]).map((pole) => {
+                const frame = pole.frames.length ? pole.frames[auroraFrameIndex % pole.frames.length] : null;
+                return <div key={pole.key} className="relative overflow-hidden rounded-xl border border-violet-100/20 bg-black">
+                  {frame ? <img key={frame.url} src={frame.url} alt={pole.label + ' · pronóstico dinámico NOAA OVATION'} loading="lazy" className="h-56 w-full object-contain bg-black sm:h-64"/> : <div className="flex h-56 items-center justify-center text-xs text-violet-100/70">Cargando mapa dinámico NOAA…</div>}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/75 px-2 py-2 text-center text-[10px] font-bold text-violet-100">{pole.label}</div>
+                  {frame && <span className="absolute right-2 top-2 rounded bg-black/75 px-2 py-1 text-[9px] text-white">{new Date(frame.time_tag).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC</span>}
+                </div>;
+              })}
             </div>
+            <p className="px-4 pt-2 text-[10px] text-violet-100/70">Secuencia animada de las últimas 2 horas del modelo OVATION de NOAA. Se renueva cada 5 minutos; pronóstico auroral de corto plazo, no una observación visual directa.</p>
+            {auroraFrameError && <p className="px-4 pb-2 text-[10px] text-amber-200">{auroraFrameError}</p>}
             <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-violet-100/70">ÍNDICE Kp</span><strong className="mt-1 block text-2xl font-black text-white">{geomagneticKpValue == null ? '—' : Number(geomagneticKpValue).toFixed(1)}</strong><span className="text-[10px] text-violet-100/80">escala 0–9</span></div>
               <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-violet-100/70">ÍNDICE A</span><strong className="mt-1 block text-2xl font-black text-white">{radioConditions?.aIndex ?? '—'}</strong><span className="text-[10px] text-violet-100/80">actividad diaria</span></div>
@@ -747,7 +800,7 @@ export const PropagationReport: React.FC = () => {
               <div className="grid grid-cols-5 gap-1 text-center text-[10px] font-black">{['G1','G2','G3','G4','G5'].map((level,index)=><div key={level} className={'rounded-md py-2 '+(geomagneticKpValue != null && geomagneticKpValue >= index+5 ? 'bg-violet-400/40 text-white' : 'bg-white/5 text-violet-100/50')}>{level}</div>)}</div>
               <p className="mt-2 text-xs leading-relaxed text-slate-100">Cuando Kp aumenta, crece la perturbación del campo magnético: puede degradar la propagación HF, especialmente en latitudes altas, aunque también favorece auroras más extensas.</p>
             </div>
-            <p className="px-4 pb-4 text-[10px] text-violet-100/60">Fotografías reales de auroras tomadas desde la Estación Espacial Internacional (NASA). Son imágenes ilustrativas, no una transmisión en vivo ni una garantía de visibilidad local.</p>
+            <p className="px-4 pb-4 text-[10px] text-violet-100/60">Modelo OVATION · NOAA / Space Weather Prediction Center. Las áreas coloreadas representan intensidad prevista de aurora, no fotografías ni observaciones desde tierra.</p>
           </article>
         </section>
         <p className="break-words rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-[#153452] to-[#252044] p-4 text-sm font-medium leading-relaxed text-slate-100 shadow-lg">{summary}</p>
