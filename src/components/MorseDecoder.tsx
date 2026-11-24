@@ -44,12 +44,15 @@ export function MorseDecoder() {
   },[frequency,bandwidth,squelch,adaptive,manualWpm]);
 
   const start=async()=>{
+    let pendingStream:MediaStream|null=null;
+    let pendingContext:AudioContext|null=null;
     if(!window.isSecureContext){setStatus(t.insecure);return;}
     if(!navigator.mediaDevices?.getUserMedia){setStatus(t.unsupported);return;}
     setStatus(lang==='es'?'Esperando autorización del micrófono…':'Waiting for microphone permission…');
     try{
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});
-      const context=new AudioContext();await context.resume();
+      pendingStream=stream;
+      const context=new AudioContext();pendingContext=context;await context.resume();
       const source=context.createMediaStreamSource(stream),processor=context.createScriptProcessor(4096,1,1),silentGain=context.createGain();
       silentGain.gain.value=0;
       const decoder=new CWAudioDecoder(context.sampleRate,frequency,manualWpm,Math.max(1,frequency/bandwidth));
@@ -65,6 +68,7 @@ export function MorseDecoder() {
       processor.onaudioprocess=(event)=>{const result=decoder.process(event.inputBuffer.getChannelData(0));setStats(result);};
       source.connect(processor);processor.connect(silentGain);silentGain.connect(context.destination);
       sessionRef.current={stream,context,source,processor,silentGain,decoder};
+      pendingStream=null;pendingContext=null;
       setStats(decoder.getStats());setActive(true);setStatus(t.listening);
     }catch(error){
       const err=error as DOMException;
@@ -72,11 +76,16 @@ export function MorseDecoder() {
       else if(err?.name==='NotAllowedError'||err?.name==='PermissionDeniedError')setStatus(t.permission);
       else setStatus(t.permission+(err?.message?' ('+err.message+')':''));
       const s=sessionRef.current;if(s){s.stream.getTracks().forEach(track=>track.stop());void s.context.close();sessionRef.current=null;}
+      if(pendingStream)pendingStream.getTracks().forEach(track=>track.stop());
+      if(pendingContext)void pendingContext.close();
       setActive(false);
     }
   };
 
-  const clear=()=>{codeRef.current='';decodedRef.current='';setCode('');setDecoded('');sessionRef.current?.decoder.reset();setStats(sessionRef.current?.decoder.getStats()||null);};
+  const clear=()=>{codeRef.current='';decodedRef.current='';setCode('');setDecoded('');sessionRef.current?.decoder.reset();
+    const decoder=sessionRef.current?.decoder;
+    if(decoder){decoder.setToneFreq(frequency);decoder.setFilterBandwidth(bandwidth);decoder.setSquelch(squelch===0?0:0.05*Math.pow(squelch/100,2));decoder.setAdaptive(adaptive);if(!adaptive)decoder.setWpm(manualWpm);}
+    setStats(decoder?.getStats()||null);};
   const copyText=async()=>{
     if(!decodedRef.current)return;
     try{await navigator.clipboard.writeText(decodedRef.current);setCopied(true);window.setTimeout(()=>setCopied(false),1600);}
