@@ -106,6 +106,7 @@ function canonicalEventTitle(event) {
   const text = [event.title, event.organizer, event.source_name].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const aliases = [
     [/\byota\b|youngsters on the air|mes yota/, 'yota'],
+    [/examen de ascenso/, 'examen-de-ascenso'],
     [/world radio day|dia mundial de la radio|journee mondiale de la radio|giornata mondiale della radio/, 'world-radio-day'],
     [/international marconi day|dia internacional de marconi|giornata internazionale di marconi|journee internationale marconi/, 'international-marconi-day'],
     [/cq world wide dx|\bcqww\b/, 'cq-world-wide-dx'],
