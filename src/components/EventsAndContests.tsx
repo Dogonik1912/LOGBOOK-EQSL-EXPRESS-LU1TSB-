@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Globe2, MapPin, RefreshCw, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
+import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
 type StationType = 'ham' | '11m';
 type EventScope = 'national' | 'international';
@@ -35,6 +35,20 @@ const COUNTRY_CODES: Record<string, string> = {
   Rusia:'RU',Ucrania:'UA',Japón:'JP','Corea del Sur':'KR',Indonesia:'ID',Malasia:'MY',Singapur:'SG',Marruecos:'MA',Egipto:'EG',
   Nigeria:'NG',Ghana:'GH',Kenia:'KE',Namibia:'NA','Arabia Saudita':'SA','Emiratos Árabes Unidos':'AE',Turquía:'TR',Irlanda:'IE',
   Luxemburgo:'LU',Andorra:'AD',Malta:'MT',Gibraltar:'GI',Puerto Rico:'PR','República Dominicana':'DO',Haití:'HT',Guayana Francesa:'GF',
+};
+
+const countryCodeFromFlag = (flag: string) => {
+  const letters = [...String(flag || '')]
+    .map((character) => character.codePointAt(0) || 0)
+    .filter((point) => point >= 0x1F1E6 && point <= 0x1F1FF)
+    .map((point) => String.fromCharCode(point - 0x1F1E6 + 65));
+  return letters.length >= 2 ? letters.slice(0, 2).join('') : '';
+};
+
+const countryCodeForCallsign = (callsign: string, type: StationType) => {
+  const is11m = type === '11m';
+  const name = countryForCallsign(callsign, '', is11m);
+  return COUNTRY_CODES[name] || countryCodeFromFlag(flagForCallsign(callsign, '', is11m));
 };
 
 const countryLabel = (code: string) => {
@@ -79,7 +93,7 @@ export const EventsAndContests: React.FC = () => {
   const selectedIdentity = identities.find((identity) => identity.identity_type === selectedType) || identities[0];
   const selectedCall = selectedIdentity?.callsign || primaryCall;
   const countryName = countryForCallsign(selectedCall, '', selectedType === '11m');
-  const inferredCountry = COUNTRY_CODES[countryName] || '';
+  const inferredCountry = COUNTRY_CODES[countryName] || countryCodeFromFlag(flagForCallsign(selectedCall, '', selectedType === '11m'));
   const effectiveHomeCountry = homeCountry || inferredCountry;
 
   const loadIdentity = useCallback(async () => {
@@ -87,7 +101,7 @@ export const EventsAndContests: React.FC = () => {
     if (!token || !supabase) {
       setIdentities(primaryCall ? [{ callsign: primaryCall, identity_type: fallbackType, is_primary: true }] : []);
       setSelectedType(fallbackType);
-      const fallbackCountry = COUNTRY_CODES[countryForCallsign(primaryCall, '', fallbackType === '11m')] || '';
+      const fallbackCountry = countryCodeForCallsign(primaryCall, fallbackType);
       setHomeCountry(fallbackCountry);
       setSelectedCountry(fallbackCountry);
       return;
@@ -103,7 +117,7 @@ export const EventsAndContests: React.FC = () => {
       const initial = normalized.find((item) => item.is_primary) || normalized[0];
       if (initial) {
         setSelectedType(initial.identity_type);
-        const detected = COUNTRY_CODES[countryForCallsign(initial.callsign, '', initial.identity_type === '11m')] || '';
+        const detected = countryCodeForCallsign(initial.callsign, initial.identity_type);
         setHomeCountry(detected);
         setSelectedCountry(detected);
         setForm((current) => ({ ...current, country_code: detected, station_type: initial.identity_type }));
@@ -175,7 +189,7 @@ export const EventsAndContests: React.FC = () => {
     const identity = identities.find((item) => item.identity_type === type);
     if (!identity) return;
     setSelectedType(type);
-    const country = COUNTRY_CODES[countryForCallsign(identity.callsign, '', type === '11m')] || '';
+    const country = countryCodeForCallsign(identity.callsign, type);
     setHomeCountry(country);
     setSelectedCountry(country);
     setForm((current) => ({ ...current, station_type: type, country_code: country }));
