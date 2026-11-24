@@ -842,7 +842,7 @@ export const LiveLog: React.FC<LiveLogProps> = ({
                         <button
                           type="button"
                           onClick={() => handleShareQSOWhatsApp(q)}
-                          className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                          className="rounded-lg bg-emerald-600 p-1.5 text-white transition-colors hover:bg-emerald-500 cursor-pointer"
                           title="Compartir QSO por WhatsApp"
                         >
                           <Share2 className="w-3.5 h-3.5" />
