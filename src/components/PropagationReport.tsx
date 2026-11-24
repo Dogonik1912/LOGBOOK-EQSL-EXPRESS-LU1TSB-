@@ -4,7 +4,7 @@ import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from 
 import { supabase } from '../services/supabaseClient';
 import { capitalPointForCountry } from '../services/dxDistance';
 import { HAM_BANDS, HAM_MODES } from '../types';
-import { getInitialAppLanguage, type AppLanguage } from '../services/appLanguage';
+import { getInitialAppLanguage, languageFromPhone, type AppLanguage } from '../services/appLanguage';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
@@ -360,25 +360,77 @@ export const PropagationReport: React.FC = () => {
   };
 
   const sharePropagation = async () => {
-    const shareText = [
-      'LogBook eQSL EXPRESS · Centro Mundial de Propagación DX',
-      'Estación: ' + (stationIdentity.selectedCallsign || 'sin indicativo'),
-      'Modalidad: ' + (stationIdentity.selectedType === '11m' ? '11 metros' : 'Radioafición'),
-      'Grid Locator: ' + (stationIdentity.grid || 'no informado'),
-      'SFI: ' + (sfi === null ? 'sin dato' : Math.round(sfi)),
-      'Kp: ' + (kp === null ? 'sin dato' : kp.toFixed(1)),
-      'Informes DX: ' + dxReports.length,
-      window.location.origin + '/?shared=propagation',
-    ].join('\n');
-    try {
-      if (navigator.share) await navigator.share({ title: 'Propagación DX · LogBook eQSL EXPRESS', text: shareText, url: window.location.origin + '/?shared=propagation' });
-      else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareText);
-        window.alert('Información copiada. Ya podés pegarla en WhatsApp, Telegram o correo.');
-      } else window.prompt('Copiá la información para compartirla:', shareText);
-    } catch (e) {
-      if (!(e instanceof Error && e.name === 'AbortError')) window.alert('No se pudo abrir el menú de compartir.');
+    type ContactPicker = { select: (properties: string[], options?: { multiple?: boolean }) => Promise<Array<{ tel?: string[] }>> };
+    let phone = '';
+    let recipientLanguage: AppLanguage = 'en';
+    const contacts = (navigator as Navigator & { contacts?: ContactPicker }).contacts;
+    if (contacts?.select) {
+      try {
+        const selected = await contacts.select(['tel'], { multiple: false });
+        phone = String(selected?.[0]?.tel?.[0] || '').trim();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
     }
+    if (!phone) {
+      const entered = window.prompt('Seleccioná un contacto de WhatsApp o ingresá su número con prefijo internacional (ej.: +54911...).');
+      if (!entered) return;
+      phone = entered.trim();
+    }
+    const detected = languageFromPhone(phone);
+    if (!detected) {
+      window.alert('No se pudo reconocer el prefijo internacional. Ingresá el número completo, incluyendo + y código de país.');
+      return;
+    }
+    recipientLanguage = detected;
+    const copy: Record<AppLanguage, { title: string; station: string; mode: string; grid: string; solar: string; kp: string; reports: string }> = {
+      es:{title:'LogBook eQSL EXPRESS · Centro Mundial de Propagación DX',station:'Estación',mode:'Modalidad',grid:'Grid Locator',solar:'Flujo solar (SFI)',kp:'Índice geomagnético (Kp)',reports:'Informes DX'},
+      en:{title:'LogBook eQSL EXPRESS · World DX Propagation Center',station:'Station',mode:'Mode',grid:'Grid Locator',solar:'Solar Flux (SFI)',kp:'Geomagnetic Index (Kp)',reports:'DX Reports'},
+      pt:{title:'LogBook eQSL EXPRESS · Centro Mundial de Propagação DX',station:'Estação',mode:'Modalidade',grid:'Grid Locator',solar:'Fluxo solar (SFI)',kp:'Índice geomagnético (Kp)',reports:'Relatórios DX'},
+      'pt-br':{title:'LogBook eQSL EXPRESS · Centro Mundial de Propagação DX',station:'Estação',mode:'Modalidade',grid:'Grid Locator',solar:'Fluxo solar (SFI)',kp:'Índice geomagnético (Kp)',reports:'Relatórios DX'},
+      fr:{title:'LogBook eQSL EXPRESS · Centre mondial de propagation DX',station:'Station',mode:'Mode',grid:'Grid Locator',solar:'Flux solaire (SFI)',kp:'Indice géomagnétique (Kp)',reports:'Rapports DX'},
+      de:{title:'LogBook eQSL EXPRESS · Weltweites DX-Ausbreitungszentrum',station:'Station',mode:'Betriebsart',grid:'Grid Locator',solar:'Solarfluss (SFI)',kp:'Geomagnetischer Index (Kp)',reports:'DX-Berichte'},
+      it:{title:'LogBook eQSL EXPRESS · Centro mondiale di propagazione DX',station:'Stazione',mode:'Modalità',grid:'Grid Locator',solar:'Flusso solare (SFI)',kp:'Indice geomagnetico (Kp)',reports:'Rapporti DX'},
+      nl:{title:'LogBook eQSL EXPRESS · Wereldwijd DX-propagatiecentrum',station:'Station',mode:'Modus',grid:'Grid Locator',solar:'Zonneflux (SFI)',kp:'Geomagnetische index (Kp)',reports:'DX-rapporten'},
+      pl:{title:'LogBook eQSL EXPRESS · Światowe Centrum Propagacji DX',station:'Stacja',mode:'Tryb',grid:'Grid Locator',solar:'Strumień słoneczny (SFI)',kp:'Indeks geomagnetyczny (Kp)',reports:'Raporty DX'},
+      ru:{title:'LogBook eQSL EXPRESS · Всемирный центр DX-распространения',station:'Станция',mode:'Режим',grid:'Grid Locator',solar:'Солнечный поток (SFI)',kp:'Геомагнитный индекс (Kp)',reports:'DX-отчёты'},
+      uk:{title:'LogBook eQSL EXPRESS · Світовий центр DX-поширення',station:'Станція',mode:'Режим',grid:'Grid Locator',solar:'Сонячний потік (SFI)',kp:'Геомагнітний індекс (Kp)',reports:'DX-звіти'},
+      zh:{title:'LogBook eQSL EXPRESS · 全球 DX 传播中心',station:'电台',mode:'模式',grid:'网格定位',solar:'太阳通量 (SFI)',kp:'地磁指数 (Kp)',reports:'DX 报告'},
+      ja:{title:'LogBook eQSL EXPRESS · 世界DX伝搬センター',station:'局',mode:'モード',grid:'グリッドロケーター',solar:'太陽フラックス (SFI)',kp:'地磁気指数 (Kp)',reports:'DXレポート'},
+      ko:{title:'LogBook eQSL EXPRESS · 세계 DX 전파 센터',station:'국',mode:'모드',grid:'그리드 로케이터',solar:'태양 플럭스 (SFI)',kp:'지자기 지수 (Kp)',reports:'DX 보고서'},
+      ar:{title:'LogBook eQSL EXPRESS · المركز العالمي لانتشار DX',station:'المحطة',mode:'النمط',grid:'محدد الشبكة',solar:'التدفق الشمسي (SFI)',kp:'المؤشر الجيومغناطيسي (Kp)',reports:'تقارير DX'},
+      hi:{title:'LogBook eQSL EXPRESS · विश्व DX प्रसार केंद्र',station:'स्टेशन',mode:'मोड',grid:'ग्रिड लोकेटर',solar:'सौर फ्लक्स (SFI)',kp:'भूचुंबकीय सूचकांक (Kp)',reports:'DX रिपोर्ट'},
+      tr:{title:'LogBook eQSL EXPRESS · Dünya DX Yayılım Merkezi',station:'İstasyon',mode:'Mod',grid:'Grid Locator',solar:'Güneş Akısı (SFI)',kp:'Jeomanyetik İndeks (Kp)',reports:'DX Raporları'},
+      sv:{title:'LogBook eQSL EXPRESS · Världens DX-utbredningscenter',station:'Station',mode:'Läge',grid:'Grid Locator',solar:'Solflöde (SFI)',kp:'Geomagnetiskt index (Kp)',reports:'DX-rapporter'},
+      no:{title:'LogBook eQSL EXPRESS · Verdenssenter for DX-utbredelse',station:'Stasjon',mode:'Modus',grid:'Grid Locator',solar:'Solfluks (SFI)',kp:'Geomagnetisk indeks (Kp)',reports:'DX-rapporter'},
+      da:{title:'LogBook eQSL EXPRESS · Verdenscenter for DX-udbredelse',station:'Station',mode:'Tilstand',grid:'Grid Locator',solar:'Solflux (SFI)',kp:'Geomagnetisk indeks (Kp)',reports:'DX-rapporter'},
+      fi:{title:'LogBook eQSL EXPRESS · Maailman DX-etenemiskeskus',station:'Asema',mode:'Tila',grid:'Grid Locator',solar:'Aurinkovuo (SFI)',kp:'Geomagneettinen indeksi (Kp)',reports:'DX-raportit'},
+      cs:{title:'LogBook eQSL EXPRESS · Světové centrum šíření DX',station:'Stanice',mode:'Režim',grid:'Grid Locator',solar:'Sluneční tok (SFI)',kp:'Geomagnetický index (Kp)',reports:'DX hlášení'},
+      el:{title:'LogBook eQSL EXPRESS · Παγκόσμιο Κέντρο Διάδοσης DX',station:'Σταθμός',mode:'Τρόπος',grid:'Grid Locator',solar:'Ηλιακή ροή (SFI)',kp:'Γεωμαγνητικός δείκτης (Kp)',reports:'Αναφορές DX'},
+      ro:{title:'LogBook eQSL EXPRESS · Centrul mondial de propagare DX',station:'Stație',mode:'Mod',grid:'Grid Locator',solar:'Flux solar (SFI)',kp:'Indice geomagnetic (Kp)',reports:'Rapoarte DX'},
+      hu:{title:'LogBook eQSL EXPRESS · Világméretű DX-terjedési központ',station:'Állomás',mode:'Üzemmód',grid:'Grid Locator',solar:'Napfluxus (SFI)',kp:'Geomágneses index (Kp)',reports:'DX-jelentések'},
+      id:{title:'LogBook eQSL EXPRESS · Pusat Propagasi DX Dunia',station:'Stasiun',mode:'Mode',grid:'Grid Locator',solar:'Fluks Matahari (SFI)',kp:'Indeks Geomagnetik (Kp)',reports:'Laporan DX'},
+      th:{title:'LogBook eQSL EXPRESS · ศูนย์การแพร่กระจายคลื่น DX ทั่วโลก',station:'สถานี',mode:'โหมด',grid:'Grid Locator',solar:'ฟลักซ์สุริยะ (SFI)',kp:'ดัชนีธรณีแม่เหล็ก (Kp)',reports:'รายงาน DX'},
+    };
+    const labels = copy[recipientLanguage] || copy.en;
+    const shareUrl = window.location.origin + '/?shared=propagation&lang=' + encodeURIComponent(recipientLanguage);
+    const shareText = [
+      labels.title,
+      labels.station + ': ' + (stationIdentity.selectedCallsign || '—'),
+      labels.mode + ': ' + (stationIdentity.selectedType === '11m' ? '11 m' : 'Amateur radio'),
+      labels.grid + ': ' + (stationIdentity.grid || '—'),
+      labels.solar + ': ' + (sfi === null ? '—' : Math.round(sfi)),
+      labels.kp + ': ' + (kp === null ? '—' : kp.toFixed(1)),
+      labels.reports + ': ' + dxReports.length,
+      shareUrl,
+    ].join('\\n');
+    const digits = phone.replace(/[^0-9]/g, '');
+    const internationalDigits = phone.trim().startsWith('00') ? digits.slice(2) : digits;
+    if (!internationalDigits) {
+      window.alert('El contacto no tiene un número válido para WhatsApp.');
+      return;
+    }
+    window.location.assign('https://wa.me/' + internationalDigits + '?text=' + encodeURIComponent(shareText));
   };
 
   useEffect(() => {
