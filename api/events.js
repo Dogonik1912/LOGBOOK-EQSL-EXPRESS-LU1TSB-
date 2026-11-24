@@ -186,7 +186,7 @@ export default async function handler(req, res) {
         .in('station_type', [stationType, 'both'])
         .eq('event_scope', category)
         .eq('event_kind', eventKind)
-        .or('start_at.is.null,start_at.gte.' + new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .or('start_at.is.null,start_at.gte.' + new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() + ',end_at.gte.' + new Date().toISOString())
         .order('start_at', { ascending: true, nullsFirst: false })
         .limit(200);
       if (category === 'national') {
