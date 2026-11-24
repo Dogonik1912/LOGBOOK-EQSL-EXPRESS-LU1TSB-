@@ -127,7 +127,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
-  const [privateRecipients, setPrivateRecipients] = useState<string[]>([]);
+  const [radioRecipients, setRadioRecipients] = useState<string[]>([]);
+  const [elevenMeterRecipients, setElevenMeterRecipients] = useState<string[]>([]);
+  const [allowRecipientTypeChoice, setAllowRecipientTypeChoice] = useState(false);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [recipientError, setRecipientError] = useState('');
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
@@ -230,10 +232,27 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       if (!response.ok || !Array.isArray(result.users)) {
         throw new Error(result.error || 'No se pudo cargar la lista de destinatarios.');
       }
-      const own = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || getUserCallsign() || '').trim().toUpperCase();
-      const users = result.users.map((item: any) => String(item?.callsign || '').trim().toUpperCase())
-        .filter((callsign: string) => callsign && callsign !== own && /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign));
-      setPrivateRecipients(Array.from(new Set(users)).sort());
+      const normalizeId = (value: unknown) => String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      // Las SD de 11 m tienen división numérica + letras + sufijo numérico
+      // (p. ej. 4RC978 o 34RC879); los indicativos de radioaficionado
+      // conservan su formato alfanumérico habitual (p. ej. LU1TSB o 3G1ABC).
+      const is11mId = (value: string) => /^\\d{1,3}[A-Z]{1,3}\\d{2,4}$/.test(normalizeId(value));
+      const ownIds = Array.from(new Set([
+        normalizeId(localStorage.getItem('community_chat_active_callsign')),
+        normalizeId(localStorage.getItem('community_chat_sd')),
+        normalizeId(getUserCallsign()),
+      ].filter(Boolean)));
+      const ownHas11m = ownIds.some(is11mId);
+      const ownHasRadio = ownIds.some(value => !is11mId(value));
+      const dualIdentity = ownHas11m && ownHasRadio;
+      const users = Array.from(new Set(result.users
+        .map((item: any) => String(item?.callsign || '').trim().toUpperCase())
+        .filter((callsign: string) => callsign && !ownIds.includes(normalizeId(callsign)) && /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign))));
+      const radio = users.filter((callsign: string) => !is11mId(callsign)).sort();
+      const eleven = users.filter((callsign: string) => is11mId(callsign)).sort();
+      setRadioRecipients(ownHasRadio && !dualIdentity ? radio : dualIdentity ? radio : []);
+      setElevenMeterRecipients(ownHas11m && !dualIdentity ? eleven : dualIdentity ? eleven : []);
+      setAllowRecipientTypeChoice(dualIdentity || (!ownHasRadio && !ownHas11m));
       setShowShareModal(true);
     } catch (reason) {
       setRecipientError(reason instanceof Error ? reason.message : 'No se pudo preparar el menú para compartir.');
@@ -257,7 +276,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
     
     {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div>}
     {recipientError && <p role="alert" className="bg-slate-900 px-3 pb-2 text-xs text-rose-300">{recipientError}</p>}
-    {showShareModal && destination && km !== null && <DistanceShareModal onClose={() => setShowShareModal(false)} captureElement={() => element.current} firstCallsign={originLabel} secondCallsign={destination.name} distanceKm={km} privateRecipients={privateRecipients} />}\n    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Desplazate por todo el planeta, acercá o alejá y tocá cualquier lugar. También podés arrastrar el marcador. La distancia se mide en línea recta desde tu estación.</p>
+    {showShareModal && destination && km !== null && <DistanceShareModal onClose={() => setShowShareModal(false)} captureElement={() => element.current} firstCallsign={originLabel} secondCallsign={destination.name} distanceKm={km} radioRecipients={radioRecipients} elevenMeterRecipients={elevenMeterRecipients} allowRecipientTypeChoice={allowRecipientTypeChoice} />}\n    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Desplazate por todo el planeta, acercá o alejá y tocá cualquier lugar. También podés arrastrar el marcador. La distancia se mide en línea recta desde tu estación.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
   </div>;
 };
