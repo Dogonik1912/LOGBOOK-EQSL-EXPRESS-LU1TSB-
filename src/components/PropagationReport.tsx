@@ -6,6 +6,7 @@ import { capitalPointForCountry } from '../services/dxDistance';
 import { HAM_BANDS, HAM_MODES } from '../types';
 import { getInitialAppLanguage, languageFromPhone, type AppLanguage } from '../services/appLanguage';
 import { ShareLanguageSelector } from './ShareLanguageSelector';
+import { Share2 } from 'lucide-react';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
@@ -944,7 +945,7 @@ export const PropagationReport: React.FC = () => {
         {updated && <p className="break-words text-xs text-slate-400">Actualizado: {updated} · Fuente: NOAA, Centro de Predicción del Clima Espacial.</p>}
         <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
           <div className="relative">
-            <button type="button" onClick={() => setShowShareOptions(value => { if (!value) setShareLanguage('auto'); return !value; })} aria-expanded={showShareOptions} className="inline-flex items-center justify-center rounded-xl border border-cyan-200/20 bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-blue-950/40 transition hover:brightness-110">Compartir propagación</button>
+            <button type="button" onClick={() => setShowShareOptions(value => { if (!value) setShareLanguage('auto'); return !value; })} aria-expanded={showShareOptions} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black uppercase tracking-wider text-white shadow-lg transition hover:bg-emerald-500"><Share2 className="h-4 w-4" /> Compartir propagación</button>
             {showShareOptions && <div className="mt-2 flex flex-col gap-3 rounded-xl border border-cyan-200/20 bg-slate-950/95 p-3 shadow-xl" role="group" aria-label="Elegir idioma y aplicación para compartir">
               <ShareLanguageSelector value={shareLanguage as 'auto' | AppLanguage} onChange={chooseShareLanguage} label="Idioma del mensaje" />
               <p className="text-[11px] leading-relaxed text-slate-400">La selección solo se aplica a este envío. Cada vez que abras Compartir volverá a Automático. WhatsApp y Telegram se abrirán para que selecciones el contacto.</p>
