@@ -172,18 +172,17 @@ export const EventsAndContests: React.FC = () => {
     if (isAdmin && token) {
       setSyncing(true);
       setError('');
-      let syncErrorMessage = '';
       try {
         const response = await fetch('/api/events-sync', { headers: { 'x-identity-token': token, 'x-callsign': selectedCall }, cache: 'no-store' });
         const payload = await response.json();
-        const sourceErrors = Array.isArray(payload?.results) ? payload.results.filter((item: any) => item.error).map((item: any) => item.source + ': ' + item.error).join(' · ') : '';
-        if (!response.ok || payload?.ok === false) throw new Error(sourceErrors || payload?.error || 'Una o más fuentes no pudieron actualizarse.');
+        const failedSources = Array.isArray(payload?.results) ? payload.results.filter((item: any) => item.error).map((item: any) => item.source) : [];
+        if (failedSources.length) console.warn('[Eventos] Se omitieron fuentes sin actualización correcta:', failedSources);
+        if (!response.ok && !failedSources.length) console.warn('[Eventos] No se pudo completar la actualización de fuentes.');
       } catch (syncError) {
-        syncErrorMessage = syncError instanceof Error ? syncError.message : 'No se pudieron actualizar las fuentes.';
+        console.warn('[Eventos] No se pudo completar la actualización. Se mostrarán únicamente los datos vigentes:', syncError);
       } finally {
         setSyncing(false);
         await loadEvents();
-        if (syncErrorMessage) setError(syncErrorMessage);
       }
       return;
     }
