@@ -213,7 +213,7 @@ const DIVISION_COUNTRY: Record<string, string> = {
 };
 
 const FLAGS: Record<string, string> = {
-  'Argentina':'🇦🇷','España':'🇪🇸','Brasil':'🇧🇷','Uruguay':'🇺🇾','Chile':'🇨🇱','Perú':'🇵🇪',
+  'Argentina':'🇦🇷','España':'🇪🇸','Canarias':'🇪🇸','Brasil':'🇧🇷','Uruguay':'🇺🇾','Chile':'🇨🇱','Perú':'🇵🇪',
   'Bolivia':'🇧🇴','Paraguay':'🇵🇾','Colombia':'🇨🇴','Venezuela':'🇻🇪','Ecuador':'🇪🇨','México':'🇲🇽',
   'Estados Unidos':'🇺🇸','Canadá':'🇨🇦','Reino Unido':'🇬🇧','Italia':'🇮🇹','Francia':'🇫🇷','Alemania':'🇩🇪',
   'Bélgica':'🇧🇪','Portugal':'🇵🇹','Japón':'🇯🇵','Australia':'🇦🇺','Nueva Zelanda':'🇳🇿','Noruega':'🇳🇴',
