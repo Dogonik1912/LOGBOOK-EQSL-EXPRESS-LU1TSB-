@@ -73,6 +73,24 @@ const zones: Zone[] = [
 export const PropagationReport: React.FC = () => {
   const [uiLanguage, setUiLanguage] = useState<AppLanguage>(() => getInitialAppLanguage());
   const [open, setOpen] = useState(false);
+  const [showGuestInvitation, setShowGuestInvitation] = useState(() => {
+    const sharedReport = new URLSearchParams(window.location.search).get('shared') === 'propagation';
+    const validated = localStorage.getItem('logbook_sd_validated') === '1' && Boolean((localStorage.getItem('community_chat_identity_token') || '').trim()) && Boolean((localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim());
+    return sharedReport && !validated;
+  });
+  useEffect(() => {
+    const syncGuestStatus = () => {
+      const sharedReport = new URLSearchParams(window.location.search).get('shared') === 'propagation';
+      const validated = localStorage.getItem('logbook_sd_validated') === '1' && Boolean((localStorage.getItem('community_chat_identity_token') || '').trim()) && Boolean((localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim());
+      setShowGuestInvitation(sharedReport && !validated);
+    };
+    window.addEventListener('user-profile-updated', syncGuestStatus);
+    window.addEventListener('storage', syncGuestStatus);
+    return () => {
+      window.removeEventListener('user-profile-updated', syncGuestStatus);
+      window.removeEventListener('storage', syncGuestStatus);
+    };
+  }, []);
   useEffect(() => {
     const syncLanguage = () => setUiLanguage(getInitialAppLanguage());
     window.addEventListener('user-profile-updated', syncLanguage);
@@ -350,10 +368,10 @@ export const PropagationReport: React.FC = () => {
       'SFI: ' + (sfi === null ? 'sin dato' : Math.round(sfi)),
       'Kp: ' + (kp === null ? 'sin dato' : kp.toFixed(1)),
       'Informes DX: ' + dxReports.length,
-      window.location.origin,
+      window.location.origin + '/?shared=propagation',
     ].join('\n');
     try {
-      if (navigator.share) await navigator.share({ title: 'Propagación DX · LogBook eQSL EXPRESS', text: shareText, url: window.location.origin });
+      if (navigator.share) await navigator.share({ title: 'Propagación DX · LogBook eQSL EXPRESS', text: shareText, url: window.location.origin + '/?shared=propagation' });
       else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareText);
         window.alert('Información copiada. Ya podés pegarla en WhatsApp, Telegram o correo.');
@@ -538,6 +556,11 @@ export const PropagationReport: React.FC = () => {
         <span className="flex min-w-0 flex-col gap-1"><span className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">LogBook eQSL EXPRESS · DX CENTER</span><span className="break-words text-lg font-black tracking-tight sm:text-2xl">CENTRO MUNDIAL DE PROPAGACIÓN</span><span className="text-xs font-medium text-slate-300">Actividad solar · recepción DX · panorama global</span></span>
         <ChevronDown className={'h-5 w-5 shrink-0 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
+      {showGuestInvitation && <aside className="mx-3 mt-3 rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-cyan-950/90 via-blue-950/90 to-indigo-950/90 p-4 shadow-lg sm:mx-5">
+        <p className="text-sm font-black text-cyan-100">¿Todavía no formas parte de LogBook eQSL EXPRESS?</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-100">Regístrate gratuitamente y descubre el centro mundial de propagación DX, el Libro de Guardia, eQSL y muchas más herramientas para radioaficionados y operadores de 11 metros.</p>
+        <p className="mt-2 text-sm font-bold text-cyan-200">¡Te esperamos en nuestra comunidad mundial!</p>
+      </aside>}
       {open && <div className="relative min-w-0 space-y-5 bg-[radial-gradient(ellipse_at_10%_0%,rgba(14,165,233,0.12),transparent_38%),radial-gradient(ellipse_at_90%_15%,rgba(168,85,247,0.12),transparent_34%)] p-3 sm:p-5 lg:p-6">
         <section className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#12365d] via-[#102747] to-[#28204e] p-4 shadow-xl sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
