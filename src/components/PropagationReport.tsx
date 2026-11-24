@@ -4,6 +4,7 @@ import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from 
 import { supabase } from '../services/supabaseClient';
 import { capitalPointForCountry } from '../services/dxDistance';
 import { HAM_BANDS, HAM_MODES } from '../types';
+import { getInitialAppLanguage, type AppLanguage } from '../services/appLanguage';
 
 type Zone = { name: string; utcOffset: number; latitude: number };
 type DXReception = { receiverCallsign: string; senderCallsign: string; frequency: number; flowStartSeconds: number; receiverLocator?: string; mode?: string; };
@@ -70,7 +71,17 @@ const zones: Zone[] = [
 ];
 
 export const PropagationReport: React.FC = () => {
+  const [uiLanguage, setUiLanguage] = useState<AppLanguage>(() => getInitialAppLanguage());
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const syncLanguage = () => setUiLanguage(getInitialAppLanguage());
+    window.addEventListener('user-profile-updated', syncLanguage);
+    window.addEventListener('storage', syncLanguage);
+    return () => {
+      window.removeEventListener('user-profile-updated', syncLanguage);
+      window.removeEventListener('storage', syncLanguage);
+    };
+  }, []);
   const [loading, setLoading] = useState(false);
   const [sfi, setSfi] = useState<number | null>(null);
   const [kp, setKp] = useState<number | null>(null);
@@ -521,7 +532,7 @@ export const PropagationReport: React.FC = () => {
   };
 
   return (
-    <section className="relative mx-auto my-4 w-full max-w-6xl overflow-hidden rounded-[26px] border border-slate-700/70 bg-gradient-to-br from-[#071326] via-[#0b1b34] to-[#171536] text-white shadow-[0_24px_80px_rgba(2,8,23,0.48)]">
+    <section lang={uiLanguage} className="relative mx-auto my-4 w-full max-w-6xl overflow-hidden rounded-[26px] border border-slate-700/70 bg-gradient-to-br from-[#071326] via-[#0b1b34] to-[#171536] text-white shadow-[0_24px_80px_rgba(2,8,23,0.48)]">
       <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
         className="flex min-h-[82px] w-full min-w-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-[#12365c] via-[#132b4d] to-[#30204e] px-4 py-4 text-left transition hover:brightness-110 sm:px-6">
         <span className="flex min-w-0 flex-col gap-1"><span className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">LogBook eQSL EXPRESS · DX CENTER</span><span className="break-words text-lg font-black tracking-tight sm:text-2xl">CENTRO MUNDIAL DE PROPAGACIÓN</span><span className="text-xs font-medium text-slate-300">Actividad solar · recepción DX · panorama global</span></span>
@@ -558,12 +569,12 @@ export const PropagationReport: React.FC = () => {
             </div>
             <div className="grid gap-2 px-3 sm:grid-cols-[1.15fr_.85fr]">
               <a href="https://www.spaceweather.gov/products/solar-ultraviolet-imager" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" alt="Imagen ultravioleta actual del Sol observada por NOAA GOES SUVI" loading="lazy" className="h-44 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-48"/>
-                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">SOL EN ULTRAVIOLETA · 171 Å</span>
+                <img src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg" alt="Imagen científica reciente del disco solar en ultravioleta extremo, captada por el observatorio NASA SDO en 171 angstroms" loading="lazy" className="h-56 w-full object-contain bg-black transition duration-500 group-hover:scale-[1.02] sm:h-64"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">NASA SDO · ULTRAVIOLETA EXTREMO · 171 Å</span>
               </a>
               <a href="https://www.spaceweather.gov/products/goes-x-ray-flux" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-amber-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/animations/suvi/secondary/map/latest.png" alt="Gráfico actualizado de flujo de rayos X solares GOES" loading="lazy" className="h-44 w-full object-contain transition duration-500 group-hover:scale-[1.02] sm:h-48"/>
-                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">RAYOS X · ERUPCIONES SOLARES</span>
+                <img src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0304.jpg" alt="Imagen científica reciente del Sol en ultravioleta extremo, canal NASA SDO 304 angstroms" loading="lazy" className="h-56 w-full object-contain bg-black transition duration-500 group-hover:scale-[1.02] sm:h-64"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-2 text-[10px] font-bold text-amber-100">NASA SDO · ULTRAVIOLETA EXTREMO · 304 Å</span>
               </a>
             </div>
             <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
@@ -581,12 +592,12 @@ export const PropagationReport: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-2 px-3">
               <a href="https://www.spaceweather.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg" alt="Pronóstico de auroras boreales para el hemisferio norte" loading="lazy" className="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-40"/>
-                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">HEMISFERIO NORTE</span>
+                <img src="https://images-assets.nasa.gov/image/iss039e005427/iss039e005427~large.jpg" alt="Fotografía real de una aurora boreal tomada desde la Estación Espacial Internacional, NASA" loading="lazy" className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.04] sm:h-56"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">AURORA BOREAL · FOTOGRAFÍA NASA/ISS</span>
               </a>
               <a href="https://www.spaceweather.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-violet-100/20 bg-black">
-                <img src="https://services.swpc.noaa.gov/images/animations/ovation/south/latest.jpg" alt="Pronóstico de auroras australes para el hemisferio sur" loading="lazy" className="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-40"/>
-                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">HEMISFERIO SUR</span>
+                <img src="https://svs.gsfc.nasa.gov/vis/a000000/a003100/a003128/ISS067_20220817_192407_aurora_print.jpg" alt="Fotografía real de una aurora austral tomada desde la Estación Espacial Internacional, NASA" loading="lazy" className="h-36 w-full object-cover transition duration-500 group-hover:scale-[1.03] sm:h-40"/>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-2 text-center text-[10px] font-bold text-violet-100">AURORA AUSTRAL · FOTOGRAFÍA NASA/ISS</span>
               </a>
             </div>
             <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
