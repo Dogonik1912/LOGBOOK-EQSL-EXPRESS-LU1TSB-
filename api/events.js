@@ -120,7 +120,8 @@ function deduplicateEvents(events) {
     const score = (item) => (item.verified ? 4 : 0) +
       (item.rules_url ? 2 : 0) + (item.source_url ? 1 : 0) +
       (item.description ? Math.min(String(item.description).length / 1000, 1) : 0) +
-      (/radio club argentino|radioaficionado argentino/i.test(String(item.organizer || '') + ' ' + String(item.source_name || '')) ? 3 : 0);
+      (/radio club argentino|radioaficionado argentino/i.test(String(item.organizer || '') + ' ' + String(item.source_name || '')) ? 3 : 0) +
+      (/^mes yota$/i.test(String(item.title || '').trim()) ? 5 : 0);
     if (score(event) > score(prior)) selected.set(key, event);
   }
   return [...selected.values()];
