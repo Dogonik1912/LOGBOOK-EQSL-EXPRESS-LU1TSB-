@@ -249,9 +249,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       </div>
     </div>
     <div ref={element} className="h-[58dvh] min-h-[360px] w-full bg-slate-800" />
-    {destination && <div className="border-t border-cyan-400/40 bg-slate-950 px-3 py-3">
-      <button type="button" onClick={() => void openShareModal()} disabled={loadingRecipients} className="w-full rounded-xl bg-cyan-500 px-4 py-4 text-base font-black tracking-wide text-slate-950 shadow-lg shadow-cyan-950/40 hover:bg-cyan-300 disabled:opacity-60">{loadingRecipients ? 'PREPARANDO PARA COMPARTIR…' : '📤 COMPARTIR DISTANCIA'}</button>
-    </div>}
+    <div id="distance-share-action" className="border-t border-cyan-400/50 bg-slate-950 px-3 py-3">
+      <button type="button" onClick={() => void openShareModal()} disabled={!destination || loadingRecipients} aria-disabled={!destination || loadingRecipients} className="w-full min-h-14 rounded-xl border-2 border-cyan-300 bg-cyan-400 px-4 py-4 text-base font-black tracking-wide text-slate-950 shadow-lg shadow-cyan-950/50 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:border-slate-600 disabled:bg-slate-700 disabled:text-slate-300 disabled:opacity-100">{loadingRecipients ? 'PREPARANDO PARA COMPARTIR…' : '📤 COMPARTIR DISTANCIA'}</button>
+      {!destination && <p className="mt-2 text-center text-xs text-slate-400">Seleccioná un destino en el buscador o tocá un punto del mapa para habilitar el envío.</p>}
+    </div>
 
     
     {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div>}
