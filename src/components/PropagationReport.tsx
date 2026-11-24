@@ -138,7 +138,6 @@ export const PropagationReport: React.FC = () => {
   const [sfi, setSfi] = useState<number | null>(null);
   const [kp, setKp] = useState<number | null>(null);
   const [auroraFrames, setAuroraFrames] = useState<{ north: AuroraFrame[]; south: AuroraFrame[] }>({ north: [], south: [] });
-  const [auroraFrameIndex, setAuroraFrameIndex] = useState(0);
   const [auroraFrameError, setAuroraFrameError] = useState('');
   const [updated, setUpdated] = useState('');
   const [error, setError] = useState('');
@@ -298,8 +297,15 @@ export const PropagationReport: React.FC = () => {
         const south = normalizeFrames(southRaw);
         if (!north.length || !south.length) throw new Error('La secuencia de imágenes de NOAA está vacía.');
         if (!cancelled) {
-          setAuroraFrames({ north, south });
-          setAuroraFrameIndex(0);
+          setAuroraFrames(current => {
+            const latestNorth = north[north.length - 1];
+            const latestSouth = south[south.length - 1];
+            const currentNorth = current.north[current.north.length - 1];
+            const currentSouth = current.south[current.south.length - 1];
+            if (currentNorth?.url === latestNorth?.url && currentNorth?.time_tag === latestNorth?.time_tag &&
+                currentSouth?.url === latestSouth?.url && currentSouth?.time_tag === latestSouth?.time_tag) return current;
+            return { north, south };
+          });
           setAuroraFrameError('');
         }
       } catch (e) {
@@ -308,11 +314,9 @@ export const PropagationReport: React.FC = () => {
     };
     void loadAuroraFrames();
     const refreshTimer = window.setInterval(() => { void loadAuroraFrames(); }, 5 * 60 * 1000);
-    const animationTimer = window.setInterval(() => setAuroraFrameIndex(index => index + 1), 2500);
     return () => {
       cancelled = true;
       window.clearInterval(refreshTimer);
-      window.clearInterval(animationTimer);
     };
   }, [open]);
 
@@ -751,7 +755,7 @@ export const PropagationReport: React.FC = () => {
                 { key: 'south' as const, label: 'AURORA AUSTRAL · HEMISFERIO SUR', frames: auroraFrames.south },
                 { key: 'north' as const, label: 'AURORA BOREAL · HEMISFERIO NORTE', frames: auroraFrames.north },
               ]).map((pole) => {
-                const frame = pole.frames.length ? pole.frames[auroraFrameIndex % pole.frames.length] : null;
+                const frame = pole.frames.length ? pole.frames[pole.frames.length - 1] : null;
                 return <div key={pole.key} className="relative overflow-hidden rounded-xl border border-violet-100/20 bg-black">
                   {frame ? <img key={frame.url} src={frame.url} alt={pole.label + ' · pronóstico dinámico NOAA OVATION'} loading="lazy" className="h-56 w-full object-contain bg-black sm:h-64"/> : <div className="flex h-56 items-center justify-center text-xs text-violet-100/70">Cargando mapa dinámico NOAA…</div>}
                   <div className="absolute bottom-0 left-0 right-0 bg-black/75 px-2 py-2 text-center text-[10px] font-bold text-violet-100">{pole.label}</div>
@@ -759,7 +763,7 @@ export const PropagationReport: React.FC = () => {
                 </div>;
               })}
             </div>
-            <p className="px-4 pt-2 text-[10px] text-violet-100/70">Secuencia animada de las últimas 2 horas del modelo OVATION de NOAA. Se renueva cada 5 minutos; pronóstico auroral de corto plazo, no una observación visual directa.</p>
+            <p className="px-4 pt-2 text-[10px] text-violet-100/70">Mapa estable del modelo OVATION de NOAA. Se consulta cada 5 minutos y solo cambia cuando NOAA publica un fotograma nuevo; es un pronóstico auroral de corto plazo, no una observación visual directa.</p>
             {auroraFrameError && <p className="px-4 pb-2 text-[10px] text-amber-200">{auroraFrameError}</p>}
             <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-black/25 p-3"><span className="text-[10px] text-violet-100/70">ÍNDICE Kp</span><strong className="mt-1 block text-2xl font-black text-white">{geomagneticKpValue == null ? '—' : Number(geomagneticKpValue).toFixed(1)}</strong><span className="text-[10px] text-violet-100/80">escala 0–9</span></div>
