@@ -462,13 +462,17 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     setValidationError('');
     const cleanCall = callsign.trim().toUpperCase();
     const cleanCBStationCallsign = cbStationCallsign.trim().toUpperCase();
-    const validCall = band === '11 metros' ? /^[A-Z0-9][A-Z0-9 /-]{0,19}$/.test(cleanCall) : /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(cleanCall);
+    const validCall = band === '11 metros'
+      ? /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/.test(cleanCall)
+      : isAmateurRadioCallsign(cleanCall);
     const validStation11m = band !== '11 metros' || /^\d{1,3}[A-Z]{1,4}\d{1,4}$/.test(cleanCBStationCallsign || getSavedCbStationCallsign());
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
     const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
     const normalizedFrequency = frequency.trim().replace(',', '.');
     const numericFrequency = Number(normalizedFrequency);
     const validFrequency = normalizedFrequency !== '' && Number.isFinite(numericFrequency) && numericFrequency > 0 && numericFrequency <= 100000;
+    const is11mFrequency = Number.isFinite(numericFrequency) && numericFrequency >= 26.965 && numericFrequency <= 27.999;
+    const validBandFrequency = band === '11 metros' ? is11mFrequency : !is11mFrequency;
     const validMode = HAM_MODES.includes(mode);
     const missing = [
       !validCall ? (band === '11 metros' ? 'identificador de estación de 11 metros' : 'indicativo válido') : '',
@@ -477,6 +481,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       !validDate ? 'fecha válida' : '',
       !validTime ? (timeMode === 'UTC' ? 'hora válida en UTC' : 'hora local válida') : '',
       !validFrequency ? 'frecuencia válida en MHz' : '',
+      !validBandFrequency ? (band === '11 metros' ? 'frecuencia entre 26.965 y 27.999 MHz para 11 metros' : 'una frecuencia que corresponda a la banda seleccionada') : '',
       !validMode ? 'modo válido' : '',
     ].filter(Boolean);
     if (missing.length) {
