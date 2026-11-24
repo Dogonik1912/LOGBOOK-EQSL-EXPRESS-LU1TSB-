@@ -16,6 +16,24 @@ type AuroraFrame = { url: string; time_tag: string };
 type IonosondeStation = { name:string; lat:number; lon:number; muf:number; updated:number };
 type RadioHistory = { period?:string; bucketSizeSeconds?:number; data?:Array<{bucket:number;spots:number;entities:number;band?:string}> };
 
+type PropagationFilterPreferences = { mapBand: string; mapMode: string; historyBand: string; historyMode: string };
+function propagationFilterPreferenceKey() {
+  const account = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || 'guest').trim().toUpperCase();
+  return 'logbook_propagation_filters_v1:' + (account || 'guest');
+}
+function readPropagationFilterPreferences(key = propagationFilterPreferenceKey()): PropagationFilterPreferences {
+  const defaults: PropagationFilterPreferences = { mapBand: '', mapMode: '', historyBand: '', historyMode: '' };
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || '{}');
+    return {
+      mapBand: typeof saved.mapBand === 'string' ? saved.mapBand : defaults.mapBand,
+      mapMode: typeof saved.mapMode === 'string' ? saved.mapMode : defaults.mapMode,
+      historyBand: typeof saved.historyBand === 'string' ? saved.historyBand : defaults.historyBand,
+      historyMode: typeof saved.historyMode === 'string' ? saved.historyMode : defaults.historyMode,
+    };
+  } catch { return defaults; }
+}
+
 type DXHistoryChartProps = { history: RadioHistory | null; band: string; mode: string };
 const DXHistoryChart = React.memo(function DXHistoryChart({history, band, mode}: DXHistoryChartProps) {
   const [selectedBucket, setSelectedBucket] = useState<number | null>(null);
@@ -165,8 +183,8 @@ export const PropagationReport: React.FC = () => {
   const [ionosondeStations, setIonosondeStations] = useState<IonosondeStation[]>([]);
   const [radioHistory, setRadioHistory] = useState<RadioHistory | null>(null);
   const [radioHistoryPeriod, setRadioHistoryPeriod] = useState<'1h'|'6h'|'24h'|'7d'>('24h');
-  const [radioHistoryBand, setRadioHistoryBand] = useState('');
-  const [radioHistoryMode, setRadioHistoryMode] = useState('');
+  const [radioHistoryBand, setRadioHistoryBand] = useState(() => readPropagationFilterPreferences().historyBand);
+  const [radioHistoryMode, setRadioHistoryMode] = useState(() => readPropagationFilterPreferences().historyMode);
   const [selectedHistoryBucket, setSelectedHistoryBucket] = useState<number | null>(null);
   const [radioDataUpdated, setRadioDataUpdated] = useState('');
   const [radioDataError, setRadioDataError] = useState('');
@@ -182,8 +200,8 @@ export const PropagationReport: React.FC = () => {
   const [showGreyLine, setShowGreyLine] = useState(true);
   const [showMaidenheadGrid, setShowMaidenheadGrid] = useState(true);
   const [showDxPaths, setShowDxPaths] = useState(true);
-  const [selectedMapBand, setSelectedMapBand] = useState('');
-  const [selectedMapMode, setSelectedMapMode] = useState('');
+  const [selectedMapBand, setSelectedMapBand] = useState(() => readPropagationFilterPreferences().mapBand);
+  const [selectedMapMode, setSelectedMapMode] = useState(() => readPropagationFilterPreferences().mapMode);
   const [mapStatus, setMapStatus] = useState('Cargando cartografía…');
   const mapElementRef = useRef<HTMLDivElement|null>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -197,6 +215,26 @@ export const PropagationReport: React.FC = () => {
     const cb = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
     return cb && active === cb ? '11m' : (is11MeterStationIdentifier(primary) ? '11m' : 'ham');
   });
+  const [filterPreferenceKey, setFilterPreferenceKey] = useState(() => propagationFilterPreferenceKey());
+  useEffect(() => {
+    const key = propagationFilterPreferenceKey();
+    if (key === filterPreferenceKey) return;
+    const saved = readPropagationFilterPreferences(key);
+    setRadioHistoryBand(saved.historyBand);
+    setRadioHistoryMode(saved.historyMode);
+    setSelectedMapBand(saved.mapBand);
+    setSelectedMapMode(saved.mapMode);
+    setFilterPreferenceKey(key);
+  }, [identityRefresh, filterPreferenceKey]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(filterPreferenceKey, JSON.stringify({
+        mapBand: selectedMapBand, mapMode: selectedMapMode,
+        historyBand: radioHistoryBand, historyMode: radioHistoryMode,
+      }));
+    } catch { /* La aplicación sigue funcionando aunque el almacenamiento local esté lleno o bloqueado. */ }
+  }, [filterPreferenceKey, selectedMapBand, selectedMapMode, radioHistoryBand, radioHistoryMode]);
+
   const stationIdentity = useMemo(() => {
     const primary = (localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
     const cb = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
