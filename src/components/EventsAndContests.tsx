@@ -264,7 +264,7 @@ export const EventsAndContests: React.FC = () => {
       if (navigator.share) await navigator.share({ title: 'Eventos y Concursos · LogBook eQSL EXPRESS', text: message });
       else { await navigator.clipboard.writeText(message); window.alert('Agenda copiada para compartir.'); }
     } catch (shareError) {
-      if (shareError && shareError.name !== 'AbortError') setError('No se pudo compartir la agenda desde este dispositivo.');
+      if ((shareError as Error)?.name !== 'AbortError') setError('No se pudo compartir la agenda desde este dispositivo.');
     }
   };
   const countryOptions = useMemo(() => {
@@ -320,7 +320,7 @@ export const EventsAndContests: React.FC = () => {
         </p>
       </div>
 
-      <div className="space-y-3 p-3 sm:p-4">
+      <div className="space-y-2 p-2 sm:p-3">
         {error && <div className="rounded-lg border border-rose-300/40 bg-rose-950/50 px-3 py-2 text-sm text-rose-100" role="alert">{error}</div>}
         {!homeCountry && category === 'national' && <p className="rounded-lg border border-amber-200/30 bg-amber-200/10 px-3 py-2 text-xs text-amber-100">No pudimos asociar automáticamente un país a esta identificación. Elegí el país que querés consultar.</p>}
         {loading ? <div className="py-8 text-center text-sm text-indigo-100">Consultando eventos y concursos…</div>
@@ -333,8 +333,8 @@ export const EventsAndContests: React.FC = () => {
             {events.map((item) => (
               <article key={item.id} className="overflow-hidden rounded-lg border border-white/15 bg-white/[0.07]">
                 {item.image_url && <img src={item.image_url} alt="" loading="lazy" className="h-20 w-full object-cover" referrerPolicy="no-referrer" />}
-                <div className="p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wide">
+                <div className="p-2">
+                  <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[9px] font-black uppercase tracking-wide">
                     <span className="rounded-full bg-indigo-300/15 px-2 py-1 text-indigo-100">{item.event_scope === 'national' ? 'Nacional' : 'Internacional'}</span>
                     <span className="rounded-full bg-emerald-300/15 px-2 py-1 text-emerald-100">{item.station_type === '11m' ? '11 metros' : item.station_type === 'both' ? 'Ambas modalidades' : 'Radioafición'}</span>
                     {item.verified && <span className="inline-flex items-center gap-1 text-emerald-200"><ShieldCheck className="h-3 w-3" /> Fuente verificada</span>}
