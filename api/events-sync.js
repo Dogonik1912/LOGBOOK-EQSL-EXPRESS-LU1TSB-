@@ -408,11 +408,21 @@ function parseAlfaTango(html) {
   const anchors = [...String(html || '').matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)];
   for (const match of anchors) {
     const text = plainText(match[2]);
-    const range = parseEnglishRange(text);
+    let range = parseEnglishRange(text), dateText = '';
+    if (!range) {
+      const m = text.match(/(\d{1,2})\s*(?:-|–|—|to)\s*(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})/i);
+      if (m) {
+        const month = EN_MONTHS[m[3].toLowerCase()];
+        if (month !== undefined) { range = normalizeDateRange(Number(m[4]), month, Number(m[1]), Number(m[4]), month, Number(m[2])); dateText = m[0]; }
+      }
+    } else {
+      dateText = (text.match(/\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}\s*(?:→|to|–|—|-)\s*\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}/i) || [])[0] || '';
+    }
     if (!range) continue;
-    const title = text.replace(/\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}\s*(?:→|to|–|—|-)\s*\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}/i, '').trim();
+    const title = (dateText ? text.replace(dateText, '') : text).replace(/^\s*[-:–—]+\s*/, '').trim();
     if (!title || title.length < 3) continue;
-    const href = match[1].startsWith('http') ? match[1] : new URL(match[1], ALFA_TANGO_URL).toString();
+    let href;
+    try { href = new URL(match[1], ALFA_TANGO_URL).toString(); } catch { continue; }
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,90);
     rows.push(make11mEvent({
       id: 'alfa-tango:' + slug + ':' + range.start_at.slice(0,10),
@@ -469,28 +479,23 @@ function parseUreContests(html) {
 
 function parseDaRcXmas(html) {
   const text = plainText(html);
-  const english = text.match(/(?:Contest period:\s*)?(?:Starts?:\s*)(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(?:Ends?:\s*)?(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i)
-    || text.match(/Contest period:\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
-  const spanishStart = text.match(/(?:Inicio|Comienza):\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
-  const spanishEnd = text.match(/(?:Final|Termina):\s*(\d{1,2})\s+de\s+([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})/i);
-  let range = null;
-  if (english) {
-    const monthStart = EN_MONTHS[english[2].toLowerCase()], monthEnd = EN_MONTHS[english[5].toLowerCase()];
-    if (monthStart !== undefined && monthEnd !== undefined) {
-      range = normalizeDateRange(Number(english[3]), monthStart, Number(english[1]), Number(english[6]), monthEnd, Number(english[4]));
-    }
-  } else if (spanishStart && spanishEnd) {
-    const monthStart = MONTHS[spanishStart[2].toLowerCase()], monthEnd = MONTHS[spanishEnd[2].toLowerCase()];
-    if (monthStart !== undefined && monthEnd !== undefined) {
-      range = normalizeDateRange(Number(spanishStart[3]), monthStart, Number(spanishStart[1]), Number(spanishEnd[3]), monthEnd, Number(spanishEnd[1]));
-    }
-  }
-  if (!range) return [];
+  const startMatch = text.match(/(?:Starts?|Inicio|Comienza)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
+  const endMatch = text.match(/(?:Ends?|Final|Termina)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
+  if (!startMatch || !endMatch) return [];
+  const monthIndex = (name) => EN_MONTHS[name.toLowerCase()] ?? MONTHS[name.toLowerCase()] ?? (name.toLowerCase() === 'diecembre' ? 11 : undefined);
+  const sm = monthIndex(startMatch[2]), em = monthIndex(endMatch[2]);
+  if (sm === undefined || em === undefined) return [];
+  const start = new Date(Date.UTC(Number(startMatch[3]), sm, Number(startMatch[1]), Number(startMatch[4] || 0), Number(startMatch[5] || 0), 0));
+  const end = new Date(Date.UTC(Number(endMatch[3]), em, Number(endMatch[1]), Number(endMatch[4] || 23), Number(endMatch[5] || 59), 0));
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start ||
+      start.getUTCFullYear() !== Number(startMatch[3]) || start.getUTCMonth() !== sm ||
+      end.getUTCFullYear() !== Number(endMatch[3]) || end.getUTCMonth() !== em) return [];
+  const range = { start_at: start.toISOString(), end_at: end.toISOString() };
   const year = range.start_at.slice(0, 4);
   return [{
     external_id: 'da-rc-xmas:' + range.start_at.slice(0, 10), event_kind: 'contest',
     title: 'DA-RC Christmas Contest ' + year,
-    description: 'Concurso internacional de 11 metros organizado por Dx Adventure Radio Club Delta-Alfa. La web oficial ofrece bases, activadores y seguimiento de clasificaciones.',
+    description: 'Concurso internacional de 11 metros organizado por Dx Adventure Radio Club Delta-Alfa. Horario publicado por la organización en UTC. La web oficial ofrece bases, activadores y seguimiento de clasificaciones.',
     event_scope: 'international', station_type: '11m', country_code: null, country_name: 'Internacional',
     organizer: 'Dx Adventure Radio Club Delta-Alfa', start_at: range.start_at, end_at: range.end_at, timezone: 'UTC',
     rules_url: 'https://da-rcxmas.org/es/', source_url: 'https://da-rcxmas.org/es/', source_name: 'DA-RC Xmas Contest · sitio oficial',
@@ -724,7 +729,9 @@ export default async function handler(req, res) {
           const currentYear = new Date().getUTCFullYear();
           // ContestClock solo publica años disponibles; pedir el siguiente año antes de
           // que exista devuelve HTTP 400 y hacía fallar toda esta fuente.
-          const payload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear);
+          const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+          const to = new Date(Date.now() + 400 * 86400000).toISOString().slice(0, 10);
+          const payload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?from=' + from + '&to=' + to);
           const rows = contestClockRows(payload);
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'romeo-charlie-11m') {
