@@ -119,7 +119,7 @@ function bearingDegrees(a: Point, b: Point) {
   const x = Math.cos(rad(a.lat))*Math.sin(rad(b.lat)) - Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
   return (Math.atan2(y,x) * 180 / Math.PI + 360) % 360;
 }
-const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange }) => {
+const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPlace: Place | null; originLabel: string; onDestinationChange: (place: Place | null) => void; onShareHandlerChange: (handler: (() => void) | null) => void }> = ({ origin, destination, focusPlace, originLabel, onDestinationChange, onShareHandlerChange }) => {
   const element = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const layersRef = useRef<any>(null);
@@ -241,6 +241,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       setLoadingRecipients(false);
     }
   };
+  useEffect(() => {
+    onShareHandlerChange(() => () => { void openShareModal(); });
+    return () => onShareHandlerChange(null);
+  }, [onShareHandlerChange, destination?.lat, destination?.lon, loadingRecipients]);
   return <div className="mt-3 overflow-hidden rounded-xl border border-slate-600">
     <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800 px-3 py-3 text-sm text-white">
       {destination && km !== null ? <div className="flex flex-wrap gap-x-5 gap-y-1"><span><strong>{km.toLocaleString('es-ES',{maximumFractionDigits:1})} km</strong></span><span><strong>{(km/1.609344).toLocaleString('es-ES',{maximumFractionDigits:1})} mi</strong></span><span>Rumbo: <strong>{bearing!.toFixed(0)}°</strong></span></div> : <strong className="text-cyan-200">Mapa mundial: tocá cualquier punto para medir</strong>}
@@ -248,11 +252,7 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
         <button type="button" onClick={() => mapRef.current?.setView([20, 0], 2)} className="rounded-lg border border-slate-500 px-3 py-2 text-xs font-bold hover:bg-slate-700">Ver todo el mundo</button>
       </div>
     </div>
-    <div ref={element} className="h-[58dvh] min-h-[360px] w-full bg-slate-800" />
-    <div id="distance-share-action" className="border-t border-cyan-400/50 bg-slate-950 px-3 py-3">
-      <button type="button" onClick={() => void openShareModal()} disabled={!destination || loadingRecipients} aria-disabled={!destination || loadingRecipients} className="w-full min-h-14 rounded-xl border-2 border-cyan-300 bg-cyan-400 px-4 py-4 text-base font-black tracking-wide text-slate-950 shadow-lg shadow-cyan-950/50 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:border-slate-600 disabled:bg-slate-700 disabled:text-slate-300 disabled:opacity-100">{loadingRecipients ? 'PREPARANDO PARA COMPARTIR…' : '📤 COMPARTIR DISTANCIA'}</button>
-      {!destination && <p className="mt-2 text-center text-xs text-slate-400">Seleccioná un destino en el buscador o tocá un punto del mapa para habilitar el envío.</p>}
-    </div>
+    <div ref={element} className="h-[36dvh] min-h-[260px] w-full bg-slate-800" />
 
     
     {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div>}
@@ -399,6 +399,7 @@ export const DistanceCalculator: React.FC = () => {
   const [mapFocus, setMapFocus] = useState<Place | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [shareAction, setShareAction] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     if (!open || origin || originLoading) return;
@@ -511,7 +512,13 @@ export const DistanceCalculator: React.FC = () => {
           <p className="px-2 pb-2 text-xs font-bold text-cyan-200">{results.length} coincidencias encontradas. Elegí el lugar correcto:</p>
           <div className="max-h-52 space-y-1 overflow-y-auto">{results.map((place, index) => <button type="button" key={place.name + place.lat + place.lon + index} onClick={() => { setMapFocus(place); setSelected(place); setResults([]); }} className="flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-2 text-left text-sm hover:border-cyan-500/50 hover:bg-slate-800"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" /><span className="min-w-0"><strong className="block">{place.name}</strong><span className="text-[11px] text-slate-400">{place.lat.toFixed(4)}, {place.lon.toFixed(4)}</span></span></button>)}</div>
         </div>}
-        {origin && <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} />}
+        {origin && <>
+          <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} onShareHandlerChange={setShareAction} />
+          <div id="distance-share-action" className="mt-2 rounded-xl border-2 border-cyan-300 bg-slate-950 p-3 shadow-lg shadow-cyan-950/40">
+            <button type="button" onClick={() => shareAction?.()} disabled={!selected || !shareAction} className="min-h-14 w-full rounded-xl bg-cyan-400 px-4 py-4 text-base font-black tracking-wide text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300">📤 COMPARTIR DISTANCIA</button>
+            {!selected && <p className="mt-2 text-center text-xs text-slate-300">Seleccioná un destino en el buscador o tocá un punto del mapa para habilitar el envío.</p>}
+          </div>
+        </>}
         <RegisteredGridStations origin={origin} destination={selected} onOpenProfile={(callsign) => { setOpen(false); window.setTimeout(() => { openUserProfile(callsign); }, 80); }} />
       </section>
     </div>}
