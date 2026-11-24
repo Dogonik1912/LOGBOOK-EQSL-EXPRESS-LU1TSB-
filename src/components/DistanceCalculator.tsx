@@ -6,8 +6,7 @@ import { countryForCallsign, is11MeterStationIdentifier } from '../services/call
 import { capitalPointForCountry, isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 import { openUserProfile } from './UserPublicProfile';
 import { loadLeaflet } from '../services/leaflet';
-import { resolveShareLanguage, translateShareText, type AppLanguage } from '../services/appLanguage';
-import { ShareLanguageSelector } from './ShareLanguageSelector';
+import { DistanceShareModal } from './DistanceShareModal';
 
 type Point = { lat: number; lon: number };
 type Place = { name: string; lat: number; lon: number; type?: string };
@@ -127,8 +126,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const changeRef = useRef(onDestinationChange);
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState('');
-  const [shareStatus, setShareStatus] = useState('');
-  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [privateRecipients, setPrivateRecipients] = useState<string[]>([]);
+  const [loadingRecipients, setLoadingRecipients] = useState(false);
+  const [recipientError, setRecipientError] = useState('');
   useEffect(() => { changeRef.current = onDestinationChange; }, [onDestinationChange]);
 
   // Crear Leaflet una sola vez. Cambiar el destino actualiza capas, nunca
@@ -215,55 +216,29 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
   const km = destination ? distanceKm(origin, destination) : null;
   const bearing = destination ? bearingDegrees(origin, destination) : null;
   const locator = destination ? pointToMaidenhead(destination) : '';
-  const shareMeasurement = async () => {
-    if (!destination || km === null || bearing === null) return;
-    const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' +
-      encodeURIComponent(destination.lat + ',' + destination.lon);
-    const sourceMessage = [
-      'LOGBOOK eQSL EXPRESS',
-      'Búsqueda y medición de distancia',
-      'Origen: ' + originLabel + ' (' + origin.lat.toFixed(5) + ', ' + origin.lon.toFixed(5) + ')',
-      'Destino: ' + destination.name,
-      'Distancia: ' + km.toFixed(1) + ' km / ' + (km / 1.609344).toFixed(1) + ' millas',
-      'Rumbo: ' + bearing.toFixed(0) + '°',
-      'Grid Locator destino: ' + locator,
-      'Coordenadas destino: ' + destination.lat.toFixed(5) + ', ' + destination.lon.toFixed(5),
-      'Ver destino en el mapa: ' + mapUrl,
-      'Calculador: ' + window.location.href,
-    ].join('\n');
-    const selectedLanguage = resolveShareLanguage(shareLanguage);
-    setShareLanguage('auto');
-    const message = await translateShareText(sourceMessage, selectedLanguage);
-
-    setShareStatus('');
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: 'LogBook eQSL EXPRESS · Medición', text: message, url: mapUrl });
-        setShareStatus('Búsqueda compartida.');
-        return;
-      } catch (reason) {
-        // Cancelar el panel del sistema no debe abrir otra aplicación ni copiar sin permiso.
-        if (reason instanceof Error && reason.name === 'AbortError') return;
-      }
-    }
+  const openShareModal = async () => {
+    if (!destination || km === null) return;
+    setRecipientError('');
+    setLoadingRecipients(true);
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(message);
-      } else {
-        const field = document.createElement('textarea');
-        field.value = message;
-        field.setAttribute('readonly', '');
-        field.style.position = 'fixed';
-        field.style.opacity = '0';
-        document.body.appendChild(field);
-        field.select();
-        const copied = document.execCommand('copy');
-        field.remove();
-        if (!copied) throw new Error('No se pudo copiar automáticamente.');
+      const token = (localStorage.getItem('community_chat_identity_token') || '').trim();
+      if (!token) throw new Error('Validá tu SD o indicativo antes de compartir.');
+      const response = await fetch('/api/directory?action=lookup', {
+        method: 'GET', cache: 'no-store', headers: { 'x-identity-token': token },
+      });
+      const result = await response.json();
+      if (!response.ok || !Array.isArray(result.users)) {
+        throw new Error(result.error || 'No se pudo cargar la lista de destinatarios.');
       }
-      setShareStatus('Medición copiada. Ya podés pegarla en WhatsApp, Telegram, correo o cualquier otra aplicación.');
-    } catch {
-      setShareStatus('Tu navegador no permite abrir el menú para compartir ni copiar. Probá desde el navegador del teléfono.');
+      const own = String(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || getUserCallsign() || '').trim().toUpperCase();
+      const users = result.users.map((item: any) => String(item?.callsign || '').trim().toUpperCase())
+        .filter((callsign: string) => callsign && callsign !== own && /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign));
+      setPrivateRecipients(Array.from(new Set(users)).sort());
+      setShowShareModal(true);
+    } catch (reason) {
+      setRecipientError(reason instanceof Error ? reason.message : 'No se pudo preparar el menú para compartir.');
+    } finally {
+      setLoadingRecipients(false);
     }
   };
   return <div className="mt-3 overflow-hidden rounded-xl border border-slate-600">
@@ -272,9 +247,10 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       <button type="button" onClick={() => mapRef.current?.setView([20, 0], 2)} className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-bold hover:bg-slate-700">Ver todo el mundo</button>
     </div>
     <div ref={element} className="h-[58dvh] min-h-[360px] w-full bg-slate-800" />
-    {destination && <div className="bg-slate-900 px-3 pt-2"><ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} /></div>}
-    {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><div className="flex gap-2"><button type="button" onClick={shareMeasurement} className="rounded-lg bg-cyan-700 px-3 py-1.5 font-bold text-white hover:bg-cyan-600">Compartir búsqueda</button><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div></div>}
-    {shareStatus && <p role="status" className="bg-slate-900 px-3 pb-2 text-xs text-emerald-300">{shareStatus}</p>}\n    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Desplazate por todo el planeta, acercá o alejá y tocá cualquier lugar. También podés arrastrar el marcador. La distancia se mide en línea recta desde tu estación.</p>
+    
+    {destination && <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 px-3 py-3 text-xs text-slate-200"><span>Destino: {destination.name} · {destination.lat.toFixed(5)}, {destination.lon.toFixed(5)} · Grid: <strong className="font-mono text-cyan-300">{locator}</strong></span><div className="flex gap-2"><button type="button" onClick={() => void openShareModal()} disabled={loadingRecipients} className="rounded-lg bg-cyan-700 px-3 py-1.5 font-bold text-white hover:bg-cyan-600 disabled:opacity-50">{loadingRecipients ? 'Preparando…' : 'Compartir distancia'}</button><button type="button" onClick={() => onDestinationChange(null)} className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold hover:bg-slate-800">Limpiar destino</button></div></div>}
+    {recipientError && <p role="alert" className="bg-slate-900 px-3 pb-2 text-xs text-rose-300">{recipientError}</p>}
+    {showShareModal && destination && km !== null && <DistanceShareModal onClose={() => setShowShareModal(false)} captureElement={() => element.current} firstCallsign={originLabel} secondCallsign={destination.name} distanceKm={km} privateRecipients={privateRecipients} />}\n    <p className="bg-slate-900 px-3 py-2 text-[11px] text-slate-400">Desplazate por todo el planeta, acercá o alejá y tocá cualquier lugar. También podés arrastrar el marcador. La distancia se mide en línea recta desde tu estación.</p>
     {error && <p className="bg-slate-900 px-3 pb-3 text-xs text-amber-300">{error}</p>}
   </div>;
 };
