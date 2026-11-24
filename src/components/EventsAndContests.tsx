@@ -381,6 +381,7 @@ export const EventsAndContests: React.FC = () => {
           <button type="button" onClick={() => setIsExpanded(false)} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15">CERRAR</button>
           <button type="button" onClick={() => void shareAgenda()} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 text-xs font-black text-white shadow-sm hover:bg-emerald-600"><Share2 className="h-4 w-4" /> COMPARTIR AGENDA</button>
         </div>
+      </div>
       </div>}
     </section>
   );
