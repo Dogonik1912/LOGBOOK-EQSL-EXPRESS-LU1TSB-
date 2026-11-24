@@ -121,7 +121,7 @@ function eventDeduplicationKey(event) {
   const start = event.start_at ? new Date(event.start_at).toISOString().slice(0, 10) : 'no-date';
   const scope = [event.event_scope, event.station_type, event.event_kind, event.country_code || ''];
   if (/\byota\b/i.test([event.title, event.organizer, event.source_name].join(' '))) {
-    return ['yota-month', ...scope, start, end].join('|');
+    return ['yota-month', ...scope, start.slice(0, 7)].join('|');
   }
   return [...scope, start, canonicalEventTitle(event)].join('|');
 }
