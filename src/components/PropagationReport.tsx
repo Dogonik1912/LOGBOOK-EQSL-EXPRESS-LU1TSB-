@@ -151,6 +151,9 @@ export const PropagationReport: React.FC = () => {
   const [ionosondeStations, setIonosondeStations] = useState<IonosondeStation[]>([]);
   const [radioHistory, setRadioHistory] = useState<RadioHistory | null>(null);
   const [radioHistoryPeriod, setRadioHistoryPeriod] = useState<'1h'|'6h'|'24h'|'7d'>('24h');
+  const [radioHistoryBand, setRadioHistoryBand] = useState('');
+  const [radioHistoryMode, setRadioHistoryMode] = useState('');
+  const [selectedHistoryBucket, setSelectedHistoryBucket] = useState<number | null>(null);
   const [radioDataUpdated, setRadioDataUpdated] = useState('');
   const [radioDataError, setRadioDataError] = useState('');
 
@@ -360,11 +363,14 @@ export const PropagationReport: React.FC = () => {
       if (!response.ok) throw new Error(response.status === 429 ? 'Límite temporal de la fuente de datos.' : 'HTTP ' + response.status);
       return response.json();
     };
+    const historyParams = new URLSearchParams({ period });
+    if (radioHistoryBand) historyParams.set('band', radioHistoryBand);
+    if (radioHistoryMode) historyParams.set('mode', radioHistoryMode);
     const [statsResult, conditionsResult, propagationResult, historyResult] = await Promise.allSettled([
       fetchJson('https://cqdx.io/api/v1/embed/stats'),
       fetchJson('https://cqdx.io/api/v1/embed/conditions'),
       fetchJson('https://cqdx.io/api/v1/propagation'),
-      fetchJson('https://cqdx.io/api/v1/stats/history?period=' + encodeURIComponent(period)),
+      fetchJson('https://cqdx.io/api/v1/stats/history?' + historyParams.toString()),
     ]);
     const failures: string[] = [];
     if (statsResult.status === 'fulfilled') {
@@ -398,7 +404,7 @@ export const PropagationReport: React.FC = () => {
     void refreshRadioAmateurData(radioHistoryPeriod);
     const timer = window.setInterval(() => void refreshRadioAmateurData(radioHistoryPeriod), 60000);
     return () => window.clearInterval(timer);
-  }, [open, radioHistoryPeriod]);
+  }, [open, radioHistoryPeriod, radioHistoryBand, radioHistoryMode]);
 
   const refreshDx = async () => {
     const callsign = stationIdentity.selectedCallsign.trim().toUpperCase();
@@ -816,10 +822,26 @@ export const PropagationReport: React.FC = () => {
             {ionosondeStations.length ? <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{[...ionosondeStations].sort((a,b)=>Number(b.updated||0)-Number(a.updated||0)).slice(0,9).map((station,index)=><div key={station.name+'-'+index} className="rounded-lg border border-white/10 bg-white/5 p-2"><strong className="block truncate text-xs text-white">{station.name}</strong><span className="text-lg font-black text-sky-200">{Number(station.muf).toFixed(1)} MHz</span><span className="block text-[10px] text-slate-400">Lectura {station.updated ? new Date(Number(station.updated)*1000).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' UTC' : 'sin hora'}</span></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No hay lecturas ionosféricas disponibles en este momento.</p>}
             <p className="mt-2 text-[10px] text-slate-500">Fuente: red mundial de ionosondas prop.kc2g.com, integrada por CQDX. La MUF es una medición ionosférica regional, no garantiza un contacto.</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-black text-white">HISTORIAL DE ACTIVIDAD DX</h4><select aria-label="Período del historial" value={radioHistoryPeriod} onChange={event=>setRadioHistoryPeriod(event.target.value as '1h'|'6h'|'24h'|'7d')} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-white"><option value="1h">Última hora</option><option value="6h">Últimas 6 horas</option><option value="24h">Últimas 24 horas</option><option value="7d">Últimos 7 días</option></select></div>
-            {radioHistory?.data?.length ? <div className="mt-3 flex h-24 items-end gap-1">{radioHistory.data.slice(-36).map((bucket,index)=>{const max=Math.max(1,...radioHistory.data!.map(x=>Number(x.spots||0)));return <div key={String(bucket.bucket)+'-'+index} title={new Date(Number(bucket.bucket)*1000).toLocaleString('es-AR')+': '+bucket.spots+' reportes'} className="min-w-0 flex-1 rounded-t bg-cyan-400/80" style={{height:Math.max(3,Number(bucket.spots||0)/max*100)+'%'}}/>})}</div> : <p className="mt-2 text-xs text-slate-400">Historial no disponible todavía.</p>}
-            <p className="mt-2 text-[10px] text-slate-500">Evolución de reportes DX agregados; no representa QSOs confirmados.</p>
+          <div className="rounded-xl border border-cyan-300/20 bg-slate-950/50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div><h4 className="text-sm font-black text-cyan-100">HISTORIAL DE ACTIVIDAD DX</h4><p className="mt-1 text-[11px] text-slate-400">Evolución de reportes recibidos, agrupados por intervalo.</p></div>
+              <select aria-label="Período del historial DX" value={radioHistoryPeriod} onChange={event=>{setRadioHistoryPeriod(event.target.value as '1h'|'6h'|'24h'|'7d');setSelectedHistoryBucket(null);}} className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1.5 text-xs text-white"><option value="1h">Última hora</option><option value="6h">Últimas 6 horas</option><option value="24h">Últimas 24 horas</option><option value="7d">Últimos 7 días</option></select>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><span className="block text-[10px] uppercase text-slate-400">Reportes del período</span><strong className="text-xl text-white">{(radioHistory?.data || []).reduce((sum,bucket)=>sum+Number(bucket.spots||0),0).toLocaleString('es-AR')}</strong></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><span className="block text-[10px] uppercase text-slate-400">Pico por intervalo</span><strong className="text-xl text-white">{Math.max(0,...(radioHistory?.data || []).map(bucket=>Number(bucket.spots||0))).toLocaleString('es-AR')}</strong></div>
+              <div className="col-span-2 rounded-lg border border-white/10 bg-white/5 p-2 sm:col-span-1"><span className="block text-[10px] uppercase text-slate-400">Último intervalo vs. anterior</span><strong className="text-sm text-cyan-200">{(radioHistory?.data?.length || 0) >= 2 ? (()=>{const ordered=[...(radioHistory?.data||[])].sort((a,b)=>a.bucket-b.bucket);const delta=Number(ordered[ordered.length-1].spots||0)-Number(ordered[ordered.length-2].spots||0);return delta>0?'↑ +'+delta+' reportes':delta<0?'↓ '+delta+' reportes':'→ Sin variación';})() : 'Sin comparación'}</strong></div>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-300">Filtrar por banda
+                <select value={radioHistoryBand} onChange={event=>{setRadioHistoryBand(event.target.value);setSelectedHistoryBucket(null);}} className="min-h-9 rounded-lg border border-slate-600 bg-slate-900 px-2 text-xs text-white"><option value="">Todas las bandas</option>{Object.keys(radioStats?.byBand||{}).sort().map(band=><option key={band} value={band}>{band}</option>)}</select>
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-300">Filtrar por modo
+                <select value={radioHistoryMode} onChange={event=>{setRadioHistoryMode(event.target.value);setSelectedHistoryBucket(null);}} className="min-h-9 rounded-lg border border-slate-600 bg-slate-900 px-2 text-xs text-white"><option value="">Todos los modos</option>{Object.keys(radioStats?.byMode||{}).sort().map(mode=><option key={mode} value={mode}>{mode}</option>)}</select>
+              </label>
+            </div>
+            {radioHistory?.data?.length ? (()=>{const ordered=[...radioHistory.data].sort((a,b)=>a.bucket-b.bucket);const visible=ordered.slice(-24);const max=Math.max(1,...visible.map(bucket=>Number(bucket.spots||0)));const selected=visible.find(bucket=>Number(bucket.bucket)===selectedHistoryBucket)||visible[visible.length-1];return <><div className="mt-4 overflow-x-auto pb-1"><div className="flex h-32 min-w-[620px] items-end gap-1.5 border-b border-slate-700 px-1">{visible.map((bucket,index)=>{const isSelected=Number(bucket.bucket)===Number(selected.bucket);const height=Math.max(4,Number(bucket.spots||0)/max*100);const label=new Date(Number(bucket.bucket)*1000).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'UTC'})+' UTC';return <button key={String(bucket.bucket)+'-'+index} type="button" onClick={()=>setSelectedHistoryBucket(Number(bucket.bucket))} aria-label={'Consultar '+label+': '+bucket.spots+' reportes DX'} title={label+' · '+bucket.spots+' reportes'} className={'flex min-w-[20px] flex-1 items-end rounded-t px-0.5 outline-none transition focus-visible:ring-2 focus-visible:ring-white '+(isSelected?'bg-cyan-300 ring-2 ring-cyan-100':'bg-cyan-500/65 hover:bg-cyan-300/90')} style={{height:height+'%',minHeight:'4px'}}><span className="sr-only">{label}: {bucket.spots} reportes</span></button>})}</div><div className="flex min-w-[620px] justify-between px-1 pt-1 text-[10px] text-slate-500"><span>{new Date(Number(visible[0].bucket)*1000).toLocaleString('es-AR',{dateStyle:'short',timeZone:'UTC'})} UTC</span><span>{new Date(Number(visible[visible.length-1].bucket)*1000).toLocaleString('es-AR',{dateStyle:'short',timeZone:'UTC'})} UTC</span></div></div><div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-950/30 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-xs text-cyan-100">DETALLE DEL INTERVALO SELECCIONADO</strong><span className="text-[10px] text-slate-400">{selected.bucketSizeSeconds ? Math.round(Number(radioHistory.bucketSizeSeconds)/60)+' min por intervalo' : Math.round(Number(radioHistory.bucketSizeSeconds||0)/60)+' min por intervalo'}</span></div><p className="mt-1 text-xs text-slate-300">{new Date(Number(selected.bucket)*1000).toLocaleString('es-AR',{dateStyle:'full',timeStyle:'short',timeZone:'UTC'})} UTC</p><div className="mt-2 grid grid-cols-2 gap-2"><div><span className="block text-[10px] text-slate-400">Reportes DX</span><strong className="text-2xl text-white">{Number(selected.spots||0).toLocaleString('es-AR')}</strong></div><div><span className="block text-[10px] text-slate-400">Entidades DXCC detectadas</span><strong className="text-2xl text-white">{Number(selected.entities||0).toLocaleString('es-AR')}</strong></div></div><p className="mt-2 text-[10px] text-slate-400">{radioHistoryBand?'Banda: '+radioHistoryBand+' · ':''}{radioHistoryMode?'Modo: '+radioHistoryMode+' · ':''}Cifras agregadas de reportes recibidos; no son QSOs confirmados.</p></div></>})() : <p className="mt-3 text-xs text-slate-400">Historial no disponible todavía. Se volverá a consultar automáticamente.</p>}
+            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">Tocá cualquier barra para ver la hora, los reportes y las entidades DXCC de ese intervalo. Los filtros de banda y modo consultan los datos históricos de CQDX. Los reportes DX indican recepción/anuncios de actividad, no confirman por sí solos un QSO.</p>
           </div>
           {radioStats?.rareActive?.length ? <div className="rounded-xl border border-fuchsia-300/20 bg-slate-950/40 p-3"><h4 className="mb-2 text-sm font-black text-fuchsia-100">ENTIDADES DX POCO FRECUENTES ACTIVAS</h4><div className="grid gap-2 sm:grid-cols-2">{radioStats.rareActive.slice(0,8).map(entity=><div key={entity.dxcc} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs"><strong className="text-white">{entity.entity}</strong><span className="ml-2 text-fuchsia-200">#{entity.rank}</span><span className="mt-1 block text-slate-400">{entity.bands?.join(', ')||'—'} · {entity.modes?.join(', ')||'—'}</span></div>)}</div></div> : null}
         </section>
