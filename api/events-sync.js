@@ -207,7 +207,7 @@ function cqwwRows(html) {
 const EN_MONTHS = { jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3, may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8, oct:9, october:9, nov:10, november:10, dec:11, december:11 };
 
 function plainText(html) {
-  return decodeHtml(String(html || '').replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ')).trim();
+  return decodeHtml(String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim();
 }
 
 function validRange(year, month, startDay, endDay) {
@@ -245,39 +245,47 @@ function make11mEvent({ id, title, description, organizer, sourceUrl, sourceName
   };
 }
 
+function normalizeDateRange(startYear, startMonth, startDay, endYear, endMonth, endDay) {
+  const start = new Date(Date.UTC(startYear, startMonth, startDay, 0, 0, 0));
+  const end = new Date(Date.UTC(endYear, endMonth, endDay, 23, 59, 59));
+  if (start.getUTCFullYear() !== startYear || start.getUTCMonth() !== startMonth || end.getUTCFullYear() !== endYear || end.getUTCMonth() !== endMonth || end < start) return null;
+  const now = Date.now();
+  if (end.getTime() < now - 30 * 86400000 || start.getTime() > now + 400 * 86400000) return null;
+  return { start_at: start.toISOString(), end_at: end.toISOString() };
+}
+
 function parseIsoRange(text) {
-  const m = text.match(/(20\\d{2})-(\\d{2})-(\\d{2})\\s*(?:to|–|—|-)\\s*(20\\d{2})-(\\d{2})-(\\d{2})/i);
+  const m = text.match(/(20\d{2})-(\d{2})-(\d{2})\s*(?:to|–|—|-)\s*(20\d{2})-(\d{2})-(\d{2})/i);
   if (!m) return null;
-  return validRange(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[6])) && Number(m[1])===Number(m[4]) && Number(m[2])===Number(m[5])
-    ? validRange(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[6])) : null;
+  return normalizeDateRange(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[4]), Number(m[5])-1, Number(m[6]));
 }
 
 function parseNumericRange(text) {
-  const m = text.match(/(?:start(?:\\s+date)?\\s*:?\\s*)?(\\d{1,2})[./](\\d{1,2})[./](20\\d{2})\\s*(?:to|a|–|—|-)\\s*(?:end(?:\\s+date)?\\s*:?\\s*)?(\\d{1,2})[./](\\d{1,2})[./](20\\d{2})/i);
-  if (!m || m[3] !== m[6] || m[2] !== m[5]) return null;
-  return validRange(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]));
+  const m = text.match(/(?:start(?:\s+date)?\s*:?\s*)?(\d{1,2})[./](\d{1,2})[./](20\d{2})\s*(?:to|a|–|—|-)\s*(?:end(?:\s+date)?\s*:?\s*)?(\d{1,2})[./](\d{1,2})[./](20\d{2})/i);
+  if (!m) return null;
+  return normalizeDateRange(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[6]), Number(m[5])-1, Number(m[4]));
 }
 
 function parseEnglishRange(text) {
-  const m = text.match(/(\\d{1,2})\\s+([A-Za-z]{3,9})\\s+(20\\d{2})\\s*(?:→|to|–|—|-)\\s*(\\d{1,2})\\s+([A-Za-z]{3,9})\\s+(20\\d{2})/i);
-  if (!m || m[3] !== m[6]) return null;
+  const m = text.match(/(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\s*(?:→|to|–|—|-)\s*(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})/i);
+  if (!m) return null;
   const month1 = EN_MONTHS[m[2].toLowerCase()];
   const month2 = EN_MONTHS[m[5].toLowerCase()];
-  if (month1 === undefined || month1 !== month2) return null;
-  return validRange(Number(m[3]), month1, Number(m[1]), Number(m[4]));
+  if (month1 === undefined || month2 === undefined) return null;
+  return normalizeDateRange(Number(m[3]), month1, Number(m[1]), Number(m[6]), month2, Number(m[4]));
 }
 
 function parseLongEnglishWeekend(text) {
-  const m = text.match(/(?:Saturday|Sat\\.?)[, ]+([A-Za-z]+)\\s+(\\d{1,2}),?\\s+(20\\d{2})[^.]{0,80}?(?:Sunday|Sun\\.?)[, ]+([A-Za-z]+)\\s+(\\d{1,2}),?\\s+(20\\d{2})/i);
-  if (!m || m[3] !== m[6]) return null;
+  const m = text.match(/(?:Saturday|Sat\.?)[, ]+([A-Za-z]+)\s+(\d{1,2}),?\s+(20\d{2})[^.]{0,80}?(?:Sunday|Sun\.?)[, ]+([A-Za-z]+)\s+(\d{1,2}),?\s+(20\d{2})/i);
+  if (!m) return null;
   const month1 = EN_MONTHS[m[1].toLowerCase()];
   const month2 = EN_MONTHS[m[4].toLowerCase()];
-  if (month1 === undefined || month1 !== month2) return null;
-  return validRange(Number(m[3]), month1, Number(m[2]), Number(m[5]));
+  if (month1 === undefined || month2 === undefined) return null;
+  return normalizeDateRange(Number(m[3]), month1, Number(m[2]), Number(m[6]), month2, Number(m[5]));
 }
 
 function eventBlocks(html) {
-  const blocks = [...String(html || '').matchAll(/<(?:article|tr|li|section)\\b[^>]*>([\\s\\S]*?)<\\/(?:article|tr|li|section)>/gi)].map(m => m[1]);
+  const blocks = [...String(html || '').matchAll(/<(?:article|tr|li|section)\b[^>]*>([\s\S]*?)<\/(?:article|tr|li|section)>/gi)].map(m => m[1]);
   return blocks.length ? blocks : [String(html || '')];
 }
 
@@ -285,11 +293,11 @@ function parseRomeoCharlieContests(html) {
   const rows = [];
   for (const block of eventBlocks(html)) {
     const text = plainText(block);
-    const m = text.match(/(.{3,180}?)\\s+(20\\d{2}-\\d{2}-\\d{2})\\s+to\\s+(20\\d{2}-\\d{2}-\\d{2})/i);
+    const m = text.match(/(.{3,180}?)\s+(20\d{2}-\d{2}-\d{2})\s+to\s+(20\d{2}-\d{2}-\d{2})/i);
     if (!m) continue;
     const range = parseIsoRange(m[2] + ' to ' + m[3]);
     if (!range) continue;
-    const title = m[1].replace(/^\\W+/, '').trim();
+    const title = m[1].replace(/^\W+/, '').trim();
     if (!title || /QRZ|Station|Dates|Status/i.test(title)) continue;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,90);
     rows.push(make11mEvent({
@@ -310,7 +318,7 @@ function parseRomeoCharlie(html) {
   const rows = [];
   for (const block of eventBlocks(html)) {
     const text = plainText(block);
-    const m = text.match(/([A-Z0-9]+RC\\/[A-Z0-9-]+)\\s+([A-Z]+)\\s*:\\s*([^0-9]{3,90}?)\\s+(20\\d{2}-\\d{2}-\\d{2})\\s+to\\s+(20\\d{2}-\\d{2}-\\d{2})/i);
+    const m = text.match(/([A-Z0-9]+RC\/[A-Z0-9-]+)\s+([A-Z]+)\s*:\s*([^0-9]{3,90}?)\s+(20\d{2}-\d{2}-\d{2})\s+to\s+(20\d{2}-\d{2}-\d{2})/i);
     if (!m) continue;
     const range = parseIsoRange(m[4] + ' to ' + m[5]);
     if (!range) continue;
@@ -337,7 +345,7 @@ function parseSugarDelta(html, sourceUrl, sourceName) {
     if (!range) continue;
     const title = text.slice(0, 180).trim();
     if (!title || title.length < 4) continue;
-    const idPart = title.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 90);
+    const idPart = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 90);
     rows.push(make11mEvent({
       id: 'sugar-delta:' + idPart + ':' + range.start_at.slice(0,10),
       title: title.slice(0, 220),
@@ -376,12 +384,12 @@ function parseEchoKilo(html) {
 
 function parseAlfaTango(html) {
   const rows = [];
-  const anchors = [...String(html || '').matchAll(/<a\\b[^>]*href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi)];
+  const anchors = [...String(html || '').matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)];
   for (const match of anchors) {
     const text = plainText(match[2]);
     const range = parseEnglishRange(text);
     if (!range) continue;
-    const title = text.replace(/\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}\\s*(?:→|to|–|—|-)\\s*\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}/i, '').trim();
+    const title = text.replace(/\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}\s*(?:→|to|–|—|-)\s*\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}/i, '').trim();
     if (!title || title.length < 3) continue;
     const href = match[1].startsWith('http') ? match[1] : new URL(match[1], ALFA_TANGO_URL).toString();
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,90);
