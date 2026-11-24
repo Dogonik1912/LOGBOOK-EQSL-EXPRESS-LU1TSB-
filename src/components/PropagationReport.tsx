@@ -70,9 +70,40 @@ const zones: Zone[] = [
   { name: 'Oceanía', utcOffset: 10, latitude: -25 },
 ];
 
+const guestInvitationCopy: Record<AppLanguage, { title: string; body: string; closing: string }> = {
+  es:{title:'¿Todavía no formas parte de LogBook eQSL EXPRESS?',body:'Regístrate gratuitamente y descubre el centro mundial de propagación DX, el Libro de Guardia, eQSL y muchas más herramientas para radioaficionados y operadores de 11 metros.',closing:'¡Te esperamos en nuestra comunidad mundial!'},
+  en:{title:'Are you not part of LogBook eQSL EXPRESS yet?',body:'Register for free and discover the world DX propagation center, the Logbook, eQSL, and many more tools for amateur radio operators and 11-meter operators.',closing:'We look forward to welcoming you to our worldwide community!'},
+  pt:{title:'Ainda não faz parte do LogBook eQSL EXPRESS?',body:'Registe-se gratuitamente e descubra o centro mundial de propagação DX, o Livro de Estação, eQSL e muitas outras ferramentas para radioamadores e operadores dos 11 metros.',closing:'Esperamos por si na nossa comunidade mundial!'},
+  'pt-br':{title:'Você ainda não faz parte do LogBook eQSL EXPRESS?',body:'Cadastre-se gratuitamente e descubra o centro mundial de propagação DX, o Livro de Estação, eQSL e muitas outras ferramentas para radioamadores e operadores dos 11 metros.',closing:'Esperamos você em nossa comunidade mundial!'},
+  fr:{title:'Vous ne faites pas encore partie de LogBook eQSL EXPRESS ?',body:'Inscrivez-vous gratuitement et découvrez le centre mondial de propagation DX, le carnet de trafic, eQSL et bien d’autres outils pour les radioamateurs et les opérateurs des 11 mètres.',closing:'Nous vous attendons dans notre communauté mondiale !'},
+  de:{title:'Gehörst du noch nicht zu LogBook eQSL EXPRESS?',body:'Registriere dich kostenlos und entdecke das weltweite DX-Ausbreitungszentrum, das Logbuch, eQSL und viele weitere Werkzeuge für Funkamateure und 11-Meter-Betreiber.',closing:'Wir freuen uns auf dich in unserer weltweiten Gemeinschaft!'},
+  it:{title:'Non fai ancora parte di LogBook eQSL EXPRESS?',body:'Registrati gratuitamente e scopri il centro mondiale di propagazione DX, il registro di stazione, eQSL e tanti altri strumenti per radioamatori e operatori degli 11 metri.',closing:'Ti aspettiamo nella nostra comunità mondiale!'},
+  nl:{title:'Maak je nog geen deel uit van LogBook eQSL EXPRESS?',body:'Registreer gratis en ontdek het wereldwijde DX-propagatiecentrum, het logboek, eQSL en nog veel meer hulpmiddelen voor radioamateurs en 11-meteroperators.',closing:'We verwelkomen je graag in onze wereldwijde gemeenschap!'},
+  pl:{title:'Nie należysz jeszcze do LogBook eQSL EXPRESS?',body:'Zarejestruj się bezpłatnie i poznaj światowe centrum propagacji DX, dziennik łączności, eQSL oraz wiele innych narzędzi dla krótkofalowców i operatorów pasma 11 metrów.',closing:'Czekamy na Ciebie w naszej globalnej społeczności!'},
+  ru:{title:'Вы ещё не с LogBook eQSL EXPRESS?',body:'Зарегистрируйтесь бесплатно и откройте для себя мировой центр DX-распространения, аппаратный журнал, eQSL и множество других инструментов для радиолюбителей и операторов диапазона 11 метров.',closing:'Будем рады видеть вас в нашем мировом сообществе!'},
+  uk:{title:'Ви ще не користуєтеся LogBook eQSL EXPRESS?',body:'Зареєструйтеся безкоштовно та відкрийте для себе світовий центр DX-поширення, апаратний журнал, eQSL та багато інших інструментів для радіоаматорів і операторів діапазону 11 метрів.',closing:'Чекаємо на вас у нашій світовій спільноті!'},
+  zh:{title:'您还不是 LogBook eQSL EXPRESS 的用户吗？',body:'免费注册，探索全球 DX 传播中心、通联日志、eQSL，以及为业余无线电爱好者和 11 米波段操作员提供的更多工具。',closing:'期待您加入我们的全球社区！'},
+  ja:{title:'LogBook eQSL EXPRESSにまだ参加していませんか？',body:'無料登録して、世界DX伝搬センター、交信ログ、eQSL、アマチュア無線や11メーターバンドのオペレーター向けのさまざまなツールをご利用ください。',closing:'世界中の仲間とお会いできるのを楽しみにしています！'},
+  ko:{title:'아직 LogBook eQSL EXPRESS 회원이 아니신가요?',body:'무료로 가입하고 세계 DX 전파 센터, 교신 로그북, eQSL 및 아마추어 무선과 11미터 대역 운영자를 위한 다양한 도구를 만나보세요.',closing:'전 세계 커뮤니티에서 여러분을 기다립니다!'},
+  ar:{title:'ألم تنضم إلى LogBook eQSL EXPRESS بعد؟',body:'سجّل مجانًا واكتشف مركز انتشار DX العالمي وسجل الاتصالات وeQSL والعديد من الأدوات لهواة اللاسلكي ومشغلي نطاق 11 مترًا.',closing:'نرحب بك في مجتمعنا العالمي!'},
+  hi:{title:'क्या आप अभी तक LogBook eQSL EXPRESS से नहीं जुड़े हैं?',body:'मुफ़्त पंजीकरण करें और विश्व DX प्रसार केंद्र, लॉगबुक, eQSL तथा शौकिया रेडियो और 11-मीटर ऑपरेटरों के लिए कई अन्य टूल खोजें।',closing:'हमारे वैश्विक समुदाय में आपका स्वागत है!'},
+  tr:{title:'Henüz LogBook eQSL EXPRESS üyesi değil misiniz?',body:'Ücretsiz kaydolun; dünya DX yayılım merkezini, telsiz günlüğünü, eQSL’yi ve amatör telsizciler ile 11 metre operatörleri için daha birçok aracı keşfedin.',closing:'Sizi dünya topluluğumuzda bekliyoruz!'},
+  sv:{title:'Är du ännu inte en del av LogBook eQSL EXPRESS?',body:'Registrera dig gratis och upptäck det globala DX-utbredningscentret, loggboken, eQSL och många fler verktyg för radioamatörer och 11-metersoperatörer.',closing:'Vi ser fram emot att välkomna dig till vår globala gemenskap!'},
+  no:{title:'Er du ennå ikke en del av LogBook eQSL EXPRESS?',body:'Registrer deg gratis og oppdag det verdensomspennende DX-utbredelsessenteret, loggboken, eQSL og mange flere verktøy for radioamatører og 11-meteroperatører.',closing:'Vi gleder oss til å ønske deg velkommen i vårt globale fellesskap!'},
+  da:{title:'Er du endnu ikke en del af LogBook eQSL EXPRESS?',body:'Registrer dig gratis, og oplev det globale DX-udbredelsescenter, logbogen, eQSL og mange flere værktøjer til radioamatører og 11-meteroperatører.',closing:'Vi glæder os til at byde dig velkommen i vores globale fællesskab!'},
+  fi:{title:'Etkö ole vielä mukana LogBook eQSL EXPRESS -palvelussa?',body:'Rekisteröidy maksutta ja tutustu maailmanlaajuiseen DX-etenemiskeskukseen, lokikirjaan, eQSL-palveluun ja moniin muihin radioamatöörien ja 11 metrin operaattorien työkaluihin.',closing:'Tervetuloa maailmanlaajuiseen yhteisöömme!'},
+  cs:{title:'Ještě nejste součástí LogBook eQSL EXPRESS?',body:'Zaregistrujte se zdarma a objevte světové centrum šíření DX, deník spojení, eQSL a mnoho dalších nástrojů pro radioamatéry a operátory pásma 11 metrů.',closing:'Těšíme se na vás v naší celosvětové komunitě!'},
+  el:{title:'Δεν είστε ακόμη μέλος του LogBook eQSL EXPRESS;',body:'Εγγραφείτε δωρεάν και ανακαλύψτε το παγκόσμιο κέντρο διάδοσης DX, το ημερολόγιο επαφών, το eQSL και πολλά ακόμη εργαλεία για ραδιοερασιτέχνες και χειριστές των 11 μέτρων.',closing:'Σας περιμένουμε στην παγκόσμια κοινότητά μας!'},
+  ro:{title:'Încă nu faci parte din LogBook eQSL EXPRESS?',body:'Înregistrează-te gratuit și descoperă centrul mondial de propagare DX, jurnalul de trafic, eQSL și multe alte instrumente pentru radioamatori și operatorii de 11 metri.',closing:'Te așteptăm în comunitatea noastră mondială!'},
+  hu:{title:'Még nem vagy a LogBook eQSL EXPRESS tagja?',body:'Regisztrálj ingyenesen, és fedezd fel a világ DX-terjedési központját, a rádiónaplót, az eQSL-t és sok más eszközt a rádióamatőrök és a 11 méteres sáv kezelői számára.',closing:'Várunk a világméretű közösségünkben!'},
+  id:{title:'Belum bergabung dengan LogBook eQSL EXPRESS?',body:'Daftar gratis dan temukan pusat propagasi DX dunia, buku log, eQSL, serta banyak alat lainnya untuk amatir radio dan operator 11 meter.',closing:'Kami menantikan kehadiran Anda di komunitas global kami!'},
+  th:{title:'คุณยังไม่ได้เป็นสมาชิก LogBook eQSL EXPRESS ใช่ไหม?',body:'สมัครฟรีเพื่อค้นพบศูนย์การแพร่กระจายคลื่น DX ทั่วโลก สมุดบันทึกการติดต่อ eQSL และเครื่องมืออีกมากมายสำหรับนักวิทยุสมัครเล่นและผู้ใช้งานย่าน 11 เมตร',closing:'เรารอ欢迎คุณเข้าร่วมชุมชนทั่วโลกของเรา!'}
+};
+
 export const PropagationReport: React.FC = () => {
   const [uiLanguage, setUiLanguage] = useState<AppLanguage>(() => getInitialAppLanguage());
   const [open, setOpen] = useState(false);
+  const guestInvitation = guestInvitationCopy[uiLanguage] || guestInvitationCopy.en;
   const [showGuestInvitation, setShowGuestInvitation] = useState(() => {
     const sharedReport = new URLSearchParams(window.location.search).get('shared') === 'propagation';
     const validated = localStorage.getItem('logbook_sd_validated') === '1' && Boolean((localStorage.getItem('community_chat_identity_token') || '').trim()) && Boolean((localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim());
@@ -609,9 +640,9 @@ export const PropagationReport: React.FC = () => {
         <ChevronDown className={'h-5 w-5 shrink-0 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
       {showGuestInvitation && <aside className="mx-3 mt-3 rounded-2xl border border-cyan-300/30 bg-gradient-to-r from-cyan-950/90 via-blue-950/90 to-indigo-950/90 p-4 shadow-lg sm:mx-5">
-        <p className="text-sm font-black text-cyan-100">¿Todavía no formas parte de LogBook eQSL EXPRESS?</p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-100">Regístrate gratuitamente y descubre el centro mundial de propagación DX, el Libro de Guardia, eQSL y muchas más herramientas para radioaficionados y operadores de 11 metros.</p>
-        <p className="mt-2 text-sm font-bold text-cyan-200">¡Te esperamos en nuestra comunidad mundial!</p>
+        <p className="text-sm font-black text-cyan-100">{guestInvitation.title}</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-100">{guestInvitation.body}</p>
+        <p className="mt-2 text-sm font-bold text-cyan-200">{guestInvitation.closing}</p>
       </aside>}
       {open && <div className="relative min-w-0 space-y-5 bg-[radial-gradient(ellipse_at_10%_0%,rgba(14,165,233,0.12),transparent_38%),radial-gradient(ellipse_at_90%_15%,rgba(168,85,247,0.12),transparent_34%)] p-3 sm:p-5 lg:p-6">
         <section className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-[#12365d] via-[#102747] to-[#28204e] p-4 shadow-xl sm:p-5">
