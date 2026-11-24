@@ -245,25 +245,33 @@ export const EventsAndContests: React.FC = () => {
   };
 
   const shareEvent = async (item: RadioEvent) => {
-    const url = item.rules_url || item.source_url || window.location.href;
-    const text = [item.title, item.organizer, formatDate(item.start_at), url].filter(Boolean).join('\n');
     try {
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-identity-token': token, 'x-callsign': selectedCall },
+        body: JSON.stringify({ action: 'share', id: item.id }),
+        cache: 'no-store',
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.token) throw new Error(payload?.error || 'No se pudo preparar el enlace de la publicación.');
+      const url = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin).toString();
+      const text = [item.title, item.organizer, formatDate(item.start_at), 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\n');
       if (navigator.share) await navigator.share({ title: item.title, text, url });
-      else { await navigator.clipboard.writeText(text); window.alert('Información del evento copiada.'); }
+      else { await navigator.clipboard.writeText([text, url].join('\n')); window.alert('Enlace de LogBook copiado para compartir.'); }
     } catch (shareError) {
-      if ((shareError as Error)?.name !== 'AbortError') setError('No se pudo compartir el evento desde este dispositivo.');
+      if ((shareError as Error)?.name !== 'AbortError') setError(shareError instanceof Error ? shareError.message : 'No se pudo compartir el evento desde este dispositivo.');
     }
   };
 
   const shareAgenda = async () => {
     const heading = (selectedKind === 'event' ? 'EVENTOS' : 'CONCURSOS') + ' · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
-    const lines = events.map((item) => {
-      const dates = [formatDate(item.start_at), item.end_at ? formatDate(item.end_at) : ''].filter(Boolean).join(' — ');
-      const country = item.country_name || (item.country_code ? countryLabel(item.country_code) : '');
-      const source = item.rules_url || item.source_url || '';
-      return [item.title, dates, [item.organizer, country].filter(Boolean).join(' · '), source].filter(Boolean).join('\n');
-    });
-    const message = [heading, selectedCountry ? 'País: ' + countryLabel(selectedCountry) : 'País: todos', lines.length ? lines.join('\n\n') : 'No hay eventos confirmados para los filtros seleccionados en este momento.', window.location.href].join('\n\n');
+    const url = new URL('/', window.location.origin);
+    url.searchParams.set('open_events', '1');
+    url.searchParams.set('event_kind', selectedKind);
+    url.searchParams.set('station_type', selectedType);
+    url.searchParams.set('category', category);
+    if (selectedCountry) url.searchParams.set('country', selectedCountry);
+    const message = [heading, 'Consultá la agenda dentro de LogBook eQSL EXPRESS. Para acceder a las publicaciones y sus enlaces oficiales, ingresá o registrate en la aplicación.', url.toString()].join('\n\n');
     try {
       if (navigator.share) await navigator.share({ title: 'Eventos y Concursos · LogBook eQSL EXPRESS', text: message });
       else { await navigator.clipboard.writeText(message); window.alert('Agenda copiada para compartir.'); }
