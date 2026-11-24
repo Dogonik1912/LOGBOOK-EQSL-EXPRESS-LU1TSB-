@@ -248,7 +248,11 @@ export const EventsAndContests: React.FC = () => {
       const url = urlObject.toString();
       const utcNote = item.source_url?.includes('rcqsl.com/news.php?id=62') ? 'Fechas expresadas en UTC, no hora local. El reglamento no especifica horas diarias de activación.' : '';
       const english = getInitialAppLanguage() === 'en';
-      const text = [item.title, item.organizer, formatDate(item.start_at), utcNote, english ? 'Shared from LogBook eQSL EXPRESS' : 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\\n');
+      const eventDate = item.start_at ? new Date(item.start_at) : null;
+      const localizedDate = eventDate && !Number.isNaN(eventDate.getTime())
+        ? eventDate.toLocaleString(getInitialAppLanguage() === 'en' ? 'en' : undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC'
+        : (english ? 'Date pending official publication' : 'Fecha pendiente de publicación oficial');
+      const text = [item.title, item.organizer, localizedDate, utcNote, english ? 'Shared from LogBook eQSL EXPRESS' : 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\\n');
       if (navigator.share) await navigator.share({ title: item.title, text, url });
       else { await navigator.clipboard.writeText([text, url].join('\n')); window.alert('Enlace de LogBook copiado para compartir.'); }
     } catch (shareError) {
