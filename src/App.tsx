@@ -31,6 +31,7 @@ import { PatentGenerator } from './components/PatentGenerator';
 import { UserDirectory } from './components/UserDirectory';
 import { UserPublicProfile } from './components/UserPublicProfile';
 import { GridLocatorReminder } from './components/GridLocatorReminder';
+import { RadioPrefixLookup, openRadioPrefixLookup } from './components/RadioPrefixLookup';
 import { PatentDownloadedPage, PatentSharePage } from './components/PatentSharePage';
 
 
@@ -498,9 +499,18 @@ function MainApp() {
               <a href="https://llota.app/referencias.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-white/10">
                 Ver referencias oficiales <ExternalLink className="h-4 w-4" aria-hidden="true" />
               </a>
+              <div className="my-1 border-t border-slate-700" />
+              <p className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300">Consultas de prefijos y divisiones</p>
+              <button type="button" onClick={() => openRadioPrefixLookup('ham')} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition hover:bg-white/10">
+                Prefijos de radioaficionado <span className="text-cyan-300">→</span>
+              </button>
+              <button type="button" onClick={() => openRadioPrefixLookup('11m')} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition hover:bg-white/10">
+                Divisiones de 11 metros <span className="text-emerald-300">→</span>
+              </button>
             </div>
           </details>
         </div>
+        <RadioPrefixLookup />
         <PendingEqslDeliveries />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <EQSLMailbox />
