@@ -38,22 +38,50 @@ function escapeHtml(value) {
   })[character]);
 }
 
-function renderSharedEvent(event) {
+const SHARE_LANGUAGES = new Set(['es','en','pt','pt-br','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi','tr','sv','no','da','fi','cs','el','ro','hu','id','th']);
+function normalizeShareLanguage(value) {
+  const raw = String(value || 'es').toLowerCase().replace('_', '-');
+  return SHARE_LANGUAGES.has(raw) ? raw : (SHARE_LANGUAGES.has(raw.split('-')[0]) ? raw.split('-')[0] : 'es');
+}
+function renderSharedEvent(event, requestedLanguage = 'es') {
+  const language = normalizeShareLanguage(requestedLanguage);
+  const english = language === 'en';
+  const locale = language === 'pt-br' ? 'pt-BR' : language;
+  const copy = english ? {
+    invalid: 'Invalid link', unavailable: 'This publication is no longer available',
+    pending: 'Date pending official publication', confirmed: 'Date to be confirmed',
+    contest: 'Contest', event: 'Event', national: 'National', international: 'International',
+    ham: 'Amateur radio', eleven: '11 meters', both: 'Both modes',
+    official: 'View official rules / announcement ↗', noOfficial: 'The organizer has not published an official link yet.',
+    verified: 'verified source', source: 'Source', welcome: 'Discover LogBook eQSL EXPRESS',
+    intro: 'This link lets you view the shared publication. Sign in or register to access the full calendar and all other app features.',
+    enter: 'Sign in or register', country: 'International',
+  } : {
+    invalid: 'Enlace no válido', unavailable: 'Esta publicación ya no está disponible',
+    pending: 'Fecha pendiente de publicación oficial', confirmed: 'Fecha por confirmar',
+    contest: 'Concurso', event: 'Evento', national: 'Nacional', international: 'Internacional',
+    ham: 'Radioafición', eleven: '11 metros', both: 'Ambas modalidades',
+    official: 'Consultar bases / publicación oficial ↗', noOfficial: 'El organizador todavía no publicó un enlace oficial.',
+    verified: 'fuente verificada', source: 'Fuente', welcome: 'Descubrí LogBook eQSL EXPRESS',
+    intro: 'Este enlace permite consultar solamente la publicación compartida. Registrate para acceder a la agenda completa y a las demás funciones de la aplicación.',
+    enter: 'Registrarme o entrar a la aplicación', country: 'Internacional',
+  };
   const date = event.start_at ? new Date(event.start_at) : null;
   const dateText = date && !Number.isNaN(date.getTime())
-    ? date.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC'
-    : 'Fecha pendiente de publicación oficial';
+    ? date.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC'
+    : copy.pending;
   const endDate = event.end_at ? new Date(event.end_at) : null;
   const endText = endDate && !Number.isNaN(endDate.getTime())
-    ? ' — ' + endDate.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '';
+    ? ' — ' + endDate.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '';
   const official = [event.rules_url, event.source_url].map(safeUrl).find((url) => url && url.startsWith('https://'));
   const officialLink = official
-    ? '<a class="official" href="' + escapeHtml(official) + '" target="_blank" rel="noopener noreferrer">Consultar bases / publicación oficial ↗</a>'
-    : '<p class="muted">El organizador todavía no publicó un enlace oficial.</p>';
-  const type = event.event_kind === 'contest' ? 'Concurso' : 'Evento';
-  const station = event.station_type === '11m' ? '11 metros' : event.station_type === 'both' ? 'Ambas modalidades' : 'Radioafición';
-  const country = event.country_name || event.country_code || (event.event_scope === 'international' ? 'Internacional' : '');
-  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>' + escapeHtml(event.title) + ' · LogBook eQSL EXPRESS</title><style>*{box-sizing:border-box}body{margin:0;padding:28px 14px;background:linear-gradient(135deg,#e0f2fe,#fff,#cffafe);font:16px system-ui,sans-serif;color:#0f172a}.wrap{max-width:720px;margin:auto}.brand{text-align:center;margin:0 auto 20px;color:#fff;background:#083344;border-radius:999px;padding:11px 18px;width:max-content;max-width:100%;font-weight:900}.card,.invite{background:#fff;border:1px solid #cbd5e1;border-radius:18px;padding:22px;box-shadow:0 8px 24px #0f172a12}.pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}.pill{border-radius:30px;padding:5px 11px;background:#e0e7ff;color:#3730a3;font-size:12px;font-weight:800}h1{font-size:clamp(22px,5vw,32px);line-height:1.15;margin:0 0 12px}.muted{color:#64748b;font-size:14px}.description{white-space:pre-wrap;line-height:1.6;color:#334155;margin:18px 0}.official,.register{display:inline-block;margin-top:14px;padding:12px 16px;border-radius:9px;text-decoration:none;font-weight:800}.official{background:#155e75;color:#fff}.invite{margin-top:18px;text-align:center;border-color:#a5f3fc}.register{background:#059669;color:#fff}.source{border-top:1px solid #e2e8f0;margin-top:20px;padding-top:12px;color:#64748b;font-size:12px}</style></head><body><main class="wrap"><header class="brand">◉ LogBook eQSL EXPRESS</header><article class="card"><div class="pills"><span class="pill">' + type + '</span><span class="pill">' + escapeHtml(event.event_scope === 'national' ? 'Nacional' : 'Internacional') + '</span><span class="pill">' + station + '</span></div><h1>' + escapeHtml(event.title) + '</h1><p class="muted">📅 ' + escapeHtml(dateText + endText) + '</p>' + (event.organizer || country ? '<p class="muted">' + escapeHtml([event.organizer, country].filter(Boolean).join(' · ')) + '</p>' : '') + (event.description ? '<p class="description">' + escapeHtml(event.description) + '</p>' : '') + officialLink + '<p class="source">Fuente: ' + escapeHtml(event.source_name || 'LogBook eQSL EXPRESS') + (event.verified ? ' · fuente verificada' : '') + '</p></article><section class="invite"><h2>Descubrí LogBook eQSL EXPRESS</h2><p class="muted">Este enlace permite consultar solamente la publicación compartida. Registrate para acceder a la agenda completa y a las demás funciones de la aplicación.</p><a class="register" href="/">Registrarme o entrar a la aplicación</a></section></main></body></html>';
+    ? '<a class="official" href="' + escapeHtml(official) + '" target="_blank" rel="noopener noreferrer">' + copy.official + '</a>'
+    : '<p class="muted">' + copy.noOfficial + '</p>';
+  const type = event.event_kind === 'contest' ? copy.contest : copy.event;
+  const station = event.station_type === '11m' ? copy.eleven : event.station_type === 'both' ? copy.both : copy.ham;
+  const country = event.country_name || event.country_code || (event.event_scope === 'international' ? copy.country : '');
+  const title = event.title || (english ? copy.invalid : copy.invalid);
+  return '<!doctype html><html lang="' + escapeHtml(language) + '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>' + escapeHtml(title) + ' · LogBook eQSL EXPRESS</title><style>*{box-sizing:border-box}body{margin:0;padding:28px 14px;background:linear-gradient(135deg,#e0f2fe,#fff,#cffafe);font:16px system-ui,sans-serif;color:#0f172a}.wrap{max-width:720px;margin:auto}.brand{text-align:center;margin:0 auto 20px;color:#fff;background:#083344;border-radius:999px;padding:11px 18px;width:max-content;max-width:100%;font-weight:900}.card,.invite{background:#fff;border:1px solid #cbd5e1;border-radius:18px;padding:22px;box-shadow:0 8px 24px #0f172a12}.pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}.pill{border-radius:30px;padding:5px 11px;background:#e0e7ff;color:#3730a3;font-size:12px;font-weight:800}h1{font-size:clamp(22px,5vw,32px);line-height:1.15;margin:0 0 12px}.muted{color:#64748b;font-size:14px}.description{white-space:pre-wrap;line-height:1.6;color:#334155;margin:18px 0}.official,.register{display:inline-block;margin-top:14px;padding:12px 16px;border-radius:9px;text-decoration:none;font-weight:800}.official{background:#155e75;color:#fff}.invite{margin-top:18px;text-align:center;border-color:#a5f3fc}.register{background:#059669;color:#fff}.source{border-top:1px solid #e2e8f0;margin-top:20px;padding-top:12px;color:#64748b;font-size:12px}</style></head><body><main class="wrap"><header class="brand">◉ LogBook eQSL EXPRESS</header><article class="card"><div class="pills"><span class="pill">' + type + '</span><span class="pill">' + escapeHtml(event.event_scope === 'national' ? copy.national : copy.international) + '</span><span class="pill">' + station + '</span></div><h1>' + escapeHtml(title) + '</h1><p class="muted">📅 ' + escapeHtml(dateText + endText) + '</p>' + (event.organizer || country ? '<p class="muted">' + escapeHtml([event.organizer, country].filter(Boolean).join(' · ')) + '</p>' : '') + (event.description ? '<p class="description">' + escapeHtml(event.description) + '</p>' : '') + officialLink + '<p class="source">' + copy.source + ': ' + escapeHtml(event.source_name || 'LogBook eQSL EXPRESS') + (event.verified ? ' · ' + copy.verified : '') + '</p></article><section class="invite"><h2>' + copy.welcome + '</h2><p class="muted">' + copy.intro + '</p><a class="register" href="/?lang=' + encodeURIComponent(language) + '">' + copy.enter + '</a></section></main></body></html>';
 }
 
 async function authorize(req, supabase) {
@@ -157,16 +185,16 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET' && req.query?.share) {
       const sharedId = verifyShareToken(req.query.share, secret);
-      if (!sharedId) return res.status(404).send(renderSharedEvent({ title: 'Enlace no válido', event_scope: 'international', event_kind: 'event', station_type: 'ham' }));
+      if (!sharedId) return res.status(404).send(renderSharedEvent({ title: 'Enlace no válido', event_scope: 'international', event_kind: 'event', station_type: 'ham' }, req.query?.lang));
       const { data: sharedEvent, error: shareError } = await supabase.from('radio_events')
         .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,verified')
         .eq('id', sharedId).eq('status', 'published').maybeSingle();
       if (shareError) throw shareError;
-      if (!sharedEvent) return res.status(404).send(renderSharedEvent({ title: 'Esta publicación ya no está disponible', event_scope: 'international', event_kind: 'event', station_type: 'ham' }));
+      if (!sharedEvent) return res.status(404).send(renderSharedEvent({ title: 'Esta publicación ya no está disponible', event_scope: 'international', event_kind: 'event', station_type: 'ham' }, req.query?.lang));
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('X-Frame-Options', 'DENY');
       res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
-      return res.status(200).send(renderSharedEvent(sharedEvent));
+      return res.status(200).send(renderSharedEvent(sharedEvent, req.query?.lang));
     }
 
     const identity = await authorize(req, supabase);
