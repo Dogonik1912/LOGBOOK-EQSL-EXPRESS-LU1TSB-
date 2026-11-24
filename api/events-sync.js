@@ -5,6 +5,11 @@ const CQ11WW_URL = 'https://www.cq11ww.org/es/default.asp';
 const CQ11WW_RULES_URL = 'https://www.cq11ww.org/es/reglas-6.asp';
 const RCA_CALENDAR_URL = 'https://www.lu4aa.org/wp/calendario-actividades/';
 const CQWW_HOME_URL = 'https://cqww.com/';
+const RC_ACTIVATIONS_URL = 'https://www.rcqsl.com/activation.php';
+const EK_HOME_URL = 'https://ekdxgroup.com/';
+const SUGAR_CONTESTS_URL = 'https://sugardelta.org/concursos.php';
+const SUGAR_ACTIVATIONS_URL = 'https://sugardelta.org/activaciones.php';
+const ALFA_TANGO_URL = 'https://www.alfatango.org/';
 const MONTHS = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
 
 function config() {
@@ -197,6 +202,178 @@ function cqwwRows(html) {
   return rows;
 }
 
+
+const EN_MONTHS = { jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3, may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8, oct:9, october:9, nov:10, november:10, dec:11, december:11 };
+
+function plainText(html) {
+  return decodeHtml(String(html || '').replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ')).trim();
+}
+
+function validRange(year, month, startDay, endDay) {
+  const start = new Date(Date.UTC(year, month, startDay, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, endDay, 23, 59, 59));
+  if (start.getUTCFullYear() !== year || start.getUTCMonth() !== month || end.getUTCMonth() !== month || end < start) return null;
+  const now = Date.now();
+  if (end.getTime() < now - 30 * 86400000 || start.getTime() > now + 400 * 86400000) return null;
+  return { start_at: start.toISOString(), end_at: end.toISOString() };
+}
+
+function make11mEvent({ id, title, description, organizer, sourceUrl, sourceName, startAt, endAt, rulesUrl }) {
+  return {
+    external_id: id.slice(0, 240),
+    title: title.slice(0, 220),
+    description: description ? description.slice(0, 5000) : null,
+    event_scope: 'international',
+    station_type: '11m',
+    country_code: null,
+    country_name: 'Internacional',
+    organizer,
+    start_at: startAt || null,
+    end_at: endAt || null,
+    timezone: 'UTC',
+    rules_url: rulesUrl || sourceUrl,
+    source_url: sourceUrl,
+    source_name: sourceName,
+    image_url: null,
+    status: 'published',
+    verified: true,
+    is_auto: true,
+    source_updated_at: null,
+    last_seen_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function parseIsoRange(text) {
+  const m = text.match(/(20\\d{2})-(\\d{2})-(\\d{2})\\s*(?:to|–|—|-)\\s*(20\\d{2})-(\\d{2})-(\\d{2})/i);
+  if (!m) return null;
+  return validRange(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[6])) && Number(m[1])===Number(m[4]) && Number(m[2])===Number(m[5])
+    ? validRange(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[6])) : null;
+}
+
+function parseNumericRange(text) {
+  const m = text.match(/(?:start(?:\\s+date)?\\s*:?\\s*)?(\\d{1,2})[./](\\d{1,2})[./](20\\d{2})\\s*(?:to|a|–|—|-)\\s*(?:end(?:\\s+date)?\\s*:?\\s*)?(\\d{1,2})[./](\\d{1,2})[./](20\\d{2})/i);
+  if (!m || m[3] !== m[6] || m[2] !== m[5]) return null;
+  return validRange(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]));
+}
+
+function parseEnglishRange(text) {
+  const m = text.match(/(\\d{1,2})\\s+([A-Za-z]{3,9})\\s+(20\\d{2})\\s*(?:→|to|–|—|-)\\s*(\\d{1,2})\\s+([A-Za-z]{3,9})\\s+(20\\d{2})/i);
+  if (!m || m[3] !== m[6]) return null;
+  const month1 = EN_MONTHS[m[2].toLowerCase()];
+  const month2 = EN_MONTHS[m[5].toLowerCase()];
+  if (month1 === undefined || month1 !== month2) return null;
+  return validRange(Number(m[3]), month1, Number(m[1]), Number(m[4]));
+}
+
+function parseLongEnglishWeekend(text) {
+  const m = text.match(/(?:Saturday|Sat\\.?)[, ]+([A-Za-z]+)\\s+(\\d{1,2}),?\\s+(20\\d{2})[^.]{0,80}?(?:Sunday|Sun\\.?)[, ]+([A-Za-z]+)\\s+(\\d{1,2}),?\\s+(20\\d{2})/i);
+  if (!m || m[3] !== m[6]) return null;
+  const month1 = EN_MONTHS[m[1].toLowerCase()];
+  const month2 = EN_MONTHS[m[4].toLowerCase()];
+  if (month1 === undefined || month1 !== month2) return null;
+  return validRange(Number(m[3]), month1, Number(m[2]), Number(m[5]));
+}
+
+function eventBlocks(html) {
+  const blocks = [...String(html || '').matchAll(/<(?:article|tr|li|section)\\b[^>]*>([\\s\\S]*?)<\\/(?:article|tr|li|section)>/gi)].map(m => m[1]);
+  return blocks.length ? blocks : [String(html || '')];
+}
+
+function parseRomeoCharlie(html) {
+  const rows = [];
+  for (const block of eventBlocks(html)) {
+    const text = plainText(block);
+    const m = text.match(/([A-Z0-9]+RC\\/[A-Z0-9-]+)\\s+([A-Z]+)\\s*:\\s*([^0-9]{3,90}?)\\s+(20\\d{2}-\\d{2}-\\d{2})\\s+to\\s+(20\\d{2}-\\d{2}-\\d{2})/i);
+    if (!m) continue;
+    const range = parseIsoRange(m[4] + ' to ' + m[5]);
+    if (!range) continue;
+    const station = m[1].toUpperCase();
+    rows.push(make11mEvent({
+      id: 'romeo-charlie:' + station + ':' + range.start_at.slice(0,10),
+      title: station + ' · ' + m[3].trim(),
+      description: 'Activación publicada en el calendario oficial de Romeo Charlie. Tipo: ' + m[2].toUpperCase() + '. Verificá actividad y QSL en la página de origen.',
+      organizer: 'Romeo Charlie DX Group',
+      sourceUrl: RC_ACTIVATIONS_URL,
+      sourceName: 'Romeo Charlie · activaciones oficiales',
+      startAt: range.start_at,
+      endAt: range.end_at,
+    }));
+  }
+  return rows;
+}
+
+function parseSugarDelta(html, sourceUrl, sourceName) {
+  const rows = [];
+  for (const block of eventBlocks(html)) {
+    const text = plainText(block);
+    let range = parseIsoRange(text) || parseNumericRange(text) || parseEnglishRange(text) || parseLongEnglishWeekend(text);
+    if (!range) continue;
+    const title = text.slice(0, 180).trim();
+    if (!title || title.length < 4) continue;
+    const idPart = title.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 90);
+    rows.push(make11mEvent({
+      id: 'sugar-delta:' + idPart + ':' + range.start_at.slice(0,10),
+      title: title.slice(0, 220),
+      description: 'Actividad o concurso publicado por Sugar Delta. Consultá las bases oficiales para horarios, frecuencias, categorías y envío de logs.',
+      organizer: 'Sugar Delta International DX Group',
+      sourceUrl,
+      sourceName,
+      startAt: range.start_at,
+      endAt: range.end_at,
+    }));
+  }
+  return rows;
+}
+
+function parseEchoKilo(html) {
+  const rows = [];
+  for (const block of eventBlocks(html)) {
+    const text = plainText(block);
+    const range = parseIsoRange(text) || parseNumericRange(text) || parseEnglishRange(text) || parseLongEnglishWeekend(text);
+    if (!range) continue;
+    const title = (text.match(/ECHO KILO[^.]{0,100}|Activation[^.]{0,100}|Special Event[^.]{0,100}|Contest[^.]{0,100}/i) || [text.slice(0,150)])[0].trim();
+    const idPart = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,90);
+    rows.push(make11mEvent({
+      id: 'echo-kilo:' + idPart + ':' + range.start_at.slice(0,10),
+      title: title.slice(0,220),
+      description: 'Evento publicado por Echo Kilo DX Group. Consultá la publicación original para reglas, frecuencias, registro y resultados.',
+      organizer: 'Echo Kilo DX Group',
+      sourceUrl: EK_HOME_URL,
+      sourceName: 'Echo Kilo · noticias y concursos oficiales',
+      startAt: range.start_at,
+      endAt: range.end_at,
+    }));
+  }
+  return rows;
+}
+
+function parseAlfaTango(html) {
+  const rows = [];
+  const anchors = [...String(html || '').matchAll(/<a\\b[^>]*href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi)];
+  for (const match of anchors) {
+    const text = plainText(match[2]);
+    const range = parseEnglishRange(text);
+    if (!range) continue;
+    const title = text.replace(/\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}\\s*(?:→|to|–|—|-)\\s*\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}/i, '').trim();
+    if (!title || title.length < 3) continue;
+    const href = match[1].startsWith('http') ? match[1] : new URL(match[1], ALFA_TANGO_URL).toString();
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0,90);
+    rows.push(make11mEvent({
+      id: 'alfa-tango:' + slug + ':' + range.start_at.slice(0,10),
+      title: title.slice(0,220),
+      description: 'Evento publicado en el calendario oficial de Alfa Tango. Consultá el enlace original para condiciones y detalles de participación.',
+      organizer: 'Alfa Tango Worldwide DX Group',
+      sourceUrl: ALFA_TANGO_URL,
+      sourceName: 'Alfa Tango · calendario oficial',
+      startAt: range.start_at,
+      endAt: range.end_at,
+      rulesUrl: href,
+    }));
+  }
+  return rows;
+}
+
 function parseCqEleven(html) {
   const yearMatch = html.match(/CONCURSO\s+(20\d{2})/i);
   const dateMatch = html.match(/(?:Para\s+)?20\d{2}[^.]{0,60}?s[áa]bado\s+(\d{1,2})\s+y\s+domingo\s+(\d{1,2})\s+de\s+([a-záéíóú]+)/i);
@@ -309,6 +486,28 @@ export default async function handler(req, res) {
           }));
           const combined = { occurrences: yearPayloads.flatMap((payload) => Array.isArray(payload?.occurrences) ? payload.occurrences : []) };
           const rows = contestClockRows(combined);
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'romeo-charlie-11m') {
+          const response = await fetchWithTimeout(RC_ACTIVATIONS_URL, 'text/html');
+          const rows = parseRomeoCharlie(await response.text());
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'sugar-delta-11m') {
+          const [contestsResponse, activationsResponse] = await Promise.all([
+            fetchWithTimeout(SUGAR_CONTESTS_URL, 'text/html'),
+            fetchWithTimeout(SUGAR_ACTIVATIONS_URL, 'text/html'),
+          ]);
+          const rows = [
+            ...parseSugarDelta(await contestsResponse.text(), SUGAR_CONTESTS_URL, 'Sugar Delta · concursos oficiales'),
+            ...parseSugarDelta(await activationsResponse.text(), SUGAR_ACTIVATIONS_URL, 'Sugar Delta · activaciones oficiales'),
+          ];
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'echo-kilo-11m') {
+          const response = await fetchWithTimeout(EK_HOME_URL, 'text/html');
+          const rows = parseEchoKilo(await response.text());
+          results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
+        } else if (source.source_key === 'alfa-tango-11m') {
+          const response = await fetchWithTimeout(ALFA_TANGO_URL, 'text/html');
+          const rows = parseAlfaTango(await response.text());
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'cqww-ham') {
           const response = await fetchWithTimeout(CQWW_HOME_URL, 'text/html');
