@@ -729,10 +729,12 @@ export default async function handler(req, res) {
           const currentYear = new Date().getUTCFullYear();
           // ContestClock publica el catálogo anual mediante ?year=YYYY. El rango
           // from/to no es un parámetro admitido y provocaba HTTP 400.
-          const [currentPayload, nextPayload] = await Promise.all([
-            fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear),
-            fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + (currentYear + 1)),
-          ]);
+          const currentPayload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear);
+          // El calendario siguiente puede no estar publicado todavía. Su ausencia
+          // no debe bloquear la importación del año vigente.
+          let nextPayload = null;
+          try { nextPayload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + (currentYear + 1)); }
+          catch (nextYearError) { console.warn('[Eventos] ContestClock aún no ofrece el año siguiente:', nextYearError?.message || nextYearError); }
           const rows = [...contestClockRows(currentPayload), ...contestClockRows(nextPayload)];
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'romeo-charlie-11m') {
