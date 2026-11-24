@@ -231,7 +231,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       'Ver destino en el mapa: ' + mapUrl,
       'Calculador: ' + window.location.href,
     ].join('\n');
-    const message = await translateShareText(sourceMessage, resolveShareLanguage(shareLanguage));
+    const selectedLanguage = resolveShareLanguage(shareLanguage);
+    setShareLanguage('auto');
+    const message = await translateShareText(sourceMessage, selectedLanguage);
 
     setShareStatus('');
     if (typeof navigator.share === 'function') {
