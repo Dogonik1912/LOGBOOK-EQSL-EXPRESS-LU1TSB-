@@ -282,7 +282,7 @@ export const EventsAndContests: React.FC = () => {
                   </div>
                   <h3 className="text-base font-black leading-snug">{item.title}</h3>
                   <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</p>
-                  {(item.country_name || item.country_code || item.organizer) && <p className="mt-1 text-xs text-indigo-100/80">{[item.organizer, item.country_name || (item.country_code ? countryLabel(item.country_code) : '')].filter(Boolean).join(' · ')}</p>}
+                  {(item.country_name || item.country_code || item.organizer) && <p className="mt-1 text-xs text-indigo-100/80">{[item.organizer, item.country_name && item.country_name.length > 2 ? item.country_name : (item.country_code ? countryLabel(item.country_code) : '')].filter(Boolean).join(' · ')}</p>}
                   {item.description && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/85">{item.description}</p>}
                   <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3 text-xs font-bold">
                     {(item.rules_url || item.source_url) && <a href={item.rules_url || item.source_url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Bases / información oficial <ExternalLink className="h-3 w-3" /></a>}
