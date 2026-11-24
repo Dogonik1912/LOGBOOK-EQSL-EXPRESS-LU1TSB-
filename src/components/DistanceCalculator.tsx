@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Calculator, Search, MapPin, X, Loader2 } from 'lucide-react';
+import { Calculator, Search, MapPin, X, Loader2, Share2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { getUserCallsign } from '../services/qrzService';
 import { countryForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
@@ -534,7 +534,7 @@ export const DistanceCalculator: React.FC = () => {
         {origin && <>
           <DistanceMap origin={origin} destination={selected} focusPlace={mapFocus} originLabel={originLabel} onDestinationChange={setSelected} onShareHandlerChange={setShareAction} />
           <div id="distance-share-action" className="mt-2 rounded-xl border-2 border-cyan-300 bg-slate-950 p-3 shadow-lg shadow-cyan-950/40">
-            <button type="button" onClick={() => shareAction?.()} disabled={!selected || !shareAction} className="min-h-14 w-full rounded-xl bg-cyan-400 px-4 py-4 text-base font-black tracking-wide text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300">📤 COMPARTIR DISTANCIA</button>
+            <button type="button" onClick={() => shareAction?.()} disabled={!selected || !shareAction} className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-4 text-base font-black tracking-wide text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-300"><Share2 className="h-5 w-5" /> COMPARTIR DISTANCIA</button>
             {!selected && <p className="mt-2 text-center text-xs text-slate-300">Seleccioná un destino en el buscador o tocá un punto del mapa para habilitar el envío.</p>}
           </div>
         </>}
