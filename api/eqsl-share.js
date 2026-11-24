@@ -5,7 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 const BUCKET = 'eqsl-private';
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
-const CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
+const HAM_CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
+const CB_CALL_RE = /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/;
+const is11mBand = (band) => /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(band || ''));
+const stationType = (value) => CB_CALL_RE.test(String(value || '').trim().toUpperCase()) ? '11m' : HAM_CALL_RE.test(String(value || '').trim().toUpperCase()) ? 'ham' : '';
 const LIFETIME_MS = 180 * 24 * 60 * 60 * 1000;
 
 function getStorage() {
@@ -58,12 +61,13 @@ function validateCard(body) {
     card.imageDataUrl.length > 1800000 ||
     !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(card.imageDataUrl)
   )) return null;
-  const isCB = /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(card.band);
-  const validStation = (value) => isCB
-    ? /^[A-Z0-9][A-Z0-9 /_-]{0,39}$/.test(value)
-    : CALL_RE.test(value);
+  const isCB = is11mBand(card.band);
+  const expectedType = isCB ? '11m' : 'ham';
+  const numericFrequency = Number(String(card.frequency).replace(',', '.'));
+  const is11mFrequency = Number.isFinite(numericFrequency) && numericFrequency >= 26.965 && numericFrequency <= 27.999;
   if (
-    !validStation(card.from) || !validStation(card.to) ||
+    stationType(card.from) !== expectedType || stationType(card.to) !== expectedType ||
+    is11mFrequency !== isCB ||
     !/^\d{4}-\d{2}-\d{2}$/.test(card.date) ||
     !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(card.time) ||
     !card.band || !card.frequency || !card.mode
