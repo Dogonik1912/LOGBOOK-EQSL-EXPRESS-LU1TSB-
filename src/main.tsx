@@ -52,9 +52,24 @@ if (rootElement) {
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-      .then((registration) => registration.update())
+      .then((registration) => {
+        const checkForUpdate = () => {
+          if (document.visibilityState !== 'visible') return;
+          registration.update().catch((error) => {
+            console.warn('No se pudo comprobar silenciosamente si hay una nueva versión:', error);
+          });
+        };
+
+        // Check immediately, then periodically while the app remains open.
+        checkForUpdate();
+        window.setInterval(checkForUpdate, 5 * 60 * 1000);
+
+        // Also check when the user returns to the app or connectivity returns.
+        document.addEventListener('visibilitychange', checkForUpdate);
+        window.addEventListener('online', checkForUpdate);
+      })
       .catch((error) => {
-        console.warn('No se pudo comprobar/activar la actualización de la aplicación:', error);
+        console.warn('No se pudo registrar el sistema de actualización:', error);
       });
   });
 }
