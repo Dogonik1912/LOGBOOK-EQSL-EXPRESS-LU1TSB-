@@ -119,12 +119,11 @@ function canonicalEventTitle(event) {
 
 function eventDeduplicationKey(event) {
   const start = event.start_at ? new Date(event.start_at).toISOString().slice(0, 10) : 'no-date';
-  const end = event.end_at ? new Date(event.end_at).toISOString().slice(0, 10) : 'no-end';
   const scope = [event.event_scope, event.station_type, event.event_kind, event.country_code || ''];
   if (/\byota\b/i.test([event.title, event.organizer, event.source_name].join(' '))) {
     return ['yota-month', ...scope, start, end].join('|');
   }
-  return [...scope, start, end, canonicalEventTitle(event)].join('|');
+  return [...scope, start, canonicalEventTitle(event)].join('|');
 }
 function deduplicateEvents(events) {
   const selected = new Map();
