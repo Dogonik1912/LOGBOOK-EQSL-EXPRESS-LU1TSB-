@@ -37,7 +37,7 @@ const DIVISION_COUNTRY: Record<string, string> =   {
     "31": "Portugal",
     "32": "Chile",
     "33": "Estados Unidos",
-    "34": "España",
+    "34": "Canarias",
     "35": "Austria",
     "36": "San Marino",
     "37": "República Dominicana",
@@ -197,4 +197,21 @@ export function countryForCallsign(callsign: string, savedCountry?: string, is11
 export function flagForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
   const country = countryForCallsign(callsign, savedCountry, is11m);
   return FLAGS[country] || '🏳️';
+}
+
+
+export type RadioLookupEntry = { prefix: string; country: string };
+export type DivisionLookupEntry = { division: string; country: string };
+
+/** Datos locales reutilizados por el buscador de prefijos y divisiones. */
+export function getRadioPrefixLookupEntries(): RadioLookupEntry[] {
+  return Object.entries(HAM_PREFIX_COUNTRY)
+    .map(([prefix, country]) => ({ prefix, country }))
+    .sort((a, b) => a.prefix.localeCompare(b.prefix));
+}
+
+export function get11mDivisionLookupEntries(): DivisionLookupEntry[] {
+  return Object.entries(DIVISION_COUNTRY)
+    .map(([division, country]) => ({ division, country }))
+    .sort((a, b) => Number(a.division) - Number(b.division));
 }
