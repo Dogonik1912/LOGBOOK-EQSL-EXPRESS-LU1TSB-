@@ -16,7 +16,7 @@ import { ReceivedEQSLPage } from './components/ReceivedEQSLPage';
 import { EQSLViewErrorBoundary } from './components/EQSLViewErrorBoundary';
 import { EQSLMailbox } from './components/EQSLMailbox';
 import { PendingEqslDeliveries } from './components/PendingEqslDeliveries';
-import { Send, Waves, ExternalLink } from 'lucide-react';
+import { Send, Waves, ExternalLink, RadioTower } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
 import { MorseDecoder } from './components/MorseDecoder';
 import { SDRSmart } from './components/SDRSmart';
