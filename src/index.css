@@ -5,39 +5,60 @@
 /* Centrar los títulos de todos los encabezamientos en PC y móvil. */
 h1, h2, h3, h4, h5, h6 { text-align: center; }
 
-
-/* Estilo limitado a los encabezados largos que despliegan secciones principales.
-   No alcanza summaries internos, botones de acción, idioma ni compartir app. */
+/* Identidad única para todos los encabezados largos que despliegan secciones.
+   Altura, espaciado, color y tipografía compartidos; compatible con navegadores antiguos. */
+.lb-section-toggle,
 button[aria-expanded][class*="min-h-"] {
-  background: #050505 !important;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: .75rem 1rem;
+  border: 1px solid #0284c7;
+  border-radius: .75rem;
+  background: #0284c7 !important;
   background-image: none !important;
-  color: #d4af37 !important;
-  border-color: #b8860b !important;
-  text-transform: uppercase !important;
-  font-weight: 800 !important;
+  color: #ffffff !important;
+  font-size: .875rem;
+  font-weight: 800;
+  letter-spacing: .025em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  box-shadow: none;
 }
-button[aria-expanded][class*="min-h-"] * { color: #d4af37 !important; }
+.lb-section-toggle:hover,
 button[aria-expanded][class*="min-h-"]:hover {
-  background: #111111 !important;
+  background: #0369a1 !important;
   background-image: none !important;
 }
+.lb-section-toggle:focus-visible,
 button[aria-expanded][class*="min-h-"]:focus-visible {
-  outline: 2px solid #d4af37;
+  outline: 2px solid #0ea5e9;
   outline-offset: 2px;
 }
+.lb-section-toggle svg,
+button[aria-expanded][class*="min-h-"] svg { flex-shrink: 0; }
+.lb-section-toggle .lb-toggle-label { flex: 1; min-width: 0; text-align: left; }
 
-/* Cierre de paneles: conserva el aspecto negro y dorado de la interfaz interior. */
+/* Mensajes privados: marco exterior igual al resto; el contenido interior no se altera. */
+.lb-private-messages-shell {
+  border-color: #d4af37 !important;
+  background: #0f172a !important;
+}
+
+/* Botón de cierre de paneles: mantiene el interior negro y dorado. */
 .lb-disclosure-close {
   min-height: 2.5rem;
-  padding: 0.55rem 1.1rem;
+  padding: .55rem 1.1rem;
   border: 1px solid #b8860b;
-  border-radius: 0.65rem;
+  border-radius: .65rem;
   background: #050505;
   color: #d4af37;
-  font-size: 0.75rem;
+  font-size: .75rem;
   font-weight: 800;
   text-transform: uppercase;
   transition: background-color 160ms ease;
 }
 .lb-disclosure-close:hover { background: #171717; }
-

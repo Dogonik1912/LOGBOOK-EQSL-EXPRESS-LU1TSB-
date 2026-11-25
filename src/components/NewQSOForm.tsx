@@ -661,7 +661,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
     ? llotaReferences.filter((item) => `${item.code} ${item.name} ${item.country}`.toLocaleLowerCase().includes(llotaSearch.trim().toLocaleLowerCase())).slice(0, 25)
     : [];
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl mb-6 overflow-hidden">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl mb-3 overflow-hidden">
       <button type="button" onClick={() => setIsExpanded(open => !open)} aria-expanded={isExpanded} className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 py-2.5 sm:px-4 text-left hover:bg-slate-800/70 transition-colors">
         <span className="flex items-center gap-3">
           <span className="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><Radio className="w-5 h-5" /></span>
@@ -673,19 +673,17 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       </button>
       {isExpanded && <div className="p-5 sm:p-6 pt-0">
       <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950 p-3">
-        <div className="flex flex-nowrap items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <label className="flex items-center gap-2 whitespace-nowrap text-sm text-white cursor-pointer">
             <input type="checkbox" checked={timeMode === 'LOCAL'} onChange={() => handleTimeModeChange('LOCAL')} className="h-4 w-4 accent-amber-500" /> LOCAL
           </label>
           <label className="flex items-center gap-2 whitespace-nowrap text-sm text-white cursor-pointer">
             <input type="checkbox" checked={timeMode === 'UTC'} onChange={() => handleTimeModeChange('UTC')} className="h-4 w-4 accent-amber-500" /> UTC
           </label>
-        </div>
-      </div>
-      <div className="flex justify-end pb-3">
-        <button type="button" onClick={handleUpdateToCurrentUTC} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer" title="Sincronizar a hora UTC actual">
+          <button type="button" onClick={handleUpdateToCurrentUTC} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer" title="Sincronizar a hora UTC actual">
           <RefreshCw className="w-3.5 h-3.5" /> Hora UTC actual
         </button>
+        </div>
       </div>
       <details className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3" open={contestSetupOpen || contestMode} onToggle={(e) => { if (!contestMode) setContestSetupOpen((e.currentTarget as HTMLDetailsElement).open); }}>
         <summary className="cursor-pointer list-none text-sm font-semibold text-white">Modo concurso {contestMode ? `· Activo: ${contestLogName}` : ' - Configurar log'}</summary>

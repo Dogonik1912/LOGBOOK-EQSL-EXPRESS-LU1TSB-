@@ -485,7 +485,7 @@ function MainApp() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="mb-3 grid grid-cols-2 gap-2">
           <details className="group relative min-w-0">
-            <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+            <summary className="lb-section-toggle cursor-pointer list-none justify-center text-center text-xs sm:text-sm">
               <Waves className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>LLOTA OFICIAL</span>
               <span className="text-xs transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
@@ -503,7 +503,7 @@ function MainApp() {
             </div>
           </details>
           <details className="group relative min-w-0">
-            <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-1.5 rounded-lg border border-cyan-300 bg-gradient-to-r from-cyan-950 via-sky-900 to-blue-900 px-2 py-2 text-center text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+            <summary className="lb-section-toggle cursor-pointer list-none justify-center text-center text-xs sm:text-sm">
               <RadioTower className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span>PREFIJOS Y DIVISIONES DX</span>
               <span className="text-xs transition-transform group-open:rotate-180" aria-hidden="true">▾</span>

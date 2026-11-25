@@ -498,10 +498,9 @@ export const DistanceCalculator: React.FC = () => {
   };
 
   return <>
-    <section className="mb-5 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
-      <button type="button" onClick={() => setOpen(true)} className="flex min-h-[56px] w-full min-w-0 items-center gap-2 bg-slate-900 px-3 py-2.5 text-left text-white hover:bg-slate-800/80">
-        <Calculator className="h-5 w-5 shrink-0 text-cyan-300" />
-        <span className="text-sm font-bold sm:text-base">CALCULADOR DE DISTANCIA</span>
+    <section className="lb-section-shell mb-3 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-md">
+      <button type="button" onClick={() => setOpen(true)} aria-expanded={open} className="lb-section-toggle"><span className="lb-toggle-label flex min-w-0 flex-1 items-center gap-2"><Calculator className="h-5 w-5 shrink-0" /> <span>CALCULADOR DE DISTANCIA</span></span><span aria-hidden="true" className={`transition-transform ${open ? 'rotate-180' : ''}`}>▾</span></button>
+        
       </button>
     </section>
     {open && <div className="fixed inset-0 z-[11020] flex items-center justify-center bg-slate-950/90 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Calculador de distancia" onMouseDown={e => { if (e.target === e.currentTarget) setOpen(false); }}>

@@ -642,8 +642,8 @@ export const CommunityChat: React.FC = () => {
   };
 
   return (
-    <section ref={chatSectionRef} id="community-chat" className={`mb-6 scroll-mt-2 overflow-hidden rounded-2xl border border-sky-900/70 shadow-xl ${darkChat ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`} aria-label="Chat de la comunidad">
-      <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white sm:px-5">
+    <section ref={chatSectionRef} id="community-chat" className={`lb-section-shell mb-3 scroll-mt-2 overflow-hidden rounded-2xl border border-sky-900/70 shadow-xl ${darkChat ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`} aria-label="Chat de la comunidad">
+      <div className="lb-section-toggle justify-between sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-sky-500/15 p-2 text-sky-300"><MessageCircle className="h-5 w-5" /></div>
           <div className="min-w-0">
