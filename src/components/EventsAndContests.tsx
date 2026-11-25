@@ -29,6 +29,27 @@ type RadioEvent = {
   is_auto: boolean;
 };
 
+const ZONA_TANGO_ID = 'zona-tango-permanent';
+const ZONA_TANGO_EVENT: RadioEvent = {
+  id: ZONA_TANGO_ID,
+  title: 'Zona Tango – Radioaficionados de Jujuy',
+  description: 'Fuente permanente de información radial de Jujuy: actividades, concursos, técnica, formación y novedades de radioafición.',
+  event_scope: 'national',
+  event_kind: 'event',
+  station_type: 'both',
+  country_code: 'AR',
+  country_name: 'Argentina',
+  organizer: 'Radioaficionados de Jujuy',
+  start_at: null,
+  end_at: null,
+  rules_url: 'https://zonatango.wordpress.com/',
+  source_url: 'https://zonatango.wordpress.com/',
+  source_name: 'Zona Tango',
+  image_url: null,
+  verified: true,
+  is_auto: false,
+};
+
 const COUNTRY_CODES: Record<string, string> = {
   Argentina:'AR',España:'ES',Canarias:'ES',Brasil:'BR',Chile:'CL',Uruguay:'UY',Colombia:'CO',Perú:'PE',Bolivia:'BO',Paraguay:'PY',
   Venezuela:'VE',Ecuador:'EC',México:'MX','Estados Unidos':'US',Canadá:'CA','Reino Unido':'GB',Italia:'IT',Francia:'FR',Alemania:'DE',
@@ -78,7 +99,7 @@ async function readApiPayload(response: Response, fallback: string): Promise<any
 
 
 export const EventsAndContests: React.FC = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(() => new URLSearchParams(window.location.search).has('shared_event'));
   const [identities, setIdentities] = useState<StationIdentity[]>([]);
   const [selectedType, setSelectedType] = useState<StationType>('ham');
   const [category, setCategory] = useState<EventScope>('national');
@@ -88,6 +109,8 @@ export const EventsAndContests: React.FC = () => {
   const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   const [countries, setCountries] = useState<string[]>([]);
   const [events, setEvents] = useState<RadioEvent[]>([]);
+  const [sharedEvent, setSharedEvent] = useState<RadioEvent | null>(null);
+  const [sharedEventId, setSharedEventId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
@@ -166,7 +189,15 @@ export const EventsAndContests: React.FC = () => {
       });
       const payload = await readApiPayload(response, 'La agenda no está disponible temporalmente. Volvé a intentarlo.');
       if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo cargar la agenda.');
-      setEvents(Array.isArray(payload.events) ? payload.events : []);
+      const loadedEvents = Array.isArray(payload.events) ? payload.events as RadioEvent[] : [];
+      const sharedMatchesFilters = Boolean(sharedEvent
+        && sharedEvent.event_scope === category
+        && sharedEvent.event_kind === selectedKind
+        && (sharedEvent.station_type === selectedType || sharedEvent.station_type === 'both')
+        && (category === 'international' || sharedEvent.country_code === (selectedCountry || effectiveHomeCountry)));
+      setEvents(sharedMatchesFilters && sharedEvent && !loadedEvents.some((item) => item.id === sharedEvent.id)
+        ? [sharedEvent, ...loadedEvents]
+        : loadedEvents);
       setCountries(Array.isArray(payload.countries) ? payload.countries : []);
       setIsAdmin(payload.is_admin === true);
       setLastUpdated(payload.last_updated || '');
@@ -175,10 +206,44 @@ export const EventsAndContests: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [category, effectiveHomeCountry, selectedCall, selectedCountry, selectedKind, selectedType, token]);
+  }, [category, effectiveHomeCountry, selectedCall, selectedCountry, selectedKind, selectedType, sharedEvent, token]);
 
   useEffect(() => { void loadIdentity(); }, [loadIdentity]);
   useEffect(() => { void loadEvents(); }, [loadEvents]);
+
+  useEffect(() => {
+    const sharedToken = new URLSearchParams(window.location.search).get('shared_event');
+    if (!sharedToken) return;
+    let active = true;
+    setIsExpanded(true);
+    void (async () => {
+      try {
+        const response = await fetch('/api/events?share=' + encodeURIComponent(sharedToken) + '&format=json', { cache: 'no-store' });
+        const payload = await readApiPayload(response, 'No se pudo recuperar el evento compartido.');
+        if (!response.ok || !payload?.event) throw new Error(typeof payload?.error === 'string' ? payload.error : 'El evento compartido no está disponible.');
+        if (!active) return;
+        const item = payload.event as RadioEvent;
+        setSharedEvent(item);
+        setSharedEventId(item.id);
+        setCategory(item.event_scope);
+        setSelectedKind(item.event_kind);
+        setSelectedType(item.station_type === '11m' ? '11m' : 'ham');
+        setSelectedCountry(item.country_code || '');
+      } catch (sharedError) {
+        if (active) {
+          setError(sharedError instanceof Error ? sharedError.message : 'No se pudo abrir el evento compartido.');
+          setLoading(false);
+        }
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!sharedEventId || loading || !isExpanded) return;
+    const target = document.getElementById('shared-event-' + sharedEventId);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [events, sharedEventId, loading, isExpanded]);
 
   const changeIdentity = (type: StationType) => {
     const identity = identities.find((item) => item.identity_type === type);
@@ -245,7 +310,8 @@ export const EventsAndContests: React.FC = () => {
       const payload = await readApiPayload(response, 'No se pudo preparar el enlace de la publicación en este momento.');
       if (!response.ok || !payload?.token) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo preparar el enlace de la publicación.');
       const language = resolveShareLanguage(shareLanguage);
-      const urlObject = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin);
+      const urlObject = new URL('/', window.location.origin);
+      urlObject.searchParams.set('shared_event', payload.token);
       urlObject.searchParams.set('lang', language);
       const url = urlObject.toString();
       const utcNote = item.source_url?.includes('rcqsl.com/news.php?id=62') ? 'Fechas expresadas en UTC, no hora local. El reglamento no especifica horas diarias de activación.' : '';
@@ -295,6 +361,7 @@ export const EventsAndContests: React.FC = () => {
     if (effectiveHomeCountry) values.add(effectiveHomeCountry);
     return [...values].sort().map((code) => ({ code, label: countryLabel(code) }));
   }, [countries, effectiveHomeCountry]);
+  const displayEvents = [ZONA_TANGO_EVENT, ...events];
 
   return (
     <section className="mb-3">
@@ -351,31 +418,33 @@ export const EventsAndContests: React.FC = () => {
         {error && <div className="rounded-lg border border-rose-300/40 bg-rose-950/50 px-3 py-2 text-sm text-rose-100" role="alert">{error}</div>}
         {!homeCountry && category === 'national' && <p className="rounded-lg border border-amber-200/30 bg-amber-200/10 px-3 py-2 text-xs text-amber-100">No pudimos asociar automáticamente un país a esta identificación. Elegí el país que querés consultar.</p>}
         {loading ? <div className="py-8 text-center text-sm text-indigo-100">Consultando eventos y concursos…</div>
-          : events.length === 0 ? <div className="rounded-xl border border-dashed border-white/20 bg-black/15 px-4 py-8 text-center">
-            <Globe2 className="mx-auto mb-2 h-8 w-8 text-indigo-200/70" />
-            <p className="font-bold">Todavía no hay {selectedKind === 'event' ? 'eventos' : 'concursos'} confirmados para esta selección.</p>
-            <p className="mt-1 text-xs text-indigo-100/65">Probá otro país o la agenda internacional. Las novedades se incorporan con las próximas actualizaciones automáticas.</p>
-          </div>
           : <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-            {events.map((item) => (
-              <article key={item.id} className="overflow-hidden rounded-lg border border-white/15 bg-white/[0.07]">
+            {events.length === 0 && <div className="rounded-xl border border-dashed border-white/20 bg-black/15 px-4 py-5 text-center lg:col-span-2">
+              <Globe2 className="mx-auto mb-2 h-7 w-7 text-indigo-200/70" />
+              <p className="font-bold">Todavía no hay {selectedKind === 'event' ? 'eventos' : 'concursos'} confirmados para esta selección.</p>
+              <p className="mt-1 text-xs text-indigo-100/65">Probá otro país o la agenda internacional. Las novedades se incorporan con las próximas actualizaciones automáticas.</p>
+            </div>}
+            {displayEvents.map((item) => (
+              <article key={item.id} id={item.id === sharedEventId ? 'shared-event-' + item.id : undefined} className={"overflow-hidden rounded-lg border border-white/15 bg-white/[0.07] " + (item.id === sharedEventId ? 'ring-2 ring-amber-300 shadow-xl' : '')}>
                 {item.image_url && <img src={item.image_url} alt="" loading="lazy" className="h-20 w-full object-cover" referrerPolicy="no-referrer" />}
                 <div className="p-2">
                   <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[9px] font-black uppercase tracking-wide">
                     <span className="rounded-full bg-indigo-300/15 px-2 py-1 text-indigo-100">{item.event_scope === 'national' ? 'Nacional' : 'Internacional'}</span>
-                    <span className="rounded-full bg-amber-300/15 px-2 py-1 text-amber-100">{item.event_kind === 'contest' ? 'Concurso' : 'Evento'}</span>
+                    <span className="rounded-full bg-amber-300/15 px-2 py-1 text-amber-100">{item.id === ZONA_TANGO_ID ? 'Fuente permanente' : item.event_kind === 'contest' ? 'Concurso' : 'Evento'}</span>
                     <span className="rounded-full bg-emerald-300/15 px-2 py-1 text-emerald-100">{item.station_type === '11m' ? '11 metros' : item.station_type === 'both' ? 'Ambas modalidades' : 'Radioafición'}</span>
                     {item.verified && <span className="inline-flex items-center gap-1 text-emerald-200"><ShieldCheck className="h-3 w-3" /> Fuente verificada</span>}
                   </div>
                   <h3 className="text-sm font-black leading-snug">{item.title}</h3>
-                  <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</p>
+                  <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{item.id === ZONA_TANGO_ID ? 'Enlace permanente · Jujuy, Argentina' : <>{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</>}</p>
                   {item.source_url?.includes('rcqsl.com/news.php?id=62') && <p className="mt-1 rounded-md border border-amber-300/30 bg-amber-300/10 px-2 py-1.5 text-[11px] font-semibold text-amber-100">HORARIO DE REFERENCIA: UTC (Tiempo Universal Coordinado), no hora local. El reglamento oficial solo indica las fechas 11–27 de diciembre; no publica horas diarias de activación. Los límites 00:00 y 23:59 UTC representan los días completos.</p>}
                   {(item.country_name || item.country_code || item.organizer) && <p className="mt-1 text-xs text-indigo-100/80">{[item.organizer, item.country_name && item.country_name.length > 2 ? item.country_name : (item.country_code ? countryLabel(item.country_code) : '')].filter(Boolean).join(' · ')}</p>}
                   {item.description && <details className="mt-1 text-xs text-white/80"><summary className="cursor-pointer font-semibold text-cyan-200">Ver descripción y detalles</summary><p className="mt-1 whitespace-pre-line leading-relaxed">{item.description}</p></details>}
                   <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-white/10 pt-2 text-[11px] font-bold">
-                    {(item.rules_url || item.source_url) && <a href={item.rules_url || item.source_url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Bases / información oficial <ExternalLink className="h-3 w-3" /></a>}
-                    <button type="button" onClick={() => void shareEvent(item)} className="inline-flex items-center gap-1 text-emerald-200"><Share2 className="h-3 w-3" /> Compartir</button>
-                    {isAdmin && <button type="button" onClick={() => void deleteEvent(item.id)} className="inline-flex items-center gap-1 text-rose-200"><Trash2 className="h-3 w-3" /> Borrar</button>}
+                    {item.id === ZONA_TANGO_ID
+                      ? <a href="https://zonatango.wordpress.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Ingresar a Zona Tango <ExternalLink className="h-3 w-3" /></a>
+                      : (item.rules_url || item.source_url) && <a href={item.rules_url || item.source_url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Bases / información oficial <ExternalLink className="h-3 w-3" /></a>}
+                    {item.id !== ZONA_TANGO_ID && <button type="button" onClick={() => void shareEvent(item)} className="inline-flex items-center gap-1 text-emerald-200"><Share2 className="h-3 w-3" /> Compartir</button>}
+                    {isAdmin && item.id !== ZONA_TANGO_ID && <button type="button" onClick={() => void deleteEvent(item.id)} className="inline-flex items-center gap-1 text-rose-200"><Trash2 className="h-3 w-3" /> Borrar</button>}
                   </div>
                   <p className="mt-1 text-[9px] text-indigo-100/55">Fuente: {item.source_name || 'Publicación de administración'}{item.is_auto ? ' · actualización automática' : ''}</p>
                 </div>

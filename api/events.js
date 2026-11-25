@@ -184,17 +184,29 @@ export default async function handler(req, res) {
     })();
 
     if (req.method === 'GET' && req.query?.share) {
-      const sharedId = verifyShareToken(req.query.share, secret);
-      if (!sharedId) return res.status(404).send(renderSharedEvent({ title: 'Enlace no válido', event_scope: 'international', event_kind: 'event', station_type: 'ham' }, req.query?.lang));
+      const token = String(req.query.share || '');
+      const wantsJson = String(req.query?.format || '') === 'json';
+      const sharedId = verifyShareToken(token, secret);
+      if (!sharedId) {
+        if (wantsJson) return json(res, 404, { error: 'El enlace compartido no es válido.' });
+        res.statusCode = 302;
+        res.setHeader('Location', '/?shared_event=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(normalizeShareLanguage(req.query?.lang)));
+        return res.end();
+      }
       const { data: sharedEvent, error: shareError } = await supabase.from('radio_events')
-        .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,verified')
+        .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,image_url,verified,is_auto')
         .eq('id', sharedId).eq('status', 'published').maybeSingle();
       if (shareError) throw shareError;
-      if (!sharedEvent) return res.status(404).send(renderSharedEvent({ title: 'Esta publicación ya no está disponible', event_scope: 'international', event_kind: 'event', station_type: 'ham' }, req.query?.lang));
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Frame-Options', 'DENY');
-      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
-      return res.status(200).send(renderSharedEvent(sharedEvent, req.query?.lang));
+      if (!sharedEvent) {
+        if (wantsJson) return json(res, 404, { error: 'Esta publicación ya no está disponible.' });
+        res.statusCode = 302;
+        res.setHeader('Location', '/?shared_event=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(normalizeShareLanguage(req.query?.lang)));
+        return res.end();
+      }
+      if (wantsJson) return json(res, 200, { event: sharedEvent });
+      res.statusCode = 302;
+      res.setHeader('Location', '/?shared_event=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(normalizeShareLanguage(req.query?.lang)));
+      return res.end();
     }
 
     const identity = await authorize(req, supabase);
