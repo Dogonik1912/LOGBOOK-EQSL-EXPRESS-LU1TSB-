@@ -209,6 +209,9 @@ function persistTranslationCache() {
 }
 const appliedText = new WeakMap<Text, { source: string; translated: string; language: string }>();
 const pendingLanguage = new WeakMap<Text, AppLanguage>();
+// Track our own text writes so React-driven characterData updates can be observed
+// without creating a translation-observer feedback loop.
+const internalTextWrites = new WeakMap<Text, string>();
 let observer: MutationObserver | null = null;
 let currentLanguage: AppLanguage = 'es';
 let languageGeneration = 0;
@@ -270,8 +273,10 @@ async function translateNode(node: Text, language: AppLanguage): Promise<void> {
     if (generation === languageGeneration && language === currentLanguage && node.isConnected && (node.nodeValue || '').trim() === source.trim()) {
       const leading = source.match(/^\s*/)?.[0] || '';
       const trailing = source.match(/\s*$/)?.[0] || '';
-      node.nodeValue = leading + translated + trailing;
-      appliedText.set(node, { source: original, translated: node.nodeValue || translated, language });
+      const nextValue = leading + translated + trailing;
+      internalTextWrites.set(node, nextValue);
+      node.nodeValue = nextValue;
+      appliedText.set(node, { source: original, translated: nextValue, language });
     }
   } catch {
     // Keep the original text if the translation service is unavailable.
@@ -280,28 +285,39 @@ async function translateNode(node: Text, language: AppLanguage): Promise<void> {
   }
 }
 
+function translateOneAttribute(element: HTMLElement, attribute: string, language: AppLanguage) {
+  if (element.closest('[data-no-translate]')) return;
+  const original = element.getAttribute(attribute);
+  if (!original || !/[a-zA-ZÀ-ž]/.test(original) || original.length > 200) return;
+  const marker = 'data-lang-original-' + attribute;
+  if (!element.hasAttribute(marker)) element.setAttribute(marker, original);
+  const source = element.getAttribute(marker) || original;
+  let pending = pendingAttributes.get(element);
+  if (!pending) {
+    pending = new Set<string>();
+    pendingAttributes.set(element, pending);
+  }
+  if (pending.has(attribute)) return;
+  if (element.getAttribute(attribute) === source && language === 'es') return;
+  pending.add(attribute);
+  void translateOne(source, language).then((value) => {
+    if (language === currentLanguage && element.isConnected && element.getAttribute(marker) === source) {
+      element.setAttribute(attribute, value);
+    }
+  }).catch(() => {}).finally(() => {
+    pending?.delete(attribute);
+    // A request started for the previous language must not block the new one.
+    // Re-queue this exact attribute after releasing its in-flight lock.
+    if (language !== currentLanguage && element.isConnected) {
+      translateOneAttribute(element, attribute, currentLanguage);
+    }
+  });
+}
+
 function translateAttributes(root: ParentNode, language: AppLanguage) {
   root.querySelectorAll<HTMLElement>('[placeholder],[title],[aria-label]').forEach((element) => {
-    if (element.closest('[data-no-translate]')) return;
     for (const attribute of ['placeholder', 'title', 'aria-label']) {
-      const original = element.getAttribute(attribute);
-      if (!original || !/[a-zA-ZÀ-ž]/.test(original) || original.length > 200) continue;
-      const marker = 'data-lang-original-' + attribute;
-      if (!element.hasAttribute(marker)) element.setAttribute(marker, original);
-      const source = element.getAttribute(marker) || original;
-      let pending = pendingAttributes.get(element);
-      if (!pending) {
-        pending = new Set<string>();
-        pendingAttributes.set(element, pending);
-      }
-      if (pending.has(attribute)) continue;
-      if (element.getAttribute(attribute) === source && language === 'es') continue;
-      pending.add(attribute);
-      void translateOne(source, language).then((value) => {
-        if (language === currentLanguage && element.isConnected && element.getAttribute(marker) === source) element.setAttribute(attribute, value);
-      }).catch(() => {}).finally(() => {
-        pending?.delete(attribute);
-      });
+      translateOneAttribute(element, attribute, language);
     }
   });
 }
@@ -352,14 +368,28 @@ export function startAutomaticUiTranslation(): () => void {
   // that could exhaust memory on slower desktop browsers. Only new DOM subtrees
   // require another pass; the initial scan already handles existing text.
   observer = new MutationObserver((records) => {
-    if (!records.some((record) => record.addedNodes.length > 0)) return;
+    let needsScan = false;
+    for (const record of records) {
+      if (record.addedNodes.length > 0) needsScan = true;
+      if (record.type === 'characterData' && record.target.nodeType === Node.TEXT_NODE) {
+        const textNode = record.target as Text;
+        const expected = internalTextWrites.get(textNode);
+        if (expected !== undefined && textNode.nodeValue === expected) {
+          internalTextWrites.delete(textNode);
+        } else {
+          internalTextWrites.delete(textNode);
+          needsScan = true;
+        }
+      }
+    }
+    if (!needsScan) return;
     if (scanTimer !== null) window.clearTimeout(scanTimer);
     scanTimer = window.setTimeout(() => {
       scanTimer = null;
       scan();
     }, 160);
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, characterData: true, subtree: true });
   window.addEventListener('user-profile-updated', changeLanguage);
   window.addEventListener('storage', changeLanguage);
   return () => {
