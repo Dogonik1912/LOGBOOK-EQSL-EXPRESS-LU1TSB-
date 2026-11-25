@@ -520,6 +520,13 @@ function MainApp() {
         </div>
         <RadioPrefixLookup />
         <PendingEqslDeliveries />
+        <NewQSOForm
+          onAddQSO={handleAddQSO}
+          onFinishContest={handleFinishContest}
+          onFinishLLOTA={handleFinishLLOTA}
+          hasDuplicateQSO={(candidate) => qsos.some(q => q.llotaActivityId === candidate.llotaActivityId && q.callsign.trim().toUpperCase() === candidate.callsign.trim().toUpperCase() && q.date === candidate.date && q.time === candidate.time && q.frequency === candidate.frequency && q.mode === candidate.mode)}
+        />
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <EQSLMailbox />
           <PrivateMessages />
@@ -538,12 +545,6 @@ function MainApp() {
         <SDRSmart />
 
         {/* Formulario de Nuevo QSO (con precarga de banda, fecha, hora y modo) */}
-        <NewQSOForm
-          onAddQSO={handleAddQSO}
-          onFinishContest={handleFinishContest}
-          onFinishLLOTA={handleFinishLLOTA}
-          hasDuplicateQSO={(candidate) => qsos.some(q => q.llotaActivityId === candidate.llotaActivityId && q.callsign.trim().toUpperCase() === candidate.callsign.trim().toUpperCase() && q.date === candidate.date && q.time === candidate.time && q.frequency === candidate.frequency && q.mode === candidate.mode)}
-        />
 
         {/* Tabla Live Log (con columna Email editable, filtros y acciones) */}
         <LiveLog
