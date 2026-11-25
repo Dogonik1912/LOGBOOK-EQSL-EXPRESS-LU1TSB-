@@ -673,16 +673,14 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
       </button>
       {isExpanded && <div className="p-5 sm:p-6 pt-0">
       <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950 p-3">
-        <p className="mb-2 text-xs font-semibold text-slate-300">HORARIO DEL LIBRO DE GUARDIA</p>
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
+        <div className="flex flex-nowrap items-center gap-4">
+          <label className="flex items-center gap-2 whitespace-nowrap text-sm text-white cursor-pointer">
+            <input type="checkbox" checked={timeMode === 'LOCAL'} onChange={() => handleTimeModeChange('LOCAL')} className="h-4 w-4 accent-amber-500" /> LOCAL
+          </label>
+          <label className="flex items-center gap-2 whitespace-nowrap text-sm text-white cursor-pointer">
             <input type="checkbox" checked={timeMode === 'UTC'} onChange={() => handleTimeModeChange('UTC')} className="h-4 w-4 accent-amber-500" /> UTC
           </label>
-          <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
-            <input type="checkbox" checked={timeMode === 'LOCAL'} onChange={() => handleTimeModeChange('LOCAL')} className="h-4 w-4 accent-amber-500" /> Hora local
-          </label>
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Selecciona una sola opción. Los QSO se guardan internamente en UTC para mantener la compatibilidad de los registros y concursos.</p>
       </div>
       <div className="flex justify-end pb-3">
         <button type="button" onClick={handleUpdateToCurrentUTC} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer" title="Sincronizar a hora UTC actual">
@@ -690,7 +688,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
         </button>
       </div>
       <details className="mb-4 rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-3" open={contestSetupOpen || contestMode} onToggle={(e) => { if (!contestMode) setContestSetupOpen((e.currentTarget as HTMLDetailsElement).open); }}>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-white">Concurso {contestMode ? `· Activo: ${contestLogName}` : '· Configurar log'}</summary>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-white">Modo concurso {contestMode ? `· Activo: ${contestLogName}` : ' - Configurar log'}</summary>
         {contestSetupOpen && !contestMode && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-slate-800 p-3">
           <div>
             <label className="block text-xs text-slate-300 mb-1">Nombre del log</label>
