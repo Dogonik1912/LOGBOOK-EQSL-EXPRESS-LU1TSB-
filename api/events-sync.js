@@ -860,7 +860,7 @@ export default async function handler(req, res) {
           const rows = parseEchoKilo(await response.text());
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'alfa-tango-11m') {
-          const response = await fetchWithTimeout(ALFA_TANGO_URL, 'text/html');
+          const response = await fetchWithRetry(ALFA_TANGO_URL, 'text/html', 1);
           const rows = parseAlfaTango(await response.text());
           results.push({ source: source.source_key, ...(await upsertRows(supabase, source.source_key, rows)) });
         } else if (source.source_key === 'cqww-ham') {
