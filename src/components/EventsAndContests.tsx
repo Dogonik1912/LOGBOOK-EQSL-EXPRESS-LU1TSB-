@@ -361,7 +361,13 @@ export const EventsAndContests: React.FC = () => {
     if (effectiveHomeCountry) values.add(effectiveHomeCountry);
     return [...values].sort().map((code) => ({ code, label: countryLabel(code) }));
   }, [countries, effectiveHomeCountry]);
-  const displayEvents = [ZONA_TANGO_EVENT, ...events];
+  const LU1AAS_EVENT_ID = '483f62c4-9e22-4f2d-89f6-2e773c1c3501';
+  const priorityEvent = events.find((item) => item.id === LU1AAS_EVENT_ID);
+  const displayEvents = [
+    ZONA_TANGO_EVENT,
+    ...(priorityEvent ? [priorityEvent] : []),
+    ...events.filter((item) => item.id !== LU1AAS_EVENT_ID),
+  ];
 
   return (
     <section className="mb-3">
@@ -435,7 +441,7 @@ export const EventsAndContests: React.FC = () => {
                     {item.verified && <span className="inline-flex items-center gap-1 text-emerald-200"><ShieldCheck className="h-3 w-3" /> Fuente verificada</span>}
                   </div>
                   <h3 className="text-sm font-black leading-snug">{item.title}</h3>
-                  <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{item.id === ZONA_TANGO_ID ? 'Enlace permanente · Jujuy, Argentina' : <>{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</>}</p>
+                  {item.id !== ZONA_TANGO_ID && <p className="mt-1 text-xs text-amber-100"><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDate(item.start_at)}{item.end_at ? ` — ${formatDate(item.end_at)}` : ''}</p>}
                   {item.source_url?.includes('rcqsl.com/news.php?id=62') && <p className="mt-1 rounded-md border border-amber-300/30 bg-amber-300/10 px-2 py-1.5 text-[11px] font-semibold text-amber-100">HORARIO DE REFERENCIA: UTC (Tiempo Universal Coordinado), no hora local. El reglamento oficial solo indica las fechas 11–27 de diciembre; no publica horas diarias de activación. Los límites 00:00 y 23:59 UTC representan los días completos.</p>}
                   {(item.country_name || item.country_code || item.organizer) && <p className="mt-1 text-xs text-indigo-100/80">{[item.organizer, item.country_name && item.country_name.length > 2 ? item.country_name : (item.country_code ? countryLabel(item.country_code) : '')].filter(Boolean).join(' · ')}</p>}
                   {item.description && <details className="mt-1 text-xs text-white/80"><summary className="cursor-pointer font-semibold text-cyan-200">Ver descripción y detalles</summary><p className="mt-1 whitespace-pre-line leading-relaxed">{item.description}</p></details>}
