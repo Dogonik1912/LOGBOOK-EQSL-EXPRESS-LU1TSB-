@@ -449,7 +449,7 @@ function parseUreContests(html) {
     const title = plainText(match[2]).trim();
     if (!title || title.length < 3) continue;
     const before = plainText(String(html).slice(Math.max(0, match.index - 1400), match.index));
-    const date = before.match(/(\d{1,2})(?:\s*al\s*(\d{1,2}))?\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(20\d{2})/i);
+    const date = before.match(/(\d{1,2})(?:\s*al\s*(\d{1,2}))?\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})/i);
     if (!date) continue;
     const month = MONTHS[date[3].toLowerCase()];
     if (month === undefined) continue;
@@ -564,8 +564,8 @@ function parseRefCalendar(html, year) {
 
 function parseDaRcXmas(html) {
   const text = plainText(html);
-  const startMatch = text.match(/(?:Starts?|Inicio|Comienza)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
-  const endMatch = text.match(/(?:Ends?|Final|Termina)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
+  const startMatch = text.match(/(?:Starts?|Inicio|Comienza)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(?:de\s+)?(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
+  const endMatch = text.match(/(?:Ends?|Final|Termina)\s*:\s*(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóú]+)\s+(?:de\s+)?(20\d{2})(?:\s+(\d{1,2}):(\d{2})\s*UTC)?/i);
   if (!startMatch || !endMatch) return [];
   const monthIndex = (name) => EN_MONTHS[name.toLowerCase()] ?? MONTHS[name.toLowerCase()] ?? (name.toLowerCase() === 'diecembre' ? 11 : undefined);
   const sm = monthIndex(startMatch[2]), em = monthIndex(endMatch[2]);
