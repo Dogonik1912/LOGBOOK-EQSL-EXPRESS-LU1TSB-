@@ -5,6 +5,11 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Emit JavaScript and CSS compatible with the last Chrome release for Windows 7.
+  build: {
+    target: ['chrome109'],
+    cssTarget: 'chrome109',
+  },
   plugins: [
     react(),
     tailwindcss(),
