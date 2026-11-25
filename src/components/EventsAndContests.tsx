@@ -101,6 +101,7 @@ async function readApiPayload(response: Response, fallback: string): Promise<any
 
 export const EventsAndContests: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(() => new URLSearchParams(window.location.search).has('shared_event'));
+  const [currentPage, setCurrentPage] = useState(1);
   const [identities, setIdentities] = useState<StationIdentity[]>([]);
   const [selectedType, setSelectedType] = useState<StationType>('ham');
   const [category, setCategory] = useState<EventScope>('national');
@@ -369,6 +370,22 @@ export const EventsAndContests: React.FC = () => {
     ...(priorityEvent ? [priorityEvent] : []),
     ...events.filter((item) => item.id !== LU1AAS_EVENT_ID && item.id !== ZONA_TANGO_ID),
   ];
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(displayEvents.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedEvents = displayEvents.slice((safeCurrentPage - 1) * PAGE_SIZE, safeCurrentPage * PAGE_SIZE);
+
+  useEffect(() => { setCurrentPage(1); }, [category, selectedKind, selectedType, selectedCountry]);
+
+  useEffect(() => {
+    if (!sharedEventId || loading || !isExpanded) return;
+    const eventIndex = displayEvents.findIndex((item) => item.id === sharedEventId);
+    if (eventIndex < 0) return;
+    const targetPage = Math.floor(eventIndex / PAGE_SIZE) + 1;
+    if (targetPage !== safeCurrentPage) { setCurrentPage(targetPage); return; }
+    const target = document.getElementById('shared-event-' + sharedEventId);
+    if (target) target.scrollIntoView(true);
+  }, [displayEvents, sharedEventId, loading, isExpanded, safeCurrentPage]);
 
   return (
     <section className="mb-3">
@@ -431,7 +448,7 @@ export const EventsAndContests: React.FC = () => {
               <p className="font-bold">Todavía no hay {selectedKind === 'event' ? 'eventos' : 'concursos'} confirmados para esta selección.</p>
               <p className="mt-1 text-xs text-indigo-100/65">Probá otro país o la agenda internacional. Las novedades se incorporan con las próximas actualizaciones automáticas.</p>
             </div>}
-            {displayEvents.map((item) => (
+            {paginatedEvents.map((item) => (
               <article key={item.id} id={item.id === sharedEventId ? 'shared-event-' + item.id : undefined} className={"overflow-hidden rounded-lg border border-white/15 bg-white/[0.07] " + (item.id === sharedEventId ? 'ring-2 ring-amber-300 shadow-xl' : '')}>
                 {item.image_url && <img src={item.image_url} alt="" loading="lazy" className="h-20 w-full object-cover" referrerPolicy="no-referrer" />}
                 <div className="p-2">
@@ -458,6 +475,18 @@ export const EventsAndContests: React.FC = () => {
               </article>
             ))}
           </div>}
+
+        {!loading && displayEvents.length > PAGE_SIZE && <nav aria-label="Paginación de eventos y concursos" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs">
+          <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safeCurrentPage <= 1} className="min-h-9 rounded-md border border-white/20 px-3 font-bold text-white disabled:opacity-35">← Anterior</button>
+          <label className="flex items-center gap-2 font-semibold text-indigo-100">Página
+            <select value={safeCurrentPage} onChange={(event) => setCurrentPage(Number(event.target.value))} className="min-h-9 rounded-md border border-white/20 bg-slate-950 px-2 text-white">
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => <option key={page} value={page}>{page}</option>)}
+            </select>
+            <span>de {totalPages}</span>
+          </label>
+          <span className="text-indigo-100/65">{(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, displayEvents.length)} de {displayEvents.length}</span>
+          <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage >= totalPages} className="min-h-9 rounded-md border border-white/20 px-3 font-bold text-white disabled:opacity-35">Siguiente →</button>
+        </nav>}
 
         {isAdmin && <div className="rounded-xl border border-amber-200/25 bg-amber-300/5">
           <button type="button" onClick={() => setShowPublisher((value) => !value)} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-black text-amber-100">
