@@ -221,7 +221,11 @@ export default async function handler(req, res) {
         if (!country) return json(res, 200, { events: [], countries: [], is_admin: identity.isAdmin, last_updated: null });
         query = query.eq('country_code', country);
       } else if (country) {
-        query = query.eq('country_code', country);
+        // In international view, show worldwide activities (country_code IS NULL)
+        // alongside events explicitly associated with the selected country.
+        // This prevents a country page from appearing empty when global contests
+        // and activations are available, without misattributing them nationally.
+        query = query.or('country_code.eq.' + country + ',country_code.is.null');
       }
       const [{ data: events, error }, { data: countryRows, error: countryError }, { data: sourceRows, error: sourceError }] = await Promise.all([
         query,
