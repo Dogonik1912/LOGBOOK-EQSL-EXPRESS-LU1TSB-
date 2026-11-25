@@ -3,6 +3,17 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const json = (res, status, body) => res.status(status).json(body);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ZONA_TANGO_SHARE_ID = '8d0d9c5a-5b3d-4b2e-9f61-5a4b8f6c2d10';
+const ZONA_TANGO_EVENT = {
+  id: 'zona-tango-permanent',
+  title: 'Zona Tango – Radioaficionados de Jujuy',
+  description: 'Fuente permanente de información radial de Jujuy: actividades, concursos, técnica, formación y novedades de radioafición.',
+  event_scope: 'national', event_kind: 'event', station_type: 'both',
+  country_code: 'AR', country_name: 'Argentina', organizer: 'Radioaficionados de Jujuy',
+  start_at: null, end_at: null,
+  rules_url: 'https://zonatango.wordpress.com/', source_url: 'https://zonatango.wordpress.com/',
+  source_name: 'Zona Tango', image_url: null, verified: true, is_auto: false,
+};
 
 function config() {
   const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
@@ -193,10 +204,16 @@ export default async function handler(req, res) {
         res.setHeader('Location', '/?shared_event=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(normalizeShareLanguage(req.query?.lang)));
         return res.end();
       }
-      const { data: sharedEvent, error: shareError } = await supabase.from('radio_events')
-        .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,image_url,verified,is_auto')
-        .eq('id', sharedId).eq('status', 'published').maybeSingle();
-      if (shareError) throw shareError;
+      let sharedEvent;
+      if (sharedId === ZONA_TANGO_SHARE_ID) {
+        sharedEvent = ZONA_TANGO_EVENT;
+      } else {
+        const { data, error: shareError } = await supabase.from('radio_events')
+          .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,image_url,verified,is_auto')
+          .eq('id', sharedId).eq('status', 'published').maybeSingle();
+        if (shareError) throw shareError;
+        sharedEvent = data;
+      }
       if (!sharedEvent) {
         if (wantsJson) return json(res, 404, { error: 'Esta publicación ya no está disponible.' });
         res.statusCode = 302;
@@ -261,6 +278,9 @@ export default async function handler(req, res) {
       const body = req.body || {};
       if (body.action === 'share') {
         const id = String(body.id || '').trim();
+        if (id === ZONA_TANGO_SHARE_ID) {
+          return json(res, 200, { token: id + '.' + shareSignature(id, secret) });
+        }
         if (!UUID_RE.test(id)) return json(res, 400, { error: 'Identificador de publicación no válido.' });
         const { data: event, error: eventError } = await supabase.from('radio_events').select('id').eq('id', id).eq('status', 'published').maybeSingle();
         if (eventError) throw eventError;

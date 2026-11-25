@@ -30,6 +30,7 @@ type RadioEvent = {
 };
 
 const ZONA_TANGO_ID = 'zona-tango-permanent';
+const ZONA_TANGO_SHARE_ID = '8d0d9c5a-5b3d-4b2e-9f61-5a4b8f6c2d10';
 const ZONA_TANGO_EVENT: RadioEvent = {
   id: ZONA_TANGO_ID,
   title: 'Zona Tango – Radioaficionados de Jujuy',
@@ -304,7 +305,7 @@ export const EventsAndContests: React.FC = () => {
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-identity-token': token, 'x-callsign': selectedCall },
-        body: JSON.stringify({ action: 'share', id: item.id }),
+        body: JSON.stringify({ action: 'share', id: item.id === ZONA_TANGO_ID ? ZONA_TANGO_SHARE_ID : item.id }),
         cache: 'no-store',
       });
       const payload = await readApiPayload(response, 'No se pudo preparar el enlace de la publicación en este momento.');
@@ -366,7 +367,7 @@ export const EventsAndContests: React.FC = () => {
   const displayEvents = [
     ZONA_TANGO_EVENT,
     ...(priorityEvent ? [priorityEvent] : []),
-    ...events.filter((item) => item.id !== LU1AAS_EVENT_ID),
+    ...events.filter((item) => item.id !== LU1AAS_EVENT_ID && item.id !== ZONA_TANGO_ID),
   ];
 
   return (
@@ -449,7 +450,7 @@ export const EventsAndContests: React.FC = () => {
                     {item.id === ZONA_TANGO_ID
                       ? <a href="https://zonatango.wordpress.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Ingresar a Zona Tango <ExternalLink className="h-3 w-3" /></a>
                       : (item.rules_url || item.source_url) && <a href={item.rules_url || item.source_url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-200 underline underline-offset-2">Bases / información oficial <ExternalLink className="h-3 w-3" /></a>}
-                    {item.id !== ZONA_TANGO_ID && <button type="button" onClick={() => void shareEvent(item)} className="inline-flex items-center gap-1 text-emerald-200"><Share2 className="h-3 w-3" /> Compartir</button>}
+                    <button type="button" onClick={() => void shareEvent(item)} className="inline-flex items-center gap-1 text-emerald-200"><Share2 className="h-3 w-3" /> Compartir</button>
                     {isAdmin && item.id !== ZONA_TANGO_ID && <button type="button" onClick={() => void deleteEvent(item.id)} className="inline-flex items-center gap-1 text-rose-200"><Trash2 className="h-3 w-3" /> Borrar</button>}
                   </div>
                   <p className="mt-1 text-[9px] text-indigo-100/55">Fuente: {item.source_name || 'Publicación de administración'}{item.is_auto ? ' · actualización automática' : ''}</p>
