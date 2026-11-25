@@ -363,33 +363,18 @@ export function startAutomaticUiTranslation(): () => void {
     scan();
   };
   scan();
-  // React and translation both update text nodes. Observing characterData made
-  // every translated word trigger a full-document scan, creating a feedback loop
-  // that could exhaust memory on slower desktop browsers. Only new DOM subtrees
-  // require another pass; the initial scan already handles existing text.
+  // Observe only inserted DOM subtrees. Character-data mutations are frequent
+  // during React updates and scrolling; rescanning the entire document for them
+  // can repeatedly process the page header and cause visual duplication/jank.
   observer = new MutationObserver((records) => {
-    let needsScan = false;
-    for (const record of records) {
-      if (record.addedNodes.length > 0) needsScan = true;
-      if (record.type === 'characterData' && record.target.nodeType === Node.TEXT_NODE) {
-        const textNode = record.target as Text;
-        const expected = internalTextWrites.get(textNode);
-        if (expected !== undefined && textNode.nodeValue === expected) {
-          internalTextWrites.delete(textNode);
-        } else {
-          internalTextWrites.delete(textNode);
-          needsScan = true;
-        }
-      }
-    }
-    if (!needsScan) return;
+    if (!records.some((record) => record.addedNodes.length > 0)) return;
     if (scanTimer !== null) window.clearTimeout(scanTimer);
     scanTimer = window.setTimeout(() => {
       scanTimer = null;
       scan();
     }, 160);
   });
-  observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('user-profile-updated', changeLanguage);
   window.addEventListener('storage', changeLanguage);
   return () => {
