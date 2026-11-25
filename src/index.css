@@ -6,49 +6,38 @@
 h1, h2, h3, h4, h5, h6 { text-align: center; }
 
 
-/* Identidad común para controles que despliegan secciones. */
-details > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.65rem;
-  background: #38a9df;
-  color: #ffffff !important;
-  font-weight: 800;
-  text-transform: uppercase;
-  cursor: pointer;
-  list-style: none;
-  transition: background-color 160ms ease, color 160ms ease;
+/* Estilo limitado a los encabezados largos que despliegan secciones principales.
+   No alcanza summaries internos, botones de acción, idioma ni compartir app. */
+button[aria-expanded][class*="min-h-"] {
+  background: #050505 !important;
+  background-image: none !important;
+  color: #d4af37 !important;
+  border-color: #b8860b !important;
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
 }
-details > summary::-webkit-details-marker { display: none; }
-details > summary:hover { background: #2494ca; }
-details[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-details > summary:focus-visible,
-button[aria-expanded].w-full:focus-visible {
-  outline: 3px solid #93d9ff;
+button[aria-expanded][class*="min-h-"] * { color: #d4af37 !important; }
+button[aria-expanded][class*="min-h-"]:hover {
+  background: #111111 !important;
+  background-image: none !important;
+}
+button[aria-expanded][class*="min-h-"]:focus-visible {
+  outline: 2px solid #d4af37;
   outline-offset: 2px;
 }
-button[aria-expanded].w-full {
-  background: #38a9df !important;
-  color: #ffffff !important;
-  border-color: #38a9df !important;
-  font-weight: 800 !important;
-  text-transform: uppercase;
-  border-radius: 0.65rem;
-}
-button[aria-expanded].w-full:hover { background: #2494ca !important; }
+
+/* Cierre de paneles: conserva el aspecto negro y dorado de la interfaz interior. */
 .lb-disclosure-close {
   min-height: 2.5rem;
   padding: 0.55rem 1.1rem;
-  border: 1px solid #38a9df;
+  border: 1px solid #b8860b;
   border-radius: 0.65rem;
-  background: #38a9df;
-  color: #ffffff;
+  background: #050505;
+  color: #d4af37;
   font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   transition: background-color 160ms ease;
 }
-.lb-disclosure-close:hover { background: #2494ca; }
+.lb-disclosure-close:hover { background: #171717; }
+
