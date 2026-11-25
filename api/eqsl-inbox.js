@@ -9,6 +9,7 @@ const json = (res, status, body) => res.status(status).json(body);
 const CALL_RE = /^[A-Z0-9][A-Z0-9/ _-]{2,39}$/;
 const HAM_CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
 const CB_CALL_RE = /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/;
+const SUPPORTED_SHARE_LANGUAGES = new Set(['es','en','pt','pt-br','fr','de','it','nl','pl','ru','uk','zh','ja','ko','ar','hi','tr','sv','no','da','fi','cs','el','ro','hu','id','th']);
 const is11mBand = (band) => /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(band || ''));
 const stationType = (value) => CB_CALL_RE.test(String(value || '').trim().toUpperCase()) ? '11m' : HAM_CALL_RE.test(String(value || '').trim().toUpperCase()) ? 'ham' : '';
 
@@ -149,6 +150,7 @@ export default async function handler(req, res) {
           date: clean(req.body?.date, 10),
           band: clean(req.body?.band, 24),
           mode: clean(req.body?.mode, 16),
+          ...(SUPPORTED_SHARE_LANGUAGES.has(clean(req.body?.language, 8).toLowerCase()) ? { language: clean(req.body?.language, 8).toLowerCase() } : {}),
           createdAt: new Date().toISOString(),
           readAt: null,
         });

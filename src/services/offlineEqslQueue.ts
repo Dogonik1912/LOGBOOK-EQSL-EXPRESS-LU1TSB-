@@ -1,7 +1,7 @@
 export type EqslDeliveryJob = {
   id: string;
   cardData: Record<string, unknown>;
-  inboxData: { from: string; senderIdentity: string; to: string; isResponse: boolean; date: string; band: string; mode: string; originalEqslId?: string };
+  inboxData: { from: string; senderIdentity: string; to: string; isResponse: boolean; date: string; band: string; mode: string; originalEqslId?: string; language?: string };
   status: 'pending' | 'needs_confirmation';
   attempts: number;
   lastError?: string;

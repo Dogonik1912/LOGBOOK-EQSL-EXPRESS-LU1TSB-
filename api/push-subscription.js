@@ -3,6 +3,36 @@ import { get, put } from '@vercel/blob';
 
 const clean = (v, max = 80) => String(v ?? '').trim().slice(0, max);
 const json = (res, status, body) => res.status(status).json(body);
+const EQSL_PUSH_MESSAGES = {
+  es: ['Has recibido una nueva eQSL.', 'Has recibido una respuesta a tu eQSL.'],
+  en: ['You received a new eQSL.', 'You received a reply to your eQSL.'],
+  pt: ['Recebeu uma nova eQSL.', 'Recebeu uma resposta à sua eQSL.'],
+  'pt-br': ['Você recebeu uma nova eQSL.', 'Você recebeu uma resposta à sua eQSL.'],
+  fr: ['Vous avez reçu une nouvelle eQSL.', 'Vous avez reçu une réponse à votre eQSL.'],
+  de: ['Du hast eine neue eQSL erhalten.', 'Du hast eine Antwort auf deine eQSL erhalten.'],
+  it: ['Hai ricevuto una nuova eQSL.', 'Hai ricevuto una risposta alla tua eQSL.'],
+  nl: ['Je hebt een nieuwe eQSL ontvangen.', 'Je hebt een antwoord op je eQSL ontvangen.'],
+  pl: ['Otrzymałeś nową eQSL.', 'Otrzymałeś odpowiedź na swoją eQSL.'],
+  ru: ['Вы получили новую eQSL.', 'Вы получили ответ на вашу eQSL.'],
+  uk: ['Ви отримали нову eQSL.', 'Ви отримали відповідь на вашу eQSL.'],
+  zh: ['您收到了一张新的 eQSL。', '您收到了一条 eQSL 回复。'],
+  ja: ['新しい eQSL を受信しました。', 'eQSL への返信を受信しました。'],
+  ko: ['새 eQSL을 받았습니다.', 'eQSL 답장을 받았습니다.'],
+  ar: ['لقد تلقيت بطاقة eQSL جديدة.', 'لقد تلقيت ردًا على بطاقة eQSL الخاصة بك.'],
+  hi: ['आपको एक नया eQSL मिला है।', 'आपकी eQSL का जवाब आया है।'],
+  tr: ['Yeni bir eQSL aldınız.', 'eQSL kartınıza yanıt aldınız.'],
+  sv: ['Du har fått en ny eQSL.', 'Du har fått ett svar på din eQSL.'],
+  no: ['Du har mottatt en ny eQSL.', 'Du har mottatt et svar på din eQSL.'],
+  da: ['Du har modtaget en ny eQSL.', 'Du har modtaget et svar på din eQSL.'],
+  fi: ['Olet saanut uuden eQSL:n.', 'Olet saanut vastauksen eQSL-korttiisi.'],
+  cs: ['Obdrželi jste novou eQSL.', 'Obdrželi jste odpověď na svou eQSL.'],
+  el: ['Λάβατε μια νέα eQSL.', 'Λάβατε απάντηση στην eQSL σας.'],
+  ro: ['Ați primit o eQSL nouă.', 'Ați primit un răspuns la eQSL-ul dvs.'],
+  hu: ['Új eQSL-t kapott.', 'Választ kapott az eQSL-jére.'],
+  id: ['Anda menerima eQSL baru.', 'Anda menerima balasan untuk eQSL Anda.'],
+  th: ['คุณได้รับ eQSL ใหม่', 'คุณได้รับคำตอบสำหรับ eQSL ของคุณ'],
+};
+
 const config = () => {
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
   const supabaseUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
@@ -103,16 +133,12 @@ export async function sendEqslPush(callsign, item = {}) {
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY,
   );
-  const payload = JSON.stringify({
-    title: 'LogBook eQSL EXPRESS',
-    body: item.isResponse ? 'Has recibido una respuesta a tu eQSL.' : 'Has recibido una nueva eQSL.',
-    tag: 'eqsl-' + clean(item.id, 24),
-    url: '/?open_eqsl_inbox=1',
-  });
+  const language = Object.prototype.hasOwnProperty.call(EQSL_PUSH_MESSAGES, item.language) ? item.language : 'es';
+  const localizedBody = EQSL_PUSH_MESSAGES[language][item.isResponse ? 1 : 0];
   const failed = new Set();
   await Promise.all(active.map(async (entry) => {
     try {
-      const notificationPayload = JSON.stringify({ title: 'LogBook eQSL EXPRESS', body: item.isResponse ? 'Has recibido una respuesta a tu eQSL.' : 'Has recibido una nueva eQSL.', tag: 'eqsl-' + clean(item.id, 24), url: '/?open_eqsl_inbox=1', silent: entry.alertsEnabled === false });
+      const notificationPayload = JSON.stringify({ title: 'LogBook eQSL EXPRESS', body: localizedBody, tag: 'eqsl-' + clean(item.id, 24), url: '/?open_eqsl_inbox=1', silent: entry.alertsEnabled === false });
       await webpush.sendNotification(entry.subscription, notificationPayload, { TTL: 60 * 60 * 24 });
     } catch (error) {
       if (error?.statusCode === 404 || error?.statusCode === 410) failed.add(entry.subscription.endpoint);

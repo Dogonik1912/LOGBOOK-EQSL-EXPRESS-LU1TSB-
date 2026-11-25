@@ -575,6 +575,7 @@ export const EQSLCardModal: React.FC<EQSLCardModalProps> = ({
       const job = await enqueueEqslDelivery(cardData, {
         from: String(cardData.from), senderIdentity: identityCallsign, to: String(cardData.to), isResponse: false,
         date: String(cardData.date), band: String(cardData.band), mode: String(cardData.mode),
+        language: resolveShareLanguage(shareLanguage, qso.callsign),
       });
       inboxDeliveryStatus.current = navigator.onLine && await deliverEqslJob(job.id, true) ? true : 'queued';
       return '';

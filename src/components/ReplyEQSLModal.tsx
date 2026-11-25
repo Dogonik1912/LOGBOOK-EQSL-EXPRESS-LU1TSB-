@@ -390,6 +390,7 @@ export const ReplyEQSLModal: React.FC<ReplyEQSLModalProps> = ({
       const job = await enqueueEqslDelivery(cardData, {
         from: activeMyCall, senderIdentity: identityCallsign, to: replyToCall.trim().toUpperCase(), isResponse: true,
         date, band, mode, originalEqslId: initialData?.originalEqslId,
+        language: resolveShareLanguage(shareLanguage, normalizedRecipient),
       });
       const delivered = navigator.onLine ? await deliverEqslJob(job.id, true) : false;
       if (!delivered) setEqslPostStatus(navigator.onLine

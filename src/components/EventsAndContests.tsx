@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Globe2, MapPin, ExternalLink, RadioTower, Trash2, Plus, Share2, ShieldCheck, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
-import { getInitialAppLanguage } from '../services/appLanguage';
+import { resolveShareLanguage, translateShareText, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 
 type StationType = 'ham' | '11m';
 type EventScope = 'national' | 'international';
@@ -84,6 +85,7 @@ export const EventsAndContests: React.FC = () => {
   const [selectedKind, setSelectedKind] = useState<EventKind>('event');
   const [homeCountry, setHomeCountry] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   const [countries, setCountries] = useState<string[]>([]);
   const [events, setEvents] = useState<RadioEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,18 +244,21 @@ export const EventsAndContests: React.FC = () => {
       });
       const payload = await readApiPayload(response, 'No se pudo preparar el enlace de la publicación en este momento.');
       if (!response.ok || !payload?.token) throw new Error(typeof payload?.error === 'string' ? payload.error : 'No se pudo preparar el enlace de la publicación.');
-      const language = getInitialAppLanguage();
+      const language = resolveShareLanguage(shareLanguage);
       const urlObject = new URL('/api/events?share=' + encodeURIComponent(payload.token), window.location.origin);
       urlObject.searchParams.set('lang', language);
       const url = urlObject.toString();
       const utcNote = item.source_url?.includes('rcqsl.com/news.php?id=62') ? 'Fechas expresadas en UTC, no hora local. El reglamento no especifica horas diarias de activación.' : '';
-      const english = getInitialAppLanguage() === 'en';
       const eventDate = item.start_at ? new Date(item.start_at) : null;
       const localizedDate = eventDate && !Number.isNaN(eventDate.getTime())
-        ? eventDate.toLocaleString(getInitialAppLanguage() === 'en' ? 'en' : undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC'
-        : (english ? 'Date pending official publication' : 'Fecha pendiente de publicación oficial');
-      const text = [item.title, item.organizer, localizedDate, utcNote, english ? 'Shared from LogBook eQSL EXPRESS' : 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\\n');
-      if (navigator.share) await navigator.share({ title: item.title, text, url });
+        ? eventDate.toLocaleString(language, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC'
+        : 'Fecha pendiente de publicación oficial';
+      const sourceText = [item.title, item.organizer, localizedDate, utcNote, 'Compartido desde LogBook eQSL EXPRESS'].filter(Boolean).join('\n');
+      const [title, text] = await Promise.all([
+        translateShareText(item.title, language),
+        translateShareText(sourceText, language),
+      ]);
+      if (navigator.share) await navigator.share({ title, text, url });
       else { await navigator.clipboard.writeText([text, url].join('\n')); window.alert('Enlace de LogBook copiado para compartir.'); }
     } catch (shareError) {
       if ((shareError as Error)?.name !== 'AbortError') setError(shareError instanceof Error ? shareError.message : 'No se pudo compartir el evento desde este dispositivo.');
@@ -261,11 +266,8 @@ export const EventsAndContests: React.FC = () => {
   };
 
   const shareAgenda = async () => {
-    const language = getInitialAppLanguage();
-    const english = language === 'en';
-    const heading = english
-      ? (selectedKind === 'event' ? 'EVENTS' : 'CONTESTS') + ' · ' + (selectedType === '11m' ? '11 METERS' : 'AMATEUR RADIO') + ' · ' + (category === 'national' ? 'NATIONAL' : 'INTERNATIONAL')
-      : (selectedKind === 'event' ? 'EVENTOS' : 'CONCURSOS') + ' · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
+    const language = resolveShareLanguage(shareLanguage);
+    const heading = (selectedKind === 'event' ? 'EVENTOS' : 'CONCURSOS') + ' · ' + (selectedType === '11m' ? '11 METROS' : 'RADIOAFICIONADO') + ' · ' + (category === 'national' ? 'NACIONAL' : 'INTERNACIONAL');
     const url = new URL('/', window.location.origin);
     url.searchParams.set('open_events', '1');
     url.searchParams.set('lang', language);
@@ -273,17 +275,20 @@ export const EventsAndContests: React.FC = () => {
     url.searchParams.set('station_type', selectedType);
     url.searchParams.set('category', category);
     if (selectedCountry) url.searchParams.set('country', selectedCountry);
-    const invitation = english
-      ? 'View the calendar in LogBook eQSL EXPRESS. Sign in or register to access the event listings and their official links.'
-      : 'Consultá la agenda dentro de LogBook eQSL EXPRESS. Para acceder a las publicaciones y sus enlaces oficiales, ingresá o registrate en la aplicación.';
-    const message = [heading, invitation, url.toString()].join('\n\n');
+    const invitation = 'Consultá la agenda dentro de LogBook eQSL EXPRESS. Para acceder a las publicaciones y sus enlaces oficiales, ingresá o registrate en la aplicación.';
+    const [translatedHeading, translatedInvitation] = await Promise.all([
+      translateShareText(heading, language),
+      translateShareText(invitation, language),
+    ]);
+    const message = [translatedHeading, translatedInvitation, url.toString()].join('\n\n');
     try {
-      if (navigator.share) await navigator.share({ title: 'Eventos y Concursos · LogBook eQSL EXPRESS', text: message });
+      if (navigator.share) await navigator.share({ title: translatedHeading, text: message });
       else { await navigator.clipboard.writeText(message); window.alert('Agenda copiada para compartir.'); }
     } catch (shareError) {
       if ((shareError as Error)?.name !== 'AbortError') setError('No se pudo compartir la agenda desde este dispositivo.');
     }
   };
+
   const countryOptions = useMemo(() => {
     const values = new Set(countries);
     Object.values(COUNTRY_CODES).forEach((code) => values.add(code));
@@ -342,6 +347,7 @@ export const EventsAndContests: React.FC = () => {
       </div>
 
       <div className="space-y-2 p-2 sm:p-3">
+        <ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage} label="Idioma para compartir eventos y agenda" />
         {error && <div className="rounded-lg border border-rose-300/40 bg-rose-950/50 px-3 py-2 text-sm text-rose-100" role="alert">{error}</div>}
         {!homeCountry && category === 'national' && <p className="rounded-lg border border-amber-200/30 bg-amber-200/10 px-3 py-2 text-xs text-amber-100">No pudimos asociar automáticamente un país a esta identificación. Elegí el país que querés consultar.</p>}
         {loading ? <div className="py-8 text-center text-sm text-indigo-100">Consultando eventos y concursos…</div>
