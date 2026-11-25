@@ -204,9 +204,10 @@ export default async function handler(req, res) {
         return res.end();
       }
       if (wantsJson) return json(res, 200, { event: sharedEvent });
-      res.statusCode = 302;
-      res.setHeader('Location', '/?shared_event=' + encodeURIComponent(token) + '&lang=' + encodeURIComponent(normalizeShareLanguage(req.query?.lang)));
-      return res.end();
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+      return res.send(renderSharedEvent(sharedEvent, req.query?.lang));
     }
 
     const identity = await authorize(req, supabase);
