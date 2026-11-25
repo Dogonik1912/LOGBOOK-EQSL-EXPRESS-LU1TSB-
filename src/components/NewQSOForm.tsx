@@ -715,6 +715,7 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
           <button type="button" onClick={finishContest} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-bold text-white">Finalizar concurso y guardar log</button>
         </div>}
         {!contestMode && !contestSetupOpen && <p className="text-xs text-slate-400">Abrí este apartado para configurar el log de concurso.</p>}
+        {!contestMode && <div className="flex justify-end border-t border-slate-800 pt-3"><button type="button" className="lb-disclosure-close" onClick={(event) => { const panel = event.currentTarget.closest('details'); if (panel) panel.open = false; setContestSetupOpen(false); }}>CERRAR</button></div>}
       </details>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Banda rápida selector */}

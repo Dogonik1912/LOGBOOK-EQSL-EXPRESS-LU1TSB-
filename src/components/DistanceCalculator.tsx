@@ -400,6 +400,7 @@ const RegisteredGridStations: React.FC<{ origin: Point | null; destination: Plac
             <span className="min-w-0"><strong className="block truncate font-mono text-sm">{station.callsign}</strong><span className="text-xs text-slate-400">Grid: {station.grid_locator}</span></span><span className="shrink-0 text-xs font-bold text-cyan-300">Ver perfil</span>
           </button>)}
         </div>
+        <div className="flex justify-end border-t border-slate-700 p-2"><button type="button" className="lb-disclosure-close" onClick={(event) => { const panel = event.currentTarget.closest('details'); if (panel) panel.open = false; }}>CERRAR</button></div>
       </details>
     </>}
   </div>;

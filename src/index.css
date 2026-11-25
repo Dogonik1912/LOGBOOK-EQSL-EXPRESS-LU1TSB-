@@ -4,3 +4,51 @@
 
 /* Centrar los títulos de todos los encabezamientos en PC y móvil. */
 h1, h2, h3, h4, h5, h6 { text-align: center; }
+
+
+/* Identidad común para controles que despliegan secciones. */
+details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.65rem;
+  background: #38a9df;
+  color: #ffffff !important;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+details > summary::-webkit-details-marker { display: none; }
+details > summary:hover { background: #2494ca; }
+details[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+details > summary:focus-visible,
+button[aria-expanded].w-full:focus-visible {
+  outline: 3px solid #93d9ff;
+  outline-offset: 2px;
+}
+button[aria-expanded].w-full {
+  background: #38a9df !important;
+  color: #ffffff !important;
+  border-color: #38a9df !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  border-radius: 0.65rem;
+}
+button[aria-expanded].w-full:hover { background: #2494ca !important; }
+.lb-disclosure-close {
+  min-height: 2.5rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid #38a9df;
+  border-radius: 0.65rem;
+  background: #38a9df;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  transition: background-color 160ms ease;
+}
+.lb-disclosure-close:hover { background: #2494ca; }
