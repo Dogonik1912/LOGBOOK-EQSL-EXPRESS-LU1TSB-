@@ -35,6 +35,19 @@ async function fetchWithTimeout(url, accept) {
   } finally { clearTimeout(timeout); }
 }
 
+async function fetchWithRetry(url, accept, retries = 1) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fetchWithTimeout(url, accept);
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) await new Promise((resolve) => setTimeout(resolve, 700));
+    }
+  }
+  throw lastError;
+}
+
 async function fetchJsonWithTimeout(url) {
   const response = await fetchWithTimeout(url, 'application/json');
   const contentType = String(response.headers.get('content-type') || '').toLowerCase();
@@ -814,7 +827,7 @@ export default async function handler(req, res) {
           const currentYear = new Date().getUTCFullYear();
           // ContestClock publica el catálogo anual mediante ?year=YYYY. El rango
           // from/to no es un parámetro admitido y provocaba HTTP 400.
-          const currentPayload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear);
+          const currentPayload = await fetchJsonWithTimeout(CONTESTCLOCK_API + '?year=' + currentYear).catch(async (yearError) => {\n            // Si la consulta anual devuelve un 400 transitorio, usar el catálogo móvil\n            // de la API para no dejar toda la fuente marcada como error.\n            console.warn('[Eventos] ContestClock no aceptó el filtro anual; se usa el catálogo actual:', yearError?.message || yearError);\n            return await fetchJsonWithTimeout(CONTESTCLOCK_API);\n          });
           // El calendario siguiente puede no estar publicado todavía. Su ausencia
           // no debe bloquear la importación del año vigente.
           let nextPayload = null;
