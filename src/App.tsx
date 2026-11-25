@@ -472,7 +472,7 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-white to-cyan-100 text-slate-900 flex flex-col font-sans selection:bg-amber-300 selection:text-slate-950">
+    <div className="lb-app-shell min-h-screen bg-gradient-to-br from-sky-100 via-white to-cyan-100 text-slate-900 flex flex-col font-sans selection:bg-amber-300 selection:text-slate-950">
       {/* Encabezado con reloj UTC, botón de WhatsApp y accesos */}
       <Header
         onOpenSettings={handleOpenSettings}
@@ -482,7 +482,7 @@ function MainApp() {
       <GridLocatorReminder />
 
       {/* Contenido Principal */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <main className="lb-main-sections flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="mb-3 grid grid-cols-2 gap-2">
           <details className="group relative min-w-0">
             <summary className="lb-section-toggle cursor-pointer list-none justify-center text-center text-xs sm:text-sm">
@@ -527,7 +527,7 @@ function MainApp() {
           hasDuplicateQSO={(candidate) => qsos.some(q => q.llotaActivityId === candidate.llotaActivityId && q.callsign.trim().toUpperCase() === candidate.callsign.trim().toUpperCase() && q.date === candidate.date && q.time === candidate.time && q.frequency === candidate.frequency && q.mode === candidate.mode)}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <EQSLMailbox />
           <PrivateMessages />
         </div>

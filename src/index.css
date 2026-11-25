@@ -5,6 +5,10 @@
 /* Centrar los títulos de todos los encabezamientos en PC y móvil. */
 h1, h2, h3, h4, h5, h6 { text-align: center; }
 
+/* Separación vertical idéntica entre secciones principales de la aplicación. */
+.lb-app-shell > section,
+.lb-main-sections > * { margin-bottom: .75rem !important; }
+
 /* Identidad única para todos los encabezados largos que despliegan secciones.
    Altura, espaciado, color y tipografía compartidos; compatible con navegadores antiguos. */
 .lb-section-toggle,
