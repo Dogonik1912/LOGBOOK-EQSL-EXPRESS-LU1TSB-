@@ -63,12 +63,12 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const [pendingNext,setPendingNext]=useState(false);
   const playback=useRef<{ctx:AudioContext;osc:OscillatorNode}|null>(null);
   const [sessionRunning,setSessionRunning]=useState(false);
-  const [sessionSeconds,setSessionSeconds]=useState(()=>Number(localStorage.getItem('morse_session_seconds_'+(identity||'sin-identidad')))||0);
+  const [sessionSeconds,setSessionSeconds]=useState(()=>Number(localStorage.getItem(sessionStorageKey))||0);
   const [sessionCount,setSessionCount]=useState(0);
   const [sessionTotalSeconds,setSessionTotalSeconds]=useState(0);
   const [sessionMessage,setSessionMessage]=useState('');
-  const [sessionSyncError,setSessionSyncError]=useState(()=>{const key='morse_session_seconds_'+(typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity):identity);return Number(localStorage.getItem(key))>=600&&Boolean(localStorage.getItem('morse_session_id_'+(typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity):identity)));});
-  const sessionId=useRef<string|null>(localStorage.getItem('morse_session_id_'+(identity||'sin-identidad')));
+  const [sessionSyncError,setSessionSyncError]=useState(()=>Number(localStorage.getItem(sessionStorageKey))>=600&&Boolean(localStorage.getItem('morse_session_id_'+(sessionOwner||'sin-identidad'))));
+  const sessionId=useRef<string|null>(localStorage.getItem('morse_session_id_'+(sessionOwner||'sin-identidad')));
   const sessionFinished=useRef(false);
   const identityToken=typeof window!=='undefined'?localStorage.getItem('community_chat_identity_token')||'':'';
   const sessionOwner=typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity).trim().toUpperCase():identity;
@@ -85,8 +85,8 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     setResult('');setPendingNext(false);setText('');
   },[storageKey,identity]);
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(progress));}catch{}},[progress,storageKey]);
-  useEffect(()=>{setSessionRunning(false);const key='morse_session_seconds_'+(identity||'sin-identidad');setSessionSeconds(Number(localStorage.getItem(key))||0);sessionId.current=localStorage.getItem('morse_session_id_'+(identity||'sin-identidad'));sessionFinished.current=false;},[sessionOwner]);
-  useEffect(()=>{try{localStorage.setItem('morse_session_seconds_'+(identity||'sin-identidad'),String(sessionSeconds));}catch{}},[sessionSeconds,sessionOwner]);
+  useEffect(()=>{setSessionRunning(false);setSessionSeconds(Number(localStorage.getItem(sessionStorageKey))||0);sessionId.current=localStorage.getItem('morse_session_id_'+(sessionOwner||'sin-identidad'));sessionFinished.current=false;},[sessionOwner]);
+  useEffect(()=>{try{localStorage.setItem(sessionStorageKey,String(sessionSeconds));}catch{}},[sessionSeconds,sessionOwner]);
   useEffect(()=>{
     let alive=true;
     const loadSessions=async()=>{
@@ -111,9 +111,9 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     setSessionRunning(false);
     const completedId=sessionId.current;
     const save=async()=>{
-      if(!supabase||!identity||!identityToken||!completedId){setSessionSyncError(true);return;}
+      if(!supabase||!sessionOwner||!identityToken||!completedId){setSessionSyncError(true);return;}
       const {data,error}=await supabase.rpc('record_morse_practice_session',{
-        p_callsign:identity,p_token:identityToken,p_session_id:completedId,p_duration_seconds:600
+        p_callsign:sessionOwner,p_token:identityToken,p_session_id:completedId,p_duration_seconds:600
       });
       if(error||!data?.ok){setSessionSyncError(true);return;}
       try{localStorage.removeItem('morse_session_id_'+(sessionOwner||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(sessionOwner||'sin-identidad'));}catch{}
@@ -131,7 +131,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     if(!supabase||!sessionOwner||!identityToken||!sessionId.current)return;
     const {data,error}=await supabase.rpc('record_morse_practice_session',{p_callsign:identity,p_token:identityToken,p_session_id:sessionId.current,p_duration_seconds:600});
     if(error||!data?.ok){setSessionSyncError(true);return;}
-    try{localStorage.removeItem('morse_session_id_'+(identity||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(identity||'sin-identidad'));}catch{}
+    try{localStorage.removeItem('morse_session_id_'+(sessionOwner||'sin-identidad'));localStorage.removeItem(sessionStorageKey);}catch{}
     const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
     if(stats?.ok){setSessionCount(Number(stats.sessions_completed)||0);setSessionTotalSeconds(Number(stats.total_seconds)||0);}
     setSessionSyncError(false);
@@ -141,7 +141,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     const resume=Boolean(sessionId.current)&&sessionSeconds>0&&sessionSeconds<600;
     if(!resume){
       sessionId.current=crypto.randomUUID();
-      try{localStorage.setItem('morse_session_id_'+(identity||'sin-identidad'),sessionId.current);}catch{}
+      try{localStorage.setItem('morse_session_id_'+(sessionOwner||'sin-identidad'),sessionId.current);}catch{}
       setSessionSeconds(0);
     }
     sessionFinished.current=false;
