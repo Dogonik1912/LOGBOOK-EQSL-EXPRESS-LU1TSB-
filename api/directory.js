@@ -11,7 +11,7 @@ function config() {
 }
 
 const clean = (value, max = 80) => String(value ?? '').trim().slice(0, max);
-const HAM_CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\\/[A-Z0-9]{1,5})?$/;
+const HAM_CALL_RE = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{1,7}(?:\/[A-Z0-9]{1,5})?$/;
 const CB_CALL_RE = /^[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}$/;
 const stationType = (value) => CB_CALL_RE.test(String(value || '').trim().toUpperCase()) ? '11m' : HAM_CALL_RE.test(String(value || '').trim().toUpperCase()) ? 'ham' : '';
 
@@ -37,7 +37,7 @@ async function handleProfileContacts(req, res) {
       const date = clean(item?.date, 10), time = clean(item?.time, 5), band = clean(item?.band, 24);
       const frequency = Number(String(item?.frequency || '').replace(',', '.'));
       const mode = clean(item?.mode, 16).toUpperCase();
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(time) || !band || !Number.isFinite(frequency) || frequency <= 0) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time) || !band || !Number.isFinite(frequency) || frequency <= 0) continue;
       const normalizedFrequency = frequency.toFixed(3);
       const sorted = [owner, remote].sort((a, b) => a.localeCompare(b));
       const qsoKey = [sorted[0], sorted[1], date, time, band.toLowerCase(), normalizedFrequency, mode].join('|');

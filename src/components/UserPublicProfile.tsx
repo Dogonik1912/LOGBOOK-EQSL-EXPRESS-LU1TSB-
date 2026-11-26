@@ -403,6 +403,6 @@ export const UserPublicProfile: React.FC = () => {
       <button type='button' disabled={displayCallsign === (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase()} onClick={() => { const target = displayCallsign; setProfile(null); window.dispatchEvent(new CustomEvent('open-private-message', { detail: { callsign: target } })); }} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white hover:bg-sky-600 disabled:opacity-40'><MessageCircle className='h-4 w-4' />Enviar mensaje privado</button>
       <button type='button' onClick={() => setProfile(null)} className='mt-2 w-full rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200'>Cerrar</button>
     </section>
-    {mapOpen && isValidMaidenheadLocator(profile.grid) && <GridStationsMap callsign={profile.callsign} grid={profile.grid} autoOpenShare={autoShare} onAutoShareConsumed={() => setAutoShare(false)} onClose={() => { setMapOpen(false); setAutoShare(false); }} />}
+    {activeType === 'ham' && mapOpen && isValidMaidenheadLocator(profile.grid) && <GridStationsMap callsign={displayCallsign} grid={profile.grid} autoOpenShare={autoShare} onAutoShareConsumed={() => setAutoShare(false)} onClose={() => { setMapOpen(false); setAutoShare(false); }} />}
   </div>;
 };

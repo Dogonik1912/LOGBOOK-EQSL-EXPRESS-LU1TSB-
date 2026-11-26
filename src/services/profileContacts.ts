@@ -1,5 +1,6 @@
 import type { QSO } from '../types';
 import { countryForCallsign, is11MeterStationIdentifier } from './callsignCountry';
+import { getUserCallsign } from './qrzService';
 
 const stationType = (value: string): 'ham' | '11m' | '' => {
   const call = String(value || '').trim().toUpperCase();
@@ -15,7 +16,7 @@ export async function persistProfileContacts(qsos: QSO[]) {
   const records = qsos.slice(0, 1000).flatMap(qso => {
     const remote = String(qso.callsign || '').trim().toUpperCase();
     const is11m = is11MeterStationIdentifier(qso.stationCallsign || '') || /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(qso.band || ''));
-    const owner = String(qso.stationCallsign || (is11m ? localStorage.getItem('cb_station_callsign') : '') || (!is11m ? (activeCall || '') : '')).trim().toUpperCase();
+    const owner = String(qso.stationCallsign || (is11m ? (localStorage.getItem('cb_station_callsign') || activeCall) : (activeCall || getUserCallsign()))).trim().toUpperCase();
     const type = stationType(owner);
     const remoteType = stationType(remote);
     const date = String(qso.date || '').trim();
