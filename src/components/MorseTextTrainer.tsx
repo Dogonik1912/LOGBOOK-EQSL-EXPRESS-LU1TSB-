@@ -130,7 +130,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   },[sessionSeconds,sessionRunning,sessionOwner,identityToken,sessionCount,es]);
   const retryPracticeSync=async()=>{
     if(!supabase||!sessionOwner||!identityToken||!sessionId.current)return;
-    const {data,error}=await supabase.rpc('record_morse_practice_session',{p_callsign:identity,p_token:identityToken,p_session_id:sessionId.current,p_duration_seconds:600});
+    const {data,error}=await supabase.rpc('record_morse_practice_session',{p_callsign:sessionOwner,p_token:identityToken,p_session_id:sessionId.current,p_duration_seconds:600});
     if(error||!data?.ok){setSessionSyncError(true);return;}
     try{localStorage.removeItem('morse_session_id_'+(sessionOwner||'sin-identidad'));localStorage.removeItem(sessionStorageKey);}catch{}
     const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
