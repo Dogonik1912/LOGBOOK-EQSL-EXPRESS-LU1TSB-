@@ -89,13 +89,18 @@ async function handlePublicProfile(req, res) {
     ]);
     for (const result of [historyResult, spotsOwnResult, spotsRemoteResult, galleryResult]) if (result.error) throw result.error;
     const contacts = new Map();
-    for (const row of historyResult.data || []) contacts.set(row.station_type + '|' + row.qso_key, {
-      stationType: row.station_type, remoteCallsign: row.remote_callsign, country: row.country_name || '',
-      division: row.division || '', band: row.band || '',
-    });
+    for (const row of historyResult.data || []) {
+      const owner = String(row.owner_callsign || '').trim().toUpperCase();
+      const remote = String(row.remote_callsign || '').trim().toUpperCase();
+      if (!remote || remote === owner || typeByCall.has(remote)) continue;
+      contacts.set(row.station_type + '|' + row.qso_key, {
+        stationType: row.station_type, remoteCallsign: remote, country: row.country_name || '',
+        division: row.division || '', band: row.band || '',
+      });
+    }
     const addSpot = (spot, owner, remote) => {
       const type = typeByCall.get(owner) || stationType(owner);
-      if (!type || stationType(remote) !== type) return;
+      if (!type || !remote || owner === remote || typeByCall.has(remote) || stationType(remote) !== type) return;
       const key = profileQsoKey(owner, remote, spot.qso_date, spot.qso_time, spot.band, spot.frequency, spot.mode);
       const uniqueKey = type + '|' + key;
       if (!contacts.has(uniqueKey)) contacts.set(uniqueKey, {
