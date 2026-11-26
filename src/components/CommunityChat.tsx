@@ -298,7 +298,7 @@ export const CommunityChat: React.FC = () => {
     }
 
     let active = true;
-    let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
+    let presenceChannel: ReturnType<NonNullable<typeof supabase>["channel"]> | null = null;
 
     const connectPresence = async () => {
       // React StrictMode and fast identity changes can briefly leave the previous
