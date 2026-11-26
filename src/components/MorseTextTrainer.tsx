@@ -50,7 +50,9 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const es=language==='es'||language==='pt'||language==='pt-br';
   const identity=(activeCallsign||getPersonalCallsign()).trim().toUpperCase();
   // v2 intentionally starts a new course: the previous CQ-first lesson is not carried forward.
-  const storageKey='morse_course_progress_v2_'+(sessionOwner||'sin-identidad').replace(/[^A-Z0-9_-]/g,'_');
+  const sessionOwner=typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity).trim().toUpperCase():identity;
+  const sessionStorageKey='morse_session_seconds_'+(sessionOwner||'sin-identidad');
+  const storageKey='morse_course_progress_v2_'+(identity||'sin-identidad').replace(/[^A-Z0-9_-]/g,'_');
   const [mode,setMode]=useState<'learn'|'convert'>('learn');
   const [text,setText]=useState('');
   const [morseInput,setMorseInput]=useState('... --- ... / .- .-.. .-..');
@@ -71,7 +73,6 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const sessionId=useRef<string|null>(localStorage.getItem('morse_session_id_'+(sessionOwner||'sin-identidad')));
   const sessionFinished=useRef(false);
   const identityToken=typeof window!=='undefined'?localStorage.getItem('community_chat_identity_token')||'':'';
-  const sessionOwner=typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity).trim().toUpperCase():identity;
   const output=encode(text);
   const available=GROUPS.slice(0,Math.min(progress.level+1,GROUPS.length)).join('').split('');
   const currentGroup=GROUPS[Math.min(progress.level,GROUPS.length-1)] || 'CQ';
@@ -118,7 +119,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
       if(error||!data?.ok){setSessionSyncError(true);return;}
       try{localStorage.removeItem('morse_session_id_'+(sessionOwner||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(sessionOwner||'sin-identidad'));}catch{}
       setSessionSyncError(false);
-      const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
+      const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:sessionOwner,p_token:identityToken});
       if(stats?.ok){setSessionCount(Number(stats.sessions_completed)||0);setSessionTotalSeconds(Number(stats.total_seconds)||0);}
       const nextCount=Number(stats?.sessions_completed)||sessionCount+1;
       setSessionMessage(es
