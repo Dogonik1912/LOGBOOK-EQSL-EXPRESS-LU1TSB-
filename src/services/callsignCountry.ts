@@ -613,23 +613,37 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
  * radioaficionado comienza por letras (p. ej. LU1TSB o PY1ABC).
  * En Live Spot la banda del QSO prevalece sobre esta detección automática.
  */
+// Devuelve un prefijo ITU de radioafición solo cuando va seguido del
+// número de zona del indicativo (p. ej. 7Z1DA). Esto evita confundir
+// identificadores SD como 4RC978 con prefijos HAM que comparten el primer dígito.
+function hamCallsignPrefix(call: string): string | undefined {
+  return Object.keys(HAM_PREFIX_COUNTRY)
+    .sort((a, b) => b.length - a.length)
+    .find((key) => call.startsWith(key) && /^\\d/.test(call.slice(key.length)));
+}
+
 export function is11MeterStationIdentifier(identifier: string): boolean {
   const normalized = String(identifier || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return /^\d{1,3}[A-Z]/.test(normalized);
+  if (!normalized) return false;
+  if (hamCallsignPrefix(normalized)) return false;
+  return /^\\d{1,3}[A-Z]/.test(normalized);
 }
 
 export function countryForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
   const call = String(callsign || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!call) return '';
 
-  // Los indicativos numéricos se interpretan como 11 metros cuando el contexto
-  // lo confirma o cuando no existe otro dato de banda (presencia en línea/generador).
-  const numericCall = /^\d/.test(call);
+  // Un prefijo ITU reconocido seguido del número de zona tiene prioridad
+  // incluso si el llamador indicó contexto 11m por una clasificación previa.
+  const hamPrefix = hamCallsignPrefix(call);
+  if (hamPrefix) return HAM_PREFIX_COUNTRY[hamPrefix];
+
+  // Los identificadores numéricos se interpretan como 11 metros cuando el contexto
+  // lo confirma o cuando no existe otro dato de banda.
+  const numericCall = /^\\d/.test(call);
   if (is11m || numericCall) {
-    const match = call.match(/^(\d{1,3})/);
+    const match = call.match(/^(\\d{1,3})/);
     if (match) {
-      // La división 34 identifica Canarias (España); las demás se buscan
-      // por prefijo más largo para no confundir 34 con la división 3.
       const division = match[1];
       if (DIVISION_COUNTRY[division]) return DIVISION_COUNTRY[division];
       for (let length = Math.min(3, division.length - 1); length >= 1; length--) {
@@ -639,10 +653,6 @@ export function countryForCallsign(callsign: string, savedCountry?: string, is11
     }
   }
 
-  // Para radioafición prevalecen los prefijos ITU sobre datos de perfil antiguos.
-  const keys = Object.keys(HAM_PREFIX_COUNTRY).sort((a,b)=>b.length-a.length);
-  const prefix = keys.find(key => call.startsWith(key));
-  if (prefix) return HAM_PREFIX_COUNTRY[prefix];
   if (savedCountry?.trim()) return savedCountry.trim();
   return '';
 }
