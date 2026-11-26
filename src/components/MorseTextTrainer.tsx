@@ -64,6 +64,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const [result,setResult]=useState('');
   const [pendingNext,setPendingNext]=useState(false);
   const playback=useRef<{ctx:AudioContext;osc:OscillatorNode}|null>(null);
+  const nextChallengeTimer=useRef<number|null>(null);
   const [sessionRunning,setSessionRunning]=useState(false);
   const [sessionSeconds,setSessionSeconds]=useState(()=>Number(localStorage.getItem(sessionStorageKey))||0);
   const [sessionCount,setSessionCount]=useState(0);
@@ -155,7 +156,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     if(current){try{current.osc.stop();}catch{}void current.ctx.close();playback.current=null;}
     setPlaying(false);
   };
-  useEffect(()=>()=>{const current=playback.current;if(current){try{current.osc.stop();}catch{}void current.ctx.close();}},[]);
+  useEffect(()=>()=>{const current=playback.current;if(current){try{current.osc.stop();}catch{}void current.ctx.close();}if(nextChallengeTimer.current!==null)window.clearTimeout(nextChallengeTimer.current);},[]);
   const playMessage=async(message:string)=>{
     if(playing){stop();return;}
     const clean=normalize(message).trim();if(!clean)return;
@@ -182,7 +183,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
         gain.gain.linearRampToValueAtTime(0,at+duration);
         at+=duration;
       };
-      const words=clean.split(/\\s+/);
+      const words=clean.split(/\s+/);
       words.forEach((word,wi)=>{
         [...word].forEach((letter,li)=>{
           const code=MORSE[letter]?.trim();if(!code)return;
@@ -232,12 +233,16 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     if(groupMastered){
       setResult(es?('¡Excelente! Ya diferencias '+group.split('').join(' y ')+'. Se incorpora el siguiente grupo.'):('Excellent! You can distinguish '+group.split('').join(' and ')+'. The next group is unlocked.'));
     }
-  };
-  const continueCourse=()=>{
-    const level=progress.level;
-    if(level>=GROUPS.length){setPendingNext(false);return;}
-    newChallenge(level,progress.stats);
-    setResult('');
+    if(nextChallengeTimer.current!==null)window.clearTimeout(nextChallengeTimer.current);
+    const nextPool=GROUPS.slice(0,Math.min(nextLevel+1,GROUPS.length)).join('').split('');
+    nextChallengeTimer.current=window.setTimeout(()=>{
+      const next=pickChallenge(nextPool,updated);
+      setChallenge(next);
+      setChoices(makeChoices(next,nextPool));
+      setPendingNext(false);
+      setResult('');
+      nextChallengeTimer.current=null;
+    },1800);
   };
   const resetCourse=()=>{
     const fresh=emptyProgress();setProgress(fresh);setChallenge('C');setChoices(['C','Q']);setPendingNext(false);
@@ -299,7 +304,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {choices.map(choice=><button key={choice} type="button" disabled={pendingNext} onClick={()=>checkCharacter(choice)} className="min-h-14 rounded-lg border-2 border-cyan-300 bg-white px-3 py-3 text-2xl font-black text-slate-900 hover:bg-cyan-100 disabled:opacity-50">{choice}</button>)}
           </div>
-          {pendingNext&&<button type="button" onClick={continueCourse} className="w-full rounded-lg bg-cyan-700 px-4 py-3 font-bold text-white">{es?'Siguiente ejercicio':'Next exercise'} →</button>}
+          {pendingNext&&<p className="text-center text-xs font-medium text-cyan-800" role="status">{es?'Preparando el siguiente ejercicio…':'Preparing the next exercise…'}</p>}
         </div>
         <div className="rounded-lg bg-white p-3">
           <div className="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>{es?'Dominio de este grupo':'Group mastery'}</span><span>{[...currentGroup].filter(letter=>isMastered(progress.stats,letter)).length}/{currentGroup.length}</span></div>
