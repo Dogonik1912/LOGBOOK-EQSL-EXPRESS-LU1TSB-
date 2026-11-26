@@ -26,6 +26,8 @@ export interface CallsignDetails {
 export function getUserCallsign(): string {
   // La SD verificada del chat es la identidad principal del dispositivo.
   // Solo usarla como indicativo de radio si también existe su token de identidad.
+  const activeIdentity = localStorage.getItem('community_chat_active_callsign')?.trim().toUpperCase() || '';
+  if (activeIdentity) return activeIdentity;
   const verifiedCallsign = localStorage.getItem('community_chat_identity_token')
     ? localStorage.getItem('community_chat_sd')?.trim().toUpperCase()
     : '';

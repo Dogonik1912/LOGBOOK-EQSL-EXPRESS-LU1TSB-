@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QSO, HAM_BANDS, HAM_MODES } from '../types';
 import { loadLLOTAReferences, LLOTAReference } from '../services/llotaReferences';
 import { supabase } from '../services/supabaseClient';
+import { is11MeterStationIdentifier } from '../services/callsignCountry';
 import { 
   PlusCircle, 
   Search, 
@@ -90,8 +91,9 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   // La banda seleccionada es temporal: cada nueva apertura comienza en 40 m,
   // aunque el último QSO guardado haya sido en 11 metros. Los datos del QSO
   // anterior siguen disponibles para fecha, hora y modo.
-  const [band, setBand] = useState('40m');
-  const [frequency, setFrequency] = useState(HAM_BANDS.find((b) => b.name === '40m')?.defaultFreq || '7.120');
+  const getInitialIdentityBand = () => is11MeterStationIdentifier(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '') ? '11 metros' : '40m';
+  const [band, setBand] = useState(getInitialIdentityBand);
+  const [frequency, setFrequency] = useState(() => HAM_BANDS.find((b) => b.name === getInitialIdentityBand())?.defaultFreq || '7.120');
   const [mode, setMode] = useState(initial.mode);
 
   // Campos que se limpian al guardar (corresponsal, RST enviada, RST recibida, y detalles)
@@ -101,6 +103,8 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   const isAmateurRadioCallsign = (value: string) =>
     /^[A-Z0-9]{1,3}[0-9][A-Z]{1,7}(?:\/[A-Z0-9]{1,5})?$/.test(value.trim().toUpperCase());
   const getSavedCbStationCallsign = () => {
+    const active = (localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
+    if (active && is11MeterStationIdentifier(active)) return active;
     const saved = (localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
     if (saved) return saved;
     const registered = getRegisteredStationIdentity();
@@ -110,6 +114,21 @@ export const NewQSOForm: React.FC<NewQSOFormProps> = ({ onAddQSO, onFinishContes
   };
   const [cbStationCallsign, setCbStationCallsign] = useState(() => getSavedCbStationCallsign());
   const [hasSavedCbStationCallsign, setHasSavedCbStationCallsign] = useState(() => Boolean(getSavedCbStationCallsign()));
+  useEffect(() => {
+    const onIdentityChanged = (event: Event) => {
+      if (callsign.trim()) return;
+      const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || '').trim().toUpperCase();
+      const nextBand = is11MeterStationIdentifier(next) ? '11 metros' : '40m';
+      setBand(nextBand);
+      setFrequency(HAM_BANDS.find((item) => item.name === nextBand)?.defaultFreq || '7.120');
+      if (nextBand === '11 metros' && next) {
+        setCbStationCallsign(next);
+        setHasSavedCbStationCallsign(true);
+      }
+    };
+    window.addEventListener('community-active-identity-changed', onIdentityChanged);
+    return () => window.removeEventListener('community-active-identity-changed', onIdentityChanged);
+  }, [callsign]);
   const [showCbStationCallsignPrompt, setShowCbStationCallsignPrompt] = useState(false);
 
   // Preload the already-linked 11m identity so the operator is not asked to type it again.

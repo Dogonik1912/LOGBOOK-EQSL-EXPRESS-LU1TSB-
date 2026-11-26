@@ -182,6 +182,7 @@ export const LiveSpots: React.FC = () => {
   const [selectedModes, setSelectedModes] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('live_spot_filter_modes') || '[]'); } catch { return []; } });
   const [selectedContinents, setSelectedContinents] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('live_spot_filter_continents') || '[]'); } catch { return []; } });
   const [showAllActivity, setShowAllActivity] = useState(() => localStorage.getItem('live_spot_show_all') !== 'false');
+  const [activeIdentityType, setActiveIdentityType] = useState<'ham' | '11m'>(() => is11MeterStationIdentifier(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '') ? '11m' : 'ham');
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -216,8 +217,28 @@ export const LiveSpots: React.FC = () => {
   useEffect(()=>{localStorage.setItem('live_spot_filter_modes',JSON.stringify(selectedModes));},[selectedModes]);
   useEffect(()=>{localStorage.setItem('live_spot_filter_continents',JSON.stringify(selectedContinents));},[selectedContinents]);
   useEffect(()=>{localStorage.setItem('live_spot_show_all',String(showAllActivity));},[showAllActivity]);
-  const toggleFilter=(values:string[],value:string,setter:(next:string[])=>void)=>{setShowAllActivity(false);setter(values.includes(value)?values.filter(item=>item!==value):[...values,value]);};
-  const enableShowAll=(checked:boolean)=>{setShowAllActivity(checked);if(checked){setSelectedBands([]);setSelectedModes([]);setSelectedContinents([]);}};
+  useEffect(() => {
+    const applyIdentityDefault = (identityType: 'ham' | '11m') => {
+      if (localStorage.getItem('live_spot_filter_user_modified') === '1') return;
+      const defaults = identityType === '11m' ? ['11 metros'] : HAM_BANDS.filter((item) => item.type !== 'CB').map((item) => item.name);
+      setSelectedBands(defaults);
+      setShowAllActivity(false);
+    };
+    if (localStorage.getItem('live_spot_identity_filter_initialized') !== '1') {
+      if (!selectedBands.length && !selectedModes.length && !selectedContinents.length) applyIdentityDefault(activeIdentityType);
+      localStorage.setItem('live_spot_identity_filter_initialized', '1');
+    }
+    const onIdentityChanged = (event: Event) => {
+      const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
+      const nextType: 'ham' | '11m' = is11MeterStationIdentifier(next) ? '11m' : 'ham';
+      setActiveIdentityType(nextType);
+      applyIdentityDefault(nextType);
+    };
+    window.addEventListener('community-active-identity-changed', onIdentityChanged);
+    return () => window.removeEventListener('community-active-identity-changed', onIdentityChanged);
+  }, []);
+  const toggleFilter=(values:string[],value:string,setter:(next:string[])=>void)=>{localStorage.setItem('live_spot_filter_user_modified','1');setShowAllActivity(false);setter(values.includes(value)?values.filter(item=>item!==value):[...values,value]);};
+  const enableShowAll=(checked:boolean)=>{localStorage.setItem('live_spot_filter_user_modified','1');setShowAllActivity(checked);if(checked){setSelectedBands([]);setSelectedModes([]);setSelectedContinents([]);}};
   const loadGridLocators = async () => {
     if (!supabase) return;
     const { data, error } = await supabase.from('live_spot_grid_locators').select('callsign,grid_locator');

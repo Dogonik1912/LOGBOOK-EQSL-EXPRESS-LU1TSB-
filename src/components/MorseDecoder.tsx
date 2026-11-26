@@ -21,6 +21,15 @@ export function MorseDecoder() {
   const [frequency,setFrequency]=useState(700),[bandwidth,setBandwidth]=useState(90),[squelch,setSquelch]=useState(0);
   const [adaptive,setAdaptive]=useState(true),[manualWpm,setManualWpm]=useState(20),[stats,setStats]=useState<CWStats|null>(null),[copied,setCopied]=useState(false);
   const [language]=useState(getInitialAppLanguage);
+  const [activeCallsign, setActiveCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || localStorage.getItem('user_callsign') || '').trim().toUpperCase());
+  useEffect(() => {
+    const onIdentityChanged = (event: Event) => {
+      const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || '').trim().toUpperCase();
+      if (next) setActiveCallsign(next);
+    };
+    window.addEventListener('community-active-identity-changed', onIdentityChanged);
+    return () => window.removeEventListener('community-active-identity-changed', onIdentityChanged);
+  }, []);
   const sessionRef=useRef<AudioSession|null>(null),codeRef=useRef(''),decodedRef=useRef('');
   const lang=language==='es'?'es':'en',t=words[lang];
 
@@ -105,7 +114,7 @@ export function MorseDecoder() {
         <div className="min-w-0 flex-1"><h2 className="text-lg font-bold text-slate-900">{label[language]||label.es}</h2><p className="text-xs text-slate-600">CW · Micrófono del teléfono · Procesamiento local</p></div>
         <span className={'rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide '+(active?'bg-emerald-100 text-emerald-800':'bg-slate-100 text-slate-600')}>{active?t.receiving:t.monitoring}</span>
       </div>
-      <MorseTextTrainer language={language} />
+      <MorseTextTrainer language={language} activeCallsign={activeCallsign} />
       <div className="mb-4 flex flex-wrap gap-2">
         {!active?<button type="button" onClick={start} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"><Mic className="h-4 w-4"/>{t.start}</button>
           :<button type="button" onClick={stop} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"><MicOff className="h-4 w-4"/>{t.stop}</button>}

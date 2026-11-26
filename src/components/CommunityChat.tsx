@@ -151,6 +151,8 @@ export const CommunityChat: React.FC = () => {
       const selected = options.find((item) => item.callsign === saved) || options.find((item) => item.is_primary) || options[0];
       setActiveCallsign(selected.callsign);
       localStorage.setItem('community_chat_active_callsign', selected.callsign);
+      window.dispatchEvent(new CustomEvent('community-account-identities-loaded', { detail: { identities: options, activeCallsign: selected.callsign } }));
+      window.dispatchEvent(new CustomEvent('community-active-identity-changed', { detail: { callsign: selected.callsign } }));
     };
     void loadAccountIdentities();
     const onIdentityUpdate = () => { void loadAccountIdentities(); };
@@ -166,14 +168,6 @@ export const CommunityChat: React.FC = () => {
       window.removeEventListener('community-active-identity-changed', onActiveChange);
     };
   }, [callsign, identityToken]);
-
-  const chooseActiveIdentity = (next: string) => {
-    const selected = accountIdentities.find((item) => item.callsign === next);
-    if (!selected) return;
-    setActiveCallsign(selected.callsign);
-    localStorage.setItem('community_chat_active_callsign', selected.callsign);
-    window.dispatchEvent(new CustomEvent('community-active-identity-changed', { detail: { callsign: selected.callsign } }));
-  };
 
   const activeIdentityType = accountIdentities.find((item) => item.callsign === activeCallsign)?.identity_type
     || (is11MeterStationIdentifier(activeCallsign || callsign) ? '11m' : 'ham');
@@ -677,13 +671,6 @@ export const CommunityChat: React.FC = () => {
         </div>
       ) : (
         <>
-          {accountIdentities.length > 1 && <div className="border-b border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white">
-            <label className="flex flex-wrap items-center gap-2"><span className="font-semibold text-sky-200">Identidad activa:</span>
-              <select value={activeCallsign} onChange={(event) => chooseActiveIdentity(event.target.value)} className="min-w-0 rounded-lg border border-sky-500/50 bg-slate-950 px-3 py-2 font-mono font-bold text-amber-300">
-                {accountIdentities.map((identity) => <option key={identity.callsign} value={identity.callsign}>{identity.identity_type === '11m' ? '11 metros · ' : 'Radioaficionado · '}{identity.callsign}</option>)}
-              </select>
-            </label>
-          </div>}
           <article className={`border-b-2 border-sky-500 px-4 py-4 shadow-sm ${darkChat ? "bg-slate-900 text-slate-100" : "bg-sky-50 text-slate-950"}`} aria-label="Mensaje de bienvenida fijado">
             <div className="flex items-start gap-3">
               <strong className="shrink-0 pt-0.5 font-mono text-sm font-extrabold uppercase text-red-600">LU1TSB</strong>

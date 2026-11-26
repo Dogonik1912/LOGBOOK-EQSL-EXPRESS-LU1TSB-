@@ -10,8 +10,11 @@ import { getLocalizedShareText, resolveShareLanguage, type AppLanguage } from '.
 import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { LanguageSelector } from './LanguageSelector';
 
+type AccountIdentity = { callsign: string; identity_type: 'ham' | '11m'; is_primary: boolean };
+
 interface HeaderProps {
   onOpenSettings: () => void;
+  onOpenReplyModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -385,6 +388,16 @@ export const Header: React.FC<HeaderProps> = ({
   };
   const readCallsign = () => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
   const [callsign, setCallsign] = useState(() => readCallsign());
+  const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
+  const [activeIdentityCallsign, setActiveIdentityCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || readCallsign() || localStorage.getItem('user_callsign') || '').trim().toUpperCase());
+  const chooseGlobalIdentity = (next: string) => {
+    const selected = accountIdentities.find((item) => item.callsign === next);
+    if (!selected) return;
+    localStorage.setItem('community_chat_active_callsign', selected.callsign);
+    setActiveIdentityCallsign(selected.callsign);
+    setCallsign(selected.callsign);
+    window.dispatchEvent(new CustomEvent('community-active-identity-changed', { detail: { callsign: selected.callsign } }));
+  };
   const [country, setCountry] = useState(() => localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
   // El encabezado queda bloqueado en la imagen que ya estaba mostrándose.
   // La galería de eQSL es independiente y nunca debe reemplazar esta imagen.
@@ -402,6 +415,27 @@ export const Header: React.FC<HeaderProps> = ({
   };
   const [headerImage, setHeaderImage] = useState(() => readHeaderImage());
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
+
+  useEffect(() => {
+    const onIdentitiesLoaded = (event: Event) => {
+      const detail = (event as CustomEvent<{ identities?: AccountIdentity[]; activeCallsign?: string }>).detail;
+      const options = Array.isArray(detail?.identities) ? detail.identities : [];
+      setAccountIdentities(options);
+      const stored = (localStorage.getItem('community_chat_active_callsign') || detail?.activeCallsign || '').trim().toUpperCase();
+      const selected = options.find((item) => item.callsign === stored) || options.find((item) => item.is_primary) || options[0];
+      if (selected) setActiveIdentityCallsign(selected.callsign);
+    };
+    const onActiveIdentityChanged = (event: Event) => {
+      const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || '').trim().toUpperCase();
+      if (next) setActiveIdentityCallsign(next);
+    };
+    window.addEventListener('community-account-identities-loaded', onIdentitiesLoaded);
+    window.addEventListener('community-active-identity-changed', onActiveIdentityChanged);
+    return () => {
+      window.removeEventListener('community-account-identities-loaded', onIdentitiesLoaded);
+      window.removeEventListener('community-active-identity-changed', onActiveIdentityChanged);
+    };
+  }, []);
 
   useEffect(() => {
     const syncCallsign = async () => {
@@ -521,13 +555,20 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Fila superior reservada para reloj, clima e indicativo; no se superpone con el logo. */}
         <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
           <div className="min-w-0 flex-1 flex flex-row items-center gap-2">
-            {callsign && (
-              <span data-no-translate="true" translate="no" className="inline-flex min-h-9 sm:min-h-12 min-w-0 shrink items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-1.5 sm:py-2 font-mono text-sm sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${callsign}`}>
-                {callsign.split('').map((character, index) => (
+            {(activeIdentityCallsign || callsign) && (accountIdentities.length > 1 ? (
+              <label className="inline-flex min-h-9 min-w-0 max-w-[48vw] items-center gap-1 rounded-lg border border-sky-400/70 bg-slate-950 px-2 py-1 text-white shadow-[0_0_14px_rgba(0,170,255,0.16)] sm:min-h-12 sm:px-3">
+                <span className="hidden text-[10px] font-bold uppercase text-sky-300 sm:inline">Identidad</span>
+                <select aria-label="Identidad activa" value={activeIdentityCallsign} onChange={(event) => chooseGlobalIdentity(event.target.value)} className="min-w-0 max-w-full bg-transparent font-mono text-xs font-black text-amber-300 outline-none sm:text-base">
+                  {accountIdentities.map((identity) => <option key={identity.callsign} value={identity.callsign} className="bg-slate-950 text-white">{identity.identity_type === '11m' ? '11 metros · ' : 'Radioaficionado · '}{identity.callsign}</option>)}
+                </select>
+              </label>
+            ) : (
+              <span data-no-translate="true" translate="no" className="inline-flex min-h-9 sm:min-h-12 min-w-0 shrink items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-1.5 sm:py-2 font-mono text-sm sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${activeIdentityCallsign || callsign}`}>
+                {(activeIdentityCallsign || callsign).split('').map((character, index) => (
                   <span key={index} className={getCallsignCharacterClass(character, country)}>{character}</span>
                 ))}
               </span>
-            )}
+            ))}
             <LanguageSelector
               value={shareLanguage}
               className="min-w-0 max-w-[8.5rem] flex-none sm:max-w-[12rem]"

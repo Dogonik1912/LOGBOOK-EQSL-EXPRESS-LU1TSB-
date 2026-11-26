@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
-import { flagForCallsign } from '../services/callsignCountry';
+import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 import { resolveShareLanguage, translateShareText, type AppLanguage } from '../services/appLanguage';
 import { ShareLanguageSelector } from './ShareLanguageSelector';
 import {
@@ -59,7 +59,15 @@ export const LiveLog: React.FC<LiveLogProps> = ({
   const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   const [selectedQsoIds, setSelectedQsoIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeLog, setActiveLog] = useState<'ham' | 'cb'>('ham');
+  const [activeLog, setActiveLog] = useState<'ham' | 'cb'>(() => is11MeterStationIdentifier(localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '') ? 'cb' : 'ham');
+  useEffect(() => {
+    const onIdentityChanged = (event: Event) => {
+      const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || '').trim().toUpperCase();
+      setActiveLog(is11MeterStationIdentifier(next) ? 'cb' : 'ham');
+    };
+    window.addEventListener('community-active-identity-changed', onIdentityChanged);
+    return () => window.removeEventListener('community-active-identity-changed', onIdentityChanged);
+  }, []);
   const [filterBand, setFilterBand] = useState('ALL');
   const [filterMode, setFilterMode] = useState('ALL');
   const [selectedContestLogName, setSelectedContestLogName] = useState('');
