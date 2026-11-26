@@ -292,6 +292,7 @@ export const CommunityChat: React.FC = () => {
   useEffect(() => {
     if (!supabase || !(activeCallsign || callsign).trim() || !identityToken) {
       setOnlineUsers([]);
+      window.dispatchEvent(new CustomEvent('logbook-online-user-count', { detail: { count: 0 } }));
       return;
     }
     let active = true;
@@ -307,6 +308,7 @@ export const CommunityChat: React.FC = () => {
         if (clean) unique.set(clean, { callsign: clean, identityToken: entry.identityToken });
       });
       setOnlineUsers(Array.from(unique.values()).sort((a, b) => a.callsign.localeCompare(b.callsign)));
+      window.dispatchEvent(new CustomEvent('logbook-online-user-count', { detail: { count: unique.size } }));
     };
     presenceChannel.on('presence', { event: 'sync' }, refreshOnlineUsers);
     presenceChannel.on('presence', { event: 'join' }, refreshOnlineUsers);

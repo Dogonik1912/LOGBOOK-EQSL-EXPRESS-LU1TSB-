@@ -526,36 +526,15 @@ export const Header: React.FC<HeaderProps> = ({
     void registerInstallation();
     return () => { cancelled = true; };
   }, []);
-  // Observe the shared Realtime Presence channel used by CommunityChat.
-  // Count distinct callsigns, not tabs/devices, and keep the registered-user
-  // counter above independent from the live online count.
+  // Receive the live count calculated by CommunityChat's single Presence channel.
+  // This avoids opening a second channel with the same topic.
   useEffect(() => {
-    if (!supabase) {
-      setOnlineUserCount(0);
-      return;
-    }
-    let active = true;
-    const presenceChannel = supabase.channel('logbook-community-presence');
-    const refreshOnlineCount = () => {
-      if (!active) return;
-      const state = presenceChannel.presenceState() as Record<string, Array<{ callsign?: string }>>;
-      const uniqueCallsigns = new Set<string>();
-      Object.values(state).flat().forEach((entry) => {
-        const callsign = String(entry?.callsign || '').trim().toUpperCase();
-        if (callsign) uniqueCallsigns.add(callsign);
-      });
-      setOnlineUserCount(uniqueCallsigns.size);
+    const handleOnlineCount = (event: Event) => {
+      const count = Number((event as CustomEvent<{ count?: number }>).detail?.count);
+      setOnlineUserCount(Number.isFinite(count) && count >= 0 ? count : 0);
     };
-    presenceChannel.on('presence', { event: 'sync' }, refreshOnlineCount);
-    presenceChannel.on('presence', { event: 'join' }, refreshOnlineCount);
-    presenceChannel.on('presence', { event: 'leave' }, refreshOnlineCount);
-    presenceChannel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') refreshOnlineCount();
-    });
-    return () => {
-      active = false;
-      void supabase?.removeChannel(presenceChannel);
-    };
+    window.addEventListener('logbook-online-user-count', handleOnlineCount);
+    return () => window.removeEventListener('logbook-online-user-count', handleOnlineCount);
   }, []);
 
 
