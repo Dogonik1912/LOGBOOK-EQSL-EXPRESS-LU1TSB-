@@ -22,6 +22,7 @@ import { MorseDecoder } from './components/MorseDecoder';
 import { SDRSmart } from './components/SDRSmart';
 import { PrivateMessages } from './components/PrivateMessages';
 import { LiveSpots, publishQsoSpot } from './components/LiveSpots';
+import { persistProfileContacts } from './services/profileContacts';
 import { DistanceCalculator } from './components/DistanceCalculator';
 import { EventsAndContests } from './components/EventsAndContests';
 import { startAutomaticUiTranslation } from './services/appLanguage';
@@ -114,6 +115,8 @@ function MainApp() {
     }
     return () => { active = false; };
   }, []);
+
+  useEffect(() => { void persistProfileContacts(qsos); }, [qsos]);
 
   const [contestLogs, setContestLogs] = useState<ContestLogRecord[]>(() => {
     try { return JSON.parse(localStorage.getItem('logbook_contest_logs') || '[]') as ContestLogRecord[]; }

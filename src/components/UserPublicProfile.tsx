@@ -6,6 +6,11 @@ import { countryForCallsign, flagForCallsign, is11MeterStationIdentifier } from 
 import { isValidMaidenheadLocator, maidenheadToPoint } from '../services/dxDistance';
 
 type PublicProfile = { callsign: string; photo: string; qraOperator: string; grid: string; location: string; elevation: number | null; loading: boolean };
+type ProfileIdentity = { callsign: string; identity_type: 'ham' | '11m' };
+type ProfileContact = { stationType: 'ham' | '11m'; remoteCallsign: string; country: string; division: string; band: string };
+type ProfileGalleryItem = { senderCallsign: string; stationType: 'ham' | '11m'; receivedAt: string; card: { from?: string; to?: string; date?: string; band?: string; mode?: string; frequency?: string; imageDataUrl?: string } };
+type PublicProfileOverview = { identities: ProfileIdentity[]; contacts: ProfileContact[]; gallery: ProfileGalleryItem[] };
+
 type GridPoint = { latitude: number; longitude: number };
 const localityCache = new Map<string, string>();
 
@@ -265,12 +270,16 @@ export const UserPublicProfile: React.FC = () => {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [autoShare, setAutoShare] = useState(false);
+  const [overview, setOverview] = useState<PublicProfileOverview | null>(null);
+  const [activeType, setActiveType] = useState<'ham' | '11m'>('ham');
   useEffect(() => {
     const onOpen = (event: Event) => {
       const callsign = String((event as CustomEvent<{callsign?: string}>).detail?.callsign || '').trim().toUpperCase();
       if (callsign.length < 3) return;
       setMapOpen(false);
       setAutoShare(false);
+      setOverview(null);
+      setActiveType(is11MeterStationIdentifier(callsign) ? '11m' : 'ham');
       setProfile({ callsign, photo: '', qraOperator: '', grid: '', location: '', elevation: null, loading: true });
     };
     window.addEventListener('open-user-profile', onOpen);
@@ -298,6 +307,11 @@ export const UserPublicProfile: React.FC = () => {
           }
         }
       }
+      let loadedOverview: PublicProfileOverview | null = null;
+      try {
+        const response = await fetch('/api/public-profile?callsign=' + encodeURIComponent(callsign), { cache: 'no-store' });
+        if (response.ok) loadedOverview = await response.json() as PublicProfileOverview;
+      } catch { /* El perfil básico sigue disponible si fallan las estadísticas públicas. */ }
       const point = maidenheadCenter(grid);
       let elevation: number | null = null;
       let location = '';
@@ -314,20 +328,70 @@ export const UserPublicProfile: React.FC = () => {
         ]);
         location = place;
       }
-      if (active) setProfile({ callsign, photo, qraOperator, grid, location, elevation, loading: false });
+      if (active) {
+        setOverview(loadedOverview);
+        if (loadedOverview?.identities?.length) {
+          const requested = loadedOverview.identities.find(item => item.callsign === callsign);
+          setActiveType(requested?.identity_type || loadedOverview.identities[0].identity_type);
+        }
+        setProfile({ callsign, photo, qraOperator, grid, location, elevation, loading: false });
+      }
     };
     void load();
     return () => { active = false; };
   }, [profile?.callsign]);
   if (!profile) return null;
-  const is11m = is11MeterStationIdentifier(profile.callsign);
-  const flag = flagForCallsign(profile.callsign, undefined, is11m);
-  const country = countryForCallsign(profile.callsign, undefined, is11m) || 'País no identificado';
+  const visibleIdentities = overview?.identities?.length ? overview.identities : [{ callsign: profile.callsign, identity_type: is11MeterStationIdentifier(profile.callsign) ? '11m' as const : 'ham' as const }];
+  const activeIdentity = visibleIdentities.find(item => item.identity_type === activeType) || visibleIdentities[0];
+  const displayCallsign = activeIdentity?.callsign || profile.callsign;
+  const is11m = activeIdentity?.identity_type === '11m';
+  const activeContacts = (overview?.contacts || []).filter(item => item.stationType === (is11m ? '11m' : 'ham'));
+  const destinationMap = new Map<string, { key: string; remoteCallsign: string; country: string; division: string; bands: Set<string> }>();
+  for (const item of activeContacts) {
+    const countryName = countryForCallsign(item.remoteCallsign, item.country || undefined, is11m) || item.country || 'País no identificado';
+    const key = is11m ? (item.division || countryName) : countryName.toLocaleLowerCase();
+    const current = destinationMap.get(key) || { key, remoteCallsign: item.remoteCallsign, country: countryName, division: item.division, bands: new Set<string>() };
+    if (!is11m && item.band) current.bands.add(item.band);
+    destinationMap.set(key, current);
+  }
+  const destinations = Array.from(destinationMap.values()).sort((a, b) => a.country.localeCompare(b.country));
+  const activeGallery = (overview?.gallery || []).filter(item => item.stationType === (is11m ? '11m' : 'ham'));
+
+  const flag = flagForCallsign(displayCallsign, undefined, is11m);
+  const country = countryForCallsign(displayCallsign, undefined, is11m) || 'País no identificado';
   return <div className='fixed inset-0 z-[10050] flex items-center justify-center bg-slate-950/80 p-4' role='dialog' aria-modal='true' aria-labelledby='public-profile-title' onMouseDown={(event) => { if (event.target === event.currentTarget) setProfile(null); }}>
-    <section className='w-full max-w-sm rounded-2xl border border-sky-400/50 bg-slate-900 p-5 text-white shadow-2xl'>
+    <section className='w-full max-w-xl max-h-[95dvh] overflow-y-auto rounded-2xl border border-sky-400/50 bg-slate-900 p-5 text-white shadow-2xl'>
       <div className='flex items-center justify-between gap-3'><h3 id='public-profile-title' className='text-lg font-black'>Perfil del usuario</h3><button type='button' onClick={() => setProfile(null)} className='rounded-lg p-2 text-slate-300 hover:bg-slate-800' aria-label='Cerrar perfil'><X className='h-5 w-5' /></button></div>
       <div className='mt-4 flex flex-col items-center gap-2'><div className='h-24 w-24 overflow-hidden rounded-full border-2 border-sky-300 bg-slate-800'>{profile.photo ? <img src={profile.photo} alt={'Foto de '+profile.callsign} className='h-full w-full object-cover' /> : <div className='flex h-full items-center justify-center font-mono text-xl font-black'>{profile.callsign.slice(0,3)}</div>}</div>
-        <h4 className='font-mono text-xl font-black tracking-wider'>{profile.callsign}</h4><p className='text-sm text-slate-300'>{flag} {country} · {is11m ? '11 metros' : 'Radioaficionado'}</p></div>
+        <h4 className='font-mono text-xl font-black tracking-wider'>{displayCallsign}</h4><p className='text-sm text-slate-300'>{flag} {country} · {is11m ? '11 metros' : 'Radioaficionado'}</p></div>
+      {visibleIdentities.length > 1 && <div className='mt-4 grid grid-cols-2 gap-2'>
+        <button type='button' onClick={() => setActiveType('ham')} className={`rounded-lg px-3 py-2.5 text-sm font-black ${!is11m ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-300'}`}>RADIOAFICIÓN</button>
+        <button type='button' onClick={() => setActiveType('11m')} className={`rounded-lg px-3 py-2.5 text-sm font-black ${is11m ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-300'}`}>11 METROS</button>
+      </div>}
+      {overview && <section className='mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3'>
+        <h5 className='text-sm font-black uppercase tracking-wide text-sky-200'>Estadísticas de {is11m ? '11 metros' : 'radioafición'}</h5>
+        <div className='mt-3 grid grid-cols-2 gap-2'>
+          <div className='rounded-lg bg-slate-900 p-3 text-center'><strong className='block text-2xl tabular-nums'>{activeContacts.length}</strong><span className='text-xs text-slate-300'>Contactos registrados</span></div>
+          <div className='rounded-lg bg-slate-900 p-3 text-center'><strong className='block text-2xl tabular-nums'>{destinations.length}</strong><span className='text-xs text-slate-300'>{is11m ? 'Países / divisiones' : 'Países contactados'}</span></div>
+        </div>
+        <div className='mt-3 space-y-1.5'>
+          {destinations.length ? destinations.map(item => <div key={item.key} className='flex items-center justify-between gap-3 rounded-lg bg-slate-900 px-3 py-2 text-sm'>
+            <span className='min-w-0'><span className='mr-2'>{flagForCallsign(item.remoteCallsign, item.country, is11m)}</span><strong>{is11m && item.division ? 'División ' + item.division + ' · ' : ''}{item.country}</strong></span>
+            {!is11m && <span className='shrink-0 text-xs text-cyan-200'>{Array.from(item.bands).sort().join(' · ')}</span>}
+          </div>) : <p className='text-xs text-slate-400'>Todavía no hay destinos registrados en esta modalidad.</p>}
+        </div>
+      </section>}
+      {overview && <section className='mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3'>
+        <div className='flex items-center justify-between gap-2'><h5 className='text-sm font-black uppercase tracking-wide text-sky-200'>Galería de eQSL recibidas</h5><span className='rounded-full bg-slate-800 px-2 py-1 text-xs tabular-nums'>{activeGallery.length}</span></div>
+        <p className='mt-1 text-[11px] text-slate-400'>Se conserva la primera tarjeta recibida de cada estación.</p>
+        {activeGallery.length ? <div className='mt-3 grid grid-cols-2 gap-2'>
+          {activeGallery.map(item => <article key={item.senderCallsign} className='min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 p-2'>
+            <strong className='block truncate text-center font-mono text-sm'>{item.senderCallsign}</strong>
+            {item.card.imageDataUrl ? <img src={item.card.imageDataUrl} alt={'eQSL recibida de ' + item.senderCallsign} loading='lazy' className='mt-2 h-28 w-full rounded bg-white object-contain' /> : <div className='mt-2 flex h-28 flex-col items-center justify-center rounded bg-slate-800 text-center text-xs text-slate-300'><span>{item.card.date || ''}</span><span>{item.card.band || ''} · {item.card.mode || ''}</span></div>}
+            <p className='mt-1 text-center text-[10px] text-slate-400'>{item.card.date || ''} · {item.card.band || ''}</p>
+          </article>)}
+        </div> : <p className='mt-3 text-xs text-slate-400'>Todavía no hay eQSL recibidas en esta modalidad.</p>}
+      </section>}
       <div className='mt-5 space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm'>
         <p className='flex items-center gap-2'><MapPin className='h-4 w-4 shrink-0 text-sky-300' /><span><strong>Ciudad / pueblo:</strong> {profile.loading ? 'Buscando…' : profile.location || 'No disponible para este Grid Locator'}</span></p>
         <p className='pl-6 text-slate-300'><strong>Grid Locator:</strong> {profile.grid || (profile.loading ? 'Consultando…' : 'No informado')}</p>
@@ -335,8 +399,8 @@ export const UserPublicProfile: React.FC = () => {
         <p className='pl-6 text-slate-300'><strong>Altitud sobre el nivel del mar:</strong> {profile.loading ? 'Calculando…' : profile.elevation === null ? 'No disponible' : '≈ '+profile.elevation+' m s. n. m.'}</p>
         <p className='pl-6 text-[11px] leading-relaxed text-slate-400'>Ciudad, pueblo y altitud estimados a partir del centro de la cuadrícula Maidenhead. No representan una dirección exacta ni la altura de la antena.</p>
       </div>
-      {isValidMaidenheadLocator(profile.grid) && <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2'><button type='button' onClick={() => { setAutoShare(false); setMapOpen(true); }} className='flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-3 font-bold text-white hover:bg-cyan-600'><MapIcon className='h-4 w-4' />VER EN EL MAPA</button><button type='button' onClick={() => { setAutoShare(true); setMapOpen(true); }} className='flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white hover:bg-emerald-500'><Share2 className='h-4 w-4' />COMPARTIR DISTANCIA</button></div>}
-      <button type='button' disabled={profile.callsign === (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase()} onClick={() => { const target = profile.callsign; setProfile(null); window.dispatchEvent(new CustomEvent('open-private-message', { detail: { callsign: target } })); }} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white hover:bg-sky-600 disabled:opacity-40'><MessageCircle className='h-4 w-4' />Enviar mensaje privado</button>
+      {activeType === 'ham' && isValidMaidenheadLocator(profile.grid) && <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2'><button type='button' onClick={() => { setAutoShare(false); setMapOpen(true); }} className='flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-3 font-bold text-white hover:bg-cyan-600'><MapIcon className='h-4 w-4' />VER EN EL MAPA</button><button type='button' onClick={() => { setAutoShare(true); setMapOpen(true); }} className='flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white hover:bg-emerald-500'><Share2 className='h-4 w-4' />COMPARTIR DISTANCIA</button></div>}
+      <button type='button' disabled={displayCallsign === (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase()} onClick={() => { const target = displayCallsign; setProfile(null); window.dispatchEvent(new CustomEvent('open-private-message', { detail: { callsign: target } })); }} className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white hover:bg-sky-600 disabled:opacity-40'><MessageCircle className='h-4 w-4' />Enviar mensaje privado</button>
       <button type='button' onClick={() => setProfile(null)} className='mt-2 w-full rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-200'>Cerrar</button>
     </section>
     {mapOpen && isValidMaidenheadLocator(profile.grid) && <GridStationsMap callsign={profile.callsign} grid={profile.grid} autoOpenShare={autoShare} onAutoShareConsumed={() => setAutoShare(false)} onClose={() => { setMapOpen(false); setAutoShare(false); }} />}
