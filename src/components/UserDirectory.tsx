@@ -144,6 +144,11 @@ export const UserDirectory: React.FC = () => {
             {query && <button type="button" onClick={() => { setQuery(''); setSelected(''); }} className="rounded-md px-2 py-1 text-xs font-bold text-violet-800">BORRAR</button>}
           </div>
 
+          <div className="mb-3 flex items-center gap-2 px-1 text-xs text-slate-500" aria-label="Significado del punto verde">
+            <span aria-hidden="true" className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
+            <span>Punto verde: Grid registrado · distancia precisa.</span>
+          </div>
+
           {loading && <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">Cargando todos los usuarios registrados y validados…</p>}
           {error && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
