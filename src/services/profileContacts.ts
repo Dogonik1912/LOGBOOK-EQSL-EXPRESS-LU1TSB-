@@ -13,10 +13,15 @@ export async function persistProfileContacts(qsos: QSO[]) {
   const token = localStorage.getItem('community_chat_identity_token') || '';
   const activeCall = (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
   if (!token || !Array.isArray(qsos) || !qsos.length) return;
-  const records = qsos.slice(0, 1000).flatMap(qso => {
+  const records = qsos.flatMap(qso => {
     const remote = String(qso.callsign || '').trim().toUpperCase();
-    const is11m = is11MeterStationIdentifier(qso.stationCallsign || '') || /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(qso.band || ''));
-    const owner = String(qso.stationCallsign || (is11m ? (localStorage.getItem('cb_station_callsign') || activeCall) : (activeCall || getUserCallsign()))).trim().toUpperCase();
+    const explicitOwner = String(qso.stationCallsign || '').trim().toUpperCase();
+    const activeType = stationType(activeCall);
+    const cbCall = String(localStorage.getItem('cb_station_callsign') || '').trim().toUpperCase();
+    const is11m = is11MeterStationIdentifier(explicitOwner) || /11\s*metros|11m|27\s*mhz|banda ciudadana|\bcb\b/i.test(String(qso.band || ''));
+    const owner = is11m
+      ? (stationType(explicitOwner) === '11m' ? explicitOwner : stationType(cbCall) === '11m' ? cbCall : activeType === '11m' ? activeCall : '')
+      : (stationType(explicitOwner) === 'ham' ? explicitOwner : activeType === 'ham' ? activeCall : getUserCallsign());
     const type = stationType(owner);
     const remoteType = stationType(remote);
     const date = String(qso.date || '').trim();
