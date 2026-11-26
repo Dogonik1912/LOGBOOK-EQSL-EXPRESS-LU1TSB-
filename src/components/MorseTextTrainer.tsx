@@ -2,6 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 
 type Props = { language?: string };
 
+const getPersonalCallsign = (): string => {
+  if (typeof window === 'undefined') return '';
+  const cbCallsign = localStorage.getItem('cb_station_callsign')?.trim().toUpperCase();
+  const verifiedSd = localStorage.getItem('community_chat_identity_token')
+    ? localStorage.getItem('community_chat_sd')?.trim().toUpperCase()
+    : '';
+  const hamCallsign = localStorage.getItem('user_callsign')?.trim().toUpperCase();
+  return cbCallsign || verifiedSd || hamCallsign || '';
+};
+
 const MORSE: Record<string,string> = {
   A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',
   '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
@@ -15,7 +25,10 @@ const decode = (value:string) => value.trim().split(/\s*\/\s*/).map(word=>word.t
 export function MorseTextTrainer({language='es'}:Props) {
   const es=language==='es'||language==='pt'||language==='pt-br';
   const [mode,setMode]=useState<'convert'|'learn'>('convert');
-  const [text,setText]=useState('CQ CQ DE LU1TSB');
+  const [text,setText]=useState(()=>{
+    const callsign=getPersonalCallsign();
+    return callsign ? `CQ CQ CQ DE ${callsign}` : 'CQ CQ CQ';
+  });
   const [morseInput,setMorseInput]=useState('... --- ... / .- .-.. .-..');
   const [wpm,setWpm]=useState(18);
   const [playing,setPlaying]=useState(false);
