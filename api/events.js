@@ -8,7 +8,7 @@ const ZONA_TANGO_EVENT = {
   id: 'zona-tango-permanent',
   title: 'Zona Tango – Radioaficionados de Jujuy',
   description: 'Fuente permanente de información radial de Jujuy: actividades, concursos, técnica, formación y novedades de radioafición.',
-  event_scope: 'national', event_kind: 'event', station_type: 'both',
+  event_scope: 'national', event_kind: 'event', station_type: 'ham',
   country_code: 'AR', country_name: 'Argentina', organizer: 'Radioaficionados de Jujuy',
   start_at: null, end_at: null,
   rules_url: 'https://zonatango.wordpress.com/', source_url: 'https://zonatango.wordpress.com/',

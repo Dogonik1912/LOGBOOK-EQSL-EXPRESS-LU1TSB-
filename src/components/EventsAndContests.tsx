@@ -365,8 +365,12 @@ export const EventsAndContests: React.FC = () => {
   }, [countries, effectiveHomeCountry]);
   const LU1AAS_EVENT_ID = '483f62c4-9e22-4f2d-89f6-2e773c1c3501';
   const priorityEvent = events.find((item) => item.id === LU1AAS_EVENT_ID);
+  const showZonaTango = selectedType === 'ham'
+    && category === 'national'
+    && selectedKind === 'event'
+    && (selectedCountry || effectiveHomeCountry) === 'AR';
   const displayEvents = [
-    ZONA_TANGO_EVENT,
+    ...(showZonaTango ? [ZONA_TANGO_EVENT] : []),
     ...(priorityEvent ? [priorityEvent] : []),
     ...events.filter((item) => item.id !== LU1AAS_EVENT_ID && item.id !== ZONA_TANGO_ID),
   ];
