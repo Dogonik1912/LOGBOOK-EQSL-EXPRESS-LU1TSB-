@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { supabase } from '../services/supabaseClient';
 
 type Props = { language?: string; activeCallsign?: string };
 type LetterStats = { correct: number; wrong: number };
@@ -61,6 +62,15 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const [result,setResult]=useState('');
   const [pendingNext,setPendingNext]=useState(false);
   const playback=useRef<{ctx:AudioContext;osc:OscillatorNode}|null>(null);
+  const [sessionRunning,setSessionRunning]=useState(false);
+  const [sessionSeconds,setSessionSeconds]=useState(0);
+  const [sessionCount,setSessionCount]=useState(0);
+  const [sessionTotalSeconds,setSessionTotalSeconds]=useState(0);
+  const [sessionMessage,setSessionMessage]=useState('');
+  const [sessionSyncError,setSessionSyncError]=useState(false);
+  const sessionId=useRef<string|null>(null);
+  const sessionFinished=useRef(false);
+  const identityToken=typeof window!=='undefined'?localStorage.getItem('community_chat_identity_token')||'':'';
   const output=encode(text);
   const available=GROUPS.slice(0,Math.min(progress.level+1,GROUPS.length)).join('').split('');
   const currentGroup=GROUPS[Math.min(progress.level,GROUPS.length-1)] || 'CQ';
@@ -74,6 +84,54 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     setResult('');setPendingNext(false);setText('');
   },[storageKey,identity]);
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(progress));}catch{}},[progress,storageKey]);
+  useEffect(()=>{
+    let alive=true;
+    const loadSessions=async()=>{
+      if(!supabase||!identity||!identityToken){setSessionCount(0);setSessionTotalSeconds(0);return;}
+      const {data,error}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
+      if(!alive||error||!data?.ok)return;
+      setSessionCount(Number(data.sessions_completed)||0);
+      setSessionTotalSeconds(Number(data.total_seconds)||0);
+    };
+    void loadSessions();
+    return()=>{alive=false;};
+  },[identity,identityToken]);
+  useEffect(()=>{
+    if(!sessionRunning||mode!=='learn')return;
+    const tick=()=>{if(document.visibilityState==='visible')setSessionSeconds(value=>Math.min(600,value+1));};
+    const timer=window.setInterval(tick,1000);
+    return()=>window.clearInterval(timer);
+  },[sessionRunning,mode]);
+  useEffect(()=>{
+    if(sessionSeconds<600||!sessionRunning||sessionFinished.current)return;
+    sessionFinished.current=true;
+    setSessionRunning(false);
+    const completedId=sessionId.current;
+    const save=async()=>{
+      if(!supabase||!identity||!identityToken||!completedId){setSessionSyncError(true);return;}
+      const {data,error}=await supabase.rpc('record_morse_practice_session',{
+        p_callsign:identity,p_token:identityToken,p_session_id:completedId,p_duration_seconds:600
+      });
+      if(error||!data?.ok){setSessionSyncError(true);return;}
+      setSessionSyncError(false);
+      const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
+      if(stats?.ok){setSessionCount(Number(stats.sessions_completed)||0);setSessionTotalSeconds(Number(stats.total_seconds)||0);}
+      const nextCount=Number(stats?.sessions_completed)||sessionCount+1;
+      setSessionMessage(es
+        ?(nextCount===1?'¡Felicidades! Has completado tu primera sesión de 10 minutos. Vuelve mañana y sigue practicando.':'¡Bienvenido a tu sesión '+nextCount+'! ¡Has cumplido tus 10 minutos de hoy! Vuelve mañana para seguir avanzando.')
+        :(nextCount===1?'Congratulations! You completed your first 10-minute session. Come back tomorrow and keep practising.':'Welcome to session '+nextCount+'! You completed your 10 minutes today. Come back tomorrow to keep improving.'));
+    };
+    void save();
+  },[sessionSeconds,sessionRunning,identity,identityToken,sessionCount,es]);
+  const startPracticeSession=()=>{
+    if(!identity||!identityToken||!supabase)return;
+    sessionId.current=crypto.randomUUID();
+    sessionFinished.current=false;
+    setSessionSeconds(0);
+    setSessionMessage('');
+    setSessionSyncError(false);
+    setSessionRunning(true);
+  };
   const stop=()=>{
     const current=playback.current;
     if(current){try{current.osc.stop();}catch{}void current.ctx.close();playback.current=null;}
@@ -153,6 +211,17 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
         <button type="button" onClick={()=>setMode('convert')} className={'rounded-md px-3 py-1.5 text-xs font-bold '+(mode==='convert'?'bg-white text-cyan-800 shadow':'text-slate-600')}>{es?'Convertir':'Convert'}</button>
       </div>
     </div>
+    {mode==='learn'&&<div className="rounded-lg border border-cyan-200 bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><p className="text-sm font-bold text-slate-800">{es?'Aprende Morse: dedica 10 minutos al día':'Learn Morse: practise 10 minutes a day'}</p><p className="text-xs text-slate-600">{es?'Sesiones completadas':'Completed sessions'}: <strong>{sessionCount}</strong> · {es?'Tiempo acumulado':'Total practice'}: {Math.floor(sessionTotalSeconds/60)} min</p></div>
+        <div className="text-right"><div className="font-mono text-2xl font-black text-cyan-800">{String(Math.floor((600-sessionSeconds)/60)).padStart(2,'0')}:{String((600-sessionSeconds)%60).padStart(2,'0')}</div><p className="text-[10px] text-slate-500">{sessionRunning?(es?'Sesión en curso':'Session in progress'):(sessionSeconds>=600?(es?'Sesión completada':'Session completed'):(es?'10 minutos por sesión':'10 minutes per session'))}</p></div>
+      </div>
+      {!sessionRunning&&sessionSeconds<600&&<button type="button" disabled={!identity||!identityToken||!supabase} onClick={startPracticeSession} className="mt-2 w-full rounded-lg bg-emerald-600 px-4 py-2.5 font-bold text-white disabled:opacity-40">{sessionSeconds>0?(es?'Reanudar sesión':'Resume session'):(es?'Comenzar sesión de 10 minutos':'Start 10-minute session')}</button>}
+      {sessionRunning&&<p className="mt-2 text-xs text-emerald-700">{es?'El tiempo cuenta mientras el curso está visible. Si cambias al conversor o sales de la página, se pausa.':'Time counts while the course is visible. Switching to the converter or leaving the page pauses it.'}</p>}
+      {sessionMessage&&<p role="status" className="mt-2 rounded-lg bg-emerald-50 p-2 text-sm font-semibold text-emerald-800">{sessionMessage}</p>}
+      {sessionSyncError&&<p role="status" className="mt-2 text-xs text-amber-700">{es?'No se pudo sincronizar la sesión. Comprueba la conexión y vuelve a intentarlo.':'The session could not sync. Check your connection and try again.'}</p>}
+      {!identity&&<p className="mt-2 text-xs text-amber-700">{es?'Selecciona tu identidad para sincronizar las sesiones entre dispositivos.':'Select your identity to sync sessions across devices.'}</p>}
+    </div>}
     {mode==='convert'?<div className="space-y-3">
       <label className="block text-sm font-semibold text-slate-800">{es?'Escribe tu mensaje':'Write your message'}</label>
       <textarea value={text} onChange={e=>setText(e.target.value)} rows={3} maxLength={500} className="w-full rounded-lg border border-slate-300 bg-white p-3 text-base text-slate-900" placeholder={es?'Escribe aquí…':'Type here…'}/>
