@@ -43,10 +43,10 @@ export async function persistProfileContacts(qsos: QSO[]) {
   if (!records.length) return;
   for (let offset = 0; offset < records.length; offset += 100) {
     try {
-      await fetch('/api/profile-contacts', {
+      await fetch('/api/directory?action=profile-contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, callsign: activeCall, records: records.slice(offset, offset + 100) }),
+        body: JSON.stringify({ action: 'profile-contacts', token, callsign: activeCall, records: records.slice(offset, offset + 100) }),
       });
     } catch { /* El libro de guardia sigue funcionando sin conexión; se sincroniza al próximo cambio. */ }
   }

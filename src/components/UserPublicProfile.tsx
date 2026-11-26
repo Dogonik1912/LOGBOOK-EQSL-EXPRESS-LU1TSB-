@@ -309,7 +309,7 @@ export const UserPublicProfile: React.FC = () => {
       }
       let loadedOverview: PublicProfileOverview | null = null;
       try {
-        const response = await fetch('/api/public-profile?callsign=' + encodeURIComponent(callsign), { cache: 'no-store' });
+        const response = await fetch('/api/directory?action=public-profile&callsign=' + encodeURIComponent(callsign), { cache: 'no-store' });
         if (response.ok) loadedOverview = await response.json() as PublicProfileOverview;
       } catch { /* El perfil básico sigue disponible si fallan las estadísticas públicas. */ }
       const point = maidenheadCenter(grid);
