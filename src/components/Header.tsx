@@ -9,6 +9,7 @@ import { supabase } from '../services/supabaseClient';
 import { detectBrowserLanguage, getLocalizedShareText, normalizeLanguage, resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
 import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { LanguageSelector } from './LanguageSelector';
+import { countryForCallsign, flagForCallsign } from '../services/callsignCountry';
 
 type AccountIdentity = { callsign: string; identity_type: 'ham' | '11m'; is_primary: boolean };
 
@@ -556,12 +557,31 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="w-full flex items-center justify-between gap-3 rounded-t-xl border-b border-sky-500/70 bg-black px-3 py-2 sm:px-5 sm:py-3 shadow-[0_4px_18px_rgba(0,170,255,0.18)]">
           <div className="min-w-0 flex-1 flex flex-row items-center gap-2">
             {(activeIdentityCallsign || callsign) && (accountIdentities.length > 1 ? (
-              <label className="inline-flex min-h-9 min-w-0 max-w-[48vw] items-center gap-1 rounded-lg border border-sky-400/70 bg-slate-950 px-2 py-1 text-white shadow-[0_0_14px_rgba(0,170,255,0.16)] sm:min-h-12 sm:px-3">
-                <span className="hidden text-[10px] font-bold uppercase text-sky-300 sm:inline">Identidad</span>
-                <select aria-label="Identidad activa" value={activeIdentityCallsign} onChange={(event) => chooseGlobalIdentity(event.target.value)} className="min-w-0 max-w-full bg-transparent font-mono text-xs font-black text-amber-300 outline-none sm:text-base">
-                  {accountIdentities.map((identity) => <option key={identity.callsign} value={identity.callsign} className="bg-slate-950 text-white">{identity.identity_type === '11m' ? '11 metros · ' : 'Radioaficionado · '}{identity.callsign}</option>)}
-                </select>
-              </label>
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Seleccionar identidad activa">
+                {accountIdentities.map((identity) => {
+                  const identityCountry = countryForCallsign(identity.callsign, undefined, identity.identity_type === '11m') || country;
+                  const isActive = identity.callsign === activeIdentityCallsign;
+                  return (
+                    <button
+                      key={identity.callsign}
+                      type="button"
+                      data-no-translate="true"
+                      translate="no"
+                      aria-label={`Usar identidad ${identity.callsign}`}
+                      aria-pressed={isActive}
+                      onClick={() => chooseGlobalIdentity(identity.callsign)}
+                      className={`inline-flex min-h-9 min-w-0 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 py-1 font-mono text-xs font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] transition sm:min-h-12 sm:gap-1.5 sm:px-3 sm:text-base ${isActive ? 'border-emerald-300 bg-sky-950 text-white ring-2 ring-emerald-400/80' : 'border-sky-400/60 bg-slate-950 text-white opacity-85 hover:border-sky-300 hover:opacity-100'}`}
+                      title={`${identity.identity_type === '11m' ? '11 metros' : 'Radioaficionado'} · ${identity.callsign}${isActive ? ' · identidad activa' : ' · pulsar para activar'}`}
+                    >
+                      <span aria-hidden="true">{flagForCallsign(identity.callsign, identityCountry, identity.identity_type === '11m')}</span>
+                      <span>{identity.callsign.split('').map((character, index) => (
+                        <span key={index} className={getCallsignCharacterClass(character, identityCountry)}>{character}</span>
+                      ))}</span>
+                      {isActive && <span className="ml-0.5 rounded-full bg-emerald-400 px-1 text-[9px] leading-4 text-slate-950 sm:text-[10px]">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
             ) : (
               <span data-no-translate="true" translate="no" className="inline-flex min-h-9 sm:min-h-12 min-w-0 shrink items-center justify-center rounded-lg border border-sky-400/70 bg-slate-950 px-2 sm:px-4 py-1.5 sm:py-2 font-mono text-sm sm:text-2xl font-black shadow-[0_0_14px_rgba(0,170,255,0.16)] break-all" title={`Señal distintiva: ${activeIdentityCallsign || callsign}`}>
                 {(activeIdentityCallsign || callsign).split('').map((character, index) => (
