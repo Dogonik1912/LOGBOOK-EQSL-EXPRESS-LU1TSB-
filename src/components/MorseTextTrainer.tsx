@@ -50,7 +50,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const es=language==='es'||language==='pt'||language==='pt-br';
   const identity=(activeCallsign||getPersonalCallsign()).trim().toUpperCase();
   // v2 intentionally starts a new course: the previous CQ-first lesson is not carried forward.
-  const storageKey='morse_course_progress_v2_'+(identity||'sin-identidad').replace(/[^A-Z0-9_-]/g,'_');
+  const storageKey='morse_course_progress_v2_'+(sessionOwner||'sin-identidad').replace(/[^A-Z0-9_-]/g,'_');
   const [mode,setMode]=useState<'learn'|'convert'>('learn');
   const [text,setText]=useState('');
   const [morseInput,setMorseInput]=useState('... --- ... / .- .-.. .-..');
@@ -67,10 +67,11 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const [sessionCount,setSessionCount]=useState(0);
   const [sessionTotalSeconds,setSessionTotalSeconds]=useState(0);
   const [sessionMessage,setSessionMessage]=useState('');
-  const [sessionSyncError,setSessionSyncError]=useState(false);
+  const [sessionSyncError,setSessionSyncError]=useState(()=>{const key='morse_session_seconds_'+(typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity):identity);return Number(localStorage.getItem(key))>=600&&Boolean(localStorage.getItem('morse_session_id_'+(typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity):identity)));});
   const sessionId=useRef<string|null>(localStorage.getItem('morse_session_id_'+(identity||'sin-identidad')));
   const sessionFinished=useRef(false);
   const identityToken=typeof window!=='undefined'?localStorage.getItem('community_chat_identity_token')||'':'';
+  const sessionOwner=typeof window!=='undefined'?(localStorage.getItem('community_chat_sd')||identity).trim().toUpperCase():identity;
   const output=encode(text);
   const available=GROUPS.slice(0,Math.min(progress.level+1,GROUPS.length)).join('').split('');
   const currentGroup=GROUPS[Math.min(progress.level,GROUPS.length-1)] || 'CQ';
@@ -84,20 +85,20 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     setResult('');setPendingNext(false);setText('');
   },[storageKey,identity]);
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(progress));}catch{}},[progress,storageKey]);
-  useEffect(()=>{setSessionRunning(false);const key='morse_session_seconds_'+(identity||'sin-identidad');setSessionSeconds(Number(localStorage.getItem(key))||0);sessionId.current=localStorage.getItem('morse_session_id_'+(identity||'sin-identidad'));sessionFinished.current=false;},[identity]);
-  useEffect(()=>{try{localStorage.setItem('morse_session_seconds_'+(identity||'sin-identidad'),String(sessionSeconds));}catch{}},[sessionSeconds,identity]);
+  useEffect(()=>{setSessionRunning(false);const key='morse_session_seconds_'+(identity||'sin-identidad');setSessionSeconds(Number(localStorage.getItem(key))||0);sessionId.current=localStorage.getItem('morse_session_id_'+(identity||'sin-identidad'));sessionFinished.current=false;},[sessionOwner]);
+  useEffect(()=>{try{localStorage.setItem('morse_session_seconds_'+(identity||'sin-identidad'),String(sessionSeconds));}catch{}},[sessionSeconds,sessionOwner]);
   useEffect(()=>{
     let alive=true;
     const loadSessions=async()=>{
       if(!supabase||!identity||!identityToken){setSessionCount(0);setSessionTotalSeconds(0);return;}
-      const {data,error}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
+      const {data,error}=await supabase.rpc('get_morse_practice_stats',{p_callsign:sessionOwner,p_token:identityToken});
       if(!alive||error||!data?.ok)return;
       setSessionCount(Number(data.sessions_completed)||0);
       setSessionTotalSeconds(Number(data.total_seconds)||0);
     };
     void loadSessions();
     return()=>{alive=false;};
-  },[identity,identityToken]);
+  },[sessionOwner,identityToken]);
   useEffect(()=>{
     if(!sessionRunning||mode!=='learn')return;
     const tick=()=>{if(document.visibilityState==='visible')setSessionSeconds(value=>Math.min(600,value+1));};
@@ -115,6 +116,7 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
         p_callsign:identity,p_token:identityToken,p_session_id:completedId,p_duration_seconds:600
       });
       if(error||!data?.ok){setSessionSyncError(true);return;}
+      try{localStorage.removeItem('morse_session_id_'+(sessionOwner||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(sessionOwner||'sin-identidad'));}catch{}
       setSessionSyncError(false);
       const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
       if(stats?.ok){setSessionCount(Number(stats.sessions_completed)||0);setSessionTotalSeconds(Number(stats.total_seconds)||0);}
@@ -124,9 +126,9 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
         :(nextCount===1?'Congratulations! You completed your first 10-minute session. Come back tomorrow and keep practising.':'Welcome to session '+nextCount+'! You completed your 10 minutes today. Come back tomorrow to keep improving.'));
     };
     void save();
-  },[sessionSeconds,sessionRunning,identity,identityToken,sessionCount,es]);
+  },[sessionSeconds,sessionRunning,sessionOwner,identityToken,sessionCount,es]);
   const retryPracticeSync=async()=>{
-    if(!supabase||!identity||!identityToken||!sessionId.current)return;
+    if(!supabase||!sessionOwner||!identityToken||!sessionId.current)return;
     const {data,error}=await supabase.rpc('record_morse_practice_session',{p_callsign:identity,p_token:identityToken,p_session_id:sessionId.current,p_duration_seconds:600});
     if(error||!data?.ok){setSessionSyncError(true);return;}
     try{localStorage.removeItem('morse_session_id_'+(identity||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(identity||'sin-identidad'));}catch{}
