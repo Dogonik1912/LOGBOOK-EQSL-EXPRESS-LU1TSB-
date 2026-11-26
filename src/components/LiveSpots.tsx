@@ -209,7 +209,7 @@ export const LiveSpots: React.FC = () => {
   const normalizeFilterValue=(value:string)=>String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ');
   const allSpots = [...spots].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
   const filteredSpots=showAllActivity ? allSpots : allSpots.filter(spot=>
-    (!selectedBands.length||selectedBands.some(value=>normalizeFilterValue(value)===normalizeFilterValue(spot.band))) &&
+    (!selectedBands.length||selectedBands.some(value=>normalizeFilterValue(value)===normalizeFilterValue('11 metros') ? isElevenMeterSpot(spot.band,spot.frequency) : !isElevenMeterSpot(spot.band,spot.frequency) && normalizeFilterValue(value)===normalizeFilterValue(spot.band))) &&
     (!selectedModes.length||selectedModes.some(value=>normalizeFilterValue(value)===normalizeFilterValue(spot.mode))) &&
     (!selectedContinents.length||selectedContinents.includes(continentForSpot(spot)))
   );
