@@ -160,26 +160,51 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     if(playing){stop();return;}
     const clean=normalize(message).trim();if(!clean)return;
     try{
-      const ctx=new AudioContext();await ctx.resume();
-      const osc=ctx.createOscillator(),gain=ctx.createGain();
-      osc.type='sine';osc.frequency.value=650;gain.gain.value=0;osc.connect(gain);gain.connect(ctx.destination);
-      const unit=1.2/wpm;let at=ctx.currentTime+0.06;
+      const ctx=new AudioContext();
+      await ctx.resume();
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      // Sidetone CW clásico: seno limpio, sin efectos ni modulación.
+      osc.type='sine';
+      osc.frequency.setValueAtTime(620,ctx.currentTime);
+      gain.gain.setValueAtTime(0,ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const unit=1.2/wpm;
+      const attack=0.005;
+      const level=0.14;
+      let at=ctx.currentTime+0.06;
       const tone=(units:number)=>{
         const duration=unit*units;
-        gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(0.18,at+0.006);
-        gain.gain.setValueAtTime(0.18,at+Math.max(0.008,duration-0.006));gain.gain.linearRampToValueAtTime(0,at+duration);at+=duration;
+        gain.gain.setValueAtTime(0,at);
+        gain.gain.linearRampToValueAtTime(level,at+attack);
+        gain.gain.setValueAtTime(level,at+duration-attack);
+        gain.gain.linearRampToValueAtTime(0,at+duration);
+        at+=duration;
       };
-      const words=clean.split(/\s+/);
+      const words=clean.split(/\\s+/);
       words.forEach((word,wi)=>{
         [...word].forEach((letter,li)=>{
           const code=MORSE[letter]?.trim();if(!code)return;
-          [...code].forEach((symbol,si)=>{tone(symbol==='.'?1:3);if(si<code.length-1)at+=unit;});
+          [...code].forEach((symbol,si)=>{
+            tone(symbol==='.'?1:3);
+            if(si<code.length-1)at+=unit;
+          });
           if(li<word.length-1)at+=unit*3;
         });
         if(wi<words.length-1)at+=unit*7;
       });
-      osc.start(ctx.currentTime+0.06);osc.stop(at+0.04);playback.current={ctx,osc};setPlaying(true);
-      osc.onended=()=>{if(playback.current?.osc===osc){playback.current=null;setPlaying(false);void ctx.close();}};
+      osc.start(ctx.currentTime+0.06);
+      osc.stop(at+0.04);
+      playback.current={ctx,osc};
+      setPlaying(true);
+      osc.onended=()=>{
+        if(playback.current?.osc===osc){
+          playback.current=null;
+          setPlaying(false);
+          void ctx.close();
+        }
+      };
     }catch{setPlaying(false);}
   };
   const newChallenge=(level=progress.level,stats=progress.stats)=>{
