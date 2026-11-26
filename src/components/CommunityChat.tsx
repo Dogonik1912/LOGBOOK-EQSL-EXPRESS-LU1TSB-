@@ -257,7 +257,7 @@ export const CommunityChat: React.FC = () => {
     // Poll as a fallback so messages still appear on other devices if Realtime
     // publication/subscription is unavailable in the Supabase project.
     const pollId = window.setInterval(() => { void loadMessages(); }, 5000);
-    const channel = supabase
+    const channel = client
       .channel('logbook-community-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_messages' }, (payload) => {
         const incoming = payload.new as ChatMessage;

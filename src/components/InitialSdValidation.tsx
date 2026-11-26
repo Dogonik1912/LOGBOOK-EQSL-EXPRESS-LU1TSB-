@@ -197,7 +197,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           }
           return;
         }
-        const { data: isBlocked, error: blockError } = await client.rpc('community_is_blocked', { p_callsign: savedCall });
+        const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: savedCall });
         if (!active) return;
         if (blockError) {
           setCallsign(savedCall);
@@ -286,7 +286,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
     const recheckRestrictions = async () => {
       if (!navigator.onLine) return;
       try {
-        const { data, error: checkError } = await supabase.rpc('community_is_blocked', { p_callsign: callsign });
+        const { data, error: checkError } = await client.rpc('community_is_blocked', { p_callsign: callsign });
         if (!active || checkError) return;
         setBlocked(data === true);
         if (data !== true) {
