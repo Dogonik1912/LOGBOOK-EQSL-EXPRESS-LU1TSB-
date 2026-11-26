@@ -84,6 +84,8 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     setResult('');setPendingNext(false);setText('');
   },[storageKey,identity]);
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(progress));}catch{}},[progress,storageKey]);
+  useEffect(()=>{setSessionRunning(false);const key='morse_session_seconds_'+(identity||'sin-identidad');setSessionSeconds(Number(localStorage.getItem(key))||0);sessionId.current=localStorage.getItem('morse_session_id_'+(identity||'sin-identidad'));sessionFinished.current=false;},[identity]);
+  useEffect(()=>{try{localStorage.setItem('morse_session_seconds_'+(identity||'sin-identidad'),String(sessionSeconds));}catch{}},[sessionSeconds,identity]);
   useEffect(()=>{
     let alive=true;
     const loadSessions=async()=>{
@@ -123,11 +125,24 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
     };
     void save();
   },[sessionSeconds,sessionRunning,identity,identityToken,sessionCount,es]);
-  const retryPracticeSync=async()=>{\n    if(!supabase||!identity||!identityToken||!sessionId.current)return;\n    const {data,error}=await supabase.rpc('record_morse_practice_session',{p_callsign:identity,p_token:identityToken,p_session_id:sessionId.current,p_duration_seconds:600});\n    if(error||!data?.ok){setSessionSyncError(true);return;}\n    try{localStorage.removeItem('morse_session_id_'+(identity||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(identity||'sin-identidad'));}catch{}\n    const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});\n    if(stats?.ok){setSessionCount(Number(stats.sessions_completed)||0);setSessionTotalSeconds(Number(stats.total_seconds)||0);}\n    setSessionSyncError(false);\n  };\n  const startPracticeSession=()=>{
+  const retryPracticeSync=async()=>{
+    if(!supabase||!identity||!identityToken||!sessionId.current)return;
+    const {data,error}=await supabase.rpc('record_morse_practice_session',{p_callsign:identity,p_token:identityToken,p_session_id:sessionId.current,p_duration_seconds:600});
+    if(error||!data?.ok){setSessionSyncError(true);return;}
+    try{localStorage.removeItem('morse_session_id_'+(identity||'sin-identidad'));localStorage.removeItem('morse_session_seconds_'+(identity||'sin-identidad'));}catch{}
+    const {data:stats}=await supabase.rpc('get_morse_practice_stats',{p_callsign:identity,p_token:identityToken});
+    if(stats?.ok){setSessionCount(Number(stats.sessions_completed)||0);setSessionTotalSeconds(Number(stats.total_seconds)||0);}
+    setSessionSyncError(false);
+  };
+  const startPracticeSession=()=>{
     if(!identity||!identityToken||!supabase)return;
-    sessionId.current=crypto.randomUUID();
+    const resume=Boolean(sessionId.current)&&sessionSeconds>0&&sessionSeconds<600;
+    if(!resume){
+      sessionId.current=crypto.randomUUID();
+      try{localStorage.setItem('morse_session_id_'+(identity||'sin-identidad'),sessionId.current);}catch{}
+      setSessionSeconds(0);
+    }
     sessionFinished.current=false;
-    setSessionSeconds(0);
     setSessionMessage('');
     setSessionSyncError(false);
     setSessionRunning(true);
