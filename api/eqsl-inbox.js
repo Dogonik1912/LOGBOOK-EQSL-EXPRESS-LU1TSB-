@@ -70,19 +70,19 @@ async function writeInbox(callsign, items, cfg) {
   if (error) throw error;
 }
 
-async function archiveReceivedCard(id, recipient, sender, expectedType, cfg) {
+async function archiveReceivedCard(id, recipient, senderStation, expectedType, cfg) {
   const { data, error } = await cfg.storage.download('eqsl-shares/' + id + '.json');
   if (error || !data) throw new Error('No se pudo recuperar la tarjeta eQSL original para archivarla.');
   const record = JSON.parse(await data.text());
   const card = record?.card;
   if (!card || String(card.to || '').trim().toUpperCase() !== recipient ||
-      String(card.from || '').trim().toUpperCase() !== sender ||
+      String(card.from || '').trim().toUpperCase() !== senderStation ||
       stationType(card.from) !== expectedType || stationType(card.to) !== expectedType) {
     throw new Error('La tarjeta eQSL no coincide con las estaciones de la entrega.');
   }
   const { error: archiveError } = await cfg.admin.from('community_profile_eqsl_gallery').upsert({
     recipient_callsign: recipient,
-    sender_callsign: sender,
+    sender_callsign: senderStation,
     station_type: expectedType,
     source_share_id: id,
     card,
@@ -159,7 +159,7 @@ export default async function handler(req, res) {
       if (recipient === 'LU1TSB/4RC978') return json(res, 403, { error: 'La identidad técnica no recibe eQSL ordinarias.' });
       const mailbox = recipient;
       const items = await readInbox(recipient, cfg);
-      await archiveReceivedCard(id, recipient, sender, expectedType, cfg);
+      await archiveReceivedCard(id, recipient, senderStation, expectedType, cfg);
       if (!items.some(item => item.id === id)) {
         items.unshift({
           id,
