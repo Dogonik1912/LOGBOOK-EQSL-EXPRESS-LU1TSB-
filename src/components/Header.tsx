@@ -244,6 +244,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
   const [isInstalled, setIsInstalled] = useState(false);
   const [appUserCount, setAppUserCount] = useState<number | null>(null);
+  const [onlineUserCount, setOnlineUserCount] = useState<number>(0);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
   const shareUrl = 'https://logbook-eqsl-express-lu-1-tsb.vercel.app/';
@@ -525,6 +526,38 @@ export const Header: React.FC<HeaderProps> = ({
     void registerInstallation();
     return () => { cancelled = true; };
   }, []);
+  // Observe the shared Realtime Presence channel used by CommunityChat.
+  // Count distinct callsigns, not tabs/devices, and keep the registered-user
+  // counter above independent from the live online count.
+  useEffect(() => {
+    if (!supabase) {
+      setOnlineUserCount(0);
+      return;
+    }
+    let active = true;
+    const presenceChannel = supabase.channel('logbook-community-presence');
+    const refreshOnlineCount = () => {
+      if (!active) return;
+      const state = presenceChannel.presenceState() as Record<string, Array<{ callsign?: string }>>;
+      const uniqueCallsigns = new Set<string>();
+      Object.values(state).flat().forEach((entry) => {
+        const callsign = String(entry?.callsign || '').trim().toUpperCase();
+        if (callsign) uniqueCallsigns.add(callsign);
+      });
+      setOnlineUserCount(uniqueCallsigns.size);
+    };
+    presenceChannel.on('presence', { event: 'sync' }, refreshOnlineCount);
+    presenceChannel.on('presence', { event: 'join' }, refreshOnlineCount);
+    presenceChannel.on('presence', { event: 'leave' }, refreshOnlineCount);
+    presenceChannel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') refreshOnlineCount();
+    });
+    return () => {
+      active = false;
+      void supabase?.removeChannel(presenceChannel);
+    };
+  }, []);
+
 
   const handleInstall = () => {
     if (isInstalled) {
@@ -636,6 +669,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="mt-1 flex min-h-5 w-full items-center justify-center gap-2 bg-slate-700/80 py-0.5 text-[11px] leading-tight">
           <span className="font-semibold tracking-wide text-sky-300">USUARIOS</span>
           <span className="font-bold tabular-nums text-white" aria-live="polite">{appUserCount === null ? '—' : appUserCount.toLocaleString('es-ES')}</span>
+          <span className="mx-1 h-3 w-px bg-slate-400/60" aria-hidden="true" />
+          <span className="font-semibold tracking-wide text-emerald-300">EN LÍNEA</span>
+          <span className="inline-flex items-center gap-1 font-bold tabular-nums text-white" aria-live="polite">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+            {onlineUserCount.toLocaleString('es-ES')}
+          </span>
         </div>
       </div>
     </header>
