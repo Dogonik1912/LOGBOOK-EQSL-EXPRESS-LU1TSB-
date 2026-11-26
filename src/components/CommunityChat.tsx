@@ -295,34 +295,63 @@ export const CommunityChat: React.FC = () => {
       window.dispatchEvent(new CustomEvent('logbook-online-user-count', { detail: { count: 0 } }));
       return;
     }
+
     let active = true;
-    const presenceChannel = supabase.channel('logbook-community-presence', {
-      config: { presence: { key: identityToken } },
-    });
-    const refreshOnlineUsers = () => {
-      if (!active) return;
-      const state = presenceChannel.presenceState() as Record<string, Array<{ callsign?: string; identityToken?: string }>>;
-      const unique = new Map<string, OnlineUser>();
-      Object.values(state).flat().forEach((entry) => {
-        const clean = String(entry?.callsign || '').trim().toUpperCase();
-        if (clean) unique.set(clean, { callsign: clean, identityToken: entry.identityToken });
-      });
-      setOnlineUsers(Array.from(unique.values()).sort((a, b) => a.callsign.localeCompare(b.callsign)));
-      window.dispatchEvent(new CustomEvent('logbook-online-user-count', { detail: { count: unique.size } }));
-    };
-    presenceChannel.on('presence', { event: 'sync' }, refreshOnlineUsers);
-    presenceChannel.on('presence', { event: 'join' }, refreshOnlineUsers);
-    presenceChannel.on('presence', { event: 'leave' }, refreshOnlineUsers);
-    presenceChannel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED' && active) {
-        await presenceChannel.track({ callsign: (activeCallsign || callsign).trim().toUpperCase(), identityToken });
-        refreshOnlineUsers();
+    let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const connectPresence = async () => {
+      // React StrictMode and fast identity changes can briefly leave the previous
+      // channel registered. Remove it before creating/reusing this topic, otherwise
+      // Realtime may return an already-subscribed channel that rejects new callbacks.
+      const previousChannels = supabase.getChannels().filter(
+        (channel) => channel.topic === 'realtime:logbook-community-presence'
+      );
+      if (previousChannels.length) {
+        await Promise.all(previousChannels.map((channel) => supabase.removeChannel(channel)));
       }
-    });
+      if (!active) return;
+
+      const channel = supabase.channel('logbook-community-presence', {
+        config: { presence: { key: identityToken } },
+      });
+      presenceChannel = channel;
+
+      const refreshOnlineUsers = () => {
+        if (!active) return;
+        const state = channel.presenceState() as Record<string, Array<{ callsign?: string; identityToken?: string }>>;
+        const unique = new Map<string, OnlineUser>();
+        Object.values(state).flat().forEach((entry) => {
+          const clean = String(entry?.callsign || '').trim().toUpperCase();
+          if (clean) unique.set(clean, { callsign: clean, identityToken: entry.identityToken });
+        });
+        setOnlineUsers(Array.from(unique.values()).sort((a, b) => a.callsign.localeCompare(b.callsign)));
+        window.dispatchEvent(new CustomEvent('logbook-online-user-count', { detail: { count: unique.size } }));
+      };
+
+      // All Presence callbacks are registered before subscribe().
+      channel
+        .on('presence', { event: 'sync' }, refreshOnlineUsers)
+        .on('presence', { event: 'join' }, refreshOnlineUsers)
+        .on('presence', { event: 'leave' }, refreshOnlineUsers)
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED' && active) {
+            await channel.track({ callsign: (activeCallsign || callsign).trim().toUpperCase(), identityToken });
+            refreshOnlineUsers();
+          }
+        });
+    };
+
+    void connectPresence();
+
     return () => {
       active = false;
-      void presenceChannel.untrack();
-      void supabase?.removeChannel(presenceChannel);
+      const channelToRemove = presenceChannel;
+      if (channelToRemove) {
+        void (async () => {
+          await channelToRemove.untrack();
+          await supabase.removeChannel(channelToRemove);
+        })();
+      }
     };
   }, [activeCallsign, callsign, identityToken]);
 
