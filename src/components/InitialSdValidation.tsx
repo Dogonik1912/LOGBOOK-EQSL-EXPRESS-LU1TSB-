@@ -197,7 +197,7 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
           }
           return;
         }
-        const { data: isBlocked, error: blockError } = await supabase.rpc('community_is_blocked', { p_callsign: savedCall });
+        const { data: isBlocked, error: blockError } = await client.rpc('community_is_blocked', { p_callsign: savedCall });
         if (!active) return;
         if (blockError) {
           setCallsign(savedCall);
@@ -280,7 +280,8 @@ export const InitialSdValidation: React.FC<{ children: React.ReactNode }> = ({ c
   // Al volver internet, comprobar restricciones de nuevo sin bloquear el acceso
   // al Libro de Guardia por errores transitorios de red.
   useEffect(() => {
-    if (!ready || !callsign || !supabase) return;
+    const client = supabase;
+    if (!ready || !callsign || !client) return;
     let active = true;
     const recheckRestrictions = async () => {
       if (!navigator.onLine) return;

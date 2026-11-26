@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QSO } from '../types';
 import { getFirma, getUserCallsign } from '../services/qrzService';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';

@@ -571,12 +571,13 @@ export const PropagationReport: React.FC = () => {
   }, [open, stationIdentity.selectedCallsign, stationIdentity.selectedType]);
 
   useEffect(() => {
-    if (!open || !supabase) return;
+    const client = supabase;
+    if (!open || !client) return;
     let active = true;
     const loadLiveContacts = async () => {
       const [spotsResult, gridsResult] = await Promise.all([
-        supabase.from('live_qso_spots').select('spot_key,callsign,station_callsign,band,frequency,mode,qso_date,qso_time,created_at,country').order('created_at', { ascending: false }).limit(200),
-        supabase.from('live_spot_grid_locators').select('callsign,grid_locator'),
+        client.from('live_qso_spots').select('spot_key,callsign,station_callsign,band,frequency,mode,qso_date,qso_time,created_at,country').order('created_at', { ascending: false }).limit(200),
+        client.from('live_spot_grid_locators').select('callsign,grid_locator'),
       ]);
       if (!active) return;
       if (spotsResult.error) console.warn('No se pudieron cargar los contactos del mapa:', spotsResult.error.message);
@@ -592,12 +593,12 @@ export const PropagationReport: React.FC = () => {
       setLiveMapClock(Date.now());
     };
     void loadLiveContacts();
-    const channel = supabase.channel('propagation-live-qso-map')
+    const channel = client.channel('propagation-live-qso-map')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_qso_spots' }, () => { void loadLiveContacts(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_spot_grid_locators' }, () => { void loadLiveContacts(); })
       .subscribe();
     const poll = window.setInterval(() => { void loadLiveContacts(); setLiveMapClock(Date.now()); }, 60000);
-    return () => { active = false; window.clearInterval(poll); void supabase.removeChannel(channel); };
+    return () => { active = false; window.clearInterval(poll); void client.removeChannel(channel); };
   }, [open]);
   const ownGeo=maidenheadToLatLon(stationIdentity.grid);
   const ownCountry=countryForCallsign(stationIdentity.selectedCallsign,undefined,stationIdentity.selectedType==='11m');

@@ -236,14 +236,15 @@ export const CommunityChat: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
+    const client = supabase;
+    if (!client) {
       setMessages([]);
       return;
     }
     let active = true;
     const loadMessages = async () => {
       setError('');
-      const { data, error: loadError } = await supabase
+      const { data, error: loadError } = await client
         .from('community_messages')
         .select('id,user_id,callsign,body,reply_to_callsign,created_at')
         .order('created_at', { ascending: true })
@@ -326,14 +327,15 @@ export const CommunityChat: React.FC = () => {
   // Load shared profile photos for the callsigns visible in the community chat.
   const profileCallsignKey = Array.from(new Set(messages.map((message) => message.callsign.trim().toUpperCase()).filter(Boolean))).join('|');
   useEffect(() => {
-    if (!supabase || !profileCallsignKey) {
+    const client = supabase;
+    if (!client || !profileCallsignKey) {
       setProfilePhotos({});
       return;
     }
     let active = true;
     const loadProfilePhotos = async () => {
       const requested = profileCallsignKey.split('|');
-      const { data, error: photoError } = await supabase.rpc('community_profile_photos', { p_callsigns: requested });
+      const { data, error: photoError } = await client.rpc('community_profile_photos', { p_callsigns: requested });
       if (!active || photoError) return;
       const next: Record<string, string> = {};
       (data || []).forEach((row: { callsign: string; photo_data_url: string }) => {

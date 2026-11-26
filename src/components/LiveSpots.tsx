@@ -171,7 +171,7 @@ const SpotDistanceMap: React.FC<SpotMapProps> = ({ spot, firstGrid, secondGrid, 
       </footer>
     </section>
   </div>
-  {shareOpen && points && km !== null && <DistanceShareModal onClose={() => setShareOpen(false)} captureElement={() => shareCaptureRef.current} firstCallsign={spot.callsign} secondCallsign={spot.station_callsign} distanceKm={km} llotaReference={spot.llota_reference || undefined} llotaReferenceName={spot.llota_reference_name || undefined} privateRecipients={[privateRecipient]} defaultPrivateRecipient={privateRecipient} />}
+  {shareOpen && points && km !== null && <DistanceShareModal onClose={() => setShareOpen(false)} captureElement={() => shareCaptureRef.current} firstCallsign={spot.callsign} secondCallsign={spot.station_callsign} distanceKm={km} llotaReference={spot.llota_reference || undefined} llotaReferenceName={spot.llota_reference_name || undefined} radioRecipients={isElevenMeterSpot(spot.band, spot.frequency) ? [] : [privateRecipient]} elevenMeterRecipients={isElevenMeterSpot(spot.band, spot.frequency) ? [privateRecipient] : []} defaultPrivateRecipient={privateRecipient} />}
   </>;
 };
 
@@ -341,13 +341,14 @@ export const LiveSpots: React.FC = () => {
   useEffect(() => {
     void loadSpots();
     void loadGridLocators();
-    if (!supabase) return;
-    const channel = supabase.channel('live-qso-spots-feed')
+    const client = supabase;
+    if (!client) return;
+    const channel = client.channel('live-qso-spots-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_qso_spots' }, () => { void loadSpots(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_spot_grid_locators' }, () => { void loadGridLocators(); })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_qso_spot_weekly_winners' }, () => { void loadWeeklyWinnerAndVotes(); })
       .subscribe((status) => setConnected(status === 'SUBSCRIBED'));
-    return () => { void supabase.removeChannel(channel); };
+    return () => { void client.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
@@ -412,7 +413,7 @@ export const LiveSpots: React.FC = () => {
         <span className="inline-flex items-center gap-1 font-bold text-amber-300"><Heart className="h-4 w-4 fill-rose-500 text-rose-500" /> {weeklyWinner.votes} votos</span>
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-mono text-base font-extrabold leading-snug text-white">
-        <span>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign}</span>
+        <span>{flagForCallsign(weeklyWinner.callsign, weeklyWinner.country || undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.callsign}</span>
         <span className="text-amber-300">↔</span>
         <span>{flagForCallsign(weeklyWinner.station_callsign, undefined, isElevenMeterSpot(weeklyWinner.band, weeklyWinner.frequency))} {weeklyWinner.station_callsign}</span>
       </div>
@@ -447,7 +448,7 @@ export const LiveSpots: React.FC = () => {
     {!loading && !errorMessage && allSpots.length>0 && filteredSpots.length===0 && <p className="px-4 py-4 text-sm text-slate-400">No hay spots que coincidan con los filtros elegidos. Marca «Ver todo» para mostrar toda la actividad.</p>}
     {filteredSpots.length > 0 && <div className="max-h-[30rem] overflow-y-auto overscroll-contain divide-y divide-slate-800">{filteredSpots.map(spot => <article key={spot.spot_key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5">
       <div className="min-w-[3.5rem] text-center"><button type="button" onClick={() => setMapSpot(spot)} title="Abrir mapa y ver distancia en km y millas" className="inline-flex min-h-8 min-w-[3.5rem] items-center justify-center rounded-md border border-cyan-500/60 bg-slate-900 px-1.5 py-1 text-sm font-extrabold leading-none text-cyan-200 shadow-sm">{distanceForSpot(spot.callsign, gridLocators[spot.callsign], spot.country || countryForCallsign(spot.callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), spot.station_callsign, gridLocators[spot.station_callsign], countryForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency)), countryUsesMiles(countryForCallsign(adminCallsign, undefined, /^\\d/.test(adminCallsign))))}</button></div>
-      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100"><button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : spot.country, isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div>{spot.llota_reference && <div className="mt-0.5 text-[10px] font-bold leading-4 text-cyan-300">🌊 LLOTA · {spot.llota_reference}{spot.llota_reference_name ? ' — ' + spot.llota_reference_name : ''}</div>}</div>
+      <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 font-mono text-xs font-bold text-slate-100"><button type="button" onClick={() => openPrivateMessage(spot.callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.callsign}`}>{flagForCallsign(spot.callsign, isElevenMeterSpot(spot.band, spot.frequency) ? undefined : (spot.country || undefined), isElevenMeterSpot(spot.band, spot.frequency))} {spot.callsign}</button><span className="text-slate-500">↔</span><button type="button" onClick={() => openPrivateMessage(spot.station_callsign)} className="rounded underline decoration-dotted underline-offset-2 hover:text-cyan-300" title={`Escribir mensaje privado a ${spot.station_callsign}`}>{flagForCallsign(spot.station_callsign, undefined, isElevenMeterSpot(spot.band, spot.frequency))} {spot.station_callsign}</button></div><div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] leading-4 text-slate-300"><span className="inline-flex items-center gap-1"><Signal className="h-3 w-3" /> {spot.frequency} MHz · {spot.band}</span><span>{spot.mode}</span></div>{spot.llota_reference && <div className="mt-0.5 text-[10px] font-bold leading-4 text-cyan-300">🌊 LLOTA · {spot.llota_reference}{spot.llota_reference_name ? ' — ' + spot.llota_reference_name : ''}</div>}</div>
       <div className="flex items-center gap-1 text-right text-[10px] text-slate-300"><div><div className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{spot.qso_time} UTC</div><div className="leading-3">{spot.qso_date}</div></div><button type="button" aria-label={votedSpotKeys.has(spot.spot_key) ? 'Spot votado' : 'Votar por este spot'} disabled={!adminCallsign || !identityToken || votedSpotKeys.has(spot.spot_key) || votingKey === spot.spot_key || Boolean(votingKey)} onClick={() => void voteForSpot(spot)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:cursor-default" style={{ color: votedSpotKeys.has(spot.spot_key) ? '#ff3040' : '#ffffff' }}><Heart className={`h-4 w-4 ${votedSpotKeys.has(spot.spot_key) ? 'fill-current' : ''}`} strokeWidth={2.2} /></button>{isAdmin && <button type="button" aria-label={`Borrar spot ${spot.callsign}`} title="Borrar este spot" disabled={Boolean(deletingKey) || deletingAll} onClick={() => void deleteSpot(spot)} className="rounded-md p-1.5 text-rose-700 hover:bg-rose-950 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /></button>}</div>
     </article>)}</div>}
     <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2"><span className="text-[10px] text-slate-500">Contactos registrados por operadores · hora UTC.</span><button type="button" onClick={() => { setLoading(true); void loadSpots(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200"><RefreshCw className="h-3.5 w-3.5" /> Actualizar</button></div>

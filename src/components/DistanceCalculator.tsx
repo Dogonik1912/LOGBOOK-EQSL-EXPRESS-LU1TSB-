@@ -245,9 +245,9 @@ const DistanceMap: React.FC<{ origin: Point; destination: Place | null; focusPla
       const ownHas11m = ownIds.some(is11mId);
       const ownHasRadio = ownIds.some(value => !is11mId(value));
       const dualIdentity = ownHas11m && ownHasRadio;
-      const users = Array.from(new Set(result.users
-        .map((item: any) => String(item?.callsign || '').trim().toUpperCase())
-        .filter((callsign: string) => callsign && !ownIds.includes(normalizeId(callsign)) && /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign))));
+      const users: string[] = Array.from(new Set<string>((result.users as Array<{ callsign?: unknown }>)
+        .map((item) => String(item?.callsign || '').trim().toUpperCase())
+        .filter((callsign): callsign is string => Boolean(callsign && !ownIds.includes(normalizeId(callsign)) && /^[A-Z0-9][A-Z0-9/]{2,39}$/.test(callsign)))));
       const radio = users.filter((callsign: string) => !is11mId(callsign)).sort();
       const eleven = users.filter((callsign: string) => is11mId(callsign)).sort();
       setRadioRecipients(ownHasRadio && !dualIdentity ? radio : dualIdentity ? radio : []);

@@ -224,11 +224,11 @@ const FLAGS: Record<string, string> = {
   'Curazao':'🇨🇼','Puerto Rico':'🇵🇷','Islandia':'🇮🇸','Irlanda':'🇮🇪','Austria':'🇦🇹','San Marino':'🇸🇲',
   'República Dominicana':'🇩🇴','Groenlandia':'🇬🇱','Angola':'🇦🇴','Liechtenstein':'🇱🇮','Liberia':'🇱🇷',
   'Sudáfrica':'🇿🇦','Serbia':'🇷🇸','Rusia':'🇷🇺','Andorra':'🇦🇩','Luxemburgo':'🇱🇺','Gibraltar':'🇬🇮',
-  'Finlandia':'🇫🇮','Malasia':'🇲🇾','Guayana Francesa':'🇬🇫','Arabia Saudita':'🇸🇦','El Salvador':'🇸🇻',
+  'Finlandia':'🇫🇮','Malasia':'🇲🇾','Guayana Francesa':'🇬🇫','Arabia Saudita':'🇸🇦',
   'Santa Elena':'🇸🇭','Senegal':'🇸🇳','Sierra Leona':'🇸🇱','Mauritania':'🇲🇷','Costa de Marfil':'🇨🇮',
   'Zimbabue':'🇿🇼','Nepal':'🇳🇵','Yemen':'🇾🇪','Nigeria':'🇳🇬','Namibia':'🇳🇦','Marruecos':'🇲🇦',
   'Ghana':'🇬🇭','Zambia':'🇿🇲','Surinam':'🇸🇷','Samoa Americana':'🇦🇸','Guam':'🇬🇺','Tanzania':'🇹🇿',
-  'Libia':'🇱🇾','Malta':'🇲🇹','Emiratos Árabes Unidos':'🇦🇪','Mongolia':'🇲🇳','Tonga':'🇹🇴','Andorra':'🇦🇩',
+  'Libia':'🇱🇾','Malta':'🇲🇹','Emiratos Árabes Unidos':'🇦🇪','Mongolia':'🇲🇳','Tonga':'🇹🇴',
   'Samoa':'🇼🇸','Hong Kong':'🇭🇰','Indonesia':'🇮🇩'
 };
 

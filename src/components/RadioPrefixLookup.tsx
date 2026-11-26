@@ -84,12 +84,12 @@ export const RadioPrefixLookup: React.FC = () => {
           {query.trim() && results.length === 0 && <p className="py-8 text-center text-sm text-slate-400">No se encontraron coincidencias en la tabla disponible.</p>}
           {results.length > 0 && (
             <div className="space-y-1">
-              {mode === 'ham' ? results.map((entry) => (
+              {mode === 'ham' ? (results as Array<{ prefix: string; country: string }>).map((entry) => (
                 <div key={entry.prefix} className="flex items-center justify-between gap-3 rounded-lg bg-slate-900 px-3 py-2">
                   <span className="font-mono text-base font-black tracking-wide text-cyan-300">{entry.prefix}</span>
                   <span className="text-right text-sm text-slate-100">{entry.country}</span>
                 </div>
-              )) : results.map((entry) => (
+              )) : (results as Array<{ division: string; country: string }>).map((entry) => (
                 <div key={entry.division} className="flex items-center justify-between gap-3 rounded-lg bg-slate-900 px-3 py-2">
                   <span className="min-w-12 rounded-md bg-emerald-900 px-2 py-1 text-center font-mono text-base font-black text-emerald-200">{entry.division}</span>
                   <span className="flex-1 text-right text-sm text-slate-100">{entry.country}</span>

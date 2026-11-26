@@ -180,7 +180,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
           p_token: identityToken,
         }).then(({ data, error }) => {
           setIsAdminActor(!error && verifiedCallsign === 'LU1TSB' && data === 'admin');
-        }).catch(() => setIsAdminActor(false));
+        }, () => setIsAdminActor(false));
       }
       setGridLocator((localStorage.getItem('user_grid_locator') || '').trim().toUpperCase());
       setQraOperator('');
@@ -192,7 +192,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             setQraOperator(String(qraRow?.qra_operator || '').trim());
             setQraOperatorSaved(Boolean(qraRow?.accepted));
           }
-        }).catch(() => {});
+        }, () => {});
       }
       setProfilePhoto(localStorage.getItem('user_profile_photo') || null);
       setCallsign(verifiedOnThisDevice ? verifiedCallsign : (localStorage.getItem('user_callsign') || ''));

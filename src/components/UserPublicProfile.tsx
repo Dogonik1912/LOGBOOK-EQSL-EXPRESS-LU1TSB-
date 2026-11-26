@@ -262,7 +262,7 @@ const GridStationsMap: React.FC<{ callsign: string; grid: string; onClose: () =>
       <footer data-share-ignore className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-700 px-4 py-3"><div className="min-w-0 flex-1">{shareNotice && <p role="status" className="text-xs text-amber-300">{shareNotice}</p>}</div><div className="flex gap-2">{viewerDistanceKm !== null && <button type="button" onClick={() => setShareOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500"><Share2 className="h-4 w-4" />Compartir distancia</button>}<button type="button" onClick={onClose} className="rounded-lg bg-slate-700 px-5 py-2.5 text-sm font-bold">Cerrar</button></div></footer>
     </section>
   </div>
-  {shareOpen && viewerDistanceKm !== null && <DistanceShareModal onClose={() => setShareOpen(false)} captureElement={() => shareCaptureRef.current} firstCallsign={callsign} secondCallsign={viewerCallsign} distanceKm={viewerDistanceKm} privateRecipients={[callsign]} defaultPrivateRecipient={callsign} />}
+  {shareOpen && viewerDistanceKm !== null && <DistanceShareModal onClose={() => setShareOpen(false)} captureElement={() => shareCaptureRef.current} firstCallsign={callsign} secondCallsign={viewerCallsign} distanceKm={viewerDistanceKm} radioRecipients={is11MeterStationIdentifier(callsign) ? [] : [callsign]} elevenMeterRecipients={is11MeterStationIdentifier(callsign) ? [callsign] : []} defaultPrivateRecipient={callsign} />}
   </>;
 };
 

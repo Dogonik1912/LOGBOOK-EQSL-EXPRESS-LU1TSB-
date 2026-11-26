@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, MessageCircle, Download, Smartphone, Share2, Copy, ChevronDown, Thermometer, Droplets, CloudSun, CloudRain, Sun, Cloud, CloudLightning, Snowflake, LoaderCircle, Compass, X } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
-import { getLocalizedShareText, resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
+import { detectBrowserLanguage, getLocalizedShareText, normalizeLanguage, resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
 import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -456,7 +456,7 @@ export const Header: React.FC<HeaderProps> = ({
         }
       }
       setCountry(localStorage.getItem('user_country')?.trim().toLowerCase() || 'argentina');
-      setShareLanguage(getInitialAppLanguage());
+      setShareLanguage(normalizeLanguage(localStorage.getItem('app_language')) || detectBrowserLanguage());
       setHeaderImage(readHeaderImage());
       const nextIcon = localStorage.getItem('app_icon_image') || '';
       setAppIcon(nextIcon);
@@ -570,7 +570,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             ))}
             <LanguageSelector
-              value={shareLanguage}
+              value={shareLanguage === 'auto' ? (normalizeLanguage(localStorage.getItem('app_language')) || detectBrowserLanguage()) : shareLanguage}
               className="min-w-0 max-w-[8.5rem] flex-none sm:max-w-[12rem]"
               onChange={(nextLanguage) => {
                 localStorage.setItem('app_language', nextLanguage);

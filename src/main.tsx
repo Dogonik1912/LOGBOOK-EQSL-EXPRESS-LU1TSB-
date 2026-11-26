@@ -3,10 +3,10 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-type DiagnosticState = { message: string } | null;
+type DiagnosticState = { message: string };
 
 class AppErrorBoundary extends React.Component<React.PropsWithChildren, DiagnosticState> {
-  state: DiagnosticState = null;
+  state: DiagnosticState = { message: '' };
 
   static getDerivedStateFromError(error: unknown): DiagnosticState {
     return {
@@ -19,7 +19,7 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, Diagnost
   }
 
   render() {
-    if (this.state) return <DiagnosticScreen message={this.state.message} />;
+    if (this.state.message) return <DiagnosticScreen message={this.state.message} />;
     return this.props.children;
   }
 }

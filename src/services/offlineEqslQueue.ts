@@ -59,7 +59,7 @@ export const enqueueEqslDelivery = async (cardData: Record<string, unknown>, inb
   const job: EqslDeliveryJob = { id, cardData, inboxData, status, attempts: 0, createdAt: new Date().toISOString() };
   await transact<void>('readwrite', (store, resolve, reject) => {
     const request = store.add(job);
-    request.onsuccess = () => resolve(undefined as T);
+    request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(new Error('No se pudo guardar la eQSL pendiente en este dispositivo.'));
   });
   changed();
@@ -68,13 +68,13 @@ export const enqueueEqslDelivery = async (cardData: Record<string, unknown>, inb
 
 const updateJob = async (job: EqslDeliveryJob) => transact<void>('readwrite', (store, resolve, reject) => {
   const request = store.put(job);
-  request.onsuccess = () => resolve(undefined as T);
+  request.onsuccess = () => resolve(undefined);
   request.onerror = () => reject(new Error('No se pudo actualizar el envío eQSL.'));
 });
 
 const removeJob = async (id: string) => transact<void>('readwrite', (store, resolve, reject) => {
   const request = store.delete(id);
-  request.onsuccess = () => resolve(undefined as T);
+  request.onsuccess = () => resolve(undefined);
   request.onerror = () => reject(new Error('No se pudo retirar el envío confirmado.'));
 });
 

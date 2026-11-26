@@ -201,13 +201,14 @@ export const PrivateMessages: React.FC = () => {
   ].map((value) => (value || '').trim().toUpperCase()).filter(Boolean))).sort().join('|');
 
   useEffect(() => {
-    if (!supabase || !photoCallsigns) {
+    const client = supabase;
+    if (!client || !photoCallsigns) {
       setProfilePhotos({});
       return;
     }
     let active = true;
     const loadPhotos = async () => {
-      const { data, error: photoError } = await supabase.rpc('community_profile_photos', {
+      const { data, error: photoError } = await client.rpc('community_profile_photos', {
         p_callsigns: photoCallsigns.split('|'),
       });
       if (!active || photoError) return;
