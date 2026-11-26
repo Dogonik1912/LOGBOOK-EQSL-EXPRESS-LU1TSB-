@@ -63,12 +63,12 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
   const [pendingNext,setPendingNext]=useState(false);
   const playback=useRef<{ctx:AudioContext;osc:OscillatorNode}|null>(null);
   const [sessionRunning,setSessionRunning]=useState(false);
-  const [sessionSeconds,setSessionSeconds]=useState(0);
+  const [sessionSeconds,setSessionSeconds]=useState(()=>Number(localStorage.getItem('morse_session_seconds_'+(identity||'sin-identidad')))||0);
   const [sessionCount,setSessionCount]=useState(0);
   const [sessionTotalSeconds,setSessionTotalSeconds]=useState(0);
   const [sessionMessage,setSessionMessage]=useState('');
   const [sessionSyncError,setSessionSyncError]=useState(false);
-  const sessionId=useRef<string|null>(null);
+  const sessionId=useRef<string|null>(localStorage.getItem('morse_session_id_'+(identity||'sin-identidad')));
   const sessionFinished=useRef(false);
   const identityToken=typeof window!=='undefined'?localStorage.getItem('community_chat_identity_token')||'':'';
   const output=encode(text);
@@ -216,10 +216,10 @@ export function MorseTextTrainer({language='es',activeCallsign=''}:Props) {
         <div><p className="text-sm font-bold text-slate-800">{es?'Aprende Morse: dedica 10 minutos al día':'Learn Morse: practise 10 minutes a day'}</p><p className="text-xs text-slate-600">{es?'Sesiones completadas':'Completed sessions'}: <strong>{sessionCount}</strong> · {es?'Tiempo acumulado':'Total practice'}: {Math.floor(sessionTotalSeconds/60)} min</p></div>
         <div className="text-right"><div className="font-mono text-2xl font-black text-cyan-800">{String(Math.floor((600-sessionSeconds)/60)).padStart(2,'0')}:{String((600-sessionSeconds)%60).padStart(2,'0')}</div><p className="text-[10px] text-slate-500">{sessionRunning?(es?'Sesión en curso':'Session in progress'):(sessionSeconds>=600?(es?'Sesión completada':'Session completed'):(es?'10 minutos por sesión':'10 minutes per session'))}</p></div>
       </div>
-      {!sessionRunning&&sessionSeconds<600&&<button type="button" disabled={!identity||!identityToken||!supabase} onClick={startPracticeSession} className="mt-2 w-full rounded-lg bg-emerald-600 px-4 py-2.5 font-bold text-white disabled:opacity-40">{sessionSeconds>0?(es?'Reanudar sesión':'Resume session'):(es?'Comenzar sesión de 10 minutos':'Start 10-minute session')}</button>}
+      {!sessionRunning&&<button type="button" disabled={!identity||!identityToken||!supabase} onClick={startPracticeSession} className="mt-2 w-full rounded-lg bg-emerald-600 px-4 py-2.5 font-bold text-white disabled:opacity-40">{sessionSeconds>=600?(es?'Comenzar otra sesión':'Start another session'):sessionSeconds>0?(es?'Reanudar sesión':'Resume session'):(es?'Comenzar sesión de 10 minutos':'Start 10-minute session')}</button>}
       {sessionRunning&&<p className="mt-2 text-xs text-emerald-700">{es?'El tiempo cuenta mientras el curso está visible. Si cambias al conversor o sales de la página, se pausa.':'Time counts while the course is visible. Switching to the converter or leaving the page pauses it.'}</p>}
       {sessionMessage&&<p role="status" className="mt-2 rounded-lg bg-emerald-50 p-2 text-sm font-semibold text-emerald-800">{sessionMessage}</p>}
-      {sessionSyncError&&<p role="status" className="mt-2 text-xs text-amber-700">{es?'No se pudo sincronizar la sesión. Comprueba la conexión y vuelve a intentarlo.':'The session could not sync. Check your connection and try again.'}</p>}
+      {sessionSyncError&&<div className="mt-2"><p role="status" className="text-xs text-amber-700">{es?'No se pudo sincronizar la sesión. Comprueba la conexión y vuelve a intentarlo.':'The session could not sync. Check your connection and try again.'}</p><button type="button" onClick={()=>void retryPracticeSync()} className="mt-1 rounded-md bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">{es?'Reintentar sincronización':'Retry sync'}</button></div>}
       {!identity&&<p className="mt-2 text-xs text-amber-700">{es?'Selecciona tu identidad para sincronizar las sesiones entre dispositivos.':'Select your identity to sync sessions across devices.'}</p>}
     </div>}
     {mode==='convert'?<div className="space-y-3">
