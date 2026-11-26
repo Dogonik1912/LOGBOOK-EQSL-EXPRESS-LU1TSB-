@@ -52,7 +52,20 @@ export function MorseTextTrainer({language='es'}:Props) {
   };
 
   const newChallenge=()=>{const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';setChallenge(chars[Math.floor(Math.random()*chars.length)]);setAnswer('');setResult('');};
-  const check=()=>setResult(answer.trim().toUpperCase()===challenge?(es?'¡Correcto!':'Correct!'):(es?'No es correcto, vuelve a intentarlo.':'Not quite, try again.'));
+  useEffect(()=>{if(mode==='learn'&&!challenge)newChallenge();},[mode,challenge]);
+  const check=()=>{
+    if(!challenge||!answer.trim())return;
+    const correct=answer.trim().toUpperCase()===challenge;
+    if(correct){
+      setResult(es?'¡Correcto! Muy bien.':'Correct! Well done.');
+    }else{
+      setResult(es?`Incorrecto. La respuesta correcta era ${challenge}.`:`Incorrect. The correct answer was ${challenge}.`);
+      const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const next=chars[Math.floor(Math.random()*chars.length)];
+      setChallenge(next);
+      setAnswer('');
+    }
+  };
 
   return <div className="mb-4 rounded-xl border border-cyan-200 bg-cyan-50/60 p-3">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -78,7 +91,7 @@ export function MorseTextTrainer({language='es'}:Props) {
       <p className="text-xs text-slate-600">{es?'Punto = 1 unidad · Raya = 3 · Entre señales = 1 · Entre letras = 3 · Entre palabras = 7.':'Dot = 1 unit · Dash = 3 · Between signals = 1 · Between letters = 3 · Between words = 7.'}</p>
     </div>:<div className="space-y-3">
       <p className="text-sm text-slate-700">{es?'Descubre qué letra o número representa esta señal:':'Find the letter or number represented by this signal:'}</p>
-      <div className="rounded-lg bg-slate-950 p-4 text-center font-mono text-3xl tracking-[0.25em] text-emerald-300">{challenge?MORSE[challenge]:'· · ·'}</div>
+      <div className="rounded-lg bg-slate-950 p-4 text-center font-mono text-3xl tracking-[0.25em] text-emerald-300">{challenge?MORSE[challenge]:'—'}</div>
       <div className="flex gap-2">
         <input value={answer} onChange={e=>setAnswer(e.target.value)} maxLength={1} placeholder="?" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white p-2 text-center text-lg uppercase text-slate-900"/>
         <button type="button" onClick={check} disabled={!challenge||!answer.trim()} className="rounded-lg bg-cyan-700 px-4 py-2 font-semibold text-white disabled:opacity-40">{es?'Comprobar':'Check'}</button>
