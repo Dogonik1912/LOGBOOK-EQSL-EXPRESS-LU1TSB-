@@ -290,7 +290,8 @@ export const CommunityChat: React.FC = () => {
   // Publish presence only while the visitor has a saved callsign. Supabase Realtime
   // Presence provides a shared online roster without adding a registration flow.
   useEffect(() => {
-    if (!supabase || !(activeCallsign || callsign).trim() || !identityToken) {
+    const client = supabase;
+    if (!client || !(activeCallsign || callsign).trim() || !identityToken) {
       setOnlineUsers([]);
       window.dispatchEvent(new CustomEvent('logbook-online-user-count', { detail: { count: 0 } }));
       return;
@@ -303,15 +304,15 @@ export const CommunityChat: React.FC = () => {
       // React StrictMode and fast identity changes can briefly leave the previous
       // channel registered. Remove it before creating/reusing this topic, otherwise
       // Realtime may return an already-subscribed channel that rejects new callbacks.
-      const previousChannels = supabase.getChannels().filter(
+      const previousChannels = client.getChannels().filter(
         (channel) => channel.topic === 'realtime:logbook-community-presence'
       );
       if (previousChannels.length) {
-        await Promise.all(previousChannels.map((channel) => supabase.removeChannel(channel)));
+        await Promise.all(previousChannels.map((channel) => client.removeChannel(channel)));
       }
       if (!active) return;
 
-      const channel = supabase.channel('logbook-community-presence', {
+      const channel = client.channel('logbook-community-presence', {
         config: { presence: { key: identityToken } },
       });
       presenceChannel = channel;
@@ -349,7 +350,7 @@ export const CommunityChat: React.FC = () => {
       if (channelToRemove) {
         void (async () => {
           await channelToRemove.untrack();
-          await supabase.removeChannel(channelToRemove);
+          await client.removeChannel(channelToRemove);
         })();
       }
     };
