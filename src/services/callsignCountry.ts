@@ -619,14 +619,14 @@ const HAM_PREFIX_COUNTRY: Record<string, string> = {
 function hamCallsignPrefix(call: string): string | undefined {
   return Object.keys(HAM_PREFIX_COUNTRY)
     .sort((a, b) => b.length - a.length)
-    .find((key) => call.startsWith(key) && /^\\d/.test(call.slice(key.length)));
+    .find((key) => call.startsWith(key) && /^\d/.test(call.slice(key.length)));
 }
 
 export function is11MeterStationIdentifier(identifier: string): boolean {
   const normalized = String(identifier || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!normalized) return false;
   if (hamCallsignPrefix(normalized)) return false;
-  return /^\\d{1,3}[A-Z]/.test(normalized);
+  return /^\d{1,3}[A-Z]/.test(normalized);
 }
 
 export function countryForCallsign(callsign: string, savedCountry?: string, is11m = false): string {
@@ -640,9 +640,9 @@ export function countryForCallsign(callsign: string, savedCountry?: string, is11
 
   // Los identificadores numéricos se interpretan como 11 metros cuando el contexto
   // lo confirma o cuando no existe otro dato de banda.
-  const numericCall = /^\\d/.test(call);
+  const numericCall = /^\d/.test(call);
   if (is11m || numericCall) {
-    const match = call.match(/^(\\d{1,3})/);
+    const match = call.match(/^(\d{1,3})/);
     if (match) {
       const division = match[1];
       if (DIVISION_COUNTRY[division]) return DIVISION_COUNTRY[division];
