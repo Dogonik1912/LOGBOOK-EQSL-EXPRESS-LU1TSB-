@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://logbook-eqsl-express-lu-1-tsb.vercel.app/sitemap.xml
