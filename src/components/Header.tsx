@@ -392,6 +392,10 @@ export const Header: React.FC<HeaderProps> = ({
   const [callsign, setCallsign] = useState(() => readCallsign());
   const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
   const [activeIdentityCallsign, setActiveIdentityCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || readCallsign() || localStorage.getItem('user_callsign') || '').trim().toUpperCase());
+  const [deviceSyncStatus, setDeviceSyncStatus] = useState<'checking' | 'authorized' | 'needs_sync' | 'no_account'>('checking');
+  const [deviceSyncCode, setDeviceSyncCode] = useState('');
+  const [deviceSyncBusy, setDeviceSyncBusy] = useState(false);
+  const [deviceSyncNotice, setDeviceSyncNotice] = useState('');
   const chooseGlobalIdentity = (next: string) => {
     const selected = accountIdentities.find((item) => item.callsign === next);
     if (!selected) return;
@@ -422,9 +426,17 @@ export const Header: React.FC<HeaderProps> = ({
     let active = true;
     const loadAccountIdentities = async () => {
       const token = localStorage.getItem('community_chat_identity_token') || '';
+      const root = (readCallsign() || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
       if (!supabase || !token) return;
+      if (root) {
+        const { data: syncData } = await supabase.rpc('community_device_sync_status', { p_callsign: root, p_token: token });
+        if (!active) return;
+        const status = String(syncData?.status || 'no_account');
+        setDeviceSyncStatus(status === 'needs_sync' ? 'needs_sync' : status === 'authorized' ? 'authorized' : 'no_account');
+      }
       const { data, error } = await supabase.rpc('community_account_identities', { p_token: token });
-      if (!active || error || !Array.isArray(data)) return;
+      if (!active) return;
+      if (error || !Array.isArray(data)) return;
       const options: AccountIdentity[] = data
         .filter((item: any) => item && typeof item.callsign === 'string')
         .map((item: any) => ({
@@ -433,6 +445,7 @@ export const Header: React.FC<HeaderProps> = ({
           is_primary: item.is_primary === true,
         }));
       setAccountIdentities(options);
+      if (options.length) setDeviceSyncStatus('authorized');
       if (!options.length) return;
       const stored = (localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
       const selected = options.find((item) => item.callsign === stored) || options.find((item) => item.is_primary) || options[0];
@@ -464,6 +477,55 @@ export const Header: React.FC<HeaderProps> = ({
       window.removeEventListener('storage', onProfileUpdated);
     };
   }, []);
+
+  const requestDeviceSync = async () => {
+    const root = (readCallsign() || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+    const token = localStorage.getItem('community_chat_identity_token') || '';
+    if (!supabase || !root || !token || deviceSyncBusy) return;
+    setDeviceSyncBusy(true);
+    setDeviceSyncNotice('');
+    const { data, error } = await supabase.rpc('request_community_device_sync', { p_callsign: root, p_new_token: token });
+    setDeviceSyncBusy(false);
+    if (error || !data?.ok) {
+      const reason = data?.reason;
+      setDeviceSyncNotice(reason === 'trusted_device_unavailable'
+        ? 'No se encontró el dispositivo autorizado principal. Abrí LogBook en ese equipo y volvé a intentar.'
+        : reason === 'already_authorized'
+          ? 'Este dispositivo ya está sincronizado. Actualizando identidades…'
+          : 'No se pudo enviar la solicitud. Comprobá que el otro dispositivo autorizado esté disponible.');
+      if (reason === 'already_authorized') window.dispatchEvent(new Event('user-profile-updated'));
+      return;
+    }
+    setDeviceSyncNotice('Solicitud enviada. Abrí Mensajes privados en el otro dispositivo y buscá el aviso de sincronización.');
+  };
+
+  const redeemDeviceSync = async () => {
+    const root = (readCallsign() || localStorage.getItem('user_callsign') || '').trim().toUpperCase();
+    const token = localStorage.getItem('community_chat_identity_token') || '';
+    const code = deviceSyncCode.trim().toUpperCase();
+    if (!supabase || !root || !token || !/^[A-F0-9]{8}$/.test(code) || deviceSyncBusy) return;
+    setDeviceSyncBusy(true);
+    setDeviceSyncNotice('');
+    const { data, error } = await supabase.rpc('redeem_community_device_sync', {
+      p_callsign: root, p_code: code, p_new_token: token,
+    });
+    setDeviceSyncBusy(false);
+    if (error || !data?.ok || typeof data?.identity_token !== 'string') {
+      const reason = data?.reason;
+      setDeviceSyncNotice(reason === 'expired_or_invalid' || reason === 'invalid_code'
+        ? 'El código no es válido o venció. Generá una nueva solicitud desde este dispositivo.'
+        : 'No se pudo completar la sincronización. No se modificó ningún dispositivo anterior.');
+      return;
+    }
+    localStorage.setItem('community_chat_identity_token', data.identity_token);
+    localStorage.setItem('community_chat_sd', root);
+    localStorage.setItem('community_chat_active_callsign', root);
+    setDeviceSyncCode('');
+    setDeviceSyncStatus('authorized');
+    setDeviceSyncNotice('Dispositivo sincronizado. Recuperando tus identidades…');
+    window.dispatchEvent(new CustomEvent('community-identity-token-updated', { detail: { token: data.identity_token } }));
+    window.dispatchEvent(new Event('user-profile-updated'));
+  };
 
   useEffect(() => {
     const syncCallsign = async () => {
@@ -627,6 +689,18 @@ export const Header: React.FC<HeaderProps> = ({
                 ))}
               </span>
             ))}
+            {deviceSyncStatus === 'needs_sync' && (readCallsign() || localStorage.getItem('user_callsign')) && (
+              <div className="flex max-w-[14rem] flex-col gap-1 rounded-lg border border-amber-400/70 bg-slate-950 p-1.5 text-white" aria-label="Sincronización de dispositivos">
+                <button type="button" disabled={deviceSyncBusy} onClick={() => void requestDeviceSync()} className="rounded-md bg-amber-600 px-2 py-1.5 text-[10px] font-bold text-white disabled:opacity-50">
+                  {deviceSyncBusy ? 'Procesando…' : 'Sincronizar sus dispositivos'}
+                </button>
+                <div className="flex gap-1">
+                  <input value={deviceSyncCode} onChange={(event) => setDeviceSyncCode(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0,8))} maxLength={8} placeholder="Código de 8 caracteres" aria-label="Código recibido en mensajes privados" className="min-w-0 w-full rounded border border-slate-600 bg-slate-900 px-1.5 py-1 font-mono text-[10px] tracking-widest text-white" />
+                  <button type="button" disabled={deviceSyncBusy || deviceSyncCode.length !== 8} onClick={() => void redeemDeviceSync()} className="rounded bg-emerald-700 px-2 py-1 text-[10px] font-bold disabled:opacity-40">Vincular</button>
+                </div>
+                {deviceSyncNotice && <p role="status" className="text-[10px] leading-tight text-amber-100">{deviceSyncNotice}</p>}
+              </div>
+            )}
             <LanguageSelector
               value={shareLanguage === 'auto' ? (normalizeLanguage(localStorage.getItem('app_language')) || detectBrowserLanguage()) : shareLanguage}
               className="min-w-0 max-w-[8.5rem] flex-none sm:max-w-[12rem]"
