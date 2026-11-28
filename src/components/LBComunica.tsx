@@ -108,6 +108,7 @@ export const LBComunica: React.FC = () => {
   const [playingIndex, setPlayingIndex] = useState(-1);
   const [playAll, setPlayAll] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0.08);
+  const meterFrameRef = useRef<number | null>(null);
   const [rfGain,setRfGain]=useState(()=>Number(localStorage.getItem('lb_radio_rf_gain')||80));
   const [micGain,setMicGain]=useState(()=>Number(localStorage.getItem('lb_radio_mic_gain')||70));
   const [squelch,setSquelch]=useState(()=>Number(localStorage.getItem('lb_radio_squelch')||0));
@@ -312,8 +313,8 @@ export const LBComunica: React.FC = () => {
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;}
         const samples=new Uint8Array(analyser.fftSize);
-        let voiceOpen=false;
-        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
+        let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
+        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const now=performance.now();const target=Math.min(1,Math.max(0,rms*5.5));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
           noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.018:Math.max(0.022,0.055-level*0.00025)):0,ctx.currentTime,voiceOpen?0.08:0.35);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
@@ -406,6 +407,8 @@ export const LBComunica: React.FC = () => {
     talkingRef.current = false;
     beginningRef.current = false;
     setIsTalking(false);
+    if(meterFrameRef.current!==null){cancelAnimationFrame(meterFrameRef.current);meterFrameRef.current=null;}
+    setMeterLevel(0.04);
     const recorder = recorderRef.current;
     recorderRef.current = null;
     if (recorder && recorder.state !== 'inactive') {
@@ -441,9 +444,14 @@ export const LBComunica: React.FC = () => {
           const source=ctx.createMediaStreamSource(stream);
           const gain=ctx.createGain();
           gain.gain.value=Math.max(0.32,Math.min(2,micGain/70));
+          const meterAnalyser=ctx.createAnalyser();meterAnalyser.fftSize=512;
           const dest=ctx.createMediaStreamDestination();
           source.connect(gain);
-          gain.connect(dest);
+          gain.connect(meterAnalyser);
+          meterAnalyser.connect(dest);
+          const meterSamples=new Uint8Array(meterAnalyser.fftSize);let meterEnvelope=0;let lastMeterUpdate=0;
+          const updateTransmitMeter=()=>{if(micContextRef.current!==ctx)return;meterAnalyser.getByteTimeDomainData(meterSamples);let sum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/meterSamples.length);const target=Math.min(1,Math.max(0,rms*5.5));meterEnvelope+=(target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);const now=performance.now();if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}meterFrameRef.current=requestAnimationFrame(updateTransmitMeter);};
+          meterFrameRef.current=requestAnimationFrame(updateTransmitMeter);
           micContextRef.current=ctx;
           micGainRef.current=gain;
           processedMicRef.current=dest.stream;
@@ -817,7 +825,7 @@ export const LBComunica: React.FC = () => {
                         <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold">RESET</button>
                       </div>
                     </div>
-                    <div className="my-1 w-full flex justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div></div>
+                    <div className="my-1 w-full flex justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={meterLevel} transmitting={isTalking} /></div></div>
                     <div className="grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
                       <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
                       <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
