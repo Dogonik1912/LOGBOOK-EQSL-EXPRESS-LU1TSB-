@@ -862,6 +862,7 @@ export const LBComunica: React.FC = () => {
             ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
             : [];
           if (refreshedServers.length) {
+            iceServersRef.current = refreshedServers;
             pc.setConfiguration({ ...pc.getConfiguration(), iceServers: refreshedServers });
             entry.iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
           }
@@ -1341,8 +1342,18 @@ export const LBComunica: React.FC = () => {
         if (!mounted) return;
         if (status==='SUBSCRIBED') {
           try {
-            // Cada RTCPeerConnection obtiene credenciales ICE frescas al crearse.
+            // Obtener TURN antes de crear los peers: esperar al fallo ICE deja sin audio
+            // a usuarios detrás de NAT restrictivo durante el primer intento.
             iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
+            try {
+              const iceConfig = await api('ice');
+              const initialServers = Array.isArray(iceConfig.iceServers)
+                ? iceConfig.iceServers.filter((server: RTCIceServer) => !!server?.urls)
+                : [];
+              if (initialServers.length) iceServersRef.current = initialServers;
+            } catch (iceError) {
+              console.warn('LB COMUNICACION ICE inicial; se mantiene STUN:', iceError);
+            }
             await channel.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()});
             const consent = await api('consent_status');
             if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
@@ -1447,6 +1458,12 @@ export const LBComunica: React.FC = () => {
     setPlayingIndex(index);
     setPttError('');
     player.pause();
+    // Desbloquear el AudioContext dentro del gesto del usuario, antes de esperar la red.
+    // Si se espera a descargar el archivo, algunos navegadores móviles dejan el contexto suspendido.
+    const playbackContext=playbackContextRef.current;
+    const resumePlayback=playbackContext && playbackContext.state!=='running'
+      ? playbackContext.resume().catch(error=>{console.warn('LB COMUNICACION desbloqueo de reproducción:',error);})
+      : Promise.resolve();
     const start=async()=>{
       try{
         const response=await fetch(item.url,{mode:'cors',cache:'no-store'});
@@ -1460,8 +1477,10 @@ export const LBComunica: React.FC = () => {
         player.src=playbackObjectUrlRef.current;
         player.playbackRate=playbackSpeed;
         player.load();
+        await resumePlayback;
         const ctx=playbackContextRef.current;
-        if(ctx&&ctx.state!=='running')await ctx.resume();
+        if(ctx&&ctx.state!=='running') await ctx.resume();
+        if(ctx&&ctx.state!=='running') throw new Error('El navegador mantiene suspendida la salida de audio.');
         await player.play();
       }catch(error){
         if(request!==playbackRequestRef.current)return;
