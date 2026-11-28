@@ -301,12 +301,19 @@ export const LBComunica: React.FC = () => {
       }
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
-      const oscarItalia=isElevenMeters && Math.random()<0.22;
+      const specialRoll=Math.random();
+      const oscarItalia=isElevenMeters && specialRoll<0.22;
+      const comandante=isElevenMeters && specialRoll>=0.22 && specialRoll<0.38;
       if(oscarItalia){
         const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
         if(italian.length){phrase='Oscar Italia! La stazione più forte del mondo sta chiamando!';language='it-IT';available=italian;}
         else {phrase='¡Oscar Italia! ¡La estación más fuerte del mundo está llamando!';language='es-ES';available=spanish.length?spanish:voices;}
+      } else if(comandante){
+        phrase='¡Atención, atención! Aquí el Comandante. Tonto, es que eres tonto. ¡Te lo digo yo, el Comandante!';
+        language='es-ES';
+        const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
+        available=spanish.length?spanish:voices;
       }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
@@ -315,9 +322,9 @@ export const LBComunica: React.FC = () => {
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
       // La llamada especial tiene más presencia y tono muy grave; el resto permanece lejano.
-      utterance.rate=oscarItalia?0.72:0.76+Math.random()*0.08;
-      utterance.pitch=oscarItalia?0.48:0.68+Math.random()*0.10;
-      utterance.volume=oscarItalia?0.18:0.035+Math.random()*0.015;
+      utterance.rate=(oscarItalia||comandante)?0.72:0.76+Math.random()*0.08;
+      utterance.pitch=oscarItalia?0.48:comandante?0.56:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.18:comandante?0.11:0.035+Math.random()*0.015;
       const next=()=>schedule(26000+Math.random()*52000);
       utterance.onend=next;
       utterance.onerror=next;
