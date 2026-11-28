@@ -224,14 +224,14 @@ export const LBComunica: React.FC = () => {
     n.compressor.knee.setTargetAtTime(audioProfile==='radio'?24:0,now,.08);
     n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?1.6:1,now,.08);
     n.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,now,.04);
-    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,now,.18);
-    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?0.12:0,now,.2);
+    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.070:0.054)-(squelch/100)*(is11MeterStationIdentifier(activeCallsign)?0.00034:0.00030):0,now,.18);
+    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.135:0.12):0,now,.2);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
     let voiceOpen=false;
     const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const threshold=0.0015+(squelch/100)*.018;if(squelch<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;n.gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-squelch*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
-      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
+      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.028:0.022):Math.max(is11MeterStationIdentifier(activeCallsign)?0.034:0.027,(is11MeterStationIdentifier(activeCallsign)?0.080:0.066)-squelch*(is11MeterStationIdentifier(activeCallsign)?0.00034:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
+      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.052:0.045):(is11MeterStationIdentifier(activeCallsign)?0.135:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
       n.gateFrame=requestAnimationFrame(updateGate);};
     n.gateFrame=requestAnimationFrame(updateGate);
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen]);
@@ -441,7 +441,7 @@ export const LBComunica: React.FC = () => {
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
   useEffect(()=>{localStorage.setItem('lb_radio_panel_light',panelLight?'1':'0');},[panelLight]);
   useEffect(()=>{localStorage.setItem('lb_comunica_ptt_mode',pttMode);},[pttMode]);
-  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.noiseGain)entry.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,entry.context?.currentTime||0,.18);if(entry.qrmGain)entry.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?0.12:0,entry.context?.currentTime||0,.2);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
+  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.noiseGain)entry.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(isElevenMeters?0.070:0.054)-(squelch/100)*(isElevenMeters?0.00034:0.00030):0,entry.context?.currentTime||0,.18);if(entry.qrmGain)entry.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(isElevenMeters?0.135:0.12):0,entry.context?.currentTime||0,.2);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
@@ -549,7 +549,7 @@ export const LBComunica: React.FC = () => {
         const rf=ctx.createGain();rf.gain.value=radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32;
         const dest=ctx.createMediaStreamDestination();
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);
-        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);rf.connect(dest);
+        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.070:0.054;qrm.gain.gain.value=isElevenMeters?0.135:0.12;rf.connect(dest);
         audio.srcObject=dest.stream;
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;entry.qrmGain=qrm.gain;entry.qrmSource=qrm.source;}
