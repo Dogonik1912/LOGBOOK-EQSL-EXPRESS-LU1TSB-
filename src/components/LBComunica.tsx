@@ -377,7 +377,16 @@ export const LBComunica: React.FC = () => {
       if (event.data?.type !== 'OPEN_LB_COMUNICA') return;
       const targetRoom = event.data.room === '11m' ? '11m' : event.data.room === 'ham' ? 'ham' : '';
       const savedCallsign = targetRoom ? localStorage.getItem('lb_comunica_push_callsign_' + targetRoom) || '' : '';
-      if (savedCallsign && (is11MeterStationIdentifier(savedCallsign) ? '11m' : 'ham') === targetRoom) openRoom(savedCallsign);
+      const identity = savedCallsign || readCallsign();
+      if (!identity) {
+        const next = new URL(window.location.href);
+        next.searchParams.set('open_lb_register', '1');
+        next.searchParams.delete('open_lb_comunica');
+        window.history.replaceState({}, '', next.pathname + next.search + next.hash);
+        window.dispatchEvent(new CustomEvent('logbook-open-identity-registration'));
+        return;
+      }
+      if ((is11MeterStationIdentifier(identity) ? '11m' : 'ham') === targetRoom) openRoom(identity);
       else openRoom();
     };
     window.addEventListener('message', handlePushOpen);
@@ -385,10 +394,17 @@ export const LBComunica: React.FC = () => {
     const targetRoom = params.get('open_lb_comunica');
     if (targetRoom === 'ham' || targetRoom === '11m') {
       const savedCallsign = localStorage.getItem('lb_comunica_push_callsign_' + targetRoom) || '';
+      const identity = savedCallsign || readCallsign();
       window.setTimeout(() => {
-        if (savedCallsign && (is11MeterStationIdentifier(savedCallsign) ? '11m' : 'ham') === targetRoom) openRoom(savedCallsign);
-        else openRoom();
         params.delete('open_lb_comunica');
+        if (!identity) {
+          params.set('open_lb_register', '1');
+          window.history.replaceState({}, '', window.location.pathname + '?' + params.toString() + window.location.hash);
+          window.dispatchEvent(new CustomEvent('logbook-open-identity-registration'));
+          return;
+        }
+        if ((is11MeterStationIdentifier(identity) ? '11m' : 'ham') === targetRoom) openRoom(identity);
+        else openRoom();
         const query = params.toString();
         window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
       }, 0);
