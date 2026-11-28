@@ -335,7 +335,8 @@ export const LBComunica: React.FC = () => {
       {call:'PY2ABC',country:'Brazil'},
       {call:'JA1ABC',country:'Japan'},
       {call:'VK3ABC',country:'Australia'},
-      {call:'ZS6ABC',country:'South Africa'},\n      {call:'W1YL',country:'United States',female:true},
+      {call:'ZS6ABC',country:'South Africa'},
+      {call:'W1YL',country:'United States',female:true},
       {call:'9A1ABC',country:'Croatia'},
       {call:'OH2ABC',country:'Finland'},
       {call:'CT1ABC',country:'Portugal'},
@@ -369,7 +370,8 @@ export const LBComunica: React.FC = () => {
       {call:'153AT 067',country:'Thailand'},
       {call:'43DX 118',country:'Austria'},
       {call:'16RC 305',country:'Belgium'},
-      {call:'19DX 072',country:'Poland'},\n      {call:'30YL 001',country:'Spain',female:true}
+      {call:'19DX 072',country:'Poland'},
+      {call:'30YL 001',country:'Spain',female:true}
     ];
     const elevenMeterLines=[
       (call:string,country:string)=>`CQ eleven meters, CQ DX. This is ${call} from ${country}, calling worldwide. Any station, come back.`,
@@ -481,7 +483,9 @@ export const LBComunica: React.FC = () => {
         const localizedVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(langPrefix));
         available=localizedVoices.length?localizedVoices:voices;
       }
-      const femaleStation=!!ambientStation?.female;\n      const spokenPhrase=prepareRadioSpeech(phrase,'',language);\n      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
+      const femaleStation=!!ambientStation?.female;
+      const spokenPhrase=prepareRadioSpeech(phrase,'',language);
+      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
       const gender: 'male'|'female' = (comandante||oscarItalia||primoItalia) ? 'male' : (femaleStation ? 'female' : (Math.random()<0.5?'male':'female'));
       const voicePool=comandante||oscarItalia||primoItalia ? (voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())).length?voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())):voices) : available;
@@ -529,7 +533,8 @@ export const LBComunica: React.FC = () => {
       if(cancelled || isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) { if(eventId) ambientPlayedRef.current.add(eventId); return; }
       if(eventId) ambientPlayedRef.current.add(eventId);
       const synth=window.speechSynthesis;
-      const spokenPhrase=prepareRadioSpeech(String(ambientCall.phrase||''),String(ambientCall.callsign||''),String(ambientCall.language||'en-US'));\n      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
+      const spokenPhrase=prepareRadioSpeech(String(ambientCall.phrase||''),String(ambientCall.callsign||''),String(ambientCall.language||'en-US'));
+      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
       utterance.lang=String(ambientCall.language||'en-US');
       const voices=synth.getVoices();
       const prefix=utterance.lang.slice(0,2).toLowerCase();
