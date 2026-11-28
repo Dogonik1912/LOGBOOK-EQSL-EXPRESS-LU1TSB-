@@ -41,6 +41,27 @@ function prepareRadioSpeech(phrase:string, callsign:string, language:string):str
   const sayings=Q_CODE_SAYINGS[lang]||Q_CODE_SAYINGS.en;
   return result.replace(/\\b(QRZ|QSL|QSY)\\b/gi,code=>sayings[code.toUpperCase()]||code);
 }
+
+const RADIO_DIGITS:Record<string,{en:string;es:string}>={0:{en:'zero',es:'cero'},1:{en:'one',es:'uno'},2:{en:'two',es:'dos'},3:{en:'three',es:'tres'},4:{en:'four',es:'cuatro'},5:{en:'five',es:'cinco'},6:{en:'six',es:'seis'},7:{en:'seven',es:'siete'},8:{en:'eight',es:'ocho'},9:{en:'nine',es:'nueve'}};
+function speak11mCallsign(callsign:string,language:string):string {
+  const spanish=language.toLowerCase().startsWith('es');
+  const match=String(callsign||'').toUpperCase().match(/^(\\d+)([A-Z]+)\\s*(\\d+)?$/);
+  if(!match) return prepareRadioSpeech(callsign,callsign,language);
+  const [,prefix,letters,suffix='']=match;
+  const digitWords=(value:string)=>value.split('').map(d=>RADIO_DIGITS[d]?.[spanish?'es':'en']||d).join(' ');
+  let prefixWords=digitWords(prefix);
+  if(spanish && prefix.length===2){const n=Number(prefix);if(n>=10&&n<=99){const tens=Math.floor(n/10)*10,ones=n%10;const tensEs:Record<number,string>={10:'diez',20:'veinte',30:'treinta',40:'cuarenta',50:'cincuenta',60:'sesenta',70:'setenta',80:'ochenta',90:'noventa'};prefixWords=ones===0?(tensEs[tens]||prefixWords):((tens===20?'veinti'+RADIO_DIGITS[String(ones)].es:tensEs[tens]+' y '+RADIO_DIGITS[String(ones)].es));}}
+  const phonetics=letters.split('').map(c=>ICAO_WORDS[c]||c).join(' ');
+  return [prefixWords,phonetics,suffix?digitWords(suffix):''].filter(Boolean).join(' ');
+}
+function isSpanishRadioCountry(country:string):boolean {
+  return /Argentina|Canary Islands|Spain|Chile|Mexico|Uruguay|Paraguay|Peru|Colombia|Venezuela|Ecuador|Bolivia|Cuba|Dominican Republic/i.test(country);
+}
+function radioCountryName(country:string,language:string):string {
+  if(!language.toLowerCase().startsWith('es')) return country;
+  const names:Record<string,string>={'United States':'Estados Unidos','United Kingdom':'Reino Unido','Canary Islands':'Islas Canarias','South Africa':'Sudáfrica','Germany':'Alemania','Italy':'Italia','France':'Francia','Spain':'España','Canada':'Canadá','Brazil':'Brasil','Japan':'Japón','Croatia':'Croacia','Finland':'Finlandia','Portugal':'Portugal','Romania':'Rumanía','Argentina':'Argentina','Thailand':'Tailandia','Austria':'Austria','Belgium':'Bélgica','Poland':'Polonia','Netherlands':'Países Bajos'};
+  return names[country]||country;
+}
 function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:'male'|'female'):SpeechSynthesisVoice|undefined {
   const malePattern=/\\bmale\\b|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i;
   const femalePattern=/\\bfemale\\b|zira|samantha|victoria|karen|susan|sara|sarah|anna|eva|lucia|monica|paulina|amelie|marie|helena|alice|joana|sofia|sophie|kate|emma|olivia|tessa|moira|fiona|female/i;
@@ -326,9 +347,15 @@ export const LBComunica: React.FC = () => {
       (call:string,country:string)=>`CQ DX, CQ DX. ${call} from ${country}. Any station, please come back.`,
       (call:string,country:string)=>`${call} calling QRZ. I am listening on this frequency. Over.`,
       (call:string,country:string)=>`Good evening from ${country}. This is ${call}, standing by for a contact.`,
-      (call:string,country:string)=>`${call} here. Your signal is five and nine. Thank you for the contact.`,
       (call:string,country:string)=>`Calling any amateur radio station. ${call}, ${country}, listening.`,
       (call:string,country:string)=>`CQ, CQ. This is ${call}. Is the frequency in use?`
+    ];
+    const hamSpanishPhrases=[
+      (call:string,country:string)=>`CQ, CQ, CQ. Aquí ${call} desde ${country}, llamando a estaciones de radioaficionados. ¿Quién me copia?`,
+      (call:string,country:string)=>`${call}, ${country}, llamando. Quedo a la escucha para cualquier estación. Adelante.`,
+      (call:string,country:string)=>`CQ DX, CQ DX. ${call} desde ${country}. ¿Alguna estación por frecuencia? Cambio.`,
+      (call:string,country:string)=>`Atención estaciones. Aquí ${call}, desde ${country}, llamando y a la escucha.`,
+      (call:string,country:string)=>`¿Está ocupada la frecuencia? ${call}, ${country}, esperando indicativo.`
     ];
     const elevenMeterStations=[
       {call:'1AT 001',country:'Italy'},
@@ -350,9 +377,14 @@ export const LBComunica: React.FC = () => {
       (call:string,country:string)=>`CQ DX on twenty-seven five five five. ${call} from ${country}. Is anybody copying?`,
       (call:string,country:string)=>`This is ${call}, calling Europe and the world. Give me a call, please.`,
       (call:string,country:string)=>`Station calling DX, ${call} in ${country}. Listening for your signal report.`,
-      (call:string,country:string)=>`QRZ, QRZ. ${call}, ${country}, calling on eleven meters. Over.`,
-      (call:string,country:string)=>`Good evening, eleven-meter operators. ${call} from ${country}, mobile station standing by.`,
-      (call:string,country:string)=>`CQ, CQ, ${call}. Anyone around the world on this frequency? Come back.`
+      (call:string,country:string)=>`Good evening, eleven-meter operators. ${call} from ${country}, mobile station standing by.`
+    ];
+    const elevenMeterSpanishLines=[
+      (call:string,country:string)=>`CQ 11 metros, CQ DX. Aquí ${call} desde ${country}, llamando a estaciones de todo el mundo. ¿Quién me copia?`,
+      (call:string,country:string)=>`Atención, atención. ${call}, ${country}, llamando a estaciones de 11 metros. Quedo a la escucha.`,
+      (call:string,country:string)=>`CQ DX, CQ DX. Aquí ${call} desde ${country}. ¿Alguna estación por frecuencia? Cambio.`,
+      (call:string,country:string)=>`${call}, ${country}, llamando a Europa y al mundo. Espero vuestra llamada.`,
+      (call:string,country:string)=>`Estaciones de 11 metros, aquí ${call} desde ${country}, llamando y a la escucha.`
     ];
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
     const speak=()=>{
@@ -361,7 +393,7 @@ export const LBComunica: React.FC = () => {
       const leaderToken=Object.keys(presenceNow).filter(key=>(presenceNow[key] as Participant[]).some(peer=>peer.visible!==false)).sort()[0];
       const roomTransmitting=roomPeers.some(peer=>peer.status==='Transmitiendo');
       if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length || roomTransmitting) { schedule(5000+Math.random()*7000); return; }
-      if(leaderToken!==deviceToken) { schedule(2200); return; }
+      if(leaderToken!==deviceToken) { schedule(1200+Math.random()*600); return; }
       const voices=synth.getVoices();
       const isElevenMeters=is11MeterStationIdentifier(activeCallsign);
       let phrase:string;
@@ -370,12 +402,22 @@ export const LBComunica: React.FC = () => {
       let ambientStation:{call:string;country:string;female?:boolean}|null=null;
       if(isElevenMeters){
         ambientStation=elevenMeterStations[Math.floor(Math.random()*elevenMeterStations.length)];
-        phrase=elevenMeterLines[Math.floor(Math.random()*elevenMeterLines.length)](ambientStation.call,ambientStation.country);
-        language='en-US';
-        available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
+        const useSpanish=Math.random()<0.5;
+        language=useSpanish?'es-ES':'en-US';
+        const spokenCall=speak11mCallsign(ambientStation.call,language);
+        const country=radioCountryName(ambientStation.country,language);
+        const lines=useSpanish?elevenMeterSpanishLines:elevenMeterLines;
+        phrase=lines[Math.floor(Math.random()*lines.length)](spokenCall,country);
+        available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2)));
       }else{
         ambientStation=hamStations[Math.floor(Math.random()*hamStations.length)];
-        phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)](ambientStation.call,ambientStation.country);
+        const useSpanish=isSpanishRadioCountry(ambientStation.country)&&Math.random()<0.5;
+        language=useSpanish?'es-ES':'en-US';
+        const spokenCall=prepareRadioSpeech(ambientStation.call,ambientStation.call,language);
+        const country=radioCountryName(ambientStation.country,language);
+        const lines=useSpanish?hamSpanishPhrases:hamPhrases;
+        phrase=lines[Math.floor(Math.random()*lines.length)](spokenCall,country);
+        available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2)));
       }
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
@@ -439,9 +481,9 @@ export const LBComunica: React.FC = () => {
         const localizedVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(langPrefix));
         available=localizedVoices.length?localizedVoices:voices;
       }
-      const femaleStation=!!ambientStation?.female;\n      const spokenPhrase=prepareRadioSpeech(phrase,ambientStation?.call||'',language);\n      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
+      const femaleStation=!!ambientStation?.female;\n      const spokenPhrase=prepareRadioSpeech(phrase,'',language);\n      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const gender: 'male'|'female' = femaleStation ? 'female' : (Math.random()<0.5?'male':'female');
+      const gender: 'male'|'female' = (comandante||oscarItalia||primoItalia) ? 'male' : (femaleStation ? 'female' : (Math.random()<0.5?'male':'female'));
       const voicePool=comandante||oscarItalia||primoItalia ? (voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())).length?voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())):voices) : available;
       const selectedVoice=chooseNaturalRadioVoice(voicePool,gender);
       if(selectedVoice) utterance.voice=selectedVoice;
@@ -457,15 +499,15 @@ export const LBComunica: React.FC = () => {
       const characterLevel=oscarItalia?0.82:comandante?0.78:primoItalia?0.72:1;
       const sharedSignalLevel=Math.max(0.08,Math.min(1,distanceLevel*characterLevel));
       utterance.volume=Math.max(0.04,Math.min(1,sharedSignalLevel*receiverLevel));
-      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,callsign:ambientStation?.call||'',signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',startedAt:Date.now()+220}});
-      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?1800+Math.random()*2400:2200+Math.random()*2800);};
+      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,callsign:ambientStation?.call||'',signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',voiceGender:gender,startedAt:Date.now()+220}});
+      const next=()=>{setMeterLevel(0.04);schedule(650+Math.random()*1400);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(is11MeterStationIdentifier(activeCallsign)?1000+Math.random()*1500:1500+Math.random()*2000);
+    schedule(700+Math.random()*1100);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive,activeCallsign,deviceToken]);
 
@@ -492,7 +534,7 @@ export const LBComunica: React.FC = () => {
       const voices=synth.getVoices();
       const prefix=utterance.lang.slice(0,2).toLowerCase();
       const available=voices.filter(v=>v.lang.toLowerCase().startsWith(prefix));
-      const gender: 'male'|'female' = Math.random()<0.5?'male':'female';
+      const gender: 'male'|'female' = (ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo')?'male':(ambientCall.voiceGender==='female'?'female':ambientCall.voiceGender==='male'?'male':(Math.random()<0.5?'male':'female'));
       const selectedVoice=chooseNaturalRadioVoice(available.length?available:voices,gender);
       if(selectedVoice) utterance.voice=selectedVoice;
       const localLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
