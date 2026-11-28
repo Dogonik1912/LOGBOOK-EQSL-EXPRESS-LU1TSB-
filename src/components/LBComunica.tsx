@@ -224,14 +224,14 @@ export const LBComunica: React.FC = () => {
     n.compressor.knee.setTargetAtTime(audioProfile==='radio'?24:0,now,.08);
     n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?1.6:1,now,.08);
     n.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,now,.04);
-    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.070:0.054)-(squelch/100)*(is11MeterStationIdentifier(activeCallsign)?0.00034:0.00030):0,now,.18);
-    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.135:0.12):0,now,.2);
+    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.105:0.054)-(squelch/100)*(is11MeterStationIdentifier(activeCallsign)?0.00042:0.00030):0,now,.18);
+    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.22:0.12):0,now,.2);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
     let voiceOpen=false;
     const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const threshold=0.0015+(squelch/100)*.018;if(squelch<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;n.gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.028:0.022):Math.max(is11MeterStationIdentifier(activeCallsign)?0.034:0.027,(is11MeterStationIdentifier(activeCallsign)?0.080:0.066)-squelch*(is11MeterStationIdentifier(activeCallsign)?0.00034:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
-      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.052:0.045):(is11MeterStationIdentifier(activeCallsign)?0.135:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
+      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.045:0.022):Math.max(is11MeterStationIdentifier(activeCallsign)?0.055:0.027,(is11MeterStationIdentifier(activeCallsign)?0.115:0.066)-squelch*(is11MeterStationIdentifier(activeCallsign)?0.00042:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
+      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.095:0.045):(is11MeterStationIdentifier(activeCallsign)?0.23:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
       n.gateFrame=requestAnimationFrame(updateGate);};
     n.gateFrame=requestAnimationFrame(updateGate);
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen,activeCallsign]);
@@ -519,15 +519,15 @@ export const LBComunica: React.FC = () => {
         const dest=ctx.createMediaStreamDestination();
         const outputAnalyser=ctx.createAnalyser();outputAnalyser.fftSize=512;
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);
-        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.070:0.054;qrm.gain.gain.value=isElevenMeters?0.135:0.12;rf.connect(outputAnalyser);outputAnalyser.connect(dest);
+        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.105:0.054;qrm.gain.gain.value=isElevenMeters?0.22:0.12;rf.connect(outputAnalyser);outputAnalyser.connect(dest);
         audio.srcObject=dest.stream;
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;entry.qrmGain=qrm.gain;entry.qrmSource=qrm.source;}
         const samples=new Uint8Array(analyser.fftSize);const meterSamples=new Uint8Array(outputAnalyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const now=performance.now();const target=Math.min(1,Math.max(0,(meterRms-0.008)*16));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-level*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
-          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
+          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.045:0.022):Math.max(isElevenMeters?0.055:0.027,(isElevenMeters?0.115:0.066)-level*(isElevenMeters?0.00042:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
+          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.095:0.045):(isElevenMeters?0.23:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
@@ -1022,7 +1022,7 @@ export const LBComunica: React.FC = () => {
             </header>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
               <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-2 p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:grid-cols-[minmax(250px,.72fr)_minmax(0,1.8fr)] md:items-stretch md:gap-3 md:overflow-hidden">
-                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:col-start-2 md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
+                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-y-auto overscroll-contain rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:col-start-2 md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
                   <div className="order-0 md:col-span-2 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="order-1 md:col-span-2 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
