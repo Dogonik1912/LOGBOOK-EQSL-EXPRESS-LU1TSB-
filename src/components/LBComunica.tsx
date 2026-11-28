@@ -43,7 +43,8 @@ export const LBComunica: React.FC = () => {
   const [pttMode, setPttMode] = useState<'hold'|'toggle'>('hold');
   const [showConsent, setShowConsent] = useState(false);
   const [pttError, setPttError] = useState('');
-  const [turnWarning, setTurnWarning] = useState('');
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const [remoteTalkers, setRemoteTalkers] = useState<string[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -75,6 +76,49 @@ export const LBComunica: React.FC = () => {
     if (error) throw error;
     if (!data?.ok) throw new Error(data?.reason || 'No se pudo completar la operación.');
     return data;
+  };
+
+  const pushPreferenceKey = () => 'lb_comunica_push_' + room + '_' + deviceToken;
+  const decodeVapidKey = (value: string) => {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  };
+  const enablePush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setPttError('Este navegador no admite notificaciones push.'); return;
+    }
+    setPushBusy(true); setPttError('');
+    try {
+      const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('No autorizaste las notificaciones en este dispositivo.');
+      const registration = await navigator.serviceWorker.ready;
+      const existing = await registration.pushManager.getSubscription();
+      const keyData = await api('push_public_key');
+      const subscription = existing || await registration.pushManager.subscribe({
+        userVisibleOnly: true, applicationServerKey: decodeVapidKey(String(keyData.public_key)),
+      });
+      await api('push_subscribe', { subscription: subscription.toJSON() });
+      localStorage.setItem(pushPreferenceKey(), '1');
+      setPushEnabled(true);
+    } catch (error) {
+      setPttError(error instanceof Error ? error.message : 'No se pudieron activar los avisos.');
+    } finally { setPushBusy(false); }
+  };
+  const disablePush = async () => {
+    setPushBusy(true); setPttError('');
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await api('push_unsubscribe', { endpoint: subscription.endpoint });
+        await subscription.unsubscribe();
+      }
+      localStorage.removeItem(pushPreferenceKey());
+      setPushEnabled(false);
+    } catch (error) {
+      setPttError(error instanceof Error ? error.message : 'No se pudieron desactivar los avisos.');
+    } finally { setPushBusy(false); }
   };
 
   const sendSignal = async (payload: Signal) => {
@@ -372,10 +416,12 @@ export const LBComunica: React.FC = () => {
             await channel.track({callsign:activeCallsign,status:'Escuchando',joinedAt:new Date().toISOString()});
             const consent = await api('consent_status');
             if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
-            const ice = await api('ice');
-            if (ice.turnConfigured) setTurnWarning('');
-            else setTurnWarning('TURN no está configurado: algunas redes móviles, corporativas o con NAT restrictivo podrían no conectar.');
-            iceServersRef.current = ice.iceServers || [{urls:'stun:stun.l.google.com:19302'}];
+            // TURN permanece oculto mientras no esté configurado.
+            iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
+            const pushStatus = await api('push_status');
+            setPushEnabled(!!pushStatus.enabled);
+            if (pushStatus.enabled) localStorage.setItem(pushPreferenceKey(), '1');
+            else localStorage.removeItem(pushPreferenceKey());
             if (mounted) setConnection('connected');
             void loadArchive();
           } catch (error) {
@@ -506,7 +552,13 @@ export const LBComunica: React.FC = () => {
                   </button>
                   <div className="flex items-center gap-2 text-xs text-slate-300"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'Esperando transmisión'}</div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
-                  {turnWarning&&<p className="max-w-lg text-xs text-amber-300">{turnWarning}</p>}
+                  <div className="mt-1 flex w-full max-w-md items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-left">
+                    <div className="min-w-0"><p className="text-xs font-semibold text-slate-200">Avisos cuando LogBook esté cerrado</p><p className="text-[11px] text-slate-400">Solo en este dispositivo y para esta sala.</p></div>
+                    <button type="button" disabled={pushBusy} onClick={()=>void (pushEnabled?disablePush():enablePush())}
+                      className={'shrink-0 rounded-full px-3 py-1.5 text-xs font-bold '+(pushEnabled?'bg-emerald-700 text-white':'bg-slate-700 text-slate-100')}>
+                      {pushBusy?'…':pushEnabled?'Activados':'Activar'}
+                    </button>
+                  </div>
                   <p className="max-w-md text-xs text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
                 </div>
                 <div className="md:col-span-2 rounded-xl border border-white/10 bg-slate-900/70 p-3">
