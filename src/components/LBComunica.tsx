@@ -1070,6 +1070,7 @@ export const LBComunica: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                  </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
                   <div className="order-3 mt-1 flex w-full max-w-xs md:col-span-2 items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
                     <div className="min-w-0"><p className="text-[10px] font-semibold text-slate-200">Avisos con LogBook cerrado</p><p className="text-[9px] text-slate-400">Este dispositivo · esta sala</p></div>
@@ -1080,38 +1081,43 @@ export const LBComunica: React.FC = () => {
                   </div>
                   <p className="order-3 md:col-span-2 max-w-md text-[10px] text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
                 </div>
-                <details open={historyExpanded} className={"rounded-xl border border-white/10 bg-slate-900/90 "+(historyExpanded?"md:col-start-1 md:row-start-1 md:min-h-0 md:overflow-y-auto":"md:absolute md:left-1 md:top-1 md:z-20 md:w-auto md:max-w-[46px] md:shadow-lg")}>
-                  <summary onClick={(e)=>{e.preventDefault();setHistoryExpanded(v=>!v);}} className={"flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/5 "+(!historyExpanded?"md:justify-center md:px-1":"")}>
-                    <span className={"flex min-w-0 items-center gap-1.5 "+(!historyExpanded?"md:justify-center":"")}><ListMusic className="h-3.5 w-3.5 shrink-0 text-emerald-300"/><span className={!historyExpanded?"md:hidden":"truncate"}>Historial · {roomTitle}</span><span className={"rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-200 "+(!historyExpanded?"md:hidden":"")}>{recordings.length}</span></span>
-                    <span className={"shrink-0 text-[10px] font-semibold text-emerald-300 "+(!historyExpanded?"md:hidden":"")}>Ocultar ▴</span>
-                  </summary>
-                  <div className="border-t border-white/10 p-3">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="flex items-center gap-2 text-sm font-bold"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}</h3>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button type="button" disabled={!recordings.length} onClick={()=>{setPlayAll(true);playRecording(0);}} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold disabled:opacity-40">Reproducir todo</button>
-                      <label className="flex items-center gap-1 text-xs text-slate-300">Velocidad
-                        <select value={playbackSpeed} onChange={e=>{const v=Number(e.target.value);setPlaybackSpeed(v);if(audioPlayerRef.current)audioPlayerRef.current.playbackRate=v;}} className="rounded-md border border-white/20 bg-slate-950 px-2 py-1 text-white">
-                          {[1,1.25,1.5,1.75,2].map(v=><option key={v} value={v}>{v}x</option>)}
-                        </select>
-                      </label>
-                    </div>
-                  </div>
-                  <audio ref={audioPlayerRef} className="sr-only" preload="none" onEnded={handlePlaybackEnded} onError={()=>{if(playingIndex>=0){setPttError('El archivo no pudo decodificarse o no está disponible.');setPlayingIndex(-1);}}}/>
-                  {recordings.length?(
-                    <div className="space-y-1">
-                      {recordings.map((recording,index)=>(
-                        <div key={recording.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/5 px-3 py-2 text-xs">
-                          <div className="min-w-0"><b>{recording.callsign}</b><span className="ml-2 text-slate-400">{new Date(recording.created_at).toLocaleString()}</span><span className="ml-2 text-slate-500">{formatDuration(recording.duration_ms)}</span></div>
-                          <button type="button" onClick={()=>{setPlayAll(false);playRecording(index);}} className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 px-2 py-1 text-emerald-200"><Play className="h-3 w-3"/>{playingIndex===index?'Reproduciendo':'Reproducir'}</button>
+                {historyExpanded ? (
+                  <aside className="order-0 min-w-0 rounded-xl border border-white/10 bg-slate-900/95 p-3 md:col-start-1 md:row-start-1 md:min-h-0 md:overflow-y-auto">
+                    <button type="button" onClick={()=>setHistoryExpanded(false)} className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-bold text-slate-100 hover:bg-white/5" aria-expanded="true">
+                      <span className="flex min-w-0 items-center gap-1.5"><ListMusic className="h-3.5 w-3.5 shrink-0 text-emerald-300"/>Historial · {roomTitle}<span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px]">{recordings.length}</span></span>
+                      <span className="shrink-0 text-[10px] font-semibold text-emerald-300">Ocultar ▴</span>
+                    </button>
+                    <div className="border-t border-white/10 pt-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="flex items-center gap-2 text-sm font-bold"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button type="button" disabled={!recordings.length} onClick={()=>{setPlayAll(true);playRecording(0);}} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold disabled:opacity-40">Reproducir todo</button>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">Velocidad
+                            <select value={playbackSpeed} onChange={e=>{const v=Number(e.target.value);setPlaybackSpeed(v);if(audioPlayerRef.current)audioPlayerRef.current.playbackRate=v;}} className="rounded-md border border-white/20 bg-slate-950 px-2 py-1 text-white">
+                              {[1,1.25,1.5,1.75,2].map(v=><option key={v} value={v}>{v}x</option>)}
+                            </select>
+                          </label>
                         </div>
-                      ))}
+                      </div>
+                      <audio ref={audioPlayerRef} className="sr-only" preload="none" onEnded={handlePlaybackEnded} onError={()=>{if(playingIndex>=0){setPttError('El archivo no pudo decodificarse o no está disponible.');setPlayingIndex(-1);}}}/>
+                      {recordings.length ? (
+                        <div className="space-y-1">
+                          {recordings.map((recording,index)=>(
+                            <div key={recording.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/5 px-3 py-2 text-xs">
+                              <div className="min-w-0"><b>{recording.callsign}</b><span className="ml-2 text-slate-400">{new Date(recording.created_at).toLocaleString()}</span><span className="ml-2 text-slate-500">{formatDuration(recording.duration_ms)}</span></div>
+                              <button type="button" onClick={()=>{setPlayAll(false);playRecording(index);}} className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 px-2 py-1 text-emerald-200"><Play className="h-3 w-3"/>{playingIndex===index?'Reproduciendo':'Reproducir'}</button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="py-3 text-center text-xs text-slate-400">Todavía no hay intervenciones guardadas en esta sala. Se conservarán siempre las cinco más recientes.</p>}
+                      <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3"/>Archivo privado para usuarios autorizados de esta sala. Limpieza diaria conservando los últimos cinco audios.</p>
                     </div>
-                  ):<p className="py-3 text-center text-xs text-slate-400">Todavía no hay intervenciones guardadas en esta sala. Se conservarán siempre las cinco más recientes.</p>}
-                  <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3"/>Archivo privado para usuarios autorizados de esta sala. Limpieza diaria conservando los últimos cinco audios.</p>
-                  </div>
-                </details>
-              </div>
+                  </aside>
+                ) : (
+                  <button type="button" onClick={()=>setHistoryExpanded(true)} aria-expanded="false" aria-label="Mostrar historial de audio" className="order-0 flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-slate-900/95 px-3 py-2 text-xs font-bold text-slate-100 hover:bg-slate-800 md:absolute md:left-1 md:top-1 md:z-20 md:w-10 md:min-w-0 md:px-1 md:shadow-lg">
+                    <ListMusic className="h-4 w-4 text-emerald-300"/><span className="md:hidden">Historial · {roomTitle} ({recordings.length})</span><span className="hidden md:inline">›</span>
+                  </button>
+                )}             </div>
             )}
             <footer className="hidden shrink-0 border-t border-white/10 px-4 py-2 text-center text-xs text-slate-400 sm:block">Tu identidad activa determina la sala. HAM y 11 metros permanecen separados.</footer>
           </section>
