@@ -466,7 +466,7 @@ export const LBComunica: React.FC = () => {
       }
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
-      const specialRoll=Math.random();
+      const specialRoll=isCanaryNorthAfrica?1:Math.random();
       const oscarItalia=isElevenMeters && specialRoll<0.24;
       const comandante=isElevenMeters && specialRoll>=0.24 && specialRoll<0.42;
       const primoItalia=isElevenMeters && specialRoll>=0.42 && specialRoll<0.52;
