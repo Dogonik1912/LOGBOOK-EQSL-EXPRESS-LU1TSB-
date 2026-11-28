@@ -743,7 +743,12 @@ export const LBComunica: React.FC = () => {
                   </div>
                   <p className="max-w-md text-xs text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
                 </div>
-                <div className="md:col-span-2 rounded-xl border border-white/10 bg-slate-900/70 p-3">
+                <details className="md:col-span-2 rounded-xl border border-white/10 bg-slate-900/70">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-100 hover:bg-white/5">
+                    <span className="flex items-center gap-2"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}<span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200">{recordings.length}</span></span>
+                    <span className="text-[11px] font-semibold text-emerald-300">Ver historial ▾</span>
+                  </summary>
+                  <div className="border-t border-white/10 p-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <h3 className="flex items-center gap-2 text-sm font-bold"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}</h3>
                     <div className="flex flex-wrap items-center gap-2">
@@ -767,7 +772,8 @@ export const LBComunica: React.FC = () => {
                     </div>
                   ):<p className="py-3 text-center text-xs text-slate-400">Todavía no hay intervenciones guardadas en esta sala. Se conservarán siempre las cinco más recientes.</p>}
                   <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3"/>Archivo privado para usuarios autorizados de esta sala. Limpieza diaria conservando los últimos cinco audios.</p>
-                </div>
+                  </div>
+                </details>
               </div>
             )}
             <footer className="border-t border-white/10 px-4 py-3 text-center text-xs text-slate-400">Tu identidad activa determina la sala. HAM y 11 metros permanecen separados.</footer>
