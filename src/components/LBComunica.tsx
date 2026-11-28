@@ -727,7 +727,7 @@ export const LBComunica: React.FC = () => {
                     onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
                     onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
                     onClick={pttMode==='toggle'?togglePtt:undefined}
-                    className={'flex h-24 min-h-24 w-full max-w-none select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    className={'sticky bottom-0 z-30 mt-2 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[0_-8px_20px_#000b,inset_0_2px_5px_#ffffff22] transition [padding-bottom:env(safe-area-inset-bottom)] '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
                     <Mic className="h-9 w-9"/><span className="text-lg font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
 
