@@ -665,12 +665,12 @@ export const LBComunica: React.FC = () => {
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className="text-xs font-semibold text-emerald-300">Sala {roomTitle}</p></div>
               <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
             </header>
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-slate-900/80 px-3 py-1.5 sm:px-4 sm:py-2">
-              <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-emerald-300"/>Usuarios conectados</div>
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-slate-900/80 px-2 py-1 sm:px-3 sm:py-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold"><Users className="h-4 w-4 text-emerald-300"/>Usuarios conectados</div>
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm font-bold text-emerald-300">{connection==='connected'?participants.length:'—'}</span>
             </div>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 sm:gap-4 sm:p-4 md:grid md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
+              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1.5 sm:gap-3 sm:p-3 md:grid md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
                 <aside className="order-2 min-w-0 md:order-1">
                   <button type="button" onClick={()=>setMobileListOpen(v=>!v)} className="mb-2 flex w-full items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold md:hidden">Usuarios de la sala <span className="text-emerald-300">{participants.length}</span></button>
                   <div className={mobileListOpen?'block':'hidden md:block'}>
@@ -692,14 +692,14 @@ export const LBComunica: React.FC = () => {
                   </div>
                 </aside>
                 <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
-                  <div className="flex w-full items-center justify-between border-b border-amber-100/20 pb-2 text-[10px] font-black tracking-[.2em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
-                  <div className="flex items-center gap-2 text-sm"><Wifi className={connection==='connected'?'h-4 w-4 text-emerald-300':'h-4 w-4 text-amber-300'}/><span>{connection==='connected'?'Conectado a la sala':connection==='connecting'?'Conectando…':'Sin conexión con la sala'}</span></div>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+                  <div className="order-0 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
+                  <div className="order-2 flex items-center gap-1.5 text-[11px]"><Wifi className={connection==='connected'?'h-4 w-4 text-emerald-300':'h-4 w-4 text-amber-300'}/><span>{connection==='connected'?'Conectado a la sala':connection==='connecting'?'Conectando…':'Sin conexión con la sala'}</span></div>
+                  <div className="order-2 flex flex-wrap items-center justify-center gap-1">
                     <span className="text-xs text-slate-400">Modo PTT</span>
                     <button type="button" onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode(m=>m==='hold'?'toggle':'hold');}} className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold">{pttMode==='hold'?'Mantener pulsado':'Pulsar para activar/desactivar'}</button>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
+                  <div className="order-2 flex items-center gap-1.5 text-[10px] text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
                   <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
                       <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px] font-black tracking-wider text-zinc-950 sm:gap-2 sm:text-xs">
@@ -713,7 +713,7 @@ export const LBComunica: React.FC = () => {
                         <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold">RESET</button>
                       </div>
                     </div>
-                    <div className="my-2 w-full flex justify-center"><div className="w-full"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div></div>
+                    <div className="my-1 w-full flex justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div></div>
                     <div className="grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
                       <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
                       <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
@@ -733,19 +733,19 @@ export const LBComunica: React.FC = () => {
 
                   </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
-                  <div className="mt-1 flex w-full max-w-xs items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
+                  <div className="order-3 mt-1 flex w-full max-w-xs items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
                     <div className="min-w-0"><p className="text-[10px] font-semibold text-slate-200">Avisos con LogBook cerrado</p><p className="text-[9px] text-slate-400">Este dispositivo · esta sala</p></div>
                     <button type="button" disabled={pushBusy} onClick={()=>void (pushEnabled?disablePush():enablePush())}
                       className={'shrink-0 rounded-full px-2 py-1 text-[10px] font-bold '+(pushEnabled?'bg-emerald-700 text-white':'bg-slate-700 text-slate-100')}>
                       {pushBusy?'…':pushEnabled?'Activados':'Activar'}
                     </button>
                   </div>
-                  <p className="max-w-md text-xs text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
+                  <p className="order-3 max-w-md text-[10px] text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
                 </div>
                 <details className="md:col-span-2 rounded-xl border border-white/10 bg-slate-900/70">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-100 hover:bg-white/5">
-                    <span className="flex items-center gap-2"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}<span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200">{recordings.length}</span></span>
-                    <span className="text-[11px] font-semibold text-emerald-300">Ver historial ▾</span>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/5">
+                    <span className="flex min-w-0 items-center gap-1.5"><ListMusic className="h-3.5 w-3.5 shrink-0 text-emerald-300"/><span className="truncate">Historial · {roomTitle}</span><span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">{recordings.length}</span></span>
+                    <span className="shrink-0 text-[10px] font-semibold text-emerald-300">Ver ▾</span>
                   </summary>
                   <div className="border-t border-white/10 p-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
