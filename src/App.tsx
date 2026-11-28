@@ -18,6 +18,7 @@ import { EQSLMailbox } from './components/EQSLMailbox';
 import { PendingEqslDeliveries } from './components/PendingEqslDeliveries';
 import { Send, Waves, ExternalLink, RadioTower } from 'lucide-react';
 import { CommunityChat } from './components/CommunityChat';
+import { LBComunica } from './components/LBComunica';
 import { MorseDecoder } from './components/MorseDecoder';
 import { SDRSmart } from './components/SDRSmart';
 import { PrivateMessages } from './components/PrivateMessages';
@@ -535,6 +536,7 @@ function MainApp() {
           <PrivateMessages />
         </div>
 
+        <LBComunica />
         <CommunityChat />
 
         <LiveSpots />
