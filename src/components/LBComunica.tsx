@@ -79,7 +79,7 @@ export const LBComunica: React.FC = () => {
   const [queuePosition, setQueuePosition] = useState(0);
   const [activeSpeaker, setActiveSpeaker] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [pttMode, setPttMode] = useState<'hold'|'toggle'>('hold');
+  const [pttMode, setPttMode] = useState<'hold'|'toggle'>(()=>localStorage.getItem('lb_comunica_ptt_mode')==='toggle'?'toggle':'hold');
   const [showConsent, setShowConsent] = useState(false);
   const [pttError, setPttError] = useState('');
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -175,6 +175,7 @@ export const LBComunica: React.FC = () => {
   useEffect(()=>{localStorage.setItem('lb_radio_rf_gain',String(rfGain));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));localStorage.setItem('lb_radio_volume',String(radioVolume));},[rfGain,micGain,squelch,clarifier,radioVolume]);
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
   useEffect(()=>{localStorage.setItem('lb_radio_panel_light',panelLight?'1':'0');},[panelLight]);
+  useEffect(()=>{localStorage.setItem('lb_comunica_ptt_mode',pttMode);},[pttMode]);
   useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(1200+(clarifier-50)*18,entry.context?.currentTime||0,.04);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?2.2+((clarifier-50)/50)*3:0,entry.context?.currentTime||0,.04);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?280:10,entry.context?.currentTime||0,.04);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?2900:20000,entry.context?.currentTime||0,.04);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
@@ -791,19 +792,20 @@ export const LBComunica: React.FC = () => {
                       <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
                       <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
                     </div>
-                  <div className="mb-2 flex w-full flex-wrap items-center justify-center gap-2 relative z-40 rounded-lg border border-white/15 bg-black/35 px-3 py-2">
+                  <div className="mb-2 flex w-full flex-col items-center gap-2 rounded-lg border border-white/15 bg-black/35 px-3 py-2">
                     <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
-                    <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'rounded-full border px-3 py-1.5 text-[10px] font-bold '+(pttMode==='hold'?'border-emerald-300 bg-emerald-700 text-white':'border-white/20 text-slate-300')}>MANTENER PULSADO</button>
-                    <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'rounded-full border px-3 py-1.5 text-[10px] font-bold '+(pttMode==='toggle'?'border-amber-300 bg-amber-600 text-white':'border-white/20 text-slate-300')}>ALTERNADO</button>
+                    <div className="grid w-full grid-cols-2 gap-2">
+                      <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='hold'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>MANTENER PULSADO</button>
+                      <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='toggle'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>ALTERNADO</button>
+                    </div>
                   </div>
-                                      <button type="button" disabled={connection!=='connected'}
-                    onPointerDown={pttMode==='hold'
-                      ?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}
-                      :(e)=>{e.preventDefault();togglePtt();}}
+                  <button type="button" disabled={connection!=='connected'}
+                    onClick={pttMode==='toggle'?()=>togglePtt():undefined}
+                    onPointerDown={pttMode==='hold'?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}:undefined}
                     onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
                     onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
                     onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    className={'sticky bottom-0 z-30 mt-2 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[0_-8px_20px_#000b,inset_0_2px_5px_#ffffff22] transition [padding-bottom:env(safe-area-inset-bottom)] '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    className={'mt-2 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
                     <Mic className="h-9 w-9"/><span className="text-lg font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
 
