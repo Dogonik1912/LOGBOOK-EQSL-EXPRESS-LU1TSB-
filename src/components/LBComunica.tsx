@@ -782,27 +782,7 @@ export const LBComunica: React.FC = () => {
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm font-bold text-emerald-300">{connection==='connected'?participants.length:'—'}</span>
             </div>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-8 p-1.5 sm:gap-3 sm:p-3 sm:pb-6 md:grid md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
-                <aside className="order-2 min-w-0 md:order-1">
-                  <button type="button" onClick={()=>setMobileListOpen(v=>!v)} className="mb-2 flex w-full items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold md:hidden">Usuarios de la sala <span className="text-emerald-300">{participants.length}</span></button>
-                  <div className={mobileListOpen?'block':'hidden md:block'}>
-                    <h3 className="mb-2 hidden text-sm font-semibold text-slate-300 md:block">Participantes</h3>
-                    <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-slate-900/70 p-2 md:max-h-[35vh]">
-                      {participants.length?participants.map(person=>(
-                        <div key={person.callsign} className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm">
-                          <span className="truncate"><span className="mr-2">{flagForCallsign(person.callsign,undefined,is11MeterStationIdentifier(person.callsign))}</span><b>{person.callsign}</b></span>
-                          <span className={person.status==='Transmitiendo'?'text-xs font-bold text-red-300':'text-xs text-slate-400'}>{person.status||'Escuchando'}</span>
-                        </div>
-                      )):<p className="px-2 py-4 text-center text-sm text-slate-400">{connection==='connected'?'Todavía no hay participantes.':'Conectando con la sala…'}</p>}
-                    </div>
-                    <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/70 p-3">
-                      <h3 className="mb-2 text-sm font-semibold text-slate-200">Cola de transmisión</h3>
-                      <p className="text-xs text-slate-300">{activeSpeaker?'En el aire: '+activeSpeaker:'Canal libre'}</p>
-                      {isQueued&&<p className="mt-1 text-xs font-bold text-amber-300">Tu posición: {queuePosition||'siguiente'}</p>}
-                      <p className="mt-1 text-xs text-slate-400">{remainingSeconds>0?'Tiempo restante: '+remainingSeconds+' s':'Turnos de 30 segundos, por orden de solicitud.'}</p>
-                    </div>
-                  </div>
-                </aside>
+              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-2 p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:grid-cols-1">
                 <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
                   <div className="order-0 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
