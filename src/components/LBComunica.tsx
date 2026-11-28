@@ -51,7 +51,7 @@ function speak11mCallsign(callsign:string,language:string):string {
   const digitWords=(value:string)=>value.split('').map(d=>RADIO_DIGITS[d]?.[spanish?'es':'en']||d).join(' ');
   let prefixWords=digitWords(prefix);
   if(spanish && prefix.length===2){const n=Number(prefix);if(n>=10&&n<=99){const tens=Math.floor(n/10)*10,ones=n%10;const teensEs:Record<number,string>={11:'once',12:'doce',13:'trece',14:'catorce',15:'quince',16:'dieciséis',17:'diecisiete',18:'dieciocho',19:'diecinueve'};const tensEs:Record<number,string>={10:'diez',20:'veinte',30:'treinta',40:'cuarenta',50:'cincuenta',60:'sesenta',70:'setenta',80:'ochenta',90:'noventa'};prefixWords=teensEs[n]||(ones===0?(tensEs[tens]||prefixWords):((tens===20?'veinti'+RADIO_DIGITS[String(ones)].es:tensEs[tens]+' y '+RADIO_DIGITS[String(ones)].es)));}}
-  const phonetics=letters.split('').map(c=>ICAO_WORDS[c]||c).join(' ');
+  const phonetics=letters.split('').map(c=>spanish&&c==='E'?'Eco':(ICAO_WORDS[c]||c)).join(' ');
   return [prefixWords,phonetics,suffix?digitWords(suffix):''].filter(Boolean).join(' ');
 }
 function isSpanishRadioCountry(country:string):boolean {
@@ -73,7 +73,7 @@ function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:
   const gendered=voices.filter(v=>(preferredGender==='male'?malePattern:femalePattern).test(v.name+' '+v.voiceURI));
   // Para personajes masculinos no caer nunca en una voz identificada como femenina.
   const nonFemale=voices.filter(v=>!femalePattern.test(v.name+' '+v.voiceURI));
-  const preferredPool=gendered.length?gendered:(preferredGender==='male'&&!allowGenderFallback?nonFemale:voices);
+  const preferredPool=gendered.length?gendered:(preferredGender==='male'?nonFemale:voices);
   const preferredNatural=preferredPool.filter(v=>naturalPattern.test(v.name+' '+v.voiceURI));
   const preferredChoices=preferredNatural.length?preferredNatural:preferredPool;
   let choices=preferredChoices.filter(v=>!recent.includes(v.voiceURI));
@@ -359,6 +359,14 @@ export const LBComunica: React.FC = () => {
     const hamStations=[
       {call:'W1ABC',country:'United States'},
       {call:'VE3KLM',country:'Canada'},
+      {call:'VE2FEM',country:'Canada',female:true},
+      {call:'F5YL',country:'France',female:true},
+      {call:'JA2YLA',country:'Japan',female:true},
+      {call:'PY2FEM',country:'Brazil',female:true},
+      {call:'I4YL',country:'Italy',female:true},
+      {call:'VK2FEM',country:'Australia',female:true},
+      {call:'ZS5YL',country:'South Africa',female:true},
+      {call:'G6YL',country:'United Kingdom',female:true},
       {call:'G4XYZ',country:'United Kingdom'},
       {call:'F4ABC',country:'France'},
       {call:'DL1ABC',country:'Germany'},
@@ -483,7 +491,7 @@ export const LBComunica: React.FC = () => {
         language='es-ES';
         available=spanish.length?spanish:voices;
       } else if(primoItalia){
-        phrase='Primo Italia, Primo Italia! Qui è Primo Italia in frequenza. Un saluto a tutti gli amici. Ciao, ciao!';
+        phrase='Primo Italia, Italia due sete, chiama cu erre zeta.';
         language='it-IT';
         const italianVoices=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         available=italianVoices.length?italianVoices:voices;
@@ -541,7 +549,7 @@ export const LBComunica: React.FC = () => {
       utterance.pitch=comandante?0.78:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.58+Math.random()*0.04:maleStation?0.76+Math.random()*0.06:0.88+Math.random()*0.14;
       // Señal variable pero siempre inteligible: la distancia cambia el nivel, no deforma la voz.
       // RF GAIN, VOLUME y RX ATENUADA también actúan sobre las llamadas ambientales.
-      const distanceLevel=0.42+Math.random()*0.58;
+      const distanceLevel=0.22+Math.random()*0.78;
       const receiverLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       const characterLevel=oscarItalia?0.82:comandante?0.78:primoItalia?0.72:1;
       const sharedSignalLevel=Math.max(0.08,Math.min(1,distanceLevel*characterLevel));
@@ -615,8 +623,8 @@ export const LBComunica: React.FC = () => {
       const localLevel=Math.max(0.05,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       const duck=transmitting?0.22:1;
       const eleven=is11MeterStationIdentifier(activeCallsign);
-      noise.gain.gain.setTargetAtTime((eleven?0.052:0.034)*localLevel*duck,ctx.currentTime,0.18);
-      qrm.gain.gain.setTargetAtTime((eleven?0.092:0.064)*localLevel*duck,ctx.currentTime,0.22);
+      noise.gain.gain.setTargetAtTime((eleven?0.052:0.046)*localLevel*duck,ctx.currentTime,0.18);
+      qrm.gain.gain.setTargetAtTime((eleven?0.092:0.078)*localLevel*duck,ctx.currentTime,0.22);
     };
     void ctx.resume();update();timer=window.setInterval(update,300);
     return ()=>{if(timer)clearInterval(timer);try{noise.source.stop();qrm.source.stop();noise.source.disconnect();qrm.source.disconnect();noise.gain.disconnect();qrm.gain.disconnect();}catch{}void ctx.close().catch(()=>{});};
