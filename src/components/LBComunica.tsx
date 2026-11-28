@@ -269,6 +269,7 @@ export const LBComunica: React.FC = () => {
   const talkingRef = useRef(false);
   const beginningRef = useRef(false);
   const turnCancelledRef = useRef(false);
+  const pttIntentRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement|null>(null);
   const playbackObjectUrlRef = useRef<string>('');
   const playbackRequestRef = useRef(0);
@@ -806,8 +807,8 @@ export const LBComunica: React.FC = () => {
         const samples=new Uint8Array(analyser.fftSize);const meterSamples=new Uint8Array(outputAnalyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const now=performance.now();const target=Math.min(1,Math.max(0,(meterRms-0.008)*16));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.018:0.012):Math.max(isElevenMeters?0.035:0.025,(isElevenMeters?0.060:0.048)-level*(isElevenMeters?0.00030:0.00023))):0,ctx.currentTime,voiceOpen?0.08:0.35);
-          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.035:0.022):(isElevenMeters?0.095:0.072)):0,ctx.currentTime,voiceOpen?0.12:0.3);
+          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.007:0.005):Math.max(isElevenMeters?0.035:0.025,(isElevenMeters?0.060:0.048)-level*(isElevenMeters?0.00030:0.00023))):0,ctx.currentTime,voiceOpen?0.06:0.35);
+          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.012:0.008):(isElevenMeters?0.095:0.072)):0,ctx.currentTime,voiceOpen?0.08:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         const processedStream=dest.stream;
@@ -978,6 +979,7 @@ export const LBComunica: React.FC = () => {
   };
 
   const endLocalAudio = (save = true) => {
+    pttIntentRef.current = false;
     turnCancelledRef.current = true;
     talkingRef.current = false;
     beginningRef.current = false;
@@ -1008,7 +1010,7 @@ export const LBComunica: React.FC = () => {
   };
 
   const beginAudio = async () => {
-    if (talkingRef.current || beginningRef.current || !channelRef.current) return;
+    if (!pttIntentRef.current || talkingRef.current || beginningRef.current || !channelRef.current) return;
     beginningRef.current = true;
     turnCancelledRef.current = false;
     setPttError('');
@@ -1044,7 +1046,7 @@ export const LBComunica: React.FC = () => {
         micGainRef.current=null;
         processedMicRef.current=null;
       }
-      if (turnCancelledRef.current) { stream.getTracks().forEach((track)=>track.stop());transmitStream.getTracks().forEach((track)=>track.stop());beginningRef.current=false;return; }
+      if (turnCancelledRef.current || !pttIntentRef.current) { stream.getTracks().forEach((track)=>track.stop());transmitStream.getTracks().forEach((track)=>track.stop());beginningRef.current=false;return; }
       streamRef.current = stream;
       recordedChunksRef.current = [];
       recordingStartedAtRef.current = Date.now();
@@ -1064,6 +1066,7 @@ export const LBComunica: React.FC = () => {
         const participant = values?.[0];
         if (!participant?.callsign) continue;
         const pc = await createPeer(peerId,sessionId,participant.callsign);
+        if (!pttIntentRef.current) { endLocalAudio(false); return; }
         transmitStream.getAudioTracks().forEach((track)=>pc.addTrack(track,transmitStream));
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -1071,12 +1074,15 @@ export const LBComunica: React.FC = () => {
           from:deviceToken,to:peerId,callsign:activeCallsign,sessionId,
           kind:'offer',description:pc.localDescription?.toJSON(),
         });
+        if (!pttIntentRef.current) { endLocalAudio(false); return; }
       }
+      if (!pttIntentRef.current) { endLocalAudio(false); return; }
       talkingRef.current = true;
       setRemainingSeconds(current=>current>0?current:30);
       setIsTalking(true);
       await channelRef.current.track({callsign:activeCallsign,status:'Transmitiendo',visible:!document.hidden,joinedAt:new Date().toISOString()});
     } catch (error) {
+      pttIntentRef.current = false;
       endLocalAudio(false);
       setPttError(error instanceof DOMException && error.name==='NotAllowedError'
         ? 'No diste permiso para usar el micrófono. Habilítalo en el navegador.'
@@ -1101,7 +1107,10 @@ export const LBComunica: React.FC = () => {
       const seconds = Math.max(0,Math.ceil((new Date(data.active_until).getTime()-Date.now())/1000));
       setRemainingSeconds(seconds);
     } else setRemainingSeconds(0);
-    if (data.status==='transmitting' && !talkingRef.current && !beginningRef.current) void beginAudio();
+    if (data.status==='transmitting' && !talkingRef.current && !beginningRef.current) {
+      if (pttIntentRef.current) void beginAudio();
+      else if (action !== 'release' && action !== 'cancel') void api('queue',{queue_action:'release'}).catch(()=>{});
+    }
     if (data.status!=='transmitting' && (talkingRef.current || beginningRef.current)) endLocalAudio(true);
     return data as QueueState;
   };
@@ -1109,14 +1118,23 @@ export const LBComunica: React.FC = () => {
   const requestTurn = async () => {
     if (connection!=='connected' || talkingRef.current || beginningRef.current || pttActionRef.current) return;
     pttActionRef.current = true;
+    pttIntentRef.current = true;
+    turnCancelledRef.current = false;
     setPttPending(true);
     setPttError('');
-    try { await queueAction('request'); }
-    catch (error) { setPttError(error instanceof Error ? error.message : 'No se pudo solicitar turno.'); }
-    finally { pttActionRef.current = false; setPttPending(false); }
+    try {
+      await queueAction('request');
+      // Si el usuario soltó PTT mientras la petición estaba en vuelo, la concesión tardía se libera.
+      if (!pttIntentRef.current) await api('queue',{queue_action:'release'});
+    } catch (error) {
+      pttIntentRef.current = false;
+      setPttError(error instanceof Error ? error.message : 'No se pudo solicitar turno.');
+      try { await api('queue',{queue_action:'cancel'}); } catch {}
+    } finally { pttActionRef.current = false; setPttPending(false); }
   };
 
   const releaseTurn = async () => {
+    pttIntentRef.current = false;
     turnCancelledRef.current = true;
     // Cortar primero el audio local: no esperar al servidor para dejar de emitir.
     if (talkingRef.current || beginningRef.current) endLocalAudio(true);
@@ -1305,7 +1323,10 @@ export const LBComunica: React.FC = () => {
   useEffect(() => {
     if (!sessionActive || connection!=='connected') return;
     let stopped=false;
+    let polling=false;
     const poll = async () => {
+      if (polling) return;
+      polling=true;
       try {
         const data = await queueAction('state');
         if (stopped) return;
@@ -1316,10 +1337,10 @@ export const LBComunica: React.FC = () => {
         }
       } catch (error) {
         if (!stopped) setPttError(error instanceof Error?error.message:'No se pudo actualizar la cola.');
-      }
+      } finally { polling=false; }
     };
     void poll();
-    const timer=window.setInterval(()=>void poll(),1000);
+    const timer=window.setInterval(()=>void poll(),1500);
     return ()=>{stopped=true;window.clearInterval(timer);};
   },[sessionActive,connection,activeCallsign,deviceToken,room]);
 
