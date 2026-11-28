@@ -11,7 +11,7 @@ type Signal = {
   kind: 'offer' | 'answer' | 'ice' | 'stop';
   description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit;
 };
-type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement };
+type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; gateFrame?: number };
 type Recording = { id: string; callsign: string; duration_ms: number; mime_type: string; created_at: string; url: string };
 type QueueState = { ok: boolean; status?: 'transmitting' | 'queued' | 'listening'; active_callsign?: string | null; active_until?: string | null; queue_position?: number; queue?: { callsign: string }[]; reason?: string };
 
@@ -107,6 +107,9 @@ export const LBComunica: React.FC = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef(0);
   const peerMapRef = useRef<Map<string,PeerEntry>>(new Map());
+  const micContextRef=useRef<AudioContext|null>(null);
+  const micGainRef=useRef<GainNode|null>(null);
+  const processedMicRef=useRef<MediaStream|null>(null);
   const pendingIceRef = useRef<Map<string,RTCIceCandidateInit[]>>(new Map());
   const sessionRef = useRef('');
   const talkingRef = useRef(false);
@@ -114,6 +117,9 @@ export const LBComunica: React.FC = () => {
   const turnCancelledRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement|null>(null);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
+
+  useEffect(()=>{localStorage.setItem('lb_radio_rf_gain',String(rfGain));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));localStorage.setItem('lb_radio_volume',String(radioVolume));},[rfGain,micGain,squelch,clarifier,radioVolume]);
+  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(900+(clarifier-50)*22,entry.context?.currentTime||0,.04);entry.tone.gain.setTargetAtTime(((clarifier-50)/50)*5,entry.context?.currentTime||0,.04);}}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
@@ -183,6 +189,8 @@ export const LBComunica: React.FC = () => {
     entry.pc.ontrack = null;
     entry.pc.onicecandidate = null;
     entry.pc.close();
+    if(entry.gateFrame)cancelAnimationFrame(entry.gateFrame);
+    void entry.context?.close().catch(()=>{});
     entry.audio.pause();
     entry.audio.srcObject = null;
     peerMapRef.current.delete(key);
@@ -203,9 +211,30 @@ export const LBComunica: React.FC = () => {
     audio.autoplay = true;
     audio.volume = 1;
     pc.ontrack = (event) => {
-      audio.srcObject = event.streams[0] || new MediaStream([event.track]);
-      void audio.play().catch(() => setPttError('Toca la pantalla para permitir la reproducción del audio recibido.'));
-      setRemoteTalkers((current) => current.includes(callsign) ? current : [...current,callsign]);
+      const remote=event.streams[0]||new MediaStream([event.track]);
+      try {
+        const Ctor=window.AudioContext||(window as any).webkitAudioContext;
+        if(!Ctor)throw new Error('Web Audio no disponible');
+        const ctx:AudioContext=new Ctor();
+        const source=ctx.createMediaStreamSource(remote);
+        const high=ctx.createBiquadFilter();high.type='highpass';high.frequency.value=260;
+        const low=ctx.createBiquadFilter();low.type='lowpass';low.frequency.value=3400;
+        const tone=ctx.createBiquadFilter();tone.type='peaking';tone.frequency.value=900+(clarifier-50)*22;tone.Q.value=.8;tone.gain.value=((clarifier-50)/50)*5;
+        const analyser=ctx.createAnalyser();analyser.fftSize=256;
+        const gate=ctx.createGain();gate.gain.value=1;
+        const rf=ctx.createGain();rf.gain.value=radioReceive?(rfGain/100)*(radioVolume/100):0;
+        const dest=ctx.createMediaStreamDestination();
+        source.connect(high);high.connect(low);low.connect(tone);tone.connect(analyser);analyser.connect(gate);gate.connect(rf);rf.connect(dest);
+        audio.srcObject=dest.stream;
+        const entry=peerMapRef.current.get(key);
+        if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.gate=gate;entry.analyser=analyser;}
+        const samples=new Uint8Array(analyser.fftSize);
+        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);gate.gain.setTargetAtTime(squelch>0&&rms<(squelch/100)*.055?0:1,ctx.currentTime,.04);current.gateFrame=requestAnimationFrame(loop);};
+        const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
+        void ctx.resume();
+      } catch { audio.srcObject=remote;audio.volume=radioReceive?radioVolume/100:0; }
+      void audio.play().catch(()=>setPttError('Toca la pantalla para permitir la reproducción del audio recibido.'));
+      setRemoteTalkers(current=>current.includes(callsign)?current:[...current,callsign]);
     };
     pc.onicecandidate = (event) => {
       if (event.candidate) void sendSignal({
@@ -305,6 +334,7 @@ export const LBComunica: React.FC = () => {
     const sessionId = sessionRef.current;
     Array.from(peerMapRef.current.keys()).filter((key)=>key.endsWith(':'+sessionId)).forEach(closePeer);
     streamRef.current?.getTracks().forEach((track)=>track.stop());
+    processedMicRef.current?.getTracks().forEach(track=>track.stop());processedMicRef.current=null;micGainRef.current=null;void micContextRef.current?.close().catch(()=>{});micContextRef.current=null;
     streamRef.current = null;
   };
 
@@ -317,6 +347,8 @@ export const LBComunica: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false,
       });
+      let transmitStream=stream;
+      try{const Ctor=window.AudioContext||(window as any).webkitAudioContext;if(Ctor){const ctx:AudioContext=new Ctor();const source=ctx.createMediaStreamSource(stream);const gain=ctx.createGain();gain.gain.value=micGain/70;const dest=ctx.createMediaStreamDestination();source.connect(gain);gain.connect(dest);micContextRef.current=ctx;micGainRef.current=gain;processedMicRef.current=dest.stream;transmitStream=dest.stream;void ctx.resume();}}catch{transmitStream=stream;}
       if (turnCancelledRef.current) { stream.getTracks().forEach((track)=>track.stop()); beginningRef.current=false; return; }
       streamRef.current = stream;
       recordedChunksRef.current = [];
@@ -336,7 +368,7 @@ export const LBComunica: React.FC = () => {
         const participant = values?.[0];
         if (!participant?.callsign) continue;
         const pc = createPeer(peerId,sessionId,participant.callsign);
-        stream.getAudioTracks().forEach((track)=>pc.addTrack(track,stream));
+        transmitStream.getAudioTracks().forEach((track)=>pc.addTrack(track,transmitStream));
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         await sendSignal({
