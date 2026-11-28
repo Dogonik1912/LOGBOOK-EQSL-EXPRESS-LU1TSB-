@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Headphones, Mic, Users, Wifi, X, Volume2, Play, ListMusic, Clock3, Share2, Copy, MessageCircle, Send, Mail } from 'lucide-react';
-import { resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
+import { resolveShareLanguage, getInitialAppLanguage, type AppLanguage } from '../services/appLanguage';
 import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { supabase } from '../services/supabaseClient';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
@@ -305,15 +305,48 @@ export const LBComunica: React.FC = () => {
       const oscarItalia=isElevenMeters && specialRoll<0.22;
       const comandante=isElevenMeters && specialRoll>=0.22 && specialRoll<0.38;
       if(oscarItalia){
+        // Oscar conserva la frase española, pero usa voz italiana si el dispositivo la ofrece.
         const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
-        if(italian.length){phrase='Oscar Italia! La stazione più forte del mondo sta chiamando!';language='it-IT';available=italian;}
-        else {phrase='¡Oscar Italia! ¡La estación más fuerte del mundo está llamando!';language='es-ES';available=spanish.length?spanish:voices;}
+        phrase='¡Oscar Italia! ¡La estación más fuerte del mundo está llamando!';
+        language=italian.length?'it-IT':'es-ES';
+        available=italian.length?italian:(spanish.length?spanish:voices);
       } else if(comandante){
-        phrase='¡Atención, atención! Aquí el Comandante. Tonto, es que eres tonto. ¡Te lo digo yo, el Comandante!';
-        language='es-ES';
-        const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
-        available=spanish.length?spanish:voices;
+        const appLang=getInitialAppLanguage();
+        const commanderLines:Partial<Record<AppLanguage,string>>={
+          es:'¡Atención, atención! Aquí el Comandante. Tonto, es que eres tonto. ¡Te lo digo yo, el Comandante!',
+          en:'Attention, attention! This is the Commander. You fool, are you really that foolish? The Commander told you so!',
+          pt:'Atenção, atenção! Aqui é o Comandante. Tonto, és mesmo tonto. Eu, o Comandante, é que te digo!',
+          'pt-br':'Atenção, atenção! Aqui é o Comandante. Tonto, você é muito tonto. Estou dizendo, eu sou o Comandante!',
+          it:'Attenzione, attenzione! Qui è il Comandante. Sciocco, sei proprio sciocco. Te lo dice il Comandante!',
+          fr:'Attention, attention! Ici le Commandant. Idiot, tu es vraiment idiot. C’est moi, le Commandant, qui te le dis!',
+          de:'Achtung, Achtung! Hier spricht der Kommandant. Du Dummkopf, bist du wirklich so dumm? Das sagt dir der Kommandant!',
+          nl:'Attentie, attentie! Hier spreekt de Commandant. Domoor, ben je echt zo dom? Dat zegt de Commandant!',
+          pl:'Uwaga, uwaga! Tu Komendant. Głupcze, ale z ciebie głupiec. Mówi ci to sam Komendant!',
+          ru:'Внимание, внимание! Говорит Командир. Ну ты и глупец! Это тебе говорит сам Командир!',
+          uk:'Увага, увага! Говорить Командир. Ну й дурню ж ти! Це тобі каже сам Командир!',
+          zh:'注意，注意！这里是指挥官。你这个傻瓜，真是个傻瓜！这是指挥官告诉你的！',
+          ja:'こちら司令官。注意、注意！まったく、君は本当におバカだな。司令官からの忠告だ！',
+          ko:'주목, 주목! 여기는 사령관이다. 이 바보야, 정말 바보구나! 사령관이 하는 말이다!',
+          ar:'انتباه، انتباه! معكم القائد. يا لك من أحمق! أنا القائد وأقول لك ذلك!',
+          hi:'ध्यान दें, ध्यान दें! कमांडर बोल रहा है। अरे मूर्ख, तुम सच में मूर्ख हो! यह कमांडर कह रहा है!',
+          tr:'Dikkat, dikkat! Komutan konuşuyor. Seni aptal, gerçekten aptalsın! Bunu sana Komutan söylüyor!',
+          sv:'Hallå, hallå! Här talar Kommendören. Din tok, är du verkligen så tokig? Det säger Kommendören!',
+          no:'Hallo, hallo! Dette er Kommandanten. Din tosk, er du virkelig så dum? Det sier Kommandanten!',
+          da:'Hallo, hallo! Her taler Kommandanten. Din tåbe, er du virkelig så dum? Det siger Kommandanten!',
+          fi:'Huomio, huomio! Täällä komentaja. Senkin hölmö, oletpa todella hölmö! Näin sanoo komentaja!',
+          cs:'Pozor, pozor! Tady velitel. Ty hlupáku, ty jsi ale hlupák. To ti říká velitel!',
+          el:'Προσοχή, προσοχή! Εδώ ο Διοικητής. Ανόητε, είσαι πραγματικά ανόητος! Στο λέει ο Διοικητής!',
+          ro:'Atenție, atenție! Aici Comandantul. Prostule, chiar ești prost. Ți-o spune Comandantul!',
+          hu:'Figyelem, figyelem! Itt a Parancsnok. Te bolond, tényleg bolond vagy! Ezt a Parancsnok mondja!',
+          id:'Perhatian, perhatian! Ini Komandan. Dasar bodoh, memang bodoh! Ini Komandan yang mengatakannya!',
+          th:'โปรดทราบ โปรดทราบ! นี่คือผู้บัญชาการ เจ้าโง่เอ๊ย โง่จริง ๆ! ผู้บัญชาการบอกเอง!'
+        };
+        phrase=commanderLines[appLang]||commanderLines.en!;
+        language=appLang==='pt-br'?'pt-BR':appLang==='zh'?'zh-CN':appLang==='ja'?'ja-JP':appLang==='ko'?'ko-KR':appLang==='ar'?'ar-SA':appLang==='hi'?'hi-IN':appLang==='th'?'th-TH':appLang==='sv'?'sv-SE':appLang==='no'?'nb-NO':appLang==='da'?'da-DK':appLang==='fi'?'fi-FI':appLang==='cs'?'cs-CZ':appLang==='el'?'el-GR':appLang==='ro'?'ro-RO':appLang==='hu'?'hu-HU':appLang==='id'?'id-ID':appLang==='uk'?'uk-UA':appLang==='ru'?'ru-RU':appLang==='pl'?'pl-PL':appLang==='nl'?'nl-NL':appLang==='de'?'de-DE':appLang==='fr'?'fr-FR':appLang==='it'?'it-IT':appLang==='pt'?'pt-PT':appLang==='en'?'en-US':'es-ES';
+        const langPrefix=language.slice(0,2).toLowerCase();
+        const localizedVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(langPrefix));
+        available=localizedVoices.length?localizedVoices:voices;
       }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
