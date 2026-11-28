@@ -100,6 +100,7 @@ export const LBComunica: React.FC = () => {
       });
       await api('push_subscribe', { subscription: subscription.toJSON() });
       localStorage.setItem(pushPreferenceKey(), '1');
+      localStorage.setItem('lb_comunica_push_callsign_' + room, activeCallsign);
       setPushEnabled(true);
     } catch (error) {
       setPttError(error instanceof Error ? error.message : 'No se pudieron activar los avisos.');
@@ -358,12 +359,36 @@ export const LBComunica: React.FC = () => {
     }
   };
 
-  const openRoom = () => {
-    const current = readCallsign() || activeCallsign;
+  const openRoom = (targetCallsign?: string) => {
+    const current = (targetCallsign || readCallsign() || activeCallsign).trim().toUpperCase();
     if (current) setActiveCallsign(current);
     setDeviceToken(identityTokenForDevice());
     setIsOpen(true);
   };
+
+  useEffect(() => {
+    const handlePushOpen = (event: MessageEvent) => {
+      if (event.data?.type !== 'OPEN_LB_COMUNICA') return;
+      const targetRoom = event.data.room === '11m' ? '11m' : event.data.room === 'ham' ? 'ham' : '';
+      const savedCallsign = targetRoom ? localStorage.getItem('lb_comunica_push_callsign_' + targetRoom) || '' : '';
+      if (savedCallsign && (is11MeterStationIdentifier(savedCallsign) ? '11m' : 'ham') === targetRoom) openRoom(savedCallsign);
+      else openRoom();
+    };
+    window.addEventListener('message', handlePushOpen);
+    const params = new URLSearchParams(window.location.search);
+    const targetRoom = params.get('open_lb_comunica');
+    if (targetRoom === 'ham' || targetRoom === '11m') {
+      const savedCallsign = localStorage.getItem('lb_comunica_push_callsign_' + targetRoom) || '';
+      window.setTimeout(() => {
+        if (savedCallsign && (is11MeterStationIdentifier(savedCallsign) ? '11m' : 'ham') === targetRoom) openRoom(savedCallsign);
+        else openRoom();
+        params.delete('open_lb_comunica');
+        const query = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+      }, 0);
+    }
+    return () => window.removeEventListener('message', handlePushOpen);
+  }, []);
 
   useEffect(() => {
     const update = (event?:Event) => {
