@@ -95,7 +95,7 @@ import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsig
 type Participant = { callsign: string; status?: string; joinedAt?: string; visible?: boolean };
 type Signal = {
   from: string; to: string; callsign: string; sessionId: string;
-  kind: 'offer' | 'answer' | 'ice' | 'stop';
+  kind: 'offer' | 'answer' | 'ice' | 'stop' | 'request';
   description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit;
 };
 type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; qrmGain?: GainNode; qrmSource?: AudioBufferSourceNode; gateFrame?: number };
@@ -253,6 +253,7 @@ export const LBComunica: React.FC = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef(0);
   const peerMapRef = useRef<Map<string,PeerEntry>>(new Map());
+  const requestedTalkersRef = useRef<Set<string>>(new Set());
   const squelchRef=useRef(squelch);
   const audioProfileRef=useRef(audioProfile);
   const micContextRef=useRef<AudioContext|null>(null);
@@ -803,6 +804,19 @@ export const LBComunica: React.FC = () => {
       if (payload.kind === 'stop') {
         closePeer(key);
         setRemoteTalkers((current) => current.filter((call) => call !== payload.callsign));
+      } else if (payload.kind === 'request') {
+        // Un operador acaba de entrar mientras este equipo ya transmite.
+        // Abrimos un enlace de audio nuevo hacia ese participante sin esperar otro PTT.
+        if (!talkingRef.current && !beginningRef.current) return;
+        const transmitStream = processedMicRef.current || streamRef.current;
+        if (!transmitStream || !sessionRef.current) return;
+        const outgoingKey = payload.from + ':' + sessionRef.current;
+        if (peerMapRef.current.has(outgoingKey)) return;
+        const outgoing = createPeer(payload.from,sessionRef.current, String(payload.callsign||''));
+        transmitStream.getAudioTracks().forEach(track=>outgoing.addTrack(track,transmitStream));
+        const offer = await outgoing.createOffer();
+        await outgoing.setLocalDescription(offer);
+        await sendSignal({from:deviceToken,to:payload.from,callsign:activeCallsign,sessionId:sessionRef.current,kind:'offer',description:outgoing.localDescription?.toJSON()});
       } else if (payload.kind === 'offer' && payload.description) {
         const pc = createPeer(payload.from,payload.sessionId,payload.callsign);
         await pc.setRemoteDescription(payload.description);
@@ -1119,6 +1133,19 @@ export const LBComunica: React.FC = () => {
         const state = channel.presenceState<Participant>();
         const all = Object.values(state).flat();
         if(all.some((p:any)=>p?.status==='Transmitiendo') && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+        // Si entramos con una transmisión ya iniciada, solicitamos que el emisor
+        // abra una conexión WebRTC hacia nosotros. Broadcasts anteriores no se recuperan.
+        const activeTalkers = new Set<string>();
+        for (const [peerId,values] of Object.entries(state) as Array<[string,Participant[]]>) {
+          const speaker = values?.find(p=>p?.status==='Transmitiendo' && p?.callsign);
+          if (!speaker || peerId===deviceToken) continue;
+          activeTalkers.add(peerId);
+          if (!requestedTalkersRef.current.has(peerId)) {
+            requestedTalkersRef.current.add(peerId);
+            void sendSignal({from:deviceToken,to:peerId,callsign:activeCallsign,sessionId:'request-'+deviceToken,kind:'request'}).catch(()=>requestedTalkersRef.current.delete(peerId));
+          }
+        }
+        for (const peerId of Array.from(requestedTalkersRef.current)) if (!activeTalkers.has(peerId)) requestedTalkersRef.current.delete(peerId);
         const unique = new Map<string,Participant>();
         all.forEach((p)=>{const call=String(p.callsign||'').toUpperCase();if(call)unique.set(call,{...p,callsign:call});});
         setParticipants(Array.from(unique.values()).sort((a,b)=>a.callsign.localeCompare(b.callsign)));
@@ -1286,6 +1313,10 @@ export const LBComunica: React.FC = () => {
                       </details>}
                     </div> : <span className="text-[10px] opacity-75">{connection==='connected'?'Esperando operadores…':'Conectando con la sala…'}</span>}
                   </div>
+                  {participants.some(participant=>participant.status==='Transmitiendo') && <div role="status" aria-live="polite" className={'order-0 md:col-span-2 flex w-full flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-left '+(panelLight?'border-red-300 bg-red-50 text-red-950':'border-red-400/40 bg-red-950/50 text-red-100')}>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black tracking-wide"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500"/>EN EL AIRE</span>
+                    {participants.filter(participant=>participant.status==='Transmitiendo').map(participant=><span key={'tx-'+participant.callsign} className="inline-flex items-center gap-1.5 rounded-full border border-current/25 bg-black/5 px-2.5 py-1 text-xs font-extrabold"><span aria-label="Bandera del país">{flagForCallsign(participant.callsign,undefined,isElevenMeters)}</span><span>{participant.callsign}</span></span>)}
+                  </div>}
                   <div className="order-1 md:col-span-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(220px,.85fr)] md:items-center md:gap-3 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 md:col-span-2 bg-black/10 px-2 py-1.5">
                       <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px] font-black tracking-wider text-zinc-950 sm:gap-2 sm:text-xs">
