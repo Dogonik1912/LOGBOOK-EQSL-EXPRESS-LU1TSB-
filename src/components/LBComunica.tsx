@@ -31,34 +31,32 @@ const identityTokenForDevice = () => {
 };
 
 const SuperstarMeter: React.FC<{ level: number; transmitting: boolean }> = ({ level, transmitting }) => {
-  const angle = -52 + Math.max(0, Math.min(1, level)) * 104;
+  const position = 24 + Math.max(0, Math.min(1, level)) * 272;
   return (
-    <div className="w-full max-w-[330px] rounded-md border-[5px] border-zinc-500 bg-zinc-900 p-1 shadow-[inset_0_0_14px_#000,0_5px_18px_#0008]">
-      <svg viewBox="0 0 320 176" role="img" aria-label="Medidor analógico estilo Superstar 3900 con escalas S, RF, SWR y CAL" className="block w-full">
+    <div className="w-full max-w-[340px] rounded-md border-[5px] border-zinc-500 bg-zinc-900 p-1 shadow-[inset_0_0_14px_#000,0_5px_18px_#0008]">
+      <svg viewBox="0 0 320 126" role="img" aria-label="Medidor analógico estilo Superstar 3900 con escalas SIG, RF, SWR y CAL" className="block w-full">
         <defs>
-          <linearGradient id="ss-meter-face" x2="0" y2="1"><stop stopColor="#303a2d"/><stop offset="1" stopColor="#10170f"/></linearGradient>
-          <linearGradient id="ss-meter-glass" x2="0" y2="1"><stop stopColor="#fff" stopOpacity=".18"/><stop offset=".45" stopColor="#fff" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".24"/></linearGradient>
+          <linearGradient id="ss3900-face" x2="0" y2="1"><stop stopColor="#17241b"/><stop offset="1" stopColor="#07110b"/></linearGradient>
+          <linearGradient id="ss3900-glass" x2="0" y2="1"><stop stopColor="#fff" stopOpacity=".2"/><stop offset=".42" stopColor="#fff" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".2"/></linearGradient>
         </defs>
-        <rect x="3" y="3" width="314" height="170" rx="7" fill="url(#ss-meter-face)" stroke="#9ca3af" strokeWidth="1.5"/>
-        <path d="M35 127 A125 105 0 0 1 285 127" fill="none" stroke="#d7dfc7" strokeWidth="2"/>
-        {Array.from({length: 19}, (_, i) => {
-          const a = (-150 + i * (120 / 18)) * Math.PI / 180;
-          const x1 = 160 + 125 * Math.cos(a), y1 = 127 + 105 * Math.sin(a);
-          const x2 = 160 + (i % 2 === 0 ? 110 : 116) * Math.cos(a), y2 = 127 + (i % 2 === 0 ? 90 : 97) * Math.sin(a);
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={i > 14 ? "#e35b42" : "#e7eadb"} strokeWidth={i % 2 === 0 ? 2 : 1}/>;
-        })}
-        <g fill="#edf2df" fontSize="10" fontFamily="Arial,sans-serif" textAnchor="middle">
-          <text x="38" y="117">S0</text><text x="67" y="67">S3</text><text x="112" y="36">S5</text><text x="160" y="25">S7</text><text x="208" y="36">S9</text><text x="253" y="67">+60</text><text x="282" y="117">+60</text>
+        <rect x="2" y="2" width="316" height="122" rx="5" fill="url(#ss3900-face)" stroke="#a8aaa3" strokeWidth="2"/>
+        <rect x="12" y="12" width="296" height="99" rx="2" fill="#050b07" stroke="#687466" strokeWidth="1"/>
+        <g fontFamily="Arial,sans-serif" fontWeight="bold">
+          <text x="20" y="30" fill="#36c98a" fontSize="11" letterSpacing="1">SWR</text>
+          <text x="102" y="30" fill="#36c98a" fontSize="10">1</text><text x="151" y="30" fill="#36c98a" fontSize="10">2</text><text x="200" y="30" fill="#36c98a" fontSize="10">3</text>
+          <text x="251" y="30" fill="#ef5948" fontSize="10">CAL</text>
+          <path d="M20 35 H239" stroke="#36c98a" strokeWidth="5"/><path d="M239 35 H293" stroke="#ef5948" strokeWidth="5"/>
+          <text x="20" y="61" fill="#36c98a" fontSize="11" letterSpacing="1">RF</text>
+          <path d="M20 66 H293" stroke="#36c98a" strokeWidth="5"/>
+          <text x="20" y="92" fill="#36c98a" fontSize="11" letterSpacing="1">SIG</text>
+          <g fill="#36c98a" fontSize="10" textAnchor="middle"><text x="83" y="91">1</text><text x="123" y="91">3</text><text x="163" y="91">5</text><text x="203" y="91">7</text><text x="243" y="91">9</text></g>
+          <text x="290" y="91" fill="#ef5948" fontSize="10" textAnchor="end">+30 dB</text>
+          <path d="M20 97 H263" stroke="#36c98a" strokeWidth="5"/><path d="M263 97 H293" stroke="#ef5948" strokeWidth="5"/>
         </g>
-        <g fill="#a9c78b" fontSize="9" fontWeight="bold" textAnchor="middle">
-          <text x="82" y="143">S</text><text x="160" y="143">RF</text><text x="237" y="143">SWR</text>
-        </g>
-        <text x="160" y="158" fill="#d5dfc8" fontSize="8" textAnchor="middle" letterSpacing="2">CAL</text>
-        <g transform={\`rotate(\${angle} 160 127)\`}><path d="M157 130 L160 39 L163 130 Z" fill="#e74b3b" stroke="#641c17" strokeWidth="1"/></g>
-        <circle cx="160" cy="127" r="7" fill="#c5c8bd" stroke="#343a32" strokeWidth="2"/>
-        <text x="160" y="14" textAnchor="middle" fill="#d9e4c8" fontSize="8" fontWeight="bold">SUPER STAR</text>
-        <rect x="3" y="3" width="314" height="170" rx="7" fill="url(#ss-meter-glass)" pointerEvents="none"/>
-        <text x="160" y="169" fill={transmitting ? "#ff6b55" : "#9fd27c"} fontSize="8" textAnchor="middle">{transmitting ? "TX · RF" : "RX · S"}</text>
+        <line x1={position} y1="16" x2={position} y2="104" stroke="#f5f1d7" strokeWidth="2.5"/>
+        <path d={`M${position-4} 104 L${position} 95 L${position+4} 104 Z`} fill="#e34b3d" stroke="#641c17" strokeWidth=".8"/>
+        <rect x="12" y="12" width="296" height="99" rx="2" fill="url(#ss3900-glass)" pointerEvents="none"/>
+        <text x="160" y="119" textAnchor="middle" fill={transmitting ? "#ff6b55" : "#9fd27c"} fontSize="7" letterSpacing="1">{transmitting ? "TX · RF" : "RX · SIG"}</text>
       </svg>
     </div>
   );
