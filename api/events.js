@@ -193,6 +193,7 @@ export default async function handler(req, res) {
       if (!url || !key) throw new Error('EVENTS_NOT_CONFIGURED');
       return { client: createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }), secret: key };
     })();
+    const nowIso = new Date().toISOString();
 
     if (req.method === 'GET' && req.query?.share) {
       const token = String(req.query.share || '');
@@ -210,7 +211,8 @@ export default async function handler(req, res) {
       } else {
         const { data, error: shareError } = await supabase.from('radio_events')
           .select('id,title,description,event_scope,event_kind,station_type,country_code,country_name,organizer,start_at,end_at,rules_url,source_url,source_name,image_url,verified,is_auto')
-          .eq('id', sharedId).eq('status', 'published').maybeSingle();
+          .eq('id', sharedId).eq('status', 'published')
+          .or('end_at.is.null,end_at.gte.' + nowIso).maybeSingle();
         if (shareError) throw shareError;
         sharedEvent = data;
       }
@@ -244,7 +246,7 @@ export default async function handler(req, res) {
         .in('station_type', [stationType, 'both'])
         .eq('event_scope', category)
         .eq('event_kind', eventKind)
-        .or('start_at.is.null,start_at.gte.' + new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() + ',end_at.gte.' + new Date().toISOString())
+        .or('end_at.is.null,end_at.gte.' + nowIso)
         .order('start_at', { ascending: true, nullsFirst: false })
         .limit(200);
       if (category === 'national') {
@@ -259,7 +261,7 @@ export default async function handler(req, res) {
       }
       const [{ data: events, error }, { data: countryRows, error: countryError }, { data: sourceRows, error: sourceError }] = await Promise.all([
         query,
-        supabase.from('radio_events').select('country_code').eq('status', 'published').in('station_type', [stationType, 'both']).not('country_code', 'is', null).limit(1000),
+        supabase.from('radio_events').select('country_code').eq('status', 'published').in('station_type', [stationType, 'both']).or('end_at.is.null,end_at.gte.' + nowIso).not('country_code', 'is', null).limit(1000), 
         supabase.from('radio_event_sources').select('last_success_at').not('last_success_at', 'is', null).order('last_success_at', { ascending: false }).limit(1),
       ]);
       if (error || countryError || sourceError) throw error || countryError || sourceError;
@@ -282,7 +284,7 @@ export default async function handler(req, res) {
           return json(res, 200, { token: id + '.' + shareSignature(id, secret) });
         }
         if (!UUID_RE.test(id)) return json(res, 400, { error: 'Identificador de publicación no válido.' });
-        const { data: event, error: eventError } = await supabase.from('radio_events').select('id').eq('id', id).eq('status', 'published').maybeSingle();
+        const { data: event, error: eventError } = await supabase.from('radio_events').select('id').eq('id', id).eq('status', 'published').or('end_at.is.null,end_at.gte.' + nowIso).maybeSingle();
         if (eventError) throw eventError;
         if (!event) return json(res, 404, { error: 'La publicación ya no está disponible.' });
         return json(res, 200, { token: id + '.' + shareSignature(id, secret) });
