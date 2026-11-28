@@ -248,7 +248,7 @@ export const LBComunica: React.FC = () => {
     const synth=window.speechSynthesis;
     let timer: ReturnType<typeof setTimeout> | null=null;
     let cancelled=false;
-    const phrases=[
+    const hamPhrases=[
       'CQ CQ CQ, this is Whiskey Eight Delta calling. Any station, over.',
       'CQ CQ CQ, calling CQ. This is Mike Seven Romeo, standing by.',
       'CQ CQ CQ, this is Echo Four Lima. Is any station listening?',
@@ -262,16 +262,49 @@ export const LBComunica: React.FC = () => {
       'A little QRM here, please repeat your last transmission.',
       'Copy your report. The band is quite busy today.'
     ];
+    const elevenMeterPhrases:{lang:string;text:string}[]=[
+      {lang:'es-ES',text:'CQ once metros, CQ once metros. Estación móvil llamando, ¿alguna estación copia?'},
+      {lang:'es-ES',text:'Breaker, breaker. ¿Hay estaciones en frecuencia? Quedo a la escucha.'},
+      {lang:'es-ES',text:'Atención estaciones, llamada DX desde la división treinta. Cambio.'},
+      {lang:'es-ES',text:'Te recibo cinco nueve, gracias por el contacto. Hasta pronto.'},
+      {lang:'en-US',text:'CQ eleven meters, CQ eleven meters. Any station copy?'},
+      {lang:'en-US',text:'Breaker one nine, this is a mobile station calling. Standing by.'},
+      {lang:'en-US',text:'Calling DX on twenty-seven five five five. Any station, come back.'},
+      {lang:'en-US',text:'Your signal is five and nine. Thanks for the contact, seventy three.'},
+      {lang:'pt-BR',text:'CQ onze metros, CQ onze metros. Alguma estação na escuta?'},
+      {lang:'pt-BR',text:'Estação móvel chamando, alguém copia? Fico na escuta.'},
+      {lang:'fr-FR',text:'Appel général sur onze mètres. Une station me reçoit-elle?'},
+      {lang:'fr-FR',text:'Appel DX sur vingt-sept cinq cinq cinq. Je suis à l’écoute.'},
+      {lang:'de-DE',text:'CQ auf elf Meter. Ist eine Station auf Empfang? Bitte kommen.'},
+      {lang:'de-DE',text:'Mobilstation ruft. Ich höre auf dieser Frequenz.'},
+      {lang:'it-IT',text:'CQ sugli undici metri. Qualche stazione in ascolto?'},
+      {lang:'it-IT',text:'Stazione mobile in chiamata, resto in ascolto. Passo.'}
+    ];
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
     const speak=()=>{
       if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length) { schedule(12000+Math.random()*18000); return; }
-      const utterance=new SpeechSynthesisUtterance(phrases[Math.floor(Math.random()*phrases.length)]);
-      const english=synth.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
+      const voices=synth.getVoices();
+      const isElevenMeters=is11MeterStationIdentifier(activeCallsign);
+      let phrase:string;
+      let language='en-US';
+      let available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
+      if(isElevenMeters){
+        // Use only languages for which this device actually has a speech voice.
+        const languages=[...new Set(elevenMeterPhrases.map(p=>p.lang))].filter(lang=>voices.some(v=>v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase())));
+        const chosenLanguage=languages.length?languages[Math.floor(Math.random()*languages.length)]:'en-US';
+        const localized=elevenMeterPhrases.filter(p=>p.lang===chosenLanguage);
+        phrase=(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US'))[Math.floor(Math.random()*(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US')).length)].text;
+        language=chosenLanguage;
+        available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+      }else{
+        phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
+      }
+      const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const maleVoices=english.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander/i.test(v.name));
-      const available=maleVoices.length?maleVoices:english;
-      if(available.length) utterance.voice=available[Math.floor(Math.random()*available.length)];
-      utterance.lang='en-US';
+      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander/i.test(v.name));
+      const selectedVoices=maleVoices.length?maleVoices:available;
+      if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
+      utterance.lang=language;
       // Voz más grave y baja para sugerir una estación distante, sin tapar la conversación.
       utterance.rate=0.76+Math.random()*0.08;
       utterance.pitch=0.68+Math.random()*0.10;
