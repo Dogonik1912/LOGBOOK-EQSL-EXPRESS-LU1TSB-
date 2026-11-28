@@ -167,7 +167,7 @@ export const LBComunica: React.FC = () => {
     n.compressor.threshold.setTargetAtTime(audioProfile==='radio'?-20:0,now,.08);
     n.compressor.knee.setTargetAtTime(audioProfile==='radio'?24:0,now,.08);
     n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?1.6:1,now,.08);
-    n.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,now,.04);
+    n.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,now,.04);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
     let voiceOpen=false;
@@ -180,7 +180,7 @@ export const LBComunica: React.FC = () => {
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
   useEffect(()=>{localStorage.setItem('lb_radio_panel_light',panelLight?'1':'0');},[panelLight]);
   useEffect(()=>{localStorage.setItem('lb_comunica_ptt_mode',pttMode);},[pttMode]);
-  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
+  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
@@ -284,7 +284,7 @@ export const LBComunica: React.FC = () => {
         const compressor=ctx.createDynamicsCompressor();compressor.threshold.value=-20;compressor.knee.value=24;compressor.ratio.value=1.6;compressor.attack.value=.012;compressor.release.value=.22;
         const analyser=ctx.createAnalyser();analyser.fftSize=512;
         const gate=ctx.createGain();gate.gain.value=1;
-        const rf=ctx.createGain();rf.gain.value=radioReceive?(rfGain/100)*(radioVolume/100):0;
+        const rf=ctx.createGain();rf.gain.value=radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32;
         const dest=ctx.createMediaStreamDestination();
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);rf.connect(dest);
         audio.srcObject=dest.stream;
@@ -295,7 +295,7 @@ export const LBComunica: React.FC = () => {
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
-      } catch { audio.srcObject=remote;audio.volume=radioReceive?radioVolume/100:0; }
+      } catch { audio.srcObject=remote;audio.volume=radioReceive?Math.max(0.32,radioVolume/100):0.32; }
       void audio.play().catch(()=>setPttError('Toca la pantalla para permitir la reproducción del audio recibido.'));
       setRemoteTalkers(current=>current.includes(callsign)?current:[...current,callsign]);
     };
@@ -417,7 +417,7 @@ export const LBComunica: React.FC = () => {
           const ctx:AudioContext=new Ctor();
           const source=ctx.createMediaStreamSource(stream);
           const gain=ctx.createGain();
-          gain.gain.value=Math.max(0,Math.min(2,micGain/70));
+          gain.gain.value=Math.max(0.32,Math.min(2,micGain/70));
           const dest=ctx.createMediaStreamDestination();
           source.connect(gain);
           gain.connect(dest);
@@ -787,7 +787,7 @@ export const LBComunica: React.FC = () => {
                         <span className="whitespace-nowrap">AUDIO RX</span>
                         <button type="button" aria-pressed={audioProfile==='radio'} onClick={()=>setAudioProfile('radio')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='radio'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>MODO RADIO</button>
                         <button type="button" aria-pressed={audioProfile==='clean'} onClick={()=>setAudioProfile('clean')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='clean'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>AUDIO LIMPIO</button>
-                        <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button>
+                        <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX NORMAL':'RX ATENUADA'}</button>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         <button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button>
