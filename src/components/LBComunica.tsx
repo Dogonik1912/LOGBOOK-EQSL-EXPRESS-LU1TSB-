@@ -118,6 +118,8 @@ export const LBComunica: React.FC = () => {
   const beginningRef = useRef(false);
   const turnCancelledRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement|null>(null);
+  const playbackObjectUrlRef = useRef<string>('');
+  const playbackRequestRef = useRef(0);
   const playbackContextRef = useRef<AudioContext|null>(null);
   const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;saturation:WaveShaperNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;gateFrame:number|null}>({} as any);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
@@ -125,6 +127,7 @@ export const LBComunica: React.FC = () => {
   useEffect(()=>{
     if(!isOpen||!audioPlayerRef.current)return;
     const player=audioPlayerRef.current;
+    player.crossOrigin='anonymous';
     const Ctor=window.AudioContext||(window as any).webkitAudioContext;
     if(!Ctor)return;
     let ctx:AudioContext;
@@ -146,6 +149,8 @@ export const LBComunica: React.FC = () => {
       const nodes=playbackNodesRef.current;
       if(nodes.gateFrame!==null&&nodes.gateFrame!==undefined)cancelAnimationFrame(nodes.gateFrame);
       player.pause();player.removeAttribute('src');player.load();
+      playbackRequestRef.current++;
+      if(playbackObjectUrlRef.current){URL.revokeObjectURL(playbackObjectUrlRef.current);playbackObjectUrlRef.current='';}
       void playbackContextRef.current?.close().catch(()=>{});
       playbackContextRef.current=null;playbackNodesRef.current={} as any;
     };
@@ -458,6 +463,7 @@ export const LBComunica: React.FC = () => {
         });
       }
       talkingRef.current = true;
+      setRemainingSeconds(current=>current>0?current:30);
       setIsTalking(true);
       await channelRef.current.track({callsign:activeCallsign,status:'Transmitiendo',joinedAt:new Date().toISOString()});
     } catch (error) {
@@ -708,12 +714,33 @@ export const LBComunica: React.FC = () => {
     const item=recordings[index];
     const player=audioPlayerRef.current;
     if (!item||!player) return;
+    const request=++playbackRequestRef.current;
     setPlayingIndex(index);
+    setPttError('');
     player.pause();
-    player.src=item.url;
-    player.playbackRate=playbackSpeed;
-    const ctx=playbackContextRef.current;
-    const start=async()=>{try{if(ctx&&ctx.state!=='running')await ctx.resume();await player.play();}catch{setPttError('El navegador no permitió reproducir el audio. Toca reproducir nuevamente.');setPlayingIndex(-1);}};
+    const start=async()=>{
+      try{
+        const response=await fetch(item.url,{mode:'cors',cache:'no-store'});
+        if(!response.ok)throw new Error('HTTP '+response.status);
+        const blob=await response.blob();
+        if(!blob.size)throw new Error('El archivo de audio está vacío.');
+        if(request!==playbackRequestRef.current)return;
+        if(playbackObjectUrlRef.current)URL.revokeObjectURL(playbackObjectUrlRef.current);
+        playbackObjectUrlRef.current=URL.createObjectURL(blob);
+        player.crossOrigin='anonymous';
+        player.src=playbackObjectUrlRef.current;
+        player.playbackRate=playbackSpeed;
+        player.load();
+        const ctx=playbackContextRef.current;
+        if(ctx&&ctx.state!=='running')await ctx.resume();
+        await player.play();
+      }catch(error){
+        if(request!==playbackRequestRef.current)return;
+        console.error('LB COMUNICACION reproducción:',error);
+        setPttError('No se pudo cargar o reproducir este audio. Comprueba la conexión y los permisos del navegador.');
+        setPlayingIndex(-1);
+      }
+    };
     void start();
   };
 
@@ -738,7 +765,7 @@ export const LBComunica: React.FC = () => {
 
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="lb-comunica-title">
-          <section className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:h-auto sm:max-h-[94dvh] sm:rounded-2xl">
+          <section className="flex h-full max-h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:h-auto sm:max-h-[94dvh] sm:rounded-2xl">
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className="text-xs font-semibold text-emerald-300">Sala {roomTitle}</p></div>
               <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
@@ -748,7 +775,7 @@ export const LBComunica: React.FC = () => {
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm font-bold text-emerald-300">{connection==='connected'?participants.length:'—'}</span>
             </div>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1.5 sm:gap-3 sm:p-3 md:grid md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
+              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-8 p-1.5 sm:gap-3 sm:p-3 sm:pb-6 md:grid md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
                 <aside className="order-2 min-w-0 md:order-1">
                   <button type="button" onClick={()=>setMobileListOpen(v=>!v)} className="mb-2 flex w-full items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold md:hidden">Usuarios de la sala <span className="text-emerald-300">{participants.length}</span></button>
                   <div className={mobileListOpen?'block':'hidden md:block'}>
@@ -769,7 +796,7 @@ export const LBComunica: React.FC = () => {
                     </div>
                   </div>
                 </aside>
-                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
+                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
                   <div className="order-0 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
@@ -805,8 +832,8 @@ export const LBComunica: React.FC = () => {
                     onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
                     onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
                     onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    className={'mt-2 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
-                    <Mic className="h-9 w-9"/><span className="text-lg font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
+                    className={'mt-2 mb-2 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
                   </button>
 
 
@@ -838,7 +865,7 @@ export const LBComunica: React.FC = () => {
                       </label>
                     </div>
                   </div>
-                  <audio ref={audioPlayerRef} className="hidden" onEnded={handlePlaybackEnded}/>
+                  <audio ref={audioPlayerRef} className="sr-only" preload="none" onEnded={handlePlaybackEnded} onError={()=>{if(playingIndex>=0){setPttError('El archivo no pudo decodificarse o no está disponible.');setPlayingIndex(-1);}}}/>
                   {recordings.length?(
                     <div className="space-y-1">
                       {recordings.map((recording,index)=>(
