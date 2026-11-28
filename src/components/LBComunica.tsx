@@ -310,8 +310,8 @@ export const LBComunica: React.FC = () => {
         const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
         const oscarLines=[
-          '¡Oscar Italia!... La estación más fuerte del mundo está llamando.',
-          '¡Cuerrido amigo!... ¡Vamos, vamos!... ¡Oscar te escucha muy bon!'
+          '¡Oscar Italia!... ¡La estación más fuerte del mundo... está llamando!',
+          '¡Cuerrido amigo!... ¡Vamos, vamos!... ¡Oscar te escucha muy bon, amigo!'
         ];
         phrase=oscarLines[Math.floor(Math.random()*oscarLines.length)];
         // El personaje habla en castellano con una voz masculina grave; no forzamos
@@ -366,16 +366,16 @@ export const LBComunica: React.FC = () => {
       const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i.test(v.name));
       const naturalVoices=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio|online/i.test(v.name));
       const preferredVoices=oscarItalia
-        ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
+        ? (maleVoices.length?maleVoices:naturalVoices)
         : maleVoices;
       const selectedVoices=primoItalia?(maleVoices.length?maleVoices:(naturalVoices.length?naturalVoices:available)):comandante?(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.82+Math.random()*0.04:primoItalia?0.90+Math.random()*0.04:0.76+Math.random()*0.08;
-      utterance.pitch=comandante?0.56:oscarItalia?0.48+Math.random()*0.04:primoItalia?0.76+Math.random()*0.04:0.68+Math.random()*0.10;
-      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.24:0.035+Math.random()*0.015;
+      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.88+Math.random()*0.03:primoItalia?0.90+Math.random()*0.04:0.76+Math.random()*0.08;
+      utterance.pitch=comandante?0.56:oscarItalia?0.28+Math.random()*0.035:primoItalia?0.76+Math.random()*0.04:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.62:comandante?0.13:primoItalia?0.24:0.035+Math.random()*0.015;
       const next=()=>{setMeterLevel(0.04);schedule(26000+Math.random()*52000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.88:comandante?0.82:oscarItalia?0.90:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
