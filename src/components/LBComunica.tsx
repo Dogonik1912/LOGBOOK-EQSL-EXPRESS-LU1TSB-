@@ -76,6 +76,8 @@ export const LBComunica: React.FC = () => {
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
   const [isQueued, setIsQueued] = useState(false);
+  const [pttPending, setPttPending] = useState(false);
+  const pttActionRef = useRef(false);
   const [queuePosition, setQueuePosition] = useState(0);
   const [activeSpeaker, setActiveSpeaker] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
@@ -492,17 +494,25 @@ export const LBComunica: React.FC = () => {
   };
 
   const requestTurn = async () => {
-    if (connection!=='connected' || isTalking || isQueued) return;
+    if (connection!=='connected' || talkingRef.current || beginningRef.current || pttActionRef.current) return;
+    pttActionRef.current = true;
+    setPttPending(true);
     setPttError('');
     try { await queueAction('request'); }
     catch (error) { setPttError(error instanceof Error ? error.message : 'No se pudo solicitar turno.'); }
+    finally { pttActionRef.current = false; setPttPending(false); }
   };
 
   const releaseTurn = async () => {
     turnCancelledRef.current = true;
+    // Cortar primero el audio local: no esperar al servidor para dejar de emitir.
     if (talkingRef.current || beginningRef.current) endLocalAudio(true);
     setIsQueued(false);
     setQueuePosition(0);
+    setIsTalking(false);
+    setIsQueued(false);
+    setPttPending(false);
+    pttActionRef.current = false;
     try { await queueAction('release'); }
     catch { try { await queueAction('cancel'); } catch { /* La desconexión elimina la solicitud por caducidad. */ } }
   };
@@ -822,13 +832,14 @@ export const LBComunica: React.FC = () => {
                     </div>
                   </div>
                   <button type="button" disabled={connection!=='connected'}
-                    onClick={pttMode==='toggle'?()=>togglePtt():undefined}
-                    onPointerDown={pttMode==='hold'?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}:undefined}
+                    onClick={undefined}
+                    onPointerDown={(e)=>{e.preventDefault();if(pttMode==='toggle')togglePtt();else if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}}
                     onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
+                    onPointerLeave={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current||isQueued)void releaseTurn();}:undefined}
                     onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    className={'mt-2 mb-2 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
-                    <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
+                    onLostPointerCapture={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current)void releaseTurn();}:undefined}
+                    className={'mt-2 mb-2 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':pttPending||isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':pttPending?'SOLICITANDO':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
                   </button>
 
 
