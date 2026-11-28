@@ -285,6 +285,58 @@ export const LBComunica: React.FC = () => {
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
 
+  // Distant environmental dog barks: local ambience only, never sent or recorded.
+  useEffect(()=>{
+    if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
+    const Ctor=window.AudioContext||(window as any).webkitAudioContext;
+    if(!Ctor) return;
+    let ctx:AudioContext;
+    try{ctx=new Ctor();}catch{return;}
+    let cancelled=false;
+    let timer:ReturnType<typeof setTimeout>|null=null;
+    const bark=()=>{
+      if(cancelled||document.hidden||isTalking||activeSpeaker||remoteTalkers.length){schedule(18000+Math.random()*30000);return;}
+      const now=ctx.currentTime;
+      const duration=.24+Math.random()*.12;
+      const length=Math.ceil(ctx.sampleRate*duration);
+      const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
+      const data=buffer.getChannelData(0);
+      for(let i=0;i<length;i++){
+        const t=i/length;
+        const envelope=Math.pow(Math.sin(Math.PI*t),1.3)*(1-t*.45);
+        data[i]=(Math.random()*2-1)*envelope;
+      }
+      const source=ctx.createBufferSource();source.buffer=buffer;
+      const band=ctx.createBiquadFilter();band.type='bandpass';band.frequency.value=520+Math.random()*260;band.Q.value=.7;
+      const low=ctx.createBiquadFilter();low.type='lowpass';low.frequency.value=1450;
+      const gain=ctx.createGain();gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.018+Math.random()*.008,now+.035);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+      source.connect(band);band.connect(low);low.connect(gain);gain.connect(ctx.destination);
+      source.start(now);source.stop(now+duration+.02);
+      source.onended=()=>{try{source.disconnect();band.disconnect();low.disconnect();gain.disconnect();}catch{}};
+      // Occasionally a second, slightly quieter bark follows the first.
+      if(Math.random()<.58){
+        const delay=.28+Math.random()*.42;
+        timer=setTimeout(()=>{if(!cancelled)barkSingle();},delay*1000);
+      }else schedule(55000+Math.random()*95000);
+    };
+    const barkSingle=()=>{
+      if(cancelled||ctx.state==='closed')return;
+      const now=ctx.currentTime,duration=.20+Math.random()*.13,length=Math.ceil(ctx.sampleRate*duration);
+      const buffer=ctx.createBuffer(1,length,ctx.sampleRate),data=buffer.getChannelData(0);
+      for(let i=0;i<length;i++){const t=i/length;data[i]=(Math.random()*2-1)*Math.pow(Math.sin(Math.PI*t),1.35);}
+      const source=ctx.createBufferSource();source.buffer=buffer;
+      const band=ctx.createBiquadFilter();band.type='bandpass';band.frequency.value=480+Math.random()*300;band.Q.value=.75;
+      const low=ctx.createBiquadFilter();low.type='lowpass';low.frequency.value=1350;
+      const gain=ctx.createGain();gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.013+Math.random()*.006,now+.03);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+      source.connect(band);band.connect(low);low.connect(gain);gain.connect(ctx.destination);source.start(now);source.stop(now+duration+.02);
+      source.onended=()=>{try{source.disconnect();band.disconnect();low.disconnect();gain.disconnect();}catch{}};
+      schedule(65000+Math.random()*105000);
+    };
+    const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(bark,delay);};
+    schedule(35000+Math.random()*55000);
+    return ()=>{cancelled=true;if(timer)clearTimeout(timer);void ctx.close().catch(()=>{});};
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
+
   useEffect(()=>{localStorage.setItem('lb_radio_audio_profile',audioProfile);},[audioProfile]);
   useEffect(()=>{localStorage.setItem(radioPreferenceKey('rf_gain'),String(rfGain));localStorage.setItem(radioPreferenceKey('volume'),String(radioVolume));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));},[rfGain,micGain,squelch,clarifier,radioVolume]);
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
