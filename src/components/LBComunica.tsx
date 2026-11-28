@@ -299,16 +299,25 @@ export const LBComunica: React.FC = () => {
       }else{
         phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
       }
+      // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
+      // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
+      const oscarItalia=isElevenMeters && Math.random()<0.22;
+      if(oscarItalia){
+        const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
+        const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
+        if(italian.length){phrase='Oscar Italia! La stazione più forte del mondo sta chiamando!';language='it-IT';available=italian;}
+        else {phrase='¡Oscar Italia! ¡La estación más fuerte del mundo está llamando!';language='es-ES';available=spanish.length?spanish:voices;}
+      }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander/i.test(v.name));
+      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos/i.test(v.name));
       const selectedVoices=maleVoices.length?maleVoices:available;
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
-      // Voz más grave y baja para sugerir una estación distante, sin tapar la conversación.
-      utterance.rate=0.76+Math.random()*0.08;
-      utterance.pitch=0.68+Math.random()*0.10;
-      utterance.volume=0.035+Math.random()*0.015;
+      // La llamada especial tiene más presencia y tono muy grave; el resto permanece lejano.
+      utterance.rate=oscarItalia?0.72:0.76+Math.random()*0.08;
+      utterance.pitch=oscarItalia?0.48:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.18:0.035+Math.random()*0.015;
       const next=()=>schedule(26000+Math.random()*52000);
       utterance.onend=next;
       utterance.onerror=next;
