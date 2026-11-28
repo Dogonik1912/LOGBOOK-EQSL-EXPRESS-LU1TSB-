@@ -241,7 +241,7 @@ export const LBComunica: React.FC = () => {
   // Local-only simulated HF background stations. They are never connected to the mic,
   // peer streams, recordings, or room history; speech synthesis is intentionally subtle.
   useEffect(()=>{
-    if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) {
+    if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       return;
     }
@@ -410,7 +410,7 @@ export const LBComunica: React.FC = () => {
     };
     schedule(is11MeterStationIdentifier(activeCallsign)?5000+Math.random()*7000:8000+Math.random()*12000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,radioVolume,rfGain,radioReceive]);
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive]);
 
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
