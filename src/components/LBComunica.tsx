@@ -90,7 +90,6 @@ export const LBComunica: React.FC = () => {
     });
     const audio = new Audio();
     audio.autoplay = true;
-    audio.playsInline = true;
     audio.volume = 1;
     pc.ontrack = (event) => {
       audio.srcObject = event.streams[0] || new MediaStream([event.track]);
