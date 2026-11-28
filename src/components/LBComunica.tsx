@@ -71,7 +71,9 @@ function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:
   const key=(voices[0]?.lang||'default').toLowerCase().split(/[-_]/)[0]||'default';
   const recent=recentAmbientVoiceUris.get(key)||[];
   const gendered=voices.filter(v=>(preferredGender==='male'?malePattern:femalePattern).test(v.name+' '+v.voiceURI));
-  const preferredPool=gendered.length?gendered:voices;
+  // Para personajes masculinos no caer nunca en una voz identificada como femenina.
+  const nonFemale=voices.filter(v=>!femalePattern.test(v.name+' '+v.voiceURI));
+  const preferredPool=gendered.length?gendered:(preferredGender==='male'&&!allowGenderFallback?nonFemale:voices);
   const preferredNatural=preferredPool.filter(v=>naturalPattern.test(v.name+' '+v.voiceURI));
   const preferredChoices=preferredNatural.length?preferredNatural:preferredPool;
   let choices=preferredChoices.filter(v=>!recent.includes(v.voiceURI));
@@ -469,7 +471,7 @@ export const LBComunica: React.FC = () => {
         language='es-ES';
         available=spanish.length?spanish:voices;
       } else if(primoItalia){
-        phrase='¡Primo Italia!... ¡Italia due sete!';
+        phrase='Primo Italia, Primo Italia! Qui è Primo Italia in frequenza. Un saluto a tutti gli amici. Ciao, ciao!';
         language='it-IT';
         const italianVoices=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         available=italianVoices.length?italianVoices:voices;
@@ -524,7 +526,7 @@ export const LBComunica: React.FC = () => {
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
       utterance.rate=comandante?0.91+Math.random()*0.07:oscarItalia?0.86+Math.random()*0.08:primoItalia?0.88+Math.random()*0.08:0.90+Math.random()*0.10;
-      utterance.pitch=comandante?0.72:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.72+Math.random()*0.08:maleStation?0.76+Math.random()*0.06:0.88+Math.random()*0.14;
+      utterance.pitch=comandante?0.72:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.58+Math.random()*0.04:maleStation?0.76+Math.random()*0.06:0.88+Math.random()*0.14;
       // Señal variable pero siempre inteligible: la distancia cambia el nivel, no deforma la voz.
       // RF GAIN, VOLUME y RX ATENUADA también actúan sobre las llamadas ambientales.
       const distanceLevel=0.42+Math.random()*0.58;
@@ -1308,10 +1310,15 @@ export const LBComunica: React.FC = () => {
   return (
     <>
       <button type="button" onClick={()=>openRoom()}
-        className="mb-3 flex min-h-11 w-full flex-col items-center justify-center rounded-lg border border-emerald-300 bg-gradient-to-r from-emerald-950 via-teal-900 to-cyan-900 px-3 py-2 text-center text-xs font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-emerald-300 sm:text-sm"
+        className="mb-2 flex min-h-11 w-full flex-col items-center justify-center rounded-lg border border-emerald-300 bg-gradient-to-r from-emerald-950 via-teal-900 to-cyan-900 px-3 py-2 text-center text-xs font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-emerald-300 sm:text-sm"
         aria-label="LB COMUNICACION, pulsa y habla">
         <span className="inline-flex items-center gap-2"><Headphones className="h-5 w-5 shrink-0"/>LB COMUNICACION</span>
         <span className="mt-0.5 text-xs font-semibold sm:text-sm">pulsa y habla</span>
+      </button>
+      <button type="button" aria-pressed={backgroundEnabled}
+        onClick={()=>{if(backgroundEnabled){disableBackgroundAudio();}else{openRoom();setBackgroundEnabled(true);}}}
+        className={'mb-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-300 '+(backgroundEnabled?'border-emerald-300 bg-emerald-900 text-emerald-50':'border-sky-300/60 bg-slate-900 text-sky-100 hover:bg-slate-800')}>
+        <Headphones className="h-4 w-4"/>{backgroundEnabled?'RX segundo plano ACTIVADA · Desactivar':'Activar RX segundo plano'}
       </button>
 
       {backgroundEnabled && !isOpen && <div role="status" aria-live="polite" className="fixed bottom-4 right-4 z-[95] flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-emerald-400/50 bg-slate-950 px-3 py-2 text-white shadow-2xl"><span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-emerald-400"/><span className="min-w-0"><span className="block text-[10px] font-black tracking-wide">LB COMUNICACION · RX ACTIVA</span><span className="block truncate text-xs text-emerald-200">{roomTitle} · {participants.length} en sala</span></span><button type="button" onClick={()=>setIsOpen(true)} className="rounded-lg bg-emerald-700 px-2.5 py-1.5 text-[11px] font-bold">Volver</button><button type="button" onClick={disableBackgroundAudio} className="rounded-lg border border-white/20 px-2 py-1.5 text-[11px] font-bold">Salir</button></div>}
