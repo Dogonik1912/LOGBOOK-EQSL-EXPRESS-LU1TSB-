@@ -11,7 +11,7 @@ type Signal = {
   kind: 'offer' | 'answer' | 'ice' | 'stop';
   description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit;
 };
-type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; gateFrame?: number };
+type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; qrmGain?: GainNode; qrmSource?: AudioBufferSourceNode; gateFrame?: number };
 type Recording = { id: string; callsign: string; duration_ms: number; mime_type: string; created_at: string; url: string };
 type QueueState = { ok: boolean; status?: 'transmitting' | 'queued' | 'listening'; active_callsign?: string | null; active_until?: string | null; queue_position?: number; queue?: { callsign: string }[]; reason?: string };
 
@@ -27,11 +27,40 @@ const createRadioNoise = (ctx: AudioContext, destination: AudioNode) => {
   return { source, gain };
 };
 
+const createRadioInterference = (ctx: AudioContext, destination: AudioNode) => {
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * 5, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let burst = 0.18;
+  let nextBurst = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (i >= nextBurst) {
+      burst = 0.12 + Math.random() * 0.88;
+      nextBurst = i + Math.floor(ctx.sampleRate * (0.12 + Math.random() * 0.42));
+    }
+    const t = i / ctx.sampleRate;
+    const carrier = Math.sin(2 * Math.PI * 760 * t) * 0.55 + Math.sin(2 * Math.PI * 1190 * t) * 0.35;
+    const hiss = (Math.random() * 2 - 1) * 0.18;
+    data[i] = (carrier + hiss) * burst * 0.12;
+  }
+  const source = ctx.createBufferSource(); source.buffer = buffer; source.loop = true;
+  const high = ctx.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 520; high.Q.value = 0.8;
+  const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 2300; low.Q.value = 0.8;
+  const gain = ctx.createGain(); gain.gain.value = 0.12;
+  source.connect(high); high.connect(low); low.connect(gain); gain.connect(destination); source.start();
+  return { source, gain };
+};
+
 const readCallsign = () => (
   localStorage.getItem('community_chat_active_callsign')
   || localStorage.getItem('community_chat_sd')
   || ''
 ).trim().toUpperCase();
+
+const radioPreferenceKey = (name: string) => `lb_radio_${name}_${readCallsign() || 'default'}`;
+const readRadioPreference = (name: string, fallback: number) => {
+  const saved = localStorage.getItem(radioPreferenceKey(name));
+  return saved === null ? fallback : Number(saved);
+};
 
 const identityTokenForDevice = () => {
   let token = localStorage.getItem('community_chat_identity_token') || '';
@@ -109,11 +138,11 @@ export const LBComunica: React.FC = () => {
   const [playAll, setPlayAll] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0.08);
   const meterFrameRef = useRef<number | null>(null);
-  const [rfGain,setRfGain]=useState(()=>Number(localStorage.getItem('lb_radio_rf_gain')||80));
+  const [rfGain,setRfGain]=useState(()=>readRadioPreference('rf_gain',100));
   const [micGain,setMicGain]=useState(()=>Number(localStorage.getItem('lb_radio_mic_gain')||70));
   const [squelch,setSquelch]=useState(()=>Number(localStorage.getItem('lb_radio_squelch')||0));
   const [clarifier,setClarifier]=useState(()=>Number(localStorage.getItem('lb_radio_clarifier')||50));
-  const [radioVolume,setRadioVolume]=useState(()=>Number(localStorage.getItem('lb_radio_volume')||85));
+  const [radioVolume,setRadioVolume]=useState(()=>readRadioPreference('volume',100));
   const [radioReceive,setRadioReceive]=useState(()=>localStorage.getItem('lb_radio_receive')!=='0');
   const [audioProfile,setAudioProfile]=useState<'radio'|'clean'>(()=>localStorage.getItem('lb_radio_audio_profile')==='clean'?'clean':'radio');
   const [panelLight,setPanelLight]=useState(()=>localStorage.getItem('lb_radio_panel_light')!=='0');
@@ -137,7 +166,7 @@ export const LBComunica: React.FC = () => {
   const playbackObjectUrlRef = useRef<string>('');
   const playbackRequestRef = useRef(0);
   const playbackContextRef = useRef<AudioContext|null>(null);
-  const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;noiseGain:GainNode;noiseSource:AudioBufferSourceNode;gateFrame:number|null}>({} as any);
+  const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;noiseGain:GainNode;noiseSource:AudioBufferSourceNode;qrmGain:GainNode;qrmSource:AudioBufferSourceNode;gateFrame:number|null}>({} as any);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
 
   useEffect(()=>{
@@ -157,14 +186,14 @@ export const LBComunica: React.FC = () => {
       const analyser=ctx.createAnalyser();analyser.fftSize=512;
       const gate=ctx.createGain();gate.gain.value=1;const rf=ctx.createGain();
       source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);
-      const noise=createRadioNoise(ctx,rf);rf.connect(ctx.destination);
+      const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);rf.connect(ctx.destination);
       playbackContextRef.current=ctx;
-      playbackNodesRef.current={tone,high,low,compressor,gate,rf,analyser,noiseGain:noise.gain,noiseSource:noise.source,gateFrame:null};
+      playbackNodesRef.current={tone,high,low,compressor,gate,rf,analyser,noiseGain:noise.gain,noiseSource:noise.source,qrmGain:qrm.gain,qrmSource:qrm.source,gateFrame:null};
     }catch{playbackContextRef.current=null;}
     return ()=>{
       const nodes=playbackNodesRef.current;
       if(nodes.gateFrame!==null&&nodes.gateFrame!==undefined)cancelAnimationFrame(nodes.gateFrame);
-      try{nodes.noiseSource?.stop();nodes.noiseSource?.disconnect();nodes.noiseGain?.disconnect();}catch{}
+      try{nodes.noiseSource?.stop();nodes.noiseSource?.disconnect();nodes.noiseGain?.disconnect();nodes.qrmSource?.stop();nodes.qrmSource?.disconnect();nodes.qrmGain?.disconnect();}catch{}
       player.pause();player.removeAttribute('src');player.load();
       playbackRequestRef.current++;
       if(playbackObjectUrlRef.current){URL.revokeObjectURL(playbackObjectUrlRef.current);playbackObjectUrlRef.current='';}
@@ -185,22 +214,24 @@ export const LBComunica: React.FC = () => {
     n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?1.6:1,now,.08);
     n.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,now,.04);
     n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,now,.18);
+    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?0.12:0,now,.2);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
     let voiceOpen=false;
     const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const threshold=0.0015+(squelch/100)*.018;if(squelch<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;n.gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
       n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-squelch*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
+      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
       n.gateFrame=requestAnimationFrame(updateGate);};
     n.gateFrame=requestAnimationFrame(updateGate);
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen]);
   useEffect(()=>{squelchRef.current=squelch;},[squelch]);
   useEffect(()=>{audioProfileRef.current=audioProfile;},[audioProfile]);
   useEffect(()=>{localStorage.setItem('lb_radio_audio_profile',audioProfile);},[audioProfile]);
-  useEffect(()=>{localStorage.setItem('lb_radio_rf_gain',String(rfGain));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));localStorage.setItem('lb_radio_volume',String(radioVolume));},[rfGain,micGain,squelch,clarifier,radioVolume]);
+  useEffect(()=>{localStorage.setItem(radioPreferenceKey('rf_gain'),String(rfGain));localStorage.setItem(radioPreferenceKey('volume'),String(radioVolume));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));},[rfGain,micGain,squelch,clarifier,radioVolume]);
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
   useEffect(()=>{localStorage.setItem('lb_radio_panel_light',panelLight?'1':'0');},[panelLight]);
   useEffect(()=>{localStorage.setItem('lb_comunica_ptt_mode',pttMode);},[pttMode]);
-  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.noiseGain)entry.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,entry.context?.currentTime||0,.18);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
+  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.noiseGain)entry.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,entry.context?.currentTime||0,.18);if(entry.qrmGain)entry.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?0.12:0,entry.context?.currentTime||0,.2);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
@@ -271,7 +302,7 @@ export const LBComunica: React.FC = () => {
     entry.pc.onicecandidate = null;
     entry.pc.close();
     if(entry.gateFrame)cancelAnimationFrame(entry.gateFrame);
-    try{entry.noiseSource?.stop();entry.noiseSource?.disconnect();entry.noiseGain?.disconnect();}catch{}
+    try{entry.noiseSource?.stop();entry.noiseSource?.disconnect();entry.noiseGain?.disconnect();entry.qrmSource?.stop();entry.qrmSource?.disconnect();entry.qrmGain?.disconnect();}catch{}
     void entry.context?.close().catch(()=>{});
     entry.audio.pause();
     entry.audio.srcObject = null;
@@ -308,14 +339,15 @@ export const LBComunica: React.FC = () => {
         const rf=ctx.createGain();rf.gain.value=radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32;
         const dest=ctx.createMediaStreamDestination();
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);
-        const noise=createRadioNoise(ctx,rf);rf.connect(dest);
+        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);rf.connect(dest);
         audio.srcObject=dest.stream;
         const entry=peerMapRef.current.get(key);
-        if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;}
+        if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;entry.qrmGain=qrm.gain;entry.qrmSource=qrm.source;}
         const samples=new Uint8Array(analyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const now=performance.now();const target=Math.min(1,Math.max(0,rms*5.5));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
           noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-level*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
+          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
