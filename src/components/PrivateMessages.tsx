@@ -58,7 +58,8 @@ const syncWeeklyPrivateConversationReset = () => {
 export const PrivateMessages: React.FC = () => {
   const [callsign, setCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
   const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
-  const [identityToken] = useState(getIdentityToken);
+  const [identityToken, setIdentityToken] = useState(getIdentityToken);
+  const [deviceSyncNotifications, setDeviceSyncNotifications] = useState<Array<{id:string;callsign:string;code:string;expires_at:string}>>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [recipientDraft, setRecipientDraft] = useState('');
   const [activeRecipient, setActiveRecipient] = useState('');
@@ -104,6 +105,28 @@ export const PrivateMessages: React.FC = () => {
     window.addEventListener('user-profile-updated', loadIdentities);
     window.addEventListener('community-active-identity-changed', syncActive);
     return () => { active = false; window.removeEventListener('user-profile-updated', loadIdentities); window.removeEventListener('community-active-identity-changed', syncActive); };
+  }, [identityToken]);
+
+  useEffect(() => {
+    const updateToken = (event: Event) => {
+      const next = String((event as CustomEvent<{ token?: string }>).detail?.token || localStorage.getItem('community_chat_identity_token') || '');
+      if (next) setIdentityToken(next);
+    };
+    window.addEventListener('community-identity-token-updated', updateToken);
+    return () => window.removeEventListener('community-identity-token-updated', updateToken);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadDeviceSyncInbox = async () => {
+      if (!supabase || !identityToken) return;
+      const { data, error } = await supabase.rpc('community_device_sync_inbox', { p_authorized_token: identityToken });
+      if (!active || error) return;
+      setDeviceSyncNotifications(Array.isArray(data) ? data.filter((item:any) => item && item.id && item.code && item.expires_at) : []);
+    };
+    void loadDeviceSyncInbox();
+    const poll = window.setInterval(() => { void loadDeviceSyncInbox(); }, 15000);
+    return () => { active = false; window.clearInterval(poll); };
   }, [identityToken]);
 
   const refreshConversations = useCallback(async () => {
@@ -501,6 +524,12 @@ export const PrivateMessages: React.FC = () => {
         <>
         <div className="mt-3 border-t border-violet-800 pt-3 grid grid-cols-1 md:grid-cols-[minmax(180px,0.75fr)_minmax(0,1.5fr)]">
           <aside className="border-b border-violet-800 bg-slate-900 p-3 text-slate-100 md:border-b-0 md:border-r">
+            {deviceSyncNotifications.map((item) => <div key={item.id} className="mb-3 rounded-xl border border-amber-400 bg-amber-950/70 p-3 text-amber-100" role="status" aria-label="Mensaje de sistema para sincronizar dispositivos">
+              <p className="text-xs font-black uppercase tracking-wide">Mensaje de sistema · Sincronización</p>
+              <p className="mt-1 text-xs">Se solicitó vincular otro dispositivo con la cuenta {item.callsign}. Introducí este código en el equipo que pidió la sincronización:</p>
+              <p className="my-2 rounded-lg bg-slate-950 px-3 py-2 text-center font-mono text-xl font-black tracking-[0.25em]">{item.code}</p>
+              <p className="text-[10px]">Vence: {new Date(item.expires_at).toLocaleTimeString()} · Código de un solo uso.</p>
+            </div>)}
             {!callsign ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Tu señal distintiva se valida al instalar LogBook eQSL EXPRESS. Si todavía no aparece, recargá la aplicación para sincronizar tu identidad.</p>
             ) : (
