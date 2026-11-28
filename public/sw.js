@@ -76,7 +76,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (/\\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\\?)/i.test(url.pathname)) {
+  if (/\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\?)/i.test(url.pathname)) {
     const refresh = caches.open(CACHE_NAME).then(async (cache) => {
       const response = await fetch(request, { cache: 'no-cache' });
       if (response.ok) await cache.put(request, response.clone());
