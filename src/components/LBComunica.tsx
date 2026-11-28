@@ -34,18 +34,18 @@ const Q_CODE_SAYINGS:Record<string,Record<string,string>>={
   th:{QRZ:'คิว อาร์ ซี',QSL:'คิว เอส แอล',QSY:'คิว เอส วาย'}
 };
 function prepareRadioSpeech(phrase:string, callsign:string, language:string):string {
-  const spelled=String(callsign||'').toUpperCase().replace(/[A-Z]/g,c=>ICAO_WORDS[c]||c).replace(/(\\d)/g,' $1 ');
+  const spelled=String(callsign||'').toUpperCase().replace(/[A-Z]/g,c=>ICAO_WORDS[c]||c).replace(/(\d)/g,' $1 ');
   let result=phrase;
   if(callsign) result=result.split(callsign).join(spelled);
   const lang=String(language||'en').toLowerCase().split('-')[0];
   const sayings=Q_CODE_SAYINGS[lang]||Q_CODE_SAYINGS.en;
-  return result.replace(/\\b(QRZ|QSL|QSY)\\b/gi,code=>sayings[code.toUpperCase()]||code);
+  return result.replace(/\b(QRZ|QSL|QSY)\b/gi,code=>sayings[code.toUpperCase()]||code);
 }
 
 const RADIO_DIGITS:Record<string,{en:string;es:string}>={0:{en:'zero',es:'cero'},1:{en:'one',es:'uno'},2:{en:'two',es:'dos'},3:{en:'three',es:'tres'},4:{en:'four',es:'cuatro'},5:{en:'five',es:'cinco'},6:{en:'six',es:'seis'},7:{en:'seven',es:'siete'},8:{en:'eight',es:'ocho'},9:{en:'nine',es:'nueve'}};
 function speak11mCallsign(callsign:string,language:string):string {
   const spanish=language.toLowerCase().startsWith('es');
-  const match=String(callsign||'').toUpperCase().match(/^(\\d+)([A-Z]+)\\s*(\\d+)?$/);
+  const match=String(callsign||'').toUpperCase().match(/^(\d+)([A-Z]+)\s*(\d+)?$/);
   if(!match) return prepareRadioSpeech(callsign,callsign,language);
   const [,prefix,letters,suffix='']=match;
   const digitWords=(value:string)=>value.split('').map(d=>RADIO_DIGITS[d]?.[spanish?'es':'en']||d).join(' ');
@@ -63,8 +63,8 @@ function radioCountryName(country:string,language:string):string {
   return names[country]||country;
 }
 function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:'male'|'female'):SpeechSynthesisVoice|undefined {
-  const malePattern=/\\bmale\\b|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i;
-  const femalePattern=/\\bfemale\\b|zira|samantha|victoria|karen|susan|sara|sarah|anna|eva|lucia|monica|paulina|amelie|marie|helena|alice|joana|sofia|sophie|kate|emma|olivia|tessa|moira|fiona|female/i;
+  const malePattern=/\bmale\b|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i;
+  const femalePattern=/\bfemale\b|zira|samantha|victoria|karen|susan|sara|sarah|anna|eva|lucia|monica|paulina|amelie|marie|helena|alice|joana|sofia|sophie|kate|emma|olivia|tessa|moira|fiona|female/i;
   const naturalPattern=/natural|neural|premium|enhanced|wavenet|studio|online/i;
   const gendered=voices.filter(v=>(preferredGender==='male'?malePattern:femalePattern).test(v.name+' '+v.voiceURI));
   const pool=gendered.length?gendered:voices;
