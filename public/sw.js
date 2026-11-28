@@ -110,7 +110,7 @@ self.addEventListener('push', (event) => {
       badge: '/icon.svg',
       tag: data.tag || 'eqsl-incoming',
       renotify: true,
-      data: { url: data.url || '/?open_eqsl_inbox=1' },
+      data: { url: data.url || '/?open_eqsl_inbox=1', room: data.room || null },
       silent: data.silent === true,
     });
   })());
@@ -124,7 +124,11 @@ self.addEventListener('notificationclick', (event) => {
     for (const client of windows) {
       if (client.url.startsWith(self.location.origin) && 'focus' in client) {
         await client.focus();
-        if (new URL(target).searchParams.has('open_private_messages')) {
+        const targetUrl = new URL(target);
+        const lbRoom = targetUrl.searchParams.get('open_lb_comunica');
+        if (lbRoom === 'ham' || lbRoom === '11m') {
+          client.postMessage({ type: 'OPEN_LB_COMUNICA', room: lbRoom });
+        } else if (targetUrl.searchParams.has('open_private_messages')) {
           client.postMessage({ type: 'OPEN_PRIVATE_MESSAGES' });
         } else {
           client.postMessage({ type: 'OPEN_EQSL_INBOX' });
