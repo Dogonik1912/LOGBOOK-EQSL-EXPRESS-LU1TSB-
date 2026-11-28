@@ -419,6 +419,25 @@ export const Header: React.FC<HeaderProps> = ({
   const [appIcon, setAppIcon] = useState(() => localStorage.getItem('app_icon_image') || '');
 
   useEffect(() => {
+    let active = true;
+    const loadAccountIdentities = async () => {
+      const token = localStorage.getItem('community_chat_identity_token') || '';
+      if (!supabase || !token) return;
+      const { data, error } = await supabase.rpc('community_account_identities', { p_token: token });
+      if (!active || error || !Array.isArray(data)) return;
+      const options: AccountIdentity[] = data
+        .filter((item: any) => item && typeof item.callsign === 'string')
+        .map((item: any) => ({
+          callsign: String(item.callsign).trim().toUpperCase(),
+          identity_type: item.identity_type === '11m' ? '11m' : 'ham',
+          is_primary: item.is_primary === true,
+        }));
+      setAccountIdentities(options);
+      if (!options.length) return;
+      const stored = (localStorage.getItem('community_chat_active_callsign') || '').trim().toUpperCase();
+      const selected = options.find((item) => item.callsign === stored) || options.find((item) => item.is_primary) || options[0];
+      if (selected) setActiveIdentityCallsign(selected.callsign);
+    };
     const onIdentitiesLoaded = (event: Event) => {
       const detail = (event as CustomEvent<{ identities?: AccountIdentity[]; activeCallsign?: string }>).detail;
       const options = Array.isArray(detail?.identities) ? detail.identities : [];
@@ -431,11 +450,18 @@ export const Header: React.FC<HeaderProps> = ({
       const next = String((event as CustomEvent<{ callsign?: string }>).detail?.callsign || '').trim().toUpperCase();
       if (next) setActiveIdentityCallsign(next);
     };
+    const onProfileUpdated = () => { void loadAccountIdentities(); };
+    void loadAccountIdentities();
     window.addEventListener('community-account-identities-loaded', onIdentitiesLoaded);
     window.addEventListener('community-active-identity-changed', onActiveIdentityChanged);
+    window.addEventListener('user-profile-updated', onProfileUpdated);
+    window.addEventListener('storage', onProfileUpdated);
     return () => {
+      active = false;
       window.removeEventListener('community-account-identities-loaded', onIdentitiesLoaded);
       window.removeEventListener('community-active-identity-changed', onActiveIdentityChanged);
+      window.removeEventListener('user-profile-updated', onProfileUpdated);
+      window.removeEventListener('storage', onProfileUpdated);
     };
   }, []);
 
