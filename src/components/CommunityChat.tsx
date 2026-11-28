@@ -69,6 +69,24 @@ export const CommunityChat: React.FC = () => {
   const [chatCollapsed, setChatCollapsed] = useState(true);
   const toggleCommunityChat = () => setChatCollapsed((current) => !current);
 
+  // Los enlaces de invitación a LB COMUNICACION llevan primero al registro
+  // de identidad cuando el destinatario todavía no tiene SD/indicativo validado.
+  useEffect(() => {
+    const openIdentityRegistration = () => {
+      setChatCollapsed(false);
+      window.setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    };
+    window.addEventListener('logbook-open-identity-registration', openIdentityRegistration);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('open_lb_register') === '1' && !localStorage.getItem('community_chat_sd')) {
+      openIdentityRegistration();
+      params.delete('open_lb_register');
+      const query = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+    }
+    return () => window.removeEventListener('logbook-open-identity-registration', openIdentityRegistration);
+  }, []);
+
   // Al abrir el chat, llevar su encabezado al borde superior de la pantalla.
   // El listado conserva su propio scroll y queda posicionado en el mensaje más reciente.
   useEffect(() => {
