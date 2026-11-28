@@ -62,6 +62,11 @@ const SuperstarMeter: React.FC<{ level: number; transmitting: boolean }> = ({ le
   );
 };
 
+const RadioKnob: React.FC<{label:string;value:number;onChange:(v:number)=>void}> = ({label,value,onChange}) => {
+  const angle=-135+value*2.7;
+  return <label className="flex flex-col items-center gap-1 text-center"><span className="text-[9px] font-black tracking-widest text-amber-100">{label}</span><span className="relative block h-14 w-14 rounded-full border border-amber-100/30 bg-[radial-gradient(circle_at_32%_25%,#77736a,#33332f_48%,#090a08)] shadow-[inset_0_2px_5px_#ffffff35,0_5px_8px_#000b]"><span className="absolute inset-1 rounded-full border border-white/10 bg-[conic-gradient(from_220deg,#aaa69c,#292a26,#151612,#77736a)]"/><span className="absolute left-1/2 top-1/2 h-5 w-[3px] origin-[50%_100%] rounded-full bg-amber-200" style={{transform:'translate(-50%,-100%) rotate('+angle+'deg)'}}/><input aria-label={label} type="range" min="0" max="100" value={value} onChange={e=>onChange(Number(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0"/></span><span className="text-[10px] font-bold text-amber-200">{value}%</span></label>;
+};
+
 export const LBComunica: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeCallsign, setActiveCallsign] = useState(readCallsign);
@@ -89,6 +94,13 @@ export const LBComunica: React.FC = () => {
   const [playingIndex, setPlayingIndex] = useState(-1);
   const [playAll, setPlayAll] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0.08);
+  const [rfGain,setRfGain]=useState(80);
+  const [micGain,setMicGain]=useState(70);
+  const [squelch,setSquelch]=useState(0);
+  const [clarifier,setClarifier]=useState(50);
+  const [radioVolume,setRadioVolume]=useState(85);
+  const [radioReceive,setRadioReceive]=useState(true);
+  const [panelLight,setPanelLight]=useState(true);
   const channelRef = useRef<any>(null);
   const streamRef = useRef<MediaStream|null>(null);
   const recorderRef = useRef<MediaRecorder|null>(null);
@@ -641,7 +653,8 @@ export const LBComunica: React.FC = () => {
                     </div>
                   </div>
                 </aside>
-                <div className="flex min-w-0 flex-col items-center gap-3 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-center">
+                <div className={'relative flex min-w-0 flex-col items-center gap-3 overflow-hidden rounded-xl border p-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
+                  <div className="flex w-full items-center justify-between border-b border-amber-100/20 pb-2 text-[10px] font-black tracking-[.2em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="flex items-center gap-2 text-sm"><Wifi className={connection==='connected'?'h-4 w-4 text-emerald-300':'h-4 w-4 text-amber-300'}/><span>{connection==='connected'?'Conectado a la sala':connection==='connecting'?'Conectando…':'Sin conexión con la sala'}</span></div>
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <span className="text-xs text-slate-400">Modo PTT</span>
@@ -653,16 +666,18 @@ export const LBComunica: React.FC = () => {
                     onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
                     onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
                     onClick={pttMode==='toggle'?togglePtt:undefined}
-                    className={'flex h-36 w-36 select-none touch-none flex-col items-center justify-center rounded-full border-4 shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
-                    <Mic className="mb-2 h-9 w-9"/><span className="text-xs font-extrabold">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
+                    className={'flex h-[76px] w-full max-w-[320px] select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    <Mic className="h-7 w-7"/><span className="text-sm font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
-                  <div className="flex items-center gap-2 text-xs text-slate-300"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'Esperando transmisión'}</div>
+                  <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
                   <SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} />
+                  <div className="grid w-full grid-cols-3 gap-3 rounded-lg border border-amber-100/20 bg-black/35 px-2 py-3 sm:grid-cols-5"><RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/><RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/><RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/><RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/><RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/></div>
+                  <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={()=>setRadioReceive(v=>!v)} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-3 py-2 text-[11px] font-bold text-emerald-100">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button><button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-3 py-2 text-[11px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button><button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);}} className="rounded-md border border-white/20 bg-black/30 px-3 py-2 text-[11px] font-bold">RESET</button></div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
-                  <div className="mt-1 flex w-full max-w-md items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-left">
-                    <div className="min-w-0"><p className="text-xs font-semibold text-slate-200">Avisos cuando LogBook esté cerrado</p><p className="text-[11px] text-slate-400">Solo en este dispositivo y para esta sala.</p></div>
+                  <div className="mt-1 flex w-full max-w-xs items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
+                    <div className="min-w-0"><p className="text-[10px] font-semibold text-slate-200">Avisos con LogBook cerrado</p><p className="text-[9px] text-slate-400">Este dispositivo · esta sala</p></div>
                     <button type="button" disabled={pushBusy} onClick={()=>void (pushEnabled?disablePush():enablePush())}
-                      className={'shrink-0 rounded-full px-3 py-1.5 text-xs font-bold '+(pushEnabled?'bg-emerald-700 text-white':'bg-slate-700 text-slate-100')}>
+                      className={'shrink-0 rounded-full px-2 py-1 text-[10px] font-bold '+(pushEnabled?'bg-emerald-700 text-white':'bg-slate-700 text-slate-100')}>
                       {pushBusy?'…':pushEnabled?'Activados':'Activar'}
                     </button>
                   </div>
