@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Headphones, Mic, Users, Wifi, X, Volume2, Play, ListMusic, Clock3 } from 'lucide-react';
+import { Headphones, Mic, Users, Wifi, X, Volume2, Play, ListMusic, Clock3, Share2, Copy, MessageCircle, Send, Mail } from 'lucide-react';
+import { resolveShareLanguage, type AppLanguage } from '../services/appLanguage';
+import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { supabase } from '../services/supabaseClient';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
@@ -45,6 +47,10 @@ export const LBComunica: React.FC = () => {
   const [pttError, setPttError] = useState('');
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareLanguage, setShareLanguage] = useState<'auto' | AppLanguage>('auto');
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareNotice, setShareNotice] = useState('');
   const [remoteTalkers, setRemoteTalkers] = useState<string[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -489,6 +495,25 @@ export const LBComunica: React.FC = () => {
     return ()=>{stopped=true;window.clearInterval(timer);};
   },[isOpen,connection,activeCallsign,deviceToken,room]);
 
+  const shareUrl = () => { const url = new URL(window.location.origin + window.location.pathname); url.searchParams.set('open_lb_comunica', room); return url.toString(); };
+  const makeShareText = async () => {
+    const language = resolveShareLanguage(shareLanguage);
+    const base = 'Te invito a participar en LB COMUNICACION, la sala de voz de LogBook eQSL EXPRESS para ' + (room === 'ham' ? 'Radioaficionados' : '11 Metros') + '. Para ingresar debes registrar y validar primero tu SD o indicativo en LogBook. Abre este enlace: ' + shareUrl();
+    if (language === 'es') return base;
+    try { const response = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: base, language }) }); if (response.ok) { const data = await response.json(); if (typeof data?.translated === 'string' && data.translated.trim()) return data.translated; } } catch { /* fallback */ }
+    return base;
+  };
+  const shareInvitation = async (kind: 'native'|'whatsapp'|'telegram'|'email'|'copy') => {
+    setShareBusy(true); setShareNotice('');
+    try { const text = await makeShareText(); const url = shareUrl();
+      if (kind === 'native') { if (navigator.share) await navigator.share({ title: 'LB COMUNICACION', text, url }); else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener'); }
+      else if (kind === 'whatsapp') window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+      else if (kind === 'telegram') window.open('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text), '_blank', 'noopener');
+      else if (kind === 'email') window.location.href = 'mailto:?subject=' + encodeURIComponent('Invitación a LB COMUNICACION') + '&body=' + encodeURIComponent(text);
+      else { await navigator.clipboard.writeText(text); setShareNotice('Invitación copiada.'); }
+    } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setShareNotice('No se pudo compartir. Inténtalo de nuevo.'); } finally { setShareBusy(false); }
+  };
+
   const closeRoom = () => {
     void releaseTurn();
     setIsOpen(false);
@@ -532,7 +557,7 @@ export const LBComunica: React.FC = () => {
           <section className="flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-emerald-400/40 bg-slate-950 text-white shadow-2xl">
             <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className="text-xs font-semibold text-emerald-300">Sala {roomTitle}</p></div>
-              <button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button>
+              <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
             </header>
             <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-emerald-300"/>Usuarios conectados</div>
@@ -617,6 +642,25 @@ export const LBComunica: React.FC = () => {
           </section>
         </div>
       )}
+      {shareOpen && isOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/90 p-3" role="dialog" aria-modal="true" aria-labelledby="lb-share-title">
+          <section className="w-full max-w-md rounded-2xl border border-emerald-400/40 bg-slate-900 p-4 text-white shadow-2xl">
+            <header className="flex items-center justify-between gap-3"><h3 id="lb-share-title" className="flex items-center gap-2 text-base font-black"><Share2 className="h-5 w-5 text-emerald-300"/>Compartir LB COMUNICACION</h3><button type="button" onClick={()=>setShareOpen(false)} className="rounded-lg p-2 text-slate-300" aria-label="Cerrar"><X className="h-5 w-5"/></button></header>
+            <p className="mt-2 rounded-lg bg-slate-950 p-3 text-sm">Invita a otros operadores a la sala <b>{roomTitle}</b>. Quien reciba el enlace y no tenga una SD o indicativo validado deberá registrarse primero.</p>
+            <ShareLanguageSelector value={shareLanguage} onChange={setShareLanguage}/>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" disabled={shareBusy} onClick={()=>void shareInvitation("native")} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-2 py-2 text-xs font-bold"><Share2 size={16}/>Compartir…</button>
+              <button type="button" disabled={shareBusy} onClick={()=>void shareInvitation("whatsapp")} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-green-700 px-2 py-2 text-xs font-bold"><MessageCircle size={16}/>WhatsApp</button>
+              <button type="button" disabled={shareBusy} onClick={()=>void shareInvitation("telegram")} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-sky-700 px-2 py-2 text-xs font-bold"><Send size={16}/>Telegram</button>
+              <button type="button" disabled={shareBusy} onClick={()=>void shareInvitation("email")} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-slate-700 px-2 py-2 text-xs font-bold"><Mail size={16}/>Correo electrónico</button>
+              <button type="button" disabled={shareBusy} onClick={()=>void shareInvitation("copy")} className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/20 px-2 py-2 text-xs font-bold"><Copy size={15}/>Copiar invitación</button>
+            </div>
+            {shareBusy&&<p className="mt-2 text-center text-xs text-emerald-200">Preparando invitación…</p>}{shareNotice&&<p role="status" className="mt-2 text-center text-xs text-emerald-200">{shareNotice}</p>}
+            <button type="button" onClick={()=>setShareOpen(false)} className="mt-3 w-full rounded-lg border border-white/20 p-2 text-xs">Cerrar</button>
+          </section>
+        </div>
+      )}
+
       {showConsent&&isOpen&&(
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-labelledby="lb-ptt-consent-title">
           <div className="w-full max-w-md rounded-xl border border-emerald-400/40 bg-slate-900 p-5 text-white">
