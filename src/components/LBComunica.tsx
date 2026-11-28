@@ -699,15 +699,7 @@ export const LBComunica: React.FC = () => {
                     <button type="button" onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode(m=>m==='hold'?'toggle':'hold');}} className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold">{pttMode==='hold'?'Mantener pulsado':'Pulsar para activar/desactivar'}</button>
                   </div>
                   <div className="order-2 w-full flex justify-center"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div>
-                  <button type="button" disabled={connection!=='connected'}
-                    onPointerDown={pttMode==='hold'?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}:undefined}
-                    onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
-                    onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    onClick={pttMode==='toggle'?togglePtt:undefined}
-                    className={'order-3 flex h-[76px] min-h-[76px] w-full max-w-[520px] select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
-                    <Mic className="h-7 w-7"/><span className="text-sm font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
-                  </button>
+
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
                   <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
@@ -725,12 +717,18 @@ export const LBComunica: React.FC = () => {
                       <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
                       <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
-                      <span className="text-[9px] font-black tracking-wider text-zinc-950 sm:text-[10px]">MANDOS DEL TRANSCEPTOR</span>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold text-amber-100 sm:text-[10px]">{panelLight?'LAMP ON':'LAMP OFF'}</button>
-                        <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold sm:text-[10px]">RESET</button>
-                      </div>
+                                      <button type="button" disabled={connection!=='connected'}
+                    onPointerDown={pttMode==='hold'?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}:undefined}
+                    onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
+                    onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
+                    onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
+                    onClick={pttMode==='toggle'?togglePtt:undefined}
+                    className={'flex h-24 min-h-24 w-full max-w-none select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    <Mic className="h-9 w-9"/><span className="text-lg font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
+                  </button>
+                    <div className="mt-2 flex items-center justify-end gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
+                      <button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-3 py-2 text-[10px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button>
+                      <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-3 py-2 text-[10px] font-bold">RESET</button>
                     </div>
                   </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
