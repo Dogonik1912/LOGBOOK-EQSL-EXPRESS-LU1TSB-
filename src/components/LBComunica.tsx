@@ -702,12 +702,16 @@ export const LBComunica: React.FC = () => {
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
                   <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
-                      <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-black tracking-wider text-zinc-950 sm:gap-2 sm:text-xs">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px] font-black tracking-wider text-zinc-950 sm:gap-2 sm:text-xs">
                         <span className="whitespace-nowrap">AUDIO RX</span>
                         <button type="button" aria-pressed={audioProfile==='radio'} onClick={()=>setAudioProfile('radio')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='radio'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>MODO RADIO</button>
                         <button type="button" aria-pressed={audioProfile==='clean'} onClick={()=>setAudioProfile('clean')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='clean'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>AUDIO LIMPIO</button>
+                        <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button>
                       </div>
-                      <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="shrink-0 rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button>
+                        <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold">RESET</button>
+                      </div>
                     </div>
                     <div className="my-2 w-full flex justify-center"><div className="w-full"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div></div>
                     <div className="grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
@@ -726,10 +730,7 @@ export const LBComunica: React.FC = () => {
                     className={'flex h-24 min-h-24 w-full max-w-none select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
                     <Mic className="h-9 w-9"/><span className="text-lg font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
-                    <div className="mt-2 flex items-center justify-end gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
-                      <button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-3 py-2 text-[10px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button>
-                      <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-3 py-2 text-[10px] font-bold">RESET</button>
-                    </div>
+
                   </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
                   <div className="mt-1 flex w-full max-w-xs items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
