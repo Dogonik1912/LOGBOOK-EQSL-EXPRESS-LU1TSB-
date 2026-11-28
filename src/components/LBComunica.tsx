@@ -319,7 +319,7 @@ export const LBComunica: React.FC = () => {
         language='es-ES';
         available=spanish.length?spanish:voices;
       } else if(primoItalia){
-        phrase='¡Primo Italia... Italia due sete!... Aquí llamando, ¿quién copia?';
+        phrase='¡Primo Italia!... ¡Italia due sete!';
         language='it-IT';
         const italianVoices=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         available=italianVoices.length?italianVoices:voices;
@@ -368,15 +368,17 @@ export const LBComunica: React.FC = () => {
       const preferredVoices=oscarItalia
         ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
         : maleVoices;
-      const selectedVoices=comandante?(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
+      const selectedVoices=primoItalia?(maleVoices.length?maleVoices:(naturalVoices.length?naturalVoices:available)):comandante?(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.76+Math.random()*0.04:primoItalia?0.88:0.76+Math.random()*0.08;
-      utterance.pitch=comandante?0.56:oscarItalia?0.42:primoItalia?0.78:0.68+Math.random()*0.10;
-      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.12:0.035+Math.random()*0.015;
-      const next=()=>schedule(26000+Math.random()*52000);
+      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.76+Math.random()*0.04:primoItalia?0.80+Math.random()*0.04:0.76+Math.random()*0.08;
+      utterance.pitch=comandante?0.56:oscarItalia?0.42:primoItalia?0.52:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.16:0.035+Math.random()*0.015;
+      const next=()=>{setMeterLevel(0.04);schedule(26000+Math.random()*52000);};
+      utterance.onstart=()=>{setMeterLevel(primoItalia?0.30:comandante?0.24:oscarItalia?0.32:0.18);};
+      utterance.onboundary=(event)=>{const syllableStrength=Math.min(0.92,0.18+Math.min(20,event.charLength||8)*0.026);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
@@ -549,14 +551,15 @@ export const LBComunica: React.FC = () => {
         const gate=ctx.createGain();gate.gain.value=1;
         const rf=ctx.createGain();rf.gain.value=radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32;
         const dest=ctx.createMediaStreamDestination();
+        const outputAnalyser=ctx.createAnalyser();outputAnalyser.fftSize=512;
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);
-        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.070:0.054;qrm.gain.gain.value=isElevenMeters?0.135:0.12;rf.connect(dest);
+        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.070:0.054;qrm.gain.gain.value=isElevenMeters?0.135:0.12;rf.connect(outputAnalyser);outputAnalyser.connect(dest);
         audio.srcObject=dest.stream;
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;entry.qrmGain=qrm.gain;entry.qrmSource=qrm.source;}
-        const samples=new Uint8Array(analyser.fftSize);
+        const samples=new Uint8Array(analyser.fftSize);const meterSamples=new Uint8Array(outputAnalyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
-        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const now=performance.now();const target=Math.min(1,Math.max(0,rms*5.5));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
+        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const now=performance.now();const target=Math.min(1,Math.max(0,meterRms*5.5));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
           noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-level*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
           qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
