@@ -249,9 +249,11 @@ export const LBComunica: React.FC = () => {
     let timer: ReturnType<typeof setTimeout> | null=null;
     let cancelled=false;
     const phrases=[
-      'CQ, CQ, this is Echo Seven calling. Listening for any station.',
+      'CQ CQ CQ, this is Whiskey Eight Delta calling. Any station, over.',
+      'CQ CQ CQ, calling CQ. This is Mike Seven Romeo, standing by.',
+      'CQ CQ CQ, this is Echo Four Lima. Is any station listening?',
       'Good morning, operator. You are five and nine, over.',
-      'Roger that, thanks for the contact. Seventy three.',
+      'Roger, thank you for the contact. Seventy three.',
       'This is a portable station, standing by on this frequency.',
       'Signal report one by one, there is some noise on the band.',
       'Calling any station listening, please come back.',
@@ -265,11 +267,15 @@ export const LBComunica: React.FC = () => {
       if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length) { schedule(12000+Math.random()*18000); return; }
       const utterance=new SpeechSynthesisUtterance(phrases[Math.floor(Math.random()*phrases.length)]);
       const english=synth.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
-      if(english.length) utterance.voice=english[Math.floor(Math.random()*english.length)];
+      // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
+      const maleVoices=english.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander/i.test(v.name));
+      const available=maleVoices.length?maleVoices:english;
+      if(available.length) utterance.voice=available[Math.floor(Math.random()*available.length)];
       utterance.lang='en-US';
-      utterance.rate=0.82+Math.random()*0.22;
-      utterance.pitch=0.86+Math.random()*0.22;
-      utterance.volume=0.055+Math.random()*0.025;
+      // Voz más grave y baja para sugerir una estación distante, sin tapar la conversación.
+      utterance.rate=0.76+Math.random()*0.08;
+      utterance.pitch=0.68+Math.random()*0.10;
+      utterance.volume=0.035+Math.random()*0.015;
       const next=()=>schedule(26000+Math.random()*52000);
       utterance.onend=next;
       utterance.onerror=next;
