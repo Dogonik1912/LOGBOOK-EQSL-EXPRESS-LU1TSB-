@@ -520,7 +520,7 @@ export const LBComunica: React.FC = () => {
 
   return (
     <>
-      <button type="button" onClick={openRoom}
+      <button type="button" onClick={()=>openRoom()}
         className="mb-3 flex min-h-11 w-full flex-col items-center justify-center rounded-lg border border-emerald-300 bg-gradient-to-r from-emerald-950 via-teal-900 to-cyan-900 px-3 py-2 text-center text-xs font-semibold text-white shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-emerald-300 sm:text-sm"
         aria-label="LB COMUNICACION, pulsa y habla">
         <span className="inline-flex items-center gap-2"><Headphones className="h-5 w-5 shrink-0"/>LB COMUNICACION</span>
