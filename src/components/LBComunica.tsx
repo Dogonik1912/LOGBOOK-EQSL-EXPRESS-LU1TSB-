@@ -366,6 +366,34 @@ export const LBComunica: React.FC = () => {
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,activeCallsign]);
 
+  // 11m desktop ambience: independent local QRN/QRM bed, never sent to peers or recorded.
+  // Keep this effect desktop-only so the already-approved mobile audio remains untouched.
+  useEffect(()=>{
+    if(!isOpen || connection!=='connected' || !is11MeterStationIdentifier(activeCallsign) || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
+    if(!window.matchMedia('(min-width: 768px)').matches) return;
+    const Ctor=window.AudioContext||(window as any).webkitAudioContext;
+    if(!Ctor) return;
+    let ctx:AudioContext;
+    try{ctx=new Ctor();}catch{return;}
+    let qrNoise:{source:AudioBufferSourceNode;gain:GainNode}|null=null;
+    let qrm:{source:AudioBufferSourceNode;gain:GainNode}|null=null;
+    try{
+      qrNoise=createRadioNoise(ctx,ctx.destination);
+      qrm=createRadioInterference(ctx,ctx.destination);
+      qrNoise.gain.gain.value=0.105;
+      qrm.gain.gain.value=0.22;
+      if(ctx.state==='suspended')void ctx.resume().catch(()=>{});
+    }catch{
+      try{qrNoise?.source.stop();qrm?.source.stop();}catch{}
+      void ctx.close().catch(()=>{});
+      return;
+    }
+    return ()=>{
+      try{qrNoise?.source.stop();qrNoise?.source.disconnect();qrNoise?.gain.disconnect();qrm?.source.stop();qrm?.source.disconnect();qrm?.gain.disconnect();}catch{}
+      void ctx.close().catch(()=>{});
+    };
+  },[isOpen,connection,activeCallsign,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
+
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
     if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
@@ -1068,6 +1096,17 @@ export const LBComunica: React.FC = () => {
                         className={'mt-1 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':pttPending||isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
                         <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':pttPending?'SOLICITANDO':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
                       </button>
+                    </div>
+                  </div>
+                  <div className="hidden w-full grid-cols-5 items-center gap-3 rounded-lg border border-amber-100/20 bg-black/35 px-3 py-3 md:grid">
+                    <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
+                    <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
+                    <RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/>
+                    <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
+                    <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
+                    <div className="col-span-5 flex items-center justify-center gap-5 border-t border-white/10 pt-2 text-[10px] font-black tracking-widest text-amber-100">
+                      <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400"/>QRN · RUIDO DE FONDO</span>
+                      <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"/>QRM · INTERFERENCIAS</span>
                     </div>
                   </div>
                   </div>
