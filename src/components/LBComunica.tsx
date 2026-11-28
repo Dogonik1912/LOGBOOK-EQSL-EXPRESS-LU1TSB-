@@ -302,19 +302,31 @@ export const LBComunica: React.FC = () => {
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
       const specialRoll=Math.random();
-      const oscarItalia=isElevenMeters && specialRoll<0.22;
-      const comandante=isElevenMeters && specialRoll>=0.22 && specialRoll<0.38;
+      const oscarItalia=isElevenMeters && specialRoll<0.24;
+      const comandante=isElevenMeters && specialRoll>=0.24 && specialRoll<0.42;
+      const primoItalia=isElevenMeters && specialRoll>=0.42 && specialRoll<0.52;
       if(oscarItalia){
         // Oscar conserva la frase española, pero usa voz italiana si el dispositivo la ofrece.
         const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
-        phrase='¡Oscar Italia! ¡La estación más fuerte del mundo está llamando!';
-        language=italian.length?'it-IT':'es-ES';
-        available=italian.length?italian:(spanish.length?spanish:voices);
+        const oscarLines=[
+          '¡Oscar Italia! ... La estación más fuerte del mundo está llamando.',
+          '¡Cuerrido amigo!... Vamos, vamos... ¡Oscar te escucha muy bon!'
+        ];
+        phrase=oscarLines[Math.floor(Math.random()*oscarLines.length)];
+        // El personaje habla en castellano con una voz masculina grave; no forzamos
+        // una voz italiana leyendo español porque suele producir una dicción artificial.
+        language='es-ES';
+        available=spanish.length?spanish:voices;
+      } else if(primoItalia){
+        phrase='¡Primo Italia... Italia due sete!... Aquí llamando, ¿quién copia?';
+        language='it-IT';
+        const italianVoices=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
+        available=italianVoices.length?italianVoices:voices;
       } else if(comandante){
         const appLang=getInitialAppLanguage();
         const commanderLines:Partial<Record<AppLanguage,string>>={
-          es:'¡Atención, atención! Aquí el Comandante. Tonto, es que eres tonto. ¡Te lo digo yo, el Comandante!',
+          es:'¡Atención, atención!... Aquí el Comandante. / ¡Tonto, que eres tonto!... ¡Te lo digo yo, el Comandante!',
           en:'Attention, attention! This is the Commander. You fool, are you really that foolish? The Commander told you so!',
           pt:'Atenção, atenção! Aqui é o Comandante. Tonto, és mesmo tonto. Eu, o Comandante, é que te digo!',
           'pt-br':'Atenção, atenção! Aqui é o Comandante. Tonto, você é muito tonto. Estou dizendo, eu sou o Comandante!',
@@ -350,14 +362,19 @@ export const LBComunica: React.FC = () => {
       }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos/i.test(v.name));
-      const selectedVoices=maleVoices.length?maleVoices:available;
+      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|jorge/i.test(v.name));
+      const naturalVoices=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio/i.test(v.name));
+      const preferredVoices=oscarItalia
+        ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
+        : maleVoices;
+      const selectedVoices=preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available));
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
-      // La llamada especial tiene más presencia y tono muy grave; el resto permanece lejano.
-      utterance.rate=(oscarItalia||comandante)?0.72:0.76+Math.random()*0.08;
-      utterance.pitch=oscarItalia?0.48:comandante?0.56:0.68+Math.random()*0.10;
-      utterance.volume=oscarItalia?0.18:comandante?0.11:0.035+Math.random()*0.015;
+      // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
+      // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
+      utterance.rate=comandante?0.84+Math.random()*0.07:oscarItalia?0.82+Math.random()*0.05:primoItalia?0.88:0.76+Math.random()*0.08;
+      utterance.pitch=comandante?0.56:oscarItalia?0.62:primoItalia?0.78:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.12:0.035+Math.random()*0.015;
       const next=()=>schedule(26000+Math.random()*52000);
       utterance.onend=next;
       utterance.onerror=next;
