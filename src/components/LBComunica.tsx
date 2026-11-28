@@ -94,11 +94,11 @@ export const LBComunica: React.FC = () => {
   const [playingIndex, setPlayingIndex] = useState(-1);
   const [playAll, setPlayAll] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0.08);
-  const [rfGain,setRfGain]=useState(80);
-  const [micGain,setMicGain]=useState(70);
-  const [squelch,setSquelch]=useState(0);
-  const [clarifier,setClarifier]=useState(50);
-  const [radioVolume,setRadioVolume]=useState(85);
+  const [rfGain,setRfGain]=useState(()=>Number(localStorage.getItem('lb_radio_rf_gain')||80));
+  const [micGain,setMicGain]=useState(()=>Number(localStorage.getItem('lb_radio_mic_gain')||70));
+  const [squelch,setSquelch]=useState(()=>Number(localStorage.getItem('lb_radio_squelch')||0));
+  const [clarifier,setClarifier]=useState(()=>Number(localStorage.getItem('lb_radio_clarifier')||50));
+  const [radioVolume,setRadioVolume]=useState(()=>Number(localStorage.getItem('lb_radio_volume')||85));
   const [radioReceive,setRadioReceive]=useState(true);
   const [panelLight,setPanelLight]=useState(true);
   const channelRef = useRef<any>(null);
@@ -692,6 +692,7 @@ export const LBComunica: React.FC = () => {
                     <span className="text-xs text-slate-400">Modo PTT</span>
                     <button type="button" onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode(m=>m==='hold'?'toggle':'hold');}} className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold">{pttMode==='hold'?'Mantener pulsado':'Pulsar para activar/desactivar'}</button>
                   </div>
+                  <SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} />
                   <button type="button" disabled={connection!=='connected'}
                     onPointerDown={pttMode==='hold'?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}:undefined}
                     onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
@@ -702,7 +703,6 @@ export const LBComunica: React.FC = () => {
                     <Mic className="h-7 w-7"/><span className="text-sm font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
-                  <SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} />
                   <div className="grid w-full grid-cols-3 gap-3 rounded-lg border border-amber-100/20 bg-black/35 px-2 py-3 sm:grid-cols-5"><RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/><RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/><RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/><RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/><RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/></div>
                   <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={()=>setRadioReceive(v=>!v)} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-3 py-2 text-[11px] font-bold text-emerald-100">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button><button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-3 py-2 text-[11px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button><button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);}} className="rounded-md border border-white/20 bg-black/30 px-3 py-2 text-[11px] font-bold">RESET</button></div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
