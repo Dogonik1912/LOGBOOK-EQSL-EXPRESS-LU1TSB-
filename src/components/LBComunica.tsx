@@ -144,6 +144,8 @@ export const LBComunica: React.FC = () => {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState('');
   const [remoteTalkers, setRemoteTalkers] = useState<string[]>([]);
+  const [ambientCall, setAmbientCall] = useState<any>(null);
+  const ambientPlayedRef = useRef<Set<string>>(new Set());
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [playingIndex, setPlayingIndex] = useState(-1);
@@ -303,7 +305,12 @@ export const LBComunica: React.FC = () => {
     ];
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
     const speak=()=>{
-      if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length) { schedule(12000+Math.random()*18000); return; }
+      const presenceNow=channelRef.current?.presenceState?.() || {};
+      const roomPeers=Object.values(presenceNow).flat() as Participant[];
+      const leaderToken=Object.keys(presenceNow).sort()[0];
+      const roomTransmitting=roomPeers.some(peer=>peer.status==='Transmitiendo');
+      if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length || roomTransmitting) { schedule(5000+Math.random()*7000); return; }
+      if(leaderToken!==deviceToken) { schedule(2200); return; }
       const voices=synth.getVoices();
       const isElevenMeters=is11MeterStationIdentifier(activeCallsign);
       let phrase:string;
@@ -400,8 +407,10 @@ export const LBComunica: React.FC = () => {
       const distanceLevel=0.42+Math.random()*0.58;
       const receiverLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       const characterLevel=oscarItalia?0.82:comandante?0.78:primoItalia?0.72:1;
-      utterance.volume=Math.max(0.04,Math.min(1,distanceLevel*receiverLevel*characterLevel));
-      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?9500+Math.random()*14500:14000+Math.random()*24000);};
+      const sharedSignalLevel=Math.max(0.08,Math.min(1,distanceLevel*characterLevel));
+      utterance.volume=Math.max(0.04,Math.min(1,sharedSignalLevel*receiverLevel));
+      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',startedAt:Date.now()+220}});
+      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?6500+Math.random()*6000:8000+Math.random()*7000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
@@ -410,7 +419,70 @@ export const LBComunica: React.FC = () => {
     };
     schedule(is11MeterStationIdentifier(activeCallsign)?5000+Math.random()*7000:8000+Math.random()*12000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive]);
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive,activeCallsign,deviceToken]);
+
+  // Play the same room-wide call on every device. Spoken text and timing are shared;
+  // each receiver uses its own installed voice and local RF/volume controls.
+  useEffect(()=>{
+    if(!ambientCall || ambientCall.room!==(is11MeterStationIdentifier(activeCallsign)?'11m':'ham') || !isOpen || connection!=='connected' || audioProfile!=='radio') return;
+    const eventId=String(ambientCall.eventId||'');
+    if(eventId && ambientPlayedRef.current.has(eventId)) return;
+    if(isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) {
+      if(eventId) ambientPlayedRef.current.add(eventId);
+      if('speechSynthesis' in window) window.speechSynthesis.cancel();
+      return;
+    }
+    if(!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance==='undefined') return;
+    const delay=Math.max(0,Math.min(1200,Number(ambientCall.startedAt||Date.now())-Date.now()));
+    let cancelled=false;
+    const timer=window.setTimeout(()=>{
+      if(cancelled || isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) { if(eventId) ambientPlayedRef.current.add(eventId); return; }
+      if(eventId) ambientPlayedRef.current.add(eventId);
+      const synth=window.speechSynthesis;
+      const utterance=new SpeechSynthesisUtterance(String(ambientCall.phrase||''));
+      utterance.lang=String(ambientCall.language||'en-US');
+      const voices=synth.getVoices();
+      const prefix=utterance.lang.slice(0,2).toLowerCase();
+      const available=voices.filter(v=>v.lang.toLowerCase().startsWith(prefix));
+      const male=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo/i.test(v.name));
+      const natural=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio|online/i.test(v.name));
+      const selected=ambientCall.style==='oscar'||ambientCall.style==='commander'||ambientCall.style==='primo'?(male.length?male:(natural.length?natural:available)):(natural.length?natural:(male.length?male:available));
+      if(selected.length) utterance.voice=selected[0];
+      const localLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
+      utterance.volume=Math.max(0.04,Math.min(1,Number(ambientCall.signalLevel||0.5)*localLevel));
+      utterance.rate=ambientCall.style==='commander'?0.94:ambientCall.style==='oscar'?0.91:0.96;
+      utterance.pitch=ambientCall.style==='commander'?0.72:ambientCall.style==='oscar'?0.66:ambientCall.style==='primo'?0.74:0.96;
+      utterance.onstart=()=>setMeterLevel(0.72*Number(ambientCall.signalLevel||0.5));
+      utterance.onend=()=>setMeterLevel(0.04);
+      utterance.onerror=()=>setMeterLevel(0.04);
+      synth.speak(utterance);
+    },delay);
+    return ()=>{cancelled=true;window.clearTimeout(timer);};
+  },[ambientCall,activeCallsign,isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants,radioVolume,rfGain,radioReceive]);
+
+  // Continuous static, QRM and QRN in both rooms; it ducks while an operator transmits.
+  useEffect(()=>{
+    if(!isOpen || connection!=='connected' || audioProfile!=='radio') return;
+    const Ctor=window.AudioContext||(window as any).webkitAudioContext;
+    if(!Ctor) return;
+    let ctx:AudioContext;
+    try{ctx=new Ctor();}catch{return;}
+    const noise=createRadioNoise(ctx,ctx.destination);
+    const qrm=createRadioInterference(ctx,ctx.destination);
+    let timer:ReturnType<typeof setInterval>|null=null;
+    const update=()=>{
+      const state=channelRef.current?.presenceState?.()||{};
+      const peers=Object.values(state).flat() as Participant[];
+      const transmitting=isTalking||!!activeSpeaker||remoteTalkers.length>0||peers.some(p=>p.status==='Transmitiendo');
+      const localLevel=Math.max(0.05,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
+      const duck=transmitting?0.22:1;
+      const eleven=is11MeterStationIdentifier(activeCallsign);
+      noise.gain.gain.setTargetAtTime((eleven?0.052:0.034)*localLevel*duck,ctx.currentTime,0.18);
+      qrm.gain.gain.setTargetAtTime((eleven?0.092:0.064)*localLevel*duck,ctx.currentTime,0.22);
+    };
+    void ctx.resume();update();timer=window.setInterval(update,300);
+    return ()=>{if(timer)clearInterval(timer);try{noise.source.stop();qrm.source.stop();noise.source.disconnect();qrm.source.disconnect();noise.gain.disconnect();qrm.gain.disconnect();}catch{}void ctx.close().catch(()=>{});};
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants,activeCallsign,radioVolume,rfGain,radioReceive]);
 
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
@@ -585,8 +657,8 @@ export const LBComunica: React.FC = () => {
         const samples=new Uint8Array(analyser.fftSize);const meterSamples=new Uint8Array(outputAnalyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const now=performance.now();const target=Math.min(1,Math.max(0,(meterRms-0.008)*16));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-level*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
-          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
+          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.018:0.012):Math.max(isElevenMeters?0.035:0.025,(isElevenMeters?0.060:0.048)-level*(isElevenMeters?0.00030:0.00023))):0,ctx.currentTime,voiceOpen?0.08:0.35);
+          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.035:0.022):(isElevenMeters?0.095:0.072)):0,ctx.currentTime,voiceOpen?0.12:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
@@ -691,6 +763,7 @@ export const LBComunica: React.FC = () => {
       };
       recorder.stop();
     }
+    try { void channelRef.current?.track({callsign:activeCallsign,status:'Escuchando',joinedAt:new Date().toISOString()}); } catch {}
     const sessionId = sessionRef.current;
     Array.from(peerMapRef.current.keys()).filter((key)=>key.endsWith(':'+sessionId)).forEach(closePeer);
     streamRef.current?.getTracks().forEach((track)=>track.stop());
@@ -931,11 +1004,13 @@ export const LBComunica: React.FC = () => {
         if (!mounted) return;
         const state = channel.presenceState<Participant>();
         const all = Object.values(state).flat();
+        if(all.some((p:any)=>p?.status==='Transmitiendo') && 'speechSynthesis' in window) window.speechSynthesis.cancel();
         const unique = new Map<string,Participant>();
         all.forEach((p)=>{const call=String(p.callsign||'').toUpperCase();if(call)unique.set(call,{...p,callsign:call});});
         setParticipants(Array.from(unique.values()).sort((a,b)=>a.callsign.localeCompare(b.callsign)));
       })
       .on('broadcast',{event:'signal'},({payload}:{payload:Signal})=>{if(mounted)void acceptSignal(payload);})
+      .on('broadcast',{event:'ambient-call'},({payload}:{payload:any})=>{if(mounted && payload?.room===(is11MeterStationIdentifier(activeCallsign)?'11m':'ham') && payload?.origin!==deviceToken && Date.now()-Number(payload?.startedAt||0)<6000)setAmbientCall(payload);})
       .subscribe(async(status)=>{
         if (!mounted) return;
         if (status==='SUBSCRIBED') {
