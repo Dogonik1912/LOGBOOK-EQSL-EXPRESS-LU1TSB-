@@ -1109,7 +1109,7 @@ export const LBComunica: React.FC = () => {
     } else setRemainingSeconds(0);
     if (data.status==='transmitting' && !talkingRef.current && !beginningRef.current) {
       if (pttIntentRef.current) void beginAudio();
-      else if (action !== 'release' && action !== 'cancel') void api('queue',{queue_action:'release'}).catch(()=>{});
+      else if (queue_action !== 'release' && queue_action !== 'cancel') void api('queue',{queue_action:'release'}).catch(()=>{});
     }
     if (data.status!=='transmitting' && (talkingRef.current || beginningRef.current)) endLocalAudio(true);
     return data as QueueState;
