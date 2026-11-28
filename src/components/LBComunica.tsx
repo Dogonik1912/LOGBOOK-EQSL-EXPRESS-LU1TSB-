@@ -469,7 +469,7 @@ export const LBComunica: React.FC = () => {
     try{ctx=new Ctor();}catch{return;}
     const noise=createRadioNoise(ctx,ctx.destination);
     const qrm=createRadioInterference(ctx,ctx.destination);
-    let timer:ReturnType<typeof setInterval>|null=null;
+    let timer:number|null=null;
     const update=()=>{
       const state=channelRef.current?.presenceState?.()||{};
       const peers=Object.values(state).flat() as Participant[];
