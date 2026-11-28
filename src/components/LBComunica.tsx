@@ -249,19 +249,33 @@ export const LBComunica: React.FC = () => {
     const synth=window.speechSynthesis;
     let timer: ReturnType<typeof setTimeout> | null=null;
     let cancelled=false;
+    const hamStations=[
+      {call:'W1ABC',country:'United States'},
+      {call:'VE3KLM',country:'Canada'},
+      {call:'G4XYZ',country:'United Kingdom'},
+      {call:'F4ABC',country:'France'},
+      {call:'DL1ABC',country:'Germany'},
+      {call:'I2XYZ',country:'Italy'},
+      {call:'EA8ABC',country:'Canary Islands'},
+      {call:'LU1ABC',country:'Argentina'},
+      {call:'PY2ABC',country:'Brazil'},
+      {call:'JA1ABC',country:'Japan'},
+      {call:'VK3ABC',country:'Australia'},
+      {call:'ZS6ABC',country:'South Africa'},
+      {call:'9A1ABC',country:'Croatia'},
+      {call:'OH2ABC',country:'Finland'},
+      {call:'CT1ABC',country:'Portugal'},
+      {call:'YO3ABC',country:'Romania'}
+    ];
     const hamPhrases=[
-      'CQ CQ CQ, this is Whiskey Eight Delta calling. Any station, over.',
-      'CQ CQ CQ, calling CQ. This is Mike Seven Romeo, standing by.',
-      'CQ CQ CQ, this is Echo Four Lima. Is any station listening?',
-      'Good morning, operator. You are five and nine, over.',
-      'Roger, thank you for the contact. Seventy three.',
-      'This is a portable station, standing by on this frequency.',
-      'Signal report one by one, there is some noise on the band.',
-      'Calling any station listening, please come back.',
-      'Thank you for the report. I will be listening again.',
-      'QRZ, QRZ, any station calling?',
-      'A little QRM here, please repeat your last transmission.',
-      'Copy your report. The band is quite busy today.'
+      (call:string,country:string)=>`CQ CQ CQ, this is ${call} from ${country}, calling amateur radio stations worldwide.`,
+      (call:string,country:string)=>`This is ${call}, ${country}, listening for any station. Please call me.`,
+      (call:string,country:string)=>`CQ DX, CQ DX. ${call} from ${country}. Any station, please come back.`,
+      (call:string,country:string)=>`${call} calling QRZ. I am listening on this frequency. Over.`,
+      (call:string,country:string)=>`Good evening from ${country}. This is ${call}, standing by for a contact.`,
+      (call:string,country:string)=>`${call} here. Your signal is five and nine. Thank you for the contact.`,
+      (call:string,country:string)=>`Calling any amateur radio station. ${call}, ${country}, listening.`,
+      (call:string,country:string)=>`CQ, CQ. This is ${call}. Is the frequency in use?`
     ];
     const elevenMeterStations=[
       {call:'1AT 001',country:'Italy'},
@@ -302,7 +316,8 @@ export const LBComunica: React.FC = () => {
         language='en-US';
         available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
       }else{
-        phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
+        ambientStation=hamStations[Math.floor(Math.random()*hamStations.length)];
+        phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)](ambientStation.call,ambientStation.country);
       }
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
@@ -378,21 +393,24 @@ export const LBComunica: React.FC = () => {
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.76+Math.random()*0.10:primoItalia?0.82+Math.random()*0.10:0.76+Math.random()*0.08;
-      utterance.pitch=comandante?0.56:oscarItalia?0.34+Math.random()*0.08:primoItalia?0.58+Math.random()*0.10:0.68+Math.random()*0.10;
-      // Volumen deliberadamente variable para simular estaciones a distintas distancias.
-      // La síntesis del navegador depende de las voces instaladas en cada dispositivo.
-      utterance.volume=oscarItalia?0.58+Math.random()*0.42:comandante?0.48+Math.random()*0.18:primoItalia?0.42+Math.random()*0.30:0.035+Math.random()*0.015;
-      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?11000+Math.random()*19000:26000+Math.random()*52000);};
+      utterance.rate=comandante?0.91+Math.random()*0.07:oscarItalia?0.86+Math.random()*0.08:primoItalia?0.88+Math.random()*0.08:0.90+Math.random()*0.10;
+      utterance.pitch=comandante?0.72:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.72+Math.random()*0.08:0.88+Math.random()*0.14;
+      // Señal variable pero siempre inteligible: la distancia cambia el nivel, no deforma la voz.
+      // RF GAIN, VOLUME y RX ATENUADA también actúan sobre las llamadas ambientales.
+      const distanceLevel=0.42+Math.random()*0.58;
+      const receiverLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
+      const characterLevel=oscarItalia?0.82:comandante?0.78:primoItalia?0.72:1;
+      utterance.volume=Math.max(0.04,Math.min(1,distanceLevel*receiverLevel*characterLevel));
+      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?9500+Math.random()*14500:14000+Math.random()*24000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(is11MeterStationIdentifier(activeCallsign)?6000+Math.random()*9000:18000+Math.random()*22000);
+    schedule(is11MeterStationIdentifier(activeCallsign)?5000+Math.random()*7000:8000+Math.random()*12000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,radioVolume,rfGain,radioReceive]);
 
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
