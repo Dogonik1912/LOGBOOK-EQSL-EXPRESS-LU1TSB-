@@ -209,6 +209,7 @@ const RadioKnob: React.FC<{label:string;value:number;onChange:(v:number)=>void}>
 export const LBComunica: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [backgroundEnabled, setBackgroundEnabled] = useState(false);
+
   const [activeCallsign, setActiveCallsign] = useState(readCallsign);
   const [deviceToken, setDeviceToken] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
