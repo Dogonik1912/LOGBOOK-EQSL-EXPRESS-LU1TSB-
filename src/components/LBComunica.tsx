@@ -792,7 +792,6 @@ export const LBComunica: React.FC = () => {
     const pc = new RTCPeerConnection({ iceServers: connectionIceServers });
     const audio = new Audio();
     audio.autoplay = true;
-    audio.playsInline = true;
     audio.setAttribute('playsinline', '');
     audio.volume = 1;
     pc.ontrack = (event) => {
