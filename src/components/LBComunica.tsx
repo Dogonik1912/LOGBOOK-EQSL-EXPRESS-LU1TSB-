@@ -64,7 +64,7 @@ const SuperstarMeter: React.FC<{ level: number; transmitting: boolean }> = ({ le
 
 const RadioKnob: React.FC<{label:string;value:number;onChange:(v:number)=>void}> = ({label,value,onChange}) => {
   const angle=-135+value*2.7;
-  return <label className="flex flex-col items-center gap-1 text-center"><span className="text-[9px] font-black tracking-widest text-amber-100">{label}</span><span className="relative block h-10 w-10 rounded-full sm:h-14 sm:w-14 border border-amber-100/30 bg-[radial-gradient(circle_at_32%_25%,#77736a,#33332f_48%,#090a08)] shadow-[inset_0_2px_5px_#ffffff35,0_5px_8px_#000b]"><span className="absolute inset-1 rounded-full border border-white/10 bg-[conic-gradient(from_220deg,#aaa69c,#292a26,#151612,#77736a)]"/><span className="absolute left-1/2 top-1/2 h-5 w-[3px] origin-[50%_100%] rounded-full bg-amber-200" style={{transform:'translate(-50%,-100%) rotate('+angle+'deg)'}}/><input aria-label={label} type="range" min="0" max="100" value={value} onChange={e=>onChange(Number(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0"/></span><span className="text-[10px] font-bold text-amber-200">{value}%</span></label>;
+  return <label className="flex flex-col items-center gap-1 text-center"><span className="text-[9px] font-black tracking-widest text-amber-100 drop-shadow-[0_1px_2px_#000]">{label}</span><span className="relative block h-10 w-10 rounded-full sm:h-14 sm:w-14 border border-amber-100/30 bg-[radial-gradient(circle_at_32%_25%,#77736a,#33332f_48%,#090a08)] shadow-[inset_0_2px_5px_#ffffff35,0_5px_8px_#000b]"><span className="absolute inset-1 rounded-full border border-white/10 bg-[conic-gradient(from_220deg,#aaa69c,#292a26,#151612,#77736a)]"/><span className="absolute left-1/2 top-1/2 h-5 w-[3px] origin-[50%_100%] rounded-full bg-amber-200" style={{transform:'translate(-50%,-100%) rotate('+angle+'deg)'}}/><input aria-label={label} type="range" min="0" max="100" value={value} onChange={e=>onChange(Number(e.target.value))} className="absolute inset-0 h-full w-full cursor-pointer opacity-0"/></span><span className="text-[10px] font-black text-amber-100 drop-shadow-[0_1px_2px_#000]">{value}%</span></label>;
 };
 
 export const LBComunica: React.FC = () => {
@@ -709,24 +709,24 @@ export const LBComunica: React.FC = () => {
                     <Mic className="h-7 w-7"/><span className="text-sm font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
-                  <div className="w-full rounded-xl border border-amber-100/25 bg-black/35 p-2 sm:p-3">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-black tracking-wider text-amber-100 sm:gap-2 sm:text-xs">
+                  <div className="w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
+                      <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-black tracking-wider text-zinc-950 sm:gap-2 sm:text-xs">
                         <span className="whitespace-nowrap">AUDIO RX</span>
                         <button type="button" aria-pressed={audioProfile==='radio'} onClick={()=>setAudioProfile('radio')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='radio'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>MODO RADIO</button>
                         <button type="button" aria-pressed={audioProfile==='clean'} onClick={()=>setAudioProfile('clean')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='clean'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>AUDIO LIMPIO</button>
                       </div>
                       <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="shrink-0 rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button>
                     </div>
-                    <div className="grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-amber-100/15 bg-black/25 px-1 py-2 sm:gap-3 sm:px-3 sm:py-3">
+                    <div className="grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
                       <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
                       <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
                       <RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/>
                       <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
                       <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="text-[9px] font-semibold tracking-wider text-amber-100/70 sm:text-[10px]">MANDOS DEL TRANSCEPTOR</span>
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
+                      <span className="text-[9px] font-black tracking-wider text-zinc-950 sm:text-[10px]">MANDOS DEL TRANSCEPTOR</span>
                       <div className="flex gap-2">
                         <button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold text-amber-100 sm:text-[10px]">{panelLight?'LAMP ON':'LAMP OFF'}</button>
                         <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold sm:text-[10px]">RESET</button>
