@@ -276,6 +276,7 @@ export const LBComunica: React.FC = () => {
   const playbackContextRef = useRef<AudioContext|null>(null);
   const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;noiseGain:GainNode;noiseSource:AudioBufferSourceNode;qrmGain:GainNode;qrmSource:AudioBufferSourceNode;gateFrame:number|null}>({} as any);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
+  const iceCredentialsCacheRef = useRef<{ servers: RTCIceServer[]; expiresAt: number } | null>(null);
 
   useEffect(()=>{
     if(!isOpen||!audioPlayerRef.current)return;
@@ -769,19 +770,30 @@ export const LBComunica: React.FC = () => {
     if (old) return old.pc;
     let connectionIceServers = iceServersRef.current;
     let iceExpiresAt: number | null = null;
-    try {
-      const freshIce = await api('ice');
-      const provided = Array.isArray(freshIce.iceServers)
-        ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
-        : [];
-      if (provided.length) connectionIceServers = provided;
-      iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
-    } catch (iceError) {
-      console.warn('LB COMUNICACION ICE credentials:', iceError);
+    const cachedIce = iceCredentialsCacheRef.current;
+    if (cachedIce && cachedIce.expiresAt > Date.now() + 60_000) {
+      connectionIceServers = cachedIce.servers;
+      iceExpiresAt = cachedIce.expiresAt;
+    } else {
+      try {
+        const freshIce = await api('ice');
+        const provided = Array.isArray(freshIce.iceServers)
+          ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
+          : [];
+        if (provided.length) connectionIceServers = provided;
+        iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
+        if (provided.length && iceExpiresAt && Number.isFinite(iceExpiresAt)) {
+          iceCredentialsCacheRef.current = { servers: provided, expiresAt: iceExpiresAt };
+        }
+      } catch (iceError) {
+        console.warn('LB COMUNICACION ICE credentials:', iceError);
+      }
     }
     const pc = new RTCPeerConnection({ iceServers: connectionIceServers });
     const audio = new Audio();
     audio.autoplay = true;
+    audio.playsInline = true;
+    audio.setAttribute('playsinline', '');
     audio.volume = 1;
     pc.ontrack = (event) => {
       const remote=event.streams[0]||new MediaStream([event.track]);
@@ -805,8 +817,8 @@ export const LBComunica: React.FC = () => {
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;entry.qrmGain=qrm.gain;entry.qrmSource=qrm.source;}
         const samples=new Uint8Array(analyser.fftSize);const meterSamples=new Uint8Array(outputAnalyser.fftSize);
-        let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
-        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const now=performance.now();const target=Math.min(1,Math.max(0,(meterRms-0.008)*16));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
+        let voiceOpen=false;let lastMeterUpdate=0;let lastAnalysisUpdate=0;let meterEnvelope=0;
+        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;const now=performance.now();if(now-lastAnalysisUpdate<50){current.gateFrame=requestAnimationFrame(loop);return;}lastAnalysisUpdate=now;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const target=Math.min(1,Math.max(0,(meterRms-0.008)*16));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
           noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.007:0.005):Math.max(isElevenMeters?0.035:0.025,(isElevenMeters?0.060:0.048)-level*(isElevenMeters?0.00030:0.00023))):0,ctx.currentTime,voiceOpen?0.06:0.35);
           qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.012:0.008):(isElevenMeters?0.095:0.072)):0,ctx.currentTime,voiceOpen?0.08:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
@@ -869,6 +881,9 @@ export const LBComunica: React.FC = () => {
                 if (refreshedServers.length) {
                   pc.setConfiguration({ ...pc.getConfiguration(), iceServers: refreshedServers });
                   entry.iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
+                  if (entry.iceExpiresAt && Number.isFinite(entry.iceExpiresAt)) {
+                    iceCredentialsCacheRef.current = { servers: refreshedServers, expiresAt: entry.iceExpiresAt };
+                  }
                 }
               }
               pc.restartIce();
