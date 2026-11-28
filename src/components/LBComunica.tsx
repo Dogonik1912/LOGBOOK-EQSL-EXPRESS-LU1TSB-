@@ -425,7 +425,7 @@ export const LBComunica: React.FC = () => {
         pendingParams.delete('open_lb_register');
         const query = pendingParams.toString();
         window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
-        if ((is11MeterStationIdentifier(next) ? '11m' : 'ham') === pendingRoom) openRoom(next);
+        openRoom(next);
       }
     };
     window.addEventListener('community-active-identity-changed',update);
