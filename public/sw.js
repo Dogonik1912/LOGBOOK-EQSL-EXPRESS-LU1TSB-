@@ -58,21 +58,23 @@ self.addEventListener('fetch', (event) => {
   // the background so the next launch gets the newest HTML without delaying
   // this launch or interrupting an active session.
   if (request.mode === 'navigate') {
-    const refresh = caches.open(CACHE_NAME).then(async (cache) => {
-      const response = await fetch(request, { cache: 'no-store' });
-      if (response.ok) {
-        await cache.put('/index.html', response.clone());
-        await cache.put('/', response.clone());
+    // Network-first for page navigation: every new entry prefers the current
+    // production HTML, avoiding stale desktop shells. Keep the last good shell
+    // as an offline fallback without interrupting an already-open session.
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request, { cache: 'no-store' });
+        if (response.ok) {
+          await cache.put('/index.html', response.clone());
+          await cache.put('/', response.clone());
+        }
+        return response;
+      } catch {
+        const cached = await cache.match('/index.html') || await cache.match('/');
+        return cached || new Response('LogBook no está disponible sin conexión todavía.', { status: 503 });
       }
-      return response;
-    });
-    event.waitUntil(refresh.then(() => undefined).catch(() => undefined));
-    event.respondWith(caches.open(CACHE_NAME).then(async (cache) => {
-      const cached = await cache.match('/index.html') || await cache.match('/');
-      if (cached) return cached;
-      try { return await refresh; }
-      catch { return new Response('LogBook no está disponible sin conexión todavía.', { status: 503 }); }
-    }));
+    })());
     return;
   }
 
