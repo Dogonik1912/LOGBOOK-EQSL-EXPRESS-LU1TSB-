@@ -287,7 +287,6 @@ export const LBComunica: React.FC = () => {
   const playbackContextRef = useRef<AudioContext|null>(null);
   const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;noiseGain:GainNode;noiseSource:AudioBufferSourceNode;qrmGain:GainNode;qrmSource:AudioBufferSourceNode;gateFrame:number|null}>({} as any);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
-  const iceCredentialsCacheRef = useRef<{ servers: RTCIceServer[]; expiresAt: number } | null>(null);
 
   useEffect(()=>{
     if(!isOpen||!audioPlayerRef.current)return;
@@ -782,14 +781,9 @@ export const LBComunica: React.FC = () => {
     const key = peerId + ':' + sessionId;
     const old = peerMapRef.current.get(key);
     if (old) return old.pc;
-    let connectionIceServers = iceServersRef.current;
+    const connectionIceServers = iceServersRef.current;
     let iceExpiresAt: number | null = null;
-    const cachedIce = iceCredentialsCacheRef.current;
-    if (cachedIce && cachedIce.expiresAt > Date.now() + 60_000) {
-      connectionIceServers = cachedIce.servers;
-      iceExpiresAt = cachedIce.expiresAt;
-    }
-    // Start with STUN. TURN credentials are requested for this peer only if ICE recovery is needed.
+    // Every peer starts with STUN only; TURN is requested only for this peer after ICE recovery is needed.
     const pc = new RTCPeerConnection({ iceServers: connectionIceServers });
     const audio = new Audio();
     audio.autoplay = true;
@@ -862,9 +856,6 @@ export const LBComunica: React.FC = () => {
           if (refreshedServers.length) {
             pc.setConfiguration({ ...pc.getConfiguration(), iceServers: refreshedServers });
             entry.iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
-            if (entry.iceExpiresAt && Number.isFinite(entry.iceExpiresAt)) {
-              iceCredentialsCacheRef.current = { servers: refreshedServers, expiresAt: entry.iceExpiresAt };
-            }
           }
         }
         // Espera a que termine cualquier negociación de oferta/respuesta antes del ICE restart.
