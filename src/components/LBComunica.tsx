@@ -107,6 +107,7 @@ export const LBComunica: React.FC = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef(0);
   const peerMapRef = useRef<Map<string,PeerEntry>>(new Map());
+  const squelchRef=useRef(squelch);
   const micContextRef=useRef<AudioContext|null>(null);
   const micGainRef=useRef<GainNode|null>(null);
   const processedMicRef=useRef<MediaStream|null>(null);
@@ -118,6 +119,7 @@ export const LBComunica: React.FC = () => {
   const audioPlayerRef = useRef<HTMLAudioElement|null>(null);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
 
+  useEffect(()=>{squelchRef.current=squelch;},[squelch]);
   useEffect(()=>{localStorage.setItem('lb_radio_rf_gain',String(rfGain));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));localStorage.setItem('lb_radio_volume',String(radioVolume));},[rfGain,micGain,squelch,clarifier,radioVolume]);
   useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(900+(clarifier-50)*22,entry.context?.currentTime||0,.04);entry.tone.gain.setTargetAtTime(((clarifier-50)/50)*5,entry.context?.currentTime||0,.04);}}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive]);
 
@@ -229,7 +231,7 @@ export const LBComunica: React.FC = () => {
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.gate=gate;entry.analyser=analyser;}
         const samples=new Uint8Array(analyser.fftSize);
-        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);gate.gain.setTargetAtTime(squelch>0&&rms<(squelch/100)*.055?0:1,ctx.currentTime,.04);current.gateFrame=requestAnimationFrame(loop);};
+        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);gate.gain.setTargetAtTime(squelchRef.current>0&&rms<(squelchRef.current/100)*.055?0:1,ctx.currentTime,.04);current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
       } catch { audio.srcObject=remote;audio.volume=radioReceive?radioVolume/100:0; }
