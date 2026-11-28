@@ -225,7 +225,7 @@ export default async function handler(req, res) {
       if (wantsJson) return json(res, 200, { event: sharedEvent });
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+      res.setHeader('Cache-Control', 'private, no-store, max-age=0');
       return res.send(renderSharedEvent(sharedEvent, req.query?.lang));
     }
 
