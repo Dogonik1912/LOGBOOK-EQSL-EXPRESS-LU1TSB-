@@ -698,7 +698,6 @@ export const LBComunica: React.FC = () => {
                     <span className="text-xs text-slate-400">Modo PTT</span>
                     <button type="button" onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode(m=>m==='hold'?'toggle':'hold');}} className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold">{pttMode==='hold'?'Mantener pulsado':'Pulsar para activar/desactivar'}</button>
                   </div>
-                  <div className="order-2 w-full flex justify-center"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div>
 
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
                   <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
@@ -710,6 +709,7 @@ export const LBComunica: React.FC = () => {
                       </div>
                       <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="shrink-0 rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button>
                     </div>
+                    <div className="my-2 w-full flex justify-center"><div className="w-full"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div></div>
                     <div className="grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
                       <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
                       <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
