@@ -660,18 +660,18 @@ export const LBComunica: React.FC = () => {
 
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="lb-comunica-title">
-          <section className="flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-emerald-400/40 bg-slate-950 text-white shadow-2xl">
-            <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+          <section className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:h-auto sm:max-h-[94dvh] sm:rounded-2xl">
+            <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className="text-xs font-semibold text-emerald-300">Sala {roomTitle}</p></div>
               <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
             </header>
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-4 py-3">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-slate-900/80 px-3 py-1.5 sm:px-4 sm:py-2">
               <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-emerald-300"/>Usuarios conectados</div>
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm font-bold text-emerald-300">{connection==='connected'?participants.length:'—'}</span>
             </div>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className="grid min-h-0 gap-4 overflow-y-auto p-4 md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
-                <aside className="min-w-0">
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 sm:gap-4 sm:p-4 md:grid md:grid-cols-[minmax(210px,0.8fr)_minmax(0,1.2fr)]">
+                <aside className="order-2 min-w-0 md:order-1">
                   <button type="button" onClick={()=>setMobileListOpen(v=>!v)} className="mb-2 flex w-full items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold md:hidden">Usuarios de la sala <span className="text-emerald-300">{participants.length}</span></button>
                   <div className={mobileListOpen?'block':'hidden md:block'}>
                     <h3 className="mb-2 hidden text-sm font-semibold text-slate-300 md:block">Participantes</h3>
@@ -691,25 +691,25 @@ export const LBComunica: React.FC = () => {
                     </div>
                   </div>
                 </aside>
-                <div className={'relative flex min-w-0 flex-col items-center gap-3 overflow-hidden rounded-xl border p-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
+                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
                   <div className="flex w-full items-center justify-between border-b border-amber-100/20 pb-2 text-[10px] font-black tracking-[.2em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="flex items-center gap-2 text-sm"><Wifi className={connection==='connected'?'h-4 w-4 text-emerald-300':'h-4 w-4 text-amber-300'}/><span>{connection==='connected'?'Conectado a la sala':connection==='connecting'?'Conectando…':'Sin conexión con la sala'}</span></div>
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <span className="text-xs text-slate-400">Modo PTT</span>
                     <button type="button" onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode(m=>m==='hold'?'toggle':'hold');}} className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold">{pttMode==='hold'?'Mantener pulsado':'Pulsar para activar/desactivar'}</button>
                   </div>
-                  <SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} />
+                  <div className="order-2 w-full flex justify-center"><SuperstarMeter level={isTalking ? 0.78 : remoteTalkers.length ? 0.58 : meterLevel} transmitting={isTalking} /></div>
                   <button type="button" disabled={connection!=='connected'}
                     onPointerDown={pttMode==='hold'?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}:undefined}
                     onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
                     onPointerLeave={pttMode==='hold'?()=>{if(isTalking||isQueued)void releaseTurn();}:undefined}
                     onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
                     onClick={pttMode==='toggle'?togglePtt:undefined}
-                    className={'flex h-[88px] min-h-[88px] w-full max-w-[380px] select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    className={'order-3 flex h-[76px] min-h-[76px] w-full max-w-[520px] select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] shadow-inner transition '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
                     <Mic className="h-7 w-7"/><span className="text-sm font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
-                  <div className="w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
+                  <div className="order-1 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
                       <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-black tracking-wider text-zinc-950 sm:gap-2 sm:text-xs">
                         <span className="whitespace-nowrap">AUDIO RX</span>
@@ -776,7 +776,7 @@ export const LBComunica: React.FC = () => {
                 </details>
               </div>
             )}
-            <footer className="border-t border-white/10 px-4 py-3 text-center text-xs text-slate-400">Tu identidad activa determina la sala. HAM y 11 metros permanecen separados.</footer>
+            <footer className="hidden shrink-0 border-t border-white/10 px-4 py-2 text-center text-xs text-slate-400 sm:block">Tu identidad activa determina la sala. HAM y 11 metros permanecen separados.</footer>
           </section>
         </div>
       )}
