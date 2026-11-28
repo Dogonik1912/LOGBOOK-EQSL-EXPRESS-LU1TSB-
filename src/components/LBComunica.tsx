@@ -209,6 +209,7 @@ const RadioKnob: React.FC<{label:string;value:number;onChange:(v:number)=>void}>
 export const LBComunica: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [backgroundEnabled, setBackgroundEnabled] = useState(false);
+  const sessionActive = isOpen || backgroundEnabled;
 
   const [activeCallsign, setActiveCallsign] = useState(readCallsign);
   const [deviceToken, setDeviceToken] = useState('');
@@ -663,7 +664,7 @@ export const LBComunica: React.FC = () => {
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
   const roomTitle = isElevenMeters ? '11 METROS' : 'RADIOAFICIONADOS';
-  const sessionActive = isOpen || backgroundEnabled;
+
 
   const api = async (action: string, extra: Record<string,unknown> = {}) => {
     if (!supabase) throw new Error('Supabase no está configurado.');
