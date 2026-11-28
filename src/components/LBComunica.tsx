@@ -240,6 +240,8 @@ export const LBComunica: React.FC = () => {
   const [pttMode, setPttMode] = useState<'hold'|'toggle'>(()=>localStorage.getItem('lb_comunica_ptt_mode')==='toggle'?'toggle':'hold');
   const [showConsent, setShowConsent] = useState(false);
   const [pttError, setPttError] = useState('');
+  const [echoStatus, setEchoStatus] = useState<'idle'|'recording'|'sending'|'playing'|'success'|'error'>('idle');
+  const [echoMessage, setEchoMessage] = useState('');
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -287,6 +289,17 @@ export const LBComunica: React.FC = () => {
   const playbackContextRef = useRef<AudioContext|null>(null);
   const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;noiseGain:GainNode;noiseSource:AudioBufferSourceNode;qrmGain:GainNode;qrmSource:AudioBufferSourceNode;gateFrame:number|null}>({} as any);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
+  const echoRecorderRef = useRef<MediaRecorder|null>(null);
+  const echoStreamRef = useRef<MediaStream|null>(null);
+  const echoContextRef = useRef<AudioContext|null>(null);
+  const echoAnalyserRef = useRef<AnalyserNode|null>(null);
+  const echoInputSourceRef = useRef<MediaStreamAudioSourceNode|null>(null);
+  const echoPlaybackSourceRef = useRef<AudioBufferSourceNode|null>(null);
+  const echoChunksRef = useRef<Blob[]>([]);
+  const echoStartedAtRef = useRef(0);
+  const echoPeakRef = useRef(0);
+  const echoFrameRef = useRef<number|null>(null);
+  const echoTimeoutRef = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   useEffect(()=>{
     if(!isOpen||!audioPlayerRef.current)return;
@@ -703,6 +716,189 @@ export const LBComunica: React.FC = () => {
     if (!data?.ok) throw new Error(data?.reason || 'No se pudo completar la operación.');
     return data;
   };
+
+  const cleanupEchoResources = (stopPlayback = true) => {
+    if (echoTimeoutRef.current) { clearTimeout(echoTimeoutRef.current); echoTimeoutRef.current = null; }
+    if (echoFrameRef.current !== null) { cancelAnimationFrame(echoFrameRef.current); echoFrameRef.current = null; }
+    if (stopPlayback && echoPlaybackSourceRef.current) {
+      try { echoPlaybackSourceRef.current.stop(); } catch {}
+    }
+    echoPlaybackSourceRef.current = null;
+    try { echoInputSourceRef.current?.disconnect(); } catch {}
+    echoInputSourceRef.current = null;
+    echoAnalyserRef.current = null;
+    echoStreamRef.current?.getTracks().forEach(track => track.stop());
+    echoStreamRef.current = null;
+    const ctx = echoContextRef.current;
+    echoContextRef.current = null;
+    if (ctx && ctx.state !== 'closed') void ctx.close().catch(() => {});
+  };
+
+  const stopEchoTest = () => {
+    if (echoTimeoutRef.current) { clearTimeout(echoTimeoutRef.current); echoTimeoutRef.current = null; }
+    const recorder = echoRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  };
+
+  const completeEchoTest = async (blob: Blob, durationMs: number, peakRms: number) => {
+    try {
+      echoStreamRef.current?.getTracks().forEach(track => track.stop());
+      echoStreamRef.current = null;
+      if (echoFrameRef.current !== null) { cancelAnimationFrame(echoFrameRef.current); echoFrameRef.current = null; }
+      try { echoInputSourceRef.current?.disconnect(); } catch {}
+      echoInputSourceRef.current = null;
+      echoAnalyserRef.current = null;
+      setEchoStatus('sending');
+      setEchoMessage('Micrófono capturado. Enviando el audio al servicio para que lo devuelva…');
+      if (!blob.size || durationMs < 500 || durationMs > 10000) throw new Error('La grabación de prueba no tiene una duración válida. Repite la prueba.');
+      if (peakRms < 0.0012) throw new Error('No detecté voz suficiente en el micrófono. Comprueba el permiso y habla cerca del dispositivo.');
+      const mimeType = (blob.type || 'audio/webm').split(';')[0];
+      if (!['audio/webm','audio/ogg','audio/mp4'].includes(mimeType)) throw new Error('El navegador generó un formato de audio no compatible.');
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      if (!bytes.length || bytes.length > 900000) throw new Error('La muestra supera el tamaño permitido para la prueba.');
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2,'0')).join('');
+      let binary = '';
+      for (let i=0;i<bytes.length;i+=0x8000) binary += String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));
+      const sentBase64 = btoa(binary);
+      const echoed = await api('echo', {
+        audio_base64: sentBase64, mime_type: mimeType, duration_ms: Math.round(durationMs),
+        byte_length: bytes.length, sha256,
+      });
+      if (typeof echoed.audio_base64 !== 'string' || !echoed.audio_base64) throw new Error('El servicio no devolvió el audio de prueba.');
+      const returnedBytes = Uint8Array.from(atob(echoed.audio_base64), c => c.charCodeAt(0));
+      if (returnedBytes.byteLength !== bytes.byteLength || Number(echoed.byte_length) !== bytes.byteLength) {
+        throw new Error('El audio devuelto llegó incompleto: la cantidad de datos no coincide.');
+      }
+      const returnedDigest = await crypto.subtle.digest('SHA-256', returnedBytes);
+      const returnedHash = Array.from(new Uint8Array(returnedDigest), value => value.toString(16).padStart(2,'0')).join('');
+      if (returnedHash !== sha256 || echoed.sha256 !== sha256) throw new Error('El audio devuelto no coincide exactamente con el enviado.');
+      const ctx = echoContextRef.current;
+      if (!ctx || ctx.state === 'closed') throw new Error('Se cerró el dispositivo de audio antes de reproducir el retorno.');
+      if (ctx.state !== 'running') await ctx.resume();
+      if (ctx.state !== 'running') throw new Error('El navegador bloqueó la salida de audio. Toca la pantalla y repite la prueba.');
+      const decoded = await ctx.decodeAudioData(new Uint8Array(returnedBytes).buffer);
+      let sum = 0, sampleCount = 0;
+      for (let channel=0;channel<decoded.numberOfChannels;channel++) {
+        const samples = decoded.getChannelData(channel);
+        for (let i=0;i<samples.length;i++) { sum += samples[i]*samples[i]; sampleCount++; }
+      }
+      const decodedRms = sampleCount ? Math.sqrt(sum/sampleCount) : 0;
+      if (!decoded.length || decoded.duration < 0.25 || decodedRms < 0.0001) throw new Error('El servicio devolvió datos, pero el audio está vacío o no contiene señal audible.');
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      source.buffer = decoded;
+      gain.gain.value = 1;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      echoPlaybackSourceRef.current = source;
+      source.onended = () => {
+        echoPlaybackSourceRef.current = null;
+        setEchoStatus('success');
+        setEchoMessage('El servicio devolvió el mismo audio, la integridad coincide y la reproducción terminó. ¿Escuchaste tu voz?');
+        cleanupEchoResources(false);
+      };
+      setEchoStatus('playing');
+      setEchoMessage('Audio devuelto por el servicio. Reproduciendo tu voz…');
+      source.start();
+    } catch (error) {
+      cleanupEchoResources(true);
+      setEchoStatus('error');
+      setEchoMessage(error instanceof Error ? error.message : 'Falló la prueba de retorno de audio.');
+    }
+  };
+
+  const startEchoTest = async () => {
+    if (echoStatus === 'recording') { stopEchoTest(); return; }
+    if (echoStatus === 'sending' || echoStatus === 'playing') return;
+    if (activeCallsign !== 'LU1TSB' || room !== 'ham') {
+      setEchoStatus('error'); setEchoMessage('La prueba ECO está habilitada únicamente para la cuenta administradora LU1TSB.'); return;
+    }
+    if (connection !== 'connected') {
+      setEchoStatus('error'); setEchoMessage('Primero espera a que LB COMUNICACION se conecte a la sala.'); return;
+    }
+    cleanupEchoResources(true);
+    echoChunksRef.current = [];
+    echoPeakRef.current = 0;
+    setEchoStatus('recording');
+    setEchoMessage('Habla ahora. Pulsa otra vez para enviar tu voz y recibir el retorno. Máximo 10 segundos.');
+    try {
+      const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctor || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        throw new Error('Este navegador no admite la captura o reproducción necesaria para la prueba.');
+      }
+      const ctx: AudioContext = new Ctor();
+      echoContextRef.current = ctx;
+      await ctx.resume();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true },
+        video: false,
+      });
+      echoStreamRef.current = stream;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      const input = ctx.createMediaStreamSource(stream);
+      input.connect(analyser);
+      echoAnalyserRef.current = analyser;
+      echoInputSourceRef.current = input;
+      const samples = new Float32Array(analyser.fftSize);
+      const measure = () => {
+        if (echoAnalyserRef.current !== analyser) return;
+        analyser.getFloatTimeDomainData(samples);
+        let sum = 0;
+        for (let i=0;i<samples.length;i++) sum += samples[i]*samples[i];
+        echoPeakRef.current = Math.max(echoPeakRef.current, Math.sqrt(sum/samples.length));
+        echoFrameRef.current = requestAnimationFrame(measure);
+      };
+      echoFrameRef.current = requestAnimationFrame(measure);
+      const preferred = ['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/mp4'].find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, preferred ? { mimeType: preferred } : undefined);
+      echoRecorderRef.current = recorder;
+      echoStartedAtRef.current = Date.now();
+      recorder.ondataavailable = event => { if (event.data.size) echoChunksRef.current.push(event.data); };
+      recorder.onstop = () => {
+        echoRecorderRef.current = null;
+        const duration = Date.now() - echoStartedAtRef.current;
+        const recorded = new Blob(echoChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        echoChunksRef.current = [];
+        void completeEchoTest(recorded, duration, echoPeakRef.current);
+      };
+      recorder.onerror = () => {
+        echoRecorderRef.current = null;
+        cleanupEchoResources(true);
+        setEchoStatus('error');
+        setEchoMessage('El navegador interrumpió la grabación del micrófono. Repite la prueba.');
+      };
+      recorder.start(250);
+      echoTimeoutRef.current = window.setTimeout(() => stopEchoTest(), 10000);
+    } catch (error) {
+      cleanupEchoResources(true);
+      setEchoStatus('error');
+      setEchoMessage(error instanceof Error ? error.message : 'No se pudo iniciar la captura del micrófono.');
+    }
+  };
+
+  const cancelEchoTest = () => {
+    const recorder = echoRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = null;
+      try { recorder.stop(); } catch {}
+    }
+    cleanupEchoResources(true);
+    echoChunksRef.current = [];
+    setEchoStatus('idle');
+    setEchoMessage('');
+  };
+
+  useEffect(() => () => {
+    if (echoTimeoutRef.current) clearTimeout(echoTimeoutRef.current);
+    if (echoFrameRef.current !== null) cancelAnimationFrame(echoFrameRef.current);
+    const recorder = echoRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') { recorder.onstop = null; try { recorder.stop(); } catch {} }
+    echoStreamRef.current?.getTracks().forEach(track => track.stop());
+    try { echoPlaybackSourceRef.current?.stop(); } catch {}
+    void echoContextRef.current?.close().catch(() => {});
+  }, []);
 
   const pushPreferenceKey = () => 'lb_comunica_push_' + room + '_' + deviceToken;
   const decodeVapidKey = (value: string) => {
@@ -1429,6 +1625,7 @@ export const LBComunica: React.FC = () => {
   };
 
   const closeRoom = () => {
+    cancelEchoTest();
     void releaseTurn();
     setIsOpen(false);
     setShareOpen(false);
@@ -1546,12 +1743,14 @@ export const LBComunica: React.FC = () => {
                         <button type="button" aria-pressed={audioProfile==='radio'} onClick={()=>setAudioProfile('radio')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='radio'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>MODO RADIO</button>
                         <button type="button" aria-pressed={audioProfile==='clean'} onClick={()=>setAudioProfile('clean')} className={'rounded-md border px-2 py-1.5 text-[9px] font-black sm:px-3 sm:text-[10px] '+(audioProfile==='clean'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>AUDIO LIMPIO</button>
                         <button type="button" onClick={()=>setRadioReceive(v=>!v)} aria-pressed={radioReceive} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-2 py-1.5 text-[9px] font-black text-emerald-100 sm:px-3 sm:text-[10px]">{radioReceive?'RX NORMAL':'RX ATENUADA'}</button>
+                        {activeCallsign==='LU1TSB' && room==='ham' && <button type="button" disabled={connection!=='connected'||echoStatus==='sending'||echoStatus==='playing'} onClick={()=>void startEchoTest()} className="inline-flex items-center gap-1 rounded-md border border-sky-200/50 bg-sky-950 px-2 py-1.5 text-[9px] font-black text-sky-100 disabled:opacity-40 sm:px-3 sm:text-[10px]"><Volume2 className="h-3 w-3"/>{echoStatus==='recording'?'DETENER Y DEVOLVER':echoStatus==='sending'?'ENVIANDO…':echoStatus==='playing'?'REPRODUCIENDO…':echoStatus==='success'?'REPETIR ECO':'ECO DE AUDIO'}</button>}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         <button type="button" aria-label={panelLight?'Cambiar a modo oscuro':'Cambiar a modo claro'} aria-pressed={panelLight} onClick={()=>setPanelLight(v=>!v)} className={'rounded-md border px-2.5 py-1.5 text-[9px] font-bold '+(panelLight?'border-slate-500 bg-white text-slate-900':'border-amber-100/30 bg-black/30 text-amber-100')}>{panelLight?'☀ LAMP ON':'☾ LAMP OFF'}</button>
                         <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold">RESET</button>
                       </div>
                     </div>
+                    {activeCallsign==='LU1TSB' && room==='ham' && echoMessage && <p role="status" aria-live="polite" className="md:col-span-2 w-full rounded-md border border-sky-300/30 bg-sky-950/70 px-2 py-1.5 text-left text-[10px] font-semibold text-sky-100">{echoMessage}</p>}
                     <div className="my-1 w-full flex justify-center md:col-start-1 md:row-start-2"><div className="w-full max-w-[520px]"><SuperstarMeter level={meterLevel} transmitting={isTalking} /></div></div>
                     <div className="md:col-start-1 md:row-start-3 grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
                       <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
