@@ -798,7 +798,13 @@ export const LBComunica: React.FC = () => {
           qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.035:0.022):(isElevenMeters?0.095:0.072)):0,ctx.currentTime,voiceOpen?0.12:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
-        void ctx.resume();
+        const processedStream=dest.stream;
+        if(ctx.state!=='running') {
+          audio.srcObject=remote;
+          void ctx.resume().then(()=>{
+            if(ctx.state==='running' && audio.srcObject===remote) audio.srcObject=processedStream;
+          }).catch(()=>{ audio.srcObject=remote; });
+        }
       } catch { audio.srcObject=remote;audio.volume=radioReceive?Math.max(0.32,radioVolume/100):0.32; }
       void audio.play().catch(()=>setPttError('Toca la pantalla para permitir la reproducción del audio recibido.'));
       setRemoteTalkers(current=>current.includes(callsign)?current:[...current,callsign]);
@@ -930,7 +936,18 @@ export const LBComunica: React.FC = () => {
         duration_ms: Math.min(30000,Math.round(duration)),
         mime_type: blob.type.split(';')[0] || 'audio/webm',
       });
-      if (data.ok) await loadArchive();
+      if (data.ok) {
+        await loadArchive();
+        const archiveChannel=channelRef.current;
+        if (archiveChannel) {
+          const status=await archiveChannel.send({
+            type:'broadcast',
+            event:'archive-updated',
+            payload:{room,origin:deviceToken,recordingId:data.recording?.id||null,createdAt:new Date().toISOString()},
+          });
+          if(status!=='ok') console.warn('LB COMUNICACION historial: aviso no confirmado',status);
+        }
+      }
     } catch (error) {
       console.error('LB COMUNICACION archivo:',error);
       setPttError('La voz se transmitió, pero no se pudo guardar en el historial: '+(error instanceof Error ? error.message : 'error'));
@@ -1215,6 +1232,11 @@ export const LBComunica: React.FC = () => {
         setParticipants(Array.from(unique.values()).sort((a,b)=>a.callsign.localeCompare(b.callsign)));
       })
       .on('broadcast',{event:'signal'},({payload}:{payload:Signal})=>{if(mounted)void acceptSignal(payload);})
+      .on('broadcast',{event:'archive-updated'},({payload}:{payload:any})=>{
+        if(mounted && payload?.room===room && payload?.origin!==deviceToken) {
+          void loadArchive();
+        }
+      })
       .on('broadcast',{event:'ambient-call'},({payload}:{payload:any})=>{if(mounted && payload?.room===(is11MeterStationIdentifier(activeCallsign)?'11m':'ham') && payload?.origin!==deviceToken && Date.now()-Number(payload?.startedAt||0)<6000)setAmbientCall(payload);})
       .subscribe(async(status)=>{
         if (!mounted) return;
