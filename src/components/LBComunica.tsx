@@ -395,7 +395,8 @@ export const LBComunica: React.FC = () => {
       const preferredVoices=oscarItalia
         ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
         : maleVoices;
-      const selectedVoices=primoItalia?(maleVoices.length?maleVoices:(naturalVoices.length?naturalVoices:available)):comandante?(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
+      const commanderMaleVoices=comandante?(maleVoices.length?maleVoices:voices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i.test(v.name))):[];
+       const selectedVoices=comandante?(commanderMaleVoices.length?commanderMaleVoices:available):primoItalia?(maleVoices.length?maleVoices:(naturalVoices.length?naturalVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
