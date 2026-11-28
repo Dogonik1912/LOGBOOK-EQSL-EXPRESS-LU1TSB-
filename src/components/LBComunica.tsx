@@ -69,7 +69,8 @@ export const LBComunica: React.FC = () => {
       setConnection('error');
       return;
     }
-    if (!supabase) {
+    const client = supabase;
+    if (!client) {
       setConnection('error');
       return;
     }
@@ -78,7 +79,7 @@ export const LBComunica: React.FC = () => {
     setConnection('connecting');
     setParticipants([]);
 
-    const channel = supabase.channel(`lb-comunica:${roomKey}`, {
+    const channel = client.channel(`lb-comunica:${roomKey}`, {
       config: { presence: { key: identityToken } },
     });
 
@@ -114,7 +115,7 @@ export const LBComunica: React.FC = () => {
 
     return () => {
       mounted = false;
-      void supabase.removeChannel(channel);
+      void client.removeChannel(channel);
     };
   }, [isOpen, activeCallsign, identityToken, roomKey]);
 
