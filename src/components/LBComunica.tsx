@@ -50,7 +50,7 @@ function speak11mCallsign(callsign:string,language:string):string {
   const [,prefix,letters,suffix='']=match;
   const digitWords=(value:string)=>value.split('').map(d=>RADIO_DIGITS[d]?.[spanish?'es':'en']||d).join(' ');
   let prefixWords=digitWords(prefix);
-  if(spanish && prefix.length===2){const n=Number(prefix);if(n>=10&&n<=99){const tens=Math.floor(n/10)*10,ones=n%10;const tensEs:Record<number,string>={10:'diez',20:'veinte',30:'treinta',40:'cuarenta',50:'cincuenta',60:'sesenta',70:'setenta',80:'ochenta',90:'noventa'};prefixWords=ones===0?(tensEs[tens]||prefixWords):((tens===20?'veinti'+RADIO_DIGITS[String(ones)].es:tensEs[tens]+' y '+RADIO_DIGITS[String(ones)].es));}}
+  if(spanish && prefix.length===2){const n=Number(prefix);if(n>=10&&n<=99){const tens=Math.floor(n/10)*10,ones=n%10;const teensEs:Record<number,string>={11:'once',12:'doce',13:'trece',14:'catorce',15:'quince',16:'dieciséis',17:'diecisiete',18:'dieciocho',19:'diecinueve'};const tensEs:Record<number,string>={10:'diez',20:'veinte',30:'treinta',40:'cuarenta',50:'cincuenta',60:'sesenta',70:'setenta',80:'ochenta',90:'noventa'};prefixWords=teensEs[n]||(ones===0?(tensEs[tens]||prefixWords):((tens===20?'veinti'+RADIO_DIGITS[String(ones)].es:tensEs[tens]+' y '+RADIO_DIGITS[String(ones)].es)));}}
   const phonetics=letters.split('').map(c=>ICAO_WORDS[c]||c).join(' ');
   return [prefixWords,phonetics,suffix?digitWords(suffix):''].filter(Boolean).join(' ');
 }
@@ -450,7 +450,7 @@ export const LBComunica: React.FC = () => {
         const country=radioCountryName(ambientStation.country,language);
         const lines=useSpanish?elevenMeterSpanishLines:elevenMeterLines;
         phrase=isCanaryNorthAfrica
-          ? 'Atenta frecuencia, atenta frecuencia. Treinta y cuatro división Islas Canarias, España, llama. Tres cuatro Romeo Charlie, ocho siete nueve. Islas Canarias, España, llama al noroeste de África. Islas Canarias llama.'
+          ? 'Atenta frecuencia, atenta frecuencia. Treinta y cuatro división Islas Canarias, España, llama. Tres cuatro Romeo Charlie, ocho siete nueve. Islas Canarias, España, llama al noreste de África. Islas Canarias llama.'
           : lines[Math.floor(Math.random()*lines.length)](spokenCall,country);
         available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2)));
       }else{
@@ -537,8 +537,8 @@ export const LBComunica: React.FC = () => {
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.91+Math.random()*0.07:oscarItalia?0.86+Math.random()*0.08:primoItalia?0.88+Math.random()*0.08:0.90+Math.random()*0.10;
-      utterance.pitch=comandante?0.72:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.58+Math.random()*0.04:maleStation?0.76+Math.random()*0.06:0.88+Math.random()*0.14;
+      utterance.rate=comandante?0.95+Math.random()*0.04:oscarItalia?0.86+Math.random()*0.08:primoItalia?0.88+Math.random()*0.08:0.90+Math.random()*0.10;
+      utterance.pitch=comandante?0.78:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.58+Math.random()*0.04:maleStation?0.76+Math.random()*0.06:0.88+Math.random()*0.14;
       // Señal variable pero siempre inteligible: la distancia cambia el nivel, no deforma la voz.
       // RF GAIN, VOLUME y RX ATENUADA también actúan sobre las llamadas ambientales.
       const distanceLevel=0.42+Math.random()*0.58;
@@ -588,8 +588,8 @@ export const LBComunica: React.FC = () => {
       if(selectedVoice) utterance.voice=selectedVoice;
       const localLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       utterance.volume=Math.max(0.04,Math.min(1,Number(ambientCall.signalLevel||0.5)*localLevel));
-      utterance.rate=ambientCall.style==='commander'?0.94:ambientCall.style==='oscar'?0.91:0.96;
-      utterance.pitch=ambientCall.style==='commander'?0.72:ambientCall.style==='oscar'?0.66:ambientCall.style==='primo'?0.74:maleStation?0.76:0.96;
+      utterance.rate=ambientCall.style==='commander'?0.96:ambientCall.style==='oscar'?0.91:0.96;
+      utterance.pitch=ambientCall.style==='commander'?0.78:ambientCall.style==='oscar'?0.66:ambientCall.style==='primo'?0.74:maleStation?0.76:0.96;
       utterance.onstart=()=>setMeterLevel(0.72*Number(ambientCall.signalLevel||0.5));
       utterance.onend=()=>setMeterLevel(0.04);
       utterance.onerror=()=>setMeterLevel(0.04);
