@@ -406,14 +406,36 @@ export const LBComunica: React.FC = () => {
         audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false,
       });
       let transmitStream=stream;
-      try{const Ctor=window.AudioContext||(window as any).webkitAudioContext;if(Ctor){const ctx:AudioContext=new Ctor();const source=ctx.createMediaStreamSource(stream);const gain=ctx.createGain();gain.gain.value=micGain/70;const dest=ctx.createMediaStreamDestination();source.connect(gain);gain.connect(dest);micContextRef.current=ctx;micGainRef.current=gain;processedMicRef.current=dest.stream;transmitStream=dest.stream;void ctx.resume();}}catch{transmitStream=stream;}
-      if (turnCancelledRef.current) { stream.getTracks().forEach((track)=>track.stop()); beginningRef.current=false; return; }
+      try{
+        const Ctor=window.AudioContext||(window as any).webkitAudioContext;
+        if(Ctor){
+          const ctx:AudioContext=new Ctor();
+          const source=ctx.createMediaStreamSource(stream);
+          const gain=ctx.createGain();
+          gain.gain.value=Math.max(0,Math.min(2,micGain/70));
+          const dest=ctx.createMediaStreamDestination();
+          source.connect(gain);
+          gain.connect(dest);
+          micContextRef.current=ctx;
+          micGainRef.current=gain;
+          processedMicRef.current=dest.stream;
+          transmitStream=dest.stream;
+          await ctx.resume();
+        }
+      }catch{
+        transmitStream=stream;
+        if(micContextRef.current){void micContextRef.current.close().catch(()=>{});micContextRef.current=null;}
+        micGainRef.current=null;
+        processedMicRef.current=null;
+      }
+      if (turnCancelledRef.current) { stream.getTracks().forEach((track)=>track.stop());transmitStream.getTracks().forEach((track)=>track.stop());beginningRef.current=false;return; }
       streamRef.current = stream;
       recordedChunksRef.current = [];
       recordingStartedAtRef.current = Date.now();
       if (typeof MediaRecorder !== 'undefined') {
         const preferred = ['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/mp4'].find((mime)=>MediaRecorder.isTypeSupported(mime));
-        const recorder = new MediaRecorder(stream,preferred ? {mimeType:preferred} : undefined);
+        // Guardar exactamente la señal que se transmite, no una captura distinta del micrófono.
+        const recorder = new MediaRecorder(transmitStream,preferred ? {mimeType:preferred} : undefined);
         recorder.ondataavailable = (event) => { if (event.data.size) recordedChunksRef.current.push(event.data); };
         recorder.start(1000);
         recorderRef.current = recorder;
