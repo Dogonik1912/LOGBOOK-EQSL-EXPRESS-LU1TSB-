@@ -59,6 +59,7 @@ export const LBComunica: React.FC = () => {
   const sessionRef = useRef('');
   const talkingRef = useRef(false);
   const beginningRef = useRef(false);
+  const turnCancelledRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement|null>(null);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
 
@@ -190,6 +191,7 @@ export const LBComunica: React.FC = () => {
   };
 
   const endLocalAudio = (save = true) => {
+    turnCancelledRef.current = true;
     talkingRef.current = false;
     beginningRef.current = false;
     setIsTalking(false);
@@ -213,11 +215,13 @@ export const LBComunica: React.FC = () => {
   const beginAudio = async () => {
     if (talkingRef.current || beginningRef.current || !channelRef.current) return;
     beginningRef.current = true;
+    turnCancelledRef.current = false;
     setPttError('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false,
       });
+      if (turnCancelledRef.current) { stream.getTracks().forEach((track)=>track.stop()); beginningRef.current=false; return; }
       streamRef.current = stream;
       recordedChunksRef.current = [];
       recordingStartedAtRef.current = Date.now();
@@ -272,8 +276,8 @@ export const LBComunica: React.FC = () => {
       const seconds = Math.max(0,Math.ceil((new Date(data.active_until).getTime()-Date.now())/1000));
       setRemainingSeconds(seconds);
     } else setRemainingSeconds(0);
-    if (data.status==='transmitting' && !talkingRef.current) void beginAudio();
-    if (data.status!=='transmitting' && talkingRef.current) endLocalAudio(true);
+    if (data.status==='transmitting' && !talkingRef.current && !beginningRef.current) void beginAudio();
+    if (data.status!=='transmitting' && (talkingRef.current || beginningRef.current)) endLocalAudio(true);
     return data as QueueState;
   };
 
@@ -285,7 +289,8 @@ export const LBComunica: React.FC = () => {
   };
 
   const releaseTurn = async () => {
-    if (talkingRef.current) endLocalAudio(true);
+    turnCancelledRef.current = true;
+    if (talkingRef.current || beginningRef.current) endLocalAudio(true);
     setIsQueued(false);
     setQueuePosition(0);
     try { await queueAction('release'); }
