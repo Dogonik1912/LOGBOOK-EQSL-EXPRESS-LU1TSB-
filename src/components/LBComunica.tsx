@@ -839,61 +839,62 @@ export const LBComunica: React.FC = () => {
         kind: 'ice', candidate: event.candidate.toJSON(),
       }).catch(error => console.warn('LB COMUNICACION ICE signal:', error));
     };
-    pc.onconnectionstatechange = () => {
+    const restartIceConnection = async () => {
+      const entry = peerMapRef.current.get(key);
+      if (!entry || entry.iceRestartAttempted || pc.connectionState === 'closed') return;
+      entry.iceRestartAttempted = true;
+      if (entry.disconnectTimer) clearTimeout(entry.disconnectTimer);
+      entry.disconnectTimer = setTimeout(() => {
+        entry.disconnectTimer = undefined;
+        if (pc.connectionState !== 'connected') {
+          closePeer(key);
+          setRemoteTalkers(current => current.filter(call => call !== callsign));
+        }
+      }, 20000);
+      try {
+        const expiresSoon = !entry.iceExpiresAt || entry.iceExpiresAt <= Date.now() + 60_000;
+        if (expiresSoon) {
+          const freshIce = await api('ice');
+          const refreshedServers = Array.isArray(freshIce.iceServers)
+            ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
+            : [];
+          if (refreshedServers.length) {
+            pc.setConfiguration({ ...pc.getConfiguration(), iceServers: refreshedServers });
+            entry.iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
+            if (entry.iceExpiresAt && Number.isFinite(entry.iceExpiresAt)) {
+              iceCredentialsCacheRef.current = { servers: refreshedServers, expiresAt: entry.iceExpiresAt };
+            }
+          }
+        }
+        // Renegocia ICE antes de abandonar una sesión que sufrió un corte transitorio.
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        await sendSignal({ from: deviceToken, to: peerId, callsign: activeCallsign, sessionId, kind: 'offer', description: pc.localDescription?.toJSON() });
+      } catch (error) {
+        console.warn('LB COMUNICACION ICE restart:', error);
+      }
+    };
+    const handlePeerState = (state: string) => {
       const entry = peerMapRef.current.get(key);
       if (!entry) return;
-      const state = pc.connectionState;
-      if (state === 'connected') {
+      if (state === 'connected' || state === 'completed') {
         if (entry.disconnectTimer) clearTimeout(entry.disconnectTimer);
         entry.disconnectTimer = undefined;
         entry.iceRestartAttempted = false;
         return;
       }
       if (state === 'disconnected') {
+        // Las redes Wi-Fi pueden perder paquetes unos segundos; no cerrar el audio enseguida.
         if (!entry.disconnectTimer) entry.disconnectTimer = setTimeout(() => {
           entry.disconnectTimer = undefined;
-          if (pc.connectionState === 'disconnected') {
-            closePeer(key);
-            setRemoteTalkers(current => current.filter(call => call !== callsign));
+          if (pc.connectionState === 'disconnected' || pc.iceConnectionState === 'disconnected') {
+            void restartIceConnection();
           }
-        }, 10000);
+        }, 4000);
         return;
       }
       if (state === 'failed') {
-        if (!entry.iceRestartAttempted) {
-          entry.iceRestartAttempted = true;
-          entry.disconnectTimer = setTimeout(() => {
-            entry.disconnectTimer = undefined;
-            if (pc.connectionState !== 'connected') {
-              closePeer(key);
-              setRemoteTalkers(current => current.filter(call => call !== callsign));
-            }
-          }, 12000);
-          void (async () => {
-            try {
-              const expiresSoon = !entry.iceExpiresAt || entry.iceExpiresAt <= Date.now() + 60_000;
-              if (expiresSoon) {
-                const freshIce = await api('ice');
-                const refreshedServers = Array.isArray(freshIce.iceServers)
-                  ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
-                  : [];
-                if (refreshedServers.length) {
-                  pc.setConfiguration({ ...pc.getConfiguration(), iceServers: refreshedServers });
-                  entry.iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
-                  if (entry.iceExpiresAt && Number.isFinite(entry.iceExpiresAt)) {
-                    iceCredentialsCacheRef.current = { servers: refreshedServers, expiresAt: entry.iceExpiresAt };
-                  }
-                }
-              }
-              pc.restartIce();
-              const offer = await pc.createOffer({ iceRestart: true });
-              await pc.setLocalDescription(offer);
-              await sendSignal({ from: deviceToken, to: peerId, callsign: activeCallsign, sessionId, kind: 'offer', description: pc.localDescription?.toJSON() });
-            } catch (error) {
-              console.warn('LB COMUNICACION ICE restart:', error);
-            }
-          })();
-        }
+        void restartIceConnection();
         return;
       }
       if (state === 'closed') {
@@ -901,6 +902,8 @@ export const LBComunica: React.FC = () => {
         setRemoteTalkers(current => current.filter(call => call !== callsign));
       }
     };
+    pc.oniceconnectionstatechange = () => handlePeerState(pc.iceConnectionState);
+    pc.onconnectionstatechange = () => handlePeerState(pc.connectionState);
     peerMapRef.current.set(key,{pc,audio,iceExpiresAt});
     return pc;
   };
