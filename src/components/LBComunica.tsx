@@ -299,7 +299,7 @@ export const LBComunica: React.FC = () => {
   const echoStartedAtRef = useRef(0);
   const echoPeakRef = useRef(0);
   const echoFrameRef = useRef<number|null>(null);
-  const echoTimeoutRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const echoTimeoutRef = useRef<number|null>(null);
 
   useEffect(()=>{
     if(!isOpen||!audioPlayerRef.current)return;
