@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lb-eqsl-express-shell-v13';
+const CACHE_NAME = 'lb-eqsl-express-shell-v14';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/logbook-header.svg'];
 
 self.addEventListener('install', (event) => {
@@ -54,35 +54,41 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
+  // Serve the installed app shell from its local cache first. Refresh it in
+  // the background so the next launch gets the newest HTML without delaying
+  // this launch or interrupting an active session.
   if (request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request, { cache: 'no-store' });
-        if (response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put('/index.html', response.clone());
-        }
-        return response;
-      } catch {
-        return (await caches.match('/index.html')) || (await caches.match('/'));
+    const refresh = caches.open(CACHE_NAME).then(async (cache) => {
+      const response = await fetch(request, { cache: 'no-store' });
+      if (response.ok) {
+        await cache.put('/index.html', response.clone());
+        await cache.put('/', response.clone());
       }
-    })());
+      return response;
+    });
+    event.waitUntil(refresh.then(() => undefined).catch(() => undefined));
+    event.respondWith(caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match('/index.html') || await cache.match('/');
+      if (cached) return cached;
+      try { return await refresh; }
+      catch { return new Response('LogBook no está disponible sin conexión todavía.', { status: 503 }); }
+    }));
     return;
   }
 
-  if (/\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\?)/i.test(url.pathname)) {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request, { cache: 'no-cache' });
-        if (response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(request, response.clone());
-          return response;
-        }
-      } catch { /* Offline: use the matching cached copy. */ }
-      const cached = await caches.match(request) || await caches.match(request, { ignoreSearch: true });
-      return cached || new Response('', { status: 504, statusText: 'Offline asset unavailable' });
-    })());
+  if (/\\.(?:js|css|svg|png|jpe?g|webp|woff2?)(?:$|\\?)/i.test(url.pathname)) {
+    const refresh = caches.open(CACHE_NAME).then(async (cache) => {
+      const response = await fetch(request, { cache: 'no-cache' });
+      if (response.ok) await cache.put(request, response.clone());
+      return response;
+    });
+    event.waitUntil(refresh.then(() => undefined).catch(() => undefined));
+    event.respondWith(caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(request) || await cache.match(request, { ignoreSearch: true });
+      if (cached) return cached;
+      try { return await refresh; }
+      catch { return new Response('', { status: 504, statusText: 'Offline asset unavailable' }); }
+    }));
   }
 });
 
