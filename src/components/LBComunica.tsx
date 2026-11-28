@@ -118,8 +118,58 @@ export const LBComunica: React.FC = () => {
   const beginningRef = useRef(false);
   const turnCancelledRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement|null>(null);
+  const playbackContextRef = useRef<AudioContext|null>(null);
+  const playbackNodesRef = useRef<{tone:BiquadFilterNode;high:BiquadFilterNode;low:BiquadFilterNode;compressor:DynamicsCompressorNode;saturation:WaveShaperNode;gate:GainNode;rf:GainNode;analyser:AnalyserNode;gateFrame:number|null}>({} as any);
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
 
+  useEffect(()=>{
+    if(!isOpen||!audioPlayerRef.current)return;
+    const player=audioPlayerRef.current;
+    const Ctor=window.AudioContext||(window as any).webkitAudioContext;
+    if(!Ctor)return;
+    let ctx:AudioContext;
+    try{
+      ctx=new Ctor();
+      const source=ctx.createMediaElementSource(player);
+      const high=ctx.createBiquadFilter();high.type='highpass';high.Q.value=.707;
+      const low=ctx.createBiquadFilter();low.type='lowpass';low.Q.value=.707;
+      const tone=ctx.createBiquadFilter();tone.type='peaking';tone.Q.value=.9;
+      const compressor=ctx.createDynamicsCompressor();
+      const saturation=ctx.createWaveShaper();saturation.oversample='2x';
+      const analyser=ctx.createAnalyser();analyser.fftSize=256;
+      const gate=ctx.createGain();const rf=ctx.createGain();
+      source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(saturation);saturation.connect(analyser);analyser.connect(gate);gate.connect(rf);rf.connect(ctx.destination);
+      playbackContextRef.current=ctx;
+      playbackNodesRef.current={tone,high,low,compressor,saturation,gate,rf,analyser,gateFrame:null};
+    }catch{playbackContextRef.current=null;}
+    return ()=>{
+      const nodes=playbackNodesRef.current;
+      if(nodes.gateFrame!==null&&nodes.gateFrame!==undefined)cancelAnimationFrame(nodes.gateFrame);
+      player.pause();player.removeAttribute('src');player.load();
+      void playbackContextRef.current?.close().catch(()=>{});
+      playbackContextRef.current=null;playbackNodesRef.current={} as any;
+    };
+  },[isOpen]);
+  useEffect(()=>{
+    const ctx=playbackContextRef.current;const n=playbackNodesRef.current;
+    if(!ctx||!n?.tone)return;
+    const now=ctx.currentTime;
+    n.high.frequency.setTargetAtTime(audioProfile==='radio'?280:10,now,.04);
+    n.low.frequency.setTargetAtTime(audioProfile==='radio'?2900:20000,now,.04);
+    n.tone.frequency.setTargetAtTime(1200+(clarifier-50)*18,now,.04);
+    n.tone.gain.setTargetAtTime(audioProfile==='radio'?2.2+((clarifier-50)/50)*3:0,now,.04);
+    n.compressor.threshold.setTargetAtTime(audioProfile==='radio'?-25:0,now,.04);
+    n.compressor.knee.setTargetAtTime(audioProfile==='radio'?18:0,now,.04);
+    n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?3.2:1,now,.04);
+    const curve=new Float32Array(256);
+    for(let i=0;i<curve.length;i++){const x=(i*2)/(curve.length-1)-1;curve[i]=audioProfile==='radio'?Math.tanh(1.35*x)/Math.tanh(1.35):x;}
+    n.saturation.curve=curve;
+    n.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,now,.04);
+    if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
+    const samples=new Uint8Array(n.analyser.fftSize);
+    const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);n.gate.gain.setTargetAtTime(squelch>0&&rms<(squelch/100)*.055?0:1,ctx.currentTime,.04);n.gateFrame=requestAnimationFrame(updateGate);};
+    n.gateFrame=requestAnimationFrame(updateGate);
+  },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen]);
   useEffect(()=>{squelchRef.current=squelch;},[squelch]);
   useEffect(()=>{localStorage.setItem('lb_radio_audio_profile',audioProfile);},[audioProfile]);
   useEffect(()=>{localStorage.setItem('lb_radio_rf_gain',String(rfGain));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));localStorage.setItem('lb_radio_volume',String(radioVolume));},[rfGain,micGain,squelch,clarifier,radioVolume]);
@@ -636,9 +686,12 @@ export const LBComunica: React.FC = () => {
     const player=audioPlayerRef.current;
     if (!item||!player) return;
     setPlayingIndex(index);
+    player.pause();
     player.src=item.url;
     player.playbackRate=playbackSpeed;
-    void player.play().catch(()=>setPttError('El navegador no permitió reproducir el audio.'));
+    const ctx=playbackContextRef.current;
+    const start=async()=>{try{if(ctx&&ctx.state!=='running')await ctx.resume();await player.play();}catch{setPttError('El navegador no permitió reproducir el audio. Toca reproducir nuevamente.');setPlayingIndex(-1);}};
+    void start();
   };
 
   const handlePlaybackEnded = () => {
