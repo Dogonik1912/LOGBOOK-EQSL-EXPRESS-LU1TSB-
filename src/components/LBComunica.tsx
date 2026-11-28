@@ -45,7 +45,7 @@ function prepareRadioSpeech(phrase:string, callsign:string, language:string):str
 const RADIO_DIGITS:Record<string,{en:string;es:string}>={0:{en:'zero',es:'cero'},1:{en:'one',es:'uno'},2:{en:'two',es:'dos'},3:{en:'three',es:'tres'},4:{en:'four',es:'cuatro'},5:{en:'five',es:'cinco'},6:{en:'six',es:'seis'},7:{en:'seven',es:'siete'},8:{en:'eight',es:'ocho'},9:{en:'nine',es:'nueve'}};
 function speak11mCallsign(callsign:string,language:string):string {
   const spanish=language.toLowerCase().startsWith('es');
-  const match=String(callsign||'').toUpperCase().match(/^(\d+)([A-Z]+)\s*(\d+)?$/);
+  const match=String(callsign||'').toUpperCase().match(/^(\d+)\s*([A-Z]+)\s*(\d+)?$/);
   if(!match) return prepareRadioSpeech(callsign,callsign,language);
   const [,prefix,letters,suffix='']=match;
   const digitWords=(value:string)=>value.split('').map(d=>RADIO_DIGITS[d]?.[spanish?'es':'en']||d).join(' ');
@@ -440,7 +440,7 @@ export const LBComunica: React.FC = () => {
         const country=radioCountryName(ambientStation.country,language);
         const lines=useSpanish?elevenMeterSpanishLines:elevenMeterLines;
         phrase=isCanaryNorthAfrica
-          ? 'Atenta frecuencia, atenta frecuencia. 34RC 879, Islas Canarias, norte de África, llama.'
+          ? 'Atenta frecuencia, atenta frecuencia. Treinta y cuatro división Islas Canarias, España, llama. Tres cuatro Romeo Charlie, ocho siete nueve. Islas Canarias, España, llama al noroeste de África. Islas Canarias llama.'
           : lines[Math.floor(Math.random()*lines.length)](spokenCall,country);
         available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2)));
       }else{
@@ -930,6 +930,12 @@ export const LBComunica: React.FC = () => {
         await sendSignal({from:deviceToken,to:payload.from,callsign:activeCallsign,sessionId:sessionRef.current,kind:'offer',description:outgoing.localDescription?.toJSON()});
       } else if (payload.kind === 'offer' && payload.description) {
         const pc = await createPeer(payload.from,payload.sessionId,payload.callsign);
+        // Resolve simultaneous offers deterministically: one side is polite and rolls back;
+        // the other ignores the colliding offer, preventing both peers from answering offers.
+        const offerCollision = pc.signalingState !== 'stable';
+        const politePeer = deviceToken.localeCompare(payload.from) > 0;
+        if (offerCollision && !politePeer) return;
+        if (offerCollision && politePeer) await pc.setLocalDescription({ type: 'rollback' });
         await pc.setRemoteDescription(payload.description);
         for (const candidate of pendingIceRef.current.get(key) || []) await pc.addIceCandidate(candidate);
         pendingIceRef.current.delete(key);
@@ -1026,6 +1032,14 @@ export const LBComunica: React.FC = () => {
     streamRef.current = null;
   };
 
+  const assertTransmitGrant = async () => {
+    const grant = await api('queue',{queue_action:'state'});
+    const expiresAt = Date.parse(String(grant.active_until || ''));
+    if (grant.status !== 'transmitting' || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      throw new Error('El turno de transmisión ya no está autorizado. Vuelve a solicitarlo.');
+    }
+  };
+
   const beginAudio = async () => {
     if (!pttIntentRef.current || talkingRef.current || beginningRef.current || !channelRef.current) return;
     beginningRef.current = true;
@@ -1035,6 +1049,8 @@ export const LBComunica: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false,
       });
+      try { await assertTransmitGrant(); }
+      catch (grantError) { stream.getTracks().forEach(track=>track.stop()); throw grantError; }
       let transmitStream=stream;
       try{
         const Ctor=window.AudioContext||(window as any).webkitAudioContext;
@@ -1094,6 +1110,8 @@ export const LBComunica: React.FC = () => {
         if (!pttIntentRef.current) { endLocalAudio(false); return; }
       }
       if (!pttIntentRef.current) { endLocalAudio(false); return; }
+      await assertTransmitGrant();
+      if (!pttIntentRef.current) { endLocalAudio(false); return; }
       talkingRef.current = true;
       setRemainingSeconds(current=>current>0?current:30);
       setIsTalking(true);
@@ -1103,7 +1121,9 @@ export const LBComunica: React.FC = () => {
       endLocalAudio(false);
       setPttError(error instanceof DOMException && error.name==='NotAllowedError'
         ? 'No diste permiso para usar el micrófono. Habilítalo en el navegador.'
-        : 'No se pudo iniciar el micrófono. Comprueba los permisos y la conexión.');
+        : error instanceof Error && error.message.includes('turno de transmisión')
+          ? error.message
+          : 'No se pudo iniciar el micrófono. Comprueba los permisos y la conexión.');
       try { await api('queue',{queue_action:'release'}); } catch { /* El turno caduca en el servidor. */ }
     } finally {
       beginningRef.current = false;
@@ -1454,11 +1474,6 @@ export const LBComunica: React.FC = () => {
         <span className="inline-flex items-center gap-2"><Headphones className="h-5 w-5 shrink-0"/>LB COMUNICACION</span>
         <span className="mt-0.5 text-xs font-semibold sm:text-sm">pulsa y habla</span>
       </button>
-      <button type="button" aria-pressed={backgroundEnabled}
-        onClick={()=>{if(backgroundEnabled){disableBackgroundAudio();}else{openRoom();setBackgroundEnabled(true);}}}
-        className={'mb-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-300 '+(backgroundEnabled?'border-emerald-300 bg-emerald-900 text-emerald-50':'border-sky-300/60 bg-slate-900 text-sky-100 hover:bg-slate-800')}>
-        <Headphones className="h-4 w-4"/>{backgroundEnabled?'RX segundo plano ACTIVADA · Desactivar':'Activar RX segundo plano'}
-      </button>
 
       {backgroundEnabled && !isOpen && <div role="status" aria-live="polite" className="fixed bottom-4 right-4 md:bottom-auto md:top-4 md:right-4 z-[95] flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-emerald-400/50 bg-slate-950 px-3 py-2 text-white shadow-2xl"><span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-emerald-400"/><span className="min-w-0"><span className="block text-[10px] font-black tracking-wide">LB COMUNICACION · RX ACTIVA</span><span className="block truncate text-xs text-emerald-200">{roomTitle} · {participants.length} en sala</span></span><button type="button" onClick={()=>setIsOpen(true)} className="rounded-lg bg-emerald-700 px-2.5 py-1.5 text-[11px] font-bold">Volver</button><button type="button" onClick={disableBackgroundAudio} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-red-300 bg-red-700 text-white shadow-[0_0_12px_#ef444499] transition hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-400/70" aria-label="Cerrar y desactivar RX segundo plano" title="Cerrar LB COMUNICACION"><X className="h-6 w-6 stroke-[3]"/></button></div>}
       {isOpen && (
@@ -1470,8 +1485,8 @@ export const LBComunica: React.FC = () => {
               {backgroundEnabled && <p className="border-b border-emerald-400/30 bg-emerald-950/60 px-3 py-1.5 text-center text-[10px] text-emerald-100">La recepción seguirá activa mientras navegas dentro de LogBook. No activa el micrófono ni garantiza audio con la aplicación cerrada o bloqueada.</p>}
             </header>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className={'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-[calc(7rem+env(safe-area-inset-bottom))] p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:items-stretch md:gap-3 md:overflow-hidden '+(historyOpen?'md:grid-cols-[minmax(250px,.72fr)_minmax(0,1.8fr)]':'md:grid-cols-[minmax(0,.32fr)_minmax(0,2.68fr)]')}>
-                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-visible md:overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:col-start-2 md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-slate-300 bg-[linear-gradient(145deg,#f8fafc,#e2e8f0_55%,#cbd5e1)] text-slate-900':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)] text-white')}>
+              <div className={'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-[calc(7rem+env(safe-area-inset-bottom))] p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:items-stretch md:gap-3 md:overflow-y-auto md:overflow-x-hidden '+(historyOpen?'md:grid-cols-[minmax(250px,.72fr)_minmax(0,1.8fr)]':'md:grid-cols-[minmax(0,.32fr)_minmax(0,2.68fr)]')}>
+                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-visible md:overflow-visible rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:col-start-2 md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-slate-300 bg-[linear-gradient(145deg,#f8fafc,#e2e8f0_55%,#cbd5e1)] text-slate-900':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)] text-white')}>
                   <div className="order-0 md:col-span-2 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className={'order-0 md:col-span-2 flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-2.5 py-2 text-left '+(panelLight?'border-emerald-300 bg-emerald-50 text-emerald-950':'border-emerald-400/30 bg-emerald-950/50 text-emerald-100')}>
                     <span className="shrink-0 text-[10px] font-black tracking-wide">EN SALA · {participants.length}</span>
