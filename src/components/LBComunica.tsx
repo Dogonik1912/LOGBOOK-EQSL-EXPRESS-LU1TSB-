@@ -340,7 +340,11 @@ export const LBComunica: React.FC = () => {
       {call:'9A1ABC',country:'Croatia'},
       {call:'OH2ABC',country:'Finland'},
       {call:'CT1ABC',country:'Portugal'},
-      {call:'YO3ABC',country:'Romania'}
+      {call:'YO3ABC',country:'Romania'},
+      {call:'PA3ABC',country:'Netherlands'},
+      {call:'SP5ABC',country:'Poland'},
+      {call:'OE1ABC',country:'Austria'},
+      {call:'ON4ABC',country:'Belgium'}
     ];
     const hamPhrases=[
       (call:string,country:string)=>`CQ CQ CQ, this is ${call} from ${country}, calling amateur radio stations worldwide.`,
@@ -364,13 +368,14 @@ export const LBComunica: React.FC = () => {
       {call:'13EK 087',country:'Germany'},
       {call:'26CT 145',country:'United Kingdom'},
       {call:'30SD 004',country:'Spain'},
-      {call:'31AT 210',country:'Netherlands'},
+      {call:'19AT 210',country:'Netherlands'},
       {call:'34RC 879',country:'Canary Islands'},
+      {call:'31ES 014',country:'Portugal'},
       {call:'4SD 215',country:'Argentina'},
       {call:'153AT 067',country:'Thailand'},
-      {call:'43DX 118',country:'Austria'},
+      {call:'35DX 118',country:'Austria'},
       {call:'16RC 305',country:'Belgium'},
-      {call:'19DX 072',country:'Poland'},
+      {call:'161DX 072',country:'Poland'},
       {call:'30YL 001',country:'Spain',female:true}
     ];
     const elevenMeterLines=[
