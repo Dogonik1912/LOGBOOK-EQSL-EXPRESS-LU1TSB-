@@ -100,7 +100,7 @@ type Signal = {
   kind: 'offer' | 'answer' | 'ice' | 'stop' | 'request';
   description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit;
 };
-type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; qrmGain?: GainNode; qrmSource?: AudioBufferSourceNode; gateFrame?: number };
+type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; qrmGain?: GainNode; qrmSource?: AudioBufferSourceNode; gateFrame?: number; disconnectTimer?: ReturnType<typeof setTimeout>; iceRestartAttempted?: boolean };
 type Recording = { id: string; callsign: string; duration_ms: number; mime_type: string; created_at: string; url: string };
 type QueueState = { ok: boolean; status?: 'transmitting' | 'queued' | 'listening'; active_callsign?: string | null; active_until?: string | null; queue_position?: number; queue?: { callsign: string }[]; reason?: string };
 
@@ -729,12 +729,22 @@ export const LBComunica: React.FC = () => {
   };
 
   const sendSignal = async (payload: Signal) => {
-    if (channelRef.current) await channelRef.current.send({ type: 'broadcast', event: 'signal', payload });
+    const channel = channelRef.current;
+    if (!channel) throw new Error('Canal de señalización no disponible.');
+    let lastStatus = 'error';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      lastStatus = await channel.send({ type: 'broadcast', event: 'signal', payload });
+      if (lastStatus === 'ok') return;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+    }
+    throw new Error('No se pudo entregar la señal WebRTC (' + lastStatus + ').');
   };
 
   const closePeer = (key: string) => {
     const entry = peerMapRef.current.get(key);
     if (!entry) return;
+    if (entry.disconnectTimer) clearTimeout(entry.disconnectTimer);
+    entry.disconnectTimer = undefined;
     entry.pc.ontrack = null;
     entry.pc.onicecandidate = null;
     entry.pc.close();
@@ -797,12 +807,54 @@ export const LBComunica: React.FC = () => {
       if (event.candidate) void sendSignal({
         from: deviceToken, to: peerId, callsign: activeCallsign, sessionId,
         kind: 'ice', candidate: event.candidate.toJSON(),
-      });
+      }).catch(error => console.warn('LB COMUNICACION ICE signal:', error));
     };
     pc.onconnectionstatechange = () => {
-      if (['failed','closed','disconnected'].includes(pc.connectionState)) {
+      const entry = peerMapRef.current.get(key);
+      if (!entry) return;
+      const state = pc.connectionState;
+      if (state === 'connected') {
+        if (entry.disconnectTimer) clearTimeout(entry.disconnectTimer);
+        entry.disconnectTimer = undefined;
+        entry.iceRestartAttempted = false;
+        return;
+      }
+      if (state === 'disconnected') {
+        if (!entry.disconnectTimer) entry.disconnectTimer = setTimeout(() => {
+          entry.disconnectTimer = undefined;
+          if (pc.connectionState === 'disconnected') {
+            closePeer(key);
+            setRemoteTalkers(current => current.filter(call => call !== callsign));
+          }
+        }, 10000);
+        return;
+      }
+      if (state === 'failed') {
+        if (!entry.iceRestartAttempted) {
+          entry.iceRestartAttempted = true;
+          entry.disconnectTimer = setTimeout(() => {
+            entry.disconnectTimer = undefined;
+            if (pc.connectionState !== 'connected') {
+              closePeer(key);
+              setRemoteTalkers(current => current.filter(call => call !== callsign));
+            }
+          }, 12000);
+          void (async () => {
+            try {
+              pc.restartIce();
+              const offer = await pc.createOffer({ iceRestart: true });
+              await pc.setLocalDescription(offer);
+              await sendSignal({ from: deviceToken, to: peerId, callsign: activeCallsign, sessionId, kind: 'offer', description: pc.localDescription?.toJSON() });
+            } catch (error) {
+              console.warn('LB COMUNICACION ICE restart:', error);
+            }
+          })();
+        }
+        return;
+      }
+      if (state === 'closed') {
         closePeer(key);
-        setRemoteTalkers((current) => current.filter((call) => call !== callsign));
+        setRemoteTalkers(current => current.filter(call => call !== callsign));
       }
     };
     peerMapRef.current.set(key,{pc,audio});
@@ -1136,7 +1188,7 @@ export const LBComunica: React.FC = () => {
     setConnection('connecting');
     setParticipants([]);
     const channel = client.channel('lb-comunica:'+room,{
-      config:{presence:{key:deviceToken},broadcast:{self:false}},
+      config:{presence:{key:deviceToken},broadcast:{self:false,ack:true}},
     });
     channelRef.current = channel;
     channel
@@ -1168,11 +1220,8 @@ export const LBComunica: React.FC = () => {
         if (!mounted) return;
         if (status==='SUBSCRIBED') {
           try {
-            await channel.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()});
-            const consent = await api('consent_status');
-            if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
-            // Cargar STUN/TURN temporales desde lb-voice; si TURN no está disponible,
-            // conservar STUN para no bloquear la entrada a la sala.
+            // Obtener ICE antes de publicar presencia: así ningún emisor recibe
+            // una solicitud WebRTC antes de que este dispositivo tenga su configuración.
             try {
               const iceConfig = await api('ice');
               const configuredIceServers = Array.isArray(iceConfig.iceServers)
@@ -1185,6 +1234,9 @@ export const LBComunica: React.FC = () => {
               console.warn('LB COMUNICACION ICE config:', iceError);
               iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
             }
+            await channel.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()});
+            const consent = await api('consent_status');
+            if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
             const pushStatus = await api('push_status');
             setPushEnabled(!!pushStatus.enabled);
             if (pushStatus.enabled) localStorage.setItem(pushPreferenceKey(), '1');
