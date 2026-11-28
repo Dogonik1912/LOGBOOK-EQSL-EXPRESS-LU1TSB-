@@ -62,15 +62,30 @@ function radioCountryName(country:string,language:string):string {
   const names:Record<string,string>={'United States':'Estados Unidos','United Kingdom':'Reino Unido','Canary Islands':'Islas Canarias','South Africa':'Sudáfrica','Germany':'Alemania','Italy':'Italia','France':'Francia','Spain':'España','Canada':'Canadá','Brazil':'Brasil','Japan':'Japón','Croatia':'Croacia','Finland':'Finlandia','Portugal':'Portugal','Romania':'Rumanía','Argentina':'Argentina','Thailand':'Tailandia','Austria':'Austria','Belgium':'Bélgica','Poland':'Polonia','Netherlands':'Países Bajos'};
   return names[country]||country;
 }
-function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:'male'|'female'):SpeechSynthesisVoice|undefined {
-  const malePattern=/\bmale\b|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i;
-  const femalePattern=/\bfemale\b|zira|samantha|victoria|karen|susan|sara|sarah|anna|eva|lucia|monica|paulina|amelie|marie|helena|alice|joana|sofia|sophie|kate|emma|olivia|tessa|moira|fiona|female/i;
+// Memoria local de voces: evita que distintas estaciones suenen igual en llamadas consecutivas.
+const recentAmbientVoiceUris = new Map<string,string[]>();
+function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:'male'|'female', allowGenderFallback=true):SpeechSynthesisVoice|undefined {
+  const malePattern=/\\bmale\\b|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i;
+  const femalePattern=/\\bfemale\\b|zira|samantha|victoria|karen|susan|sara|sarah|anna|eva|lucia|monica|paulina|amelie|marie|helena|alice|joana|sofia|sophie|kate|emma|olivia|tessa|moira|fiona|female/i;
   const naturalPattern=/natural|neural|premium|enhanced|wavenet|studio|online/i;
+  const key=(voices[0]?.lang||'default').toLowerCase().split(/[-_]/)[0]||'default';
+  const recent=recentAmbientVoiceUris.get(key)||[];
   const gendered=voices.filter(v=>(preferredGender==='male'?malePattern:femalePattern).test(v.name+' '+v.voiceURI));
-  const pool=gendered.length?gendered:voices;
-  const natural=pool.filter(v=>naturalPattern.test(v.name+' '+v.voiceURI));
-  const choices=natural.length?natural:pool;
-  return choices.length?choices[Math.floor(Math.random()*choices.length)]:undefined;
+  const preferredPool=gendered.length?gendered:voices;
+  const preferredNatural=preferredPool.filter(v=>naturalPattern.test(v.name+' '+v.voiceURI));
+  const preferredChoices=preferredNatural.length?preferredNatural:preferredPool;
+  let choices=preferredChoices.filter(v=>!recent.includes(v.voiceURI));
+  // Si no hay otra voz de ese género, usa otra voz disponible antes de repetir.
+  if(!choices.length && allowGenderFallback){
+    const alternatives=voices.filter(v=>!recent.includes(v.voiceURI));
+    const naturalAlternatives=alternatives.filter(v=>naturalPattern.test(v.name+' '+v.voiceURI));
+    choices=naturalAlternatives.length?naturalAlternatives:alternatives;
+  }
+  if(!choices.length) choices=preferredChoices;
+  if(!choices.length)return undefined;
+  const selected=choices[Math.floor(Math.random()*choices.length)];
+  recentAmbientVoiceUris.set(key,[selected.voiceURI,...recent.filter(uri=>uri!==selected.voiceURI)].slice(0,6));
+  return selected;
 }
 
 import { ShareLanguageSelector } from './ShareLanguageSelector';
@@ -494,7 +509,7 @@ export const LBComunica: React.FC = () => {
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
       const gender: 'male'|'female' = (comandante||oscarItalia||primoItalia) ? 'male' : (femaleStation ? 'female' : (Math.random()<0.5?'male':'female'));
       const voicePool=comandante||oscarItalia||primoItalia ? (voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())).length?voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())):voices) : available;
-      const selectedVoice=chooseNaturalRadioVoice(voicePool,gender);
+      const selectedVoice=chooseNaturalRadioVoice(voicePool,gender,!(comandante||oscarItalia||primoItalia));
       if(selectedVoice) utterance.voice=selectedVoice;
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
@@ -545,7 +560,7 @@ export const LBComunica: React.FC = () => {
       const prefix=utterance.lang.slice(0,2).toLowerCase();
       const available=voices.filter(v=>v.lang.toLowerCase().startsWith(prefix));
       const gender: 'male'|'female' = (ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo')?'male':(ambientCall.voiceGender==='female'?'female':ambientCall.voiceGender==='male'?'male':(Math.random()<0.5?'male':'female'));
-      const selectedVoice=chooseNaturalRadioVoice(available.length?available:voices,gender);
+      const selectedVoice=chooseNaturalRadioVoice(available.length?available:voices,gender,!(ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo'));
       if(selectedVoice) utterance.voice=selectedVoice;
       const localLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       utterance.volume=Math.max(0.04,Math.min(1,Number(ambientCall.signalLevel||0.5)*localLevel));
