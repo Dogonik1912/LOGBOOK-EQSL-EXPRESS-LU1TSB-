@@ -946,7 +946,11 @@ export const LBComunica: React.FC = () => {
         const offerCollision = pc.signalingState !== 'stable';
         const politePeer = deviceToken.localeCompare(payload.from) > 0;
         if (offerCollision && !politePeer) return;
-        if (offerCollision && politePeer) await pc.setLocalDescription({ type: 'rollback' });
+        if (offerCollision && politePeer) {
+          // Roll back only our own pending offer; never try to roll back a remote offer.
+          if (pc.signalingState !== 'have-local-offer') return;
+          await pc.setLocalDescription({ type: 'rollback' });
+        }
         await pc.setRemoteDescription(payload.description);
         for (const candidate of pendingIceRef.current.get(key) || []) await pc.addIceCandidate(candidate);
         pendingIceRef.current.delete(key);
