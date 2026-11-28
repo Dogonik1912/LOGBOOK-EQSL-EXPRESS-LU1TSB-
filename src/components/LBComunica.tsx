@@ -760,6 +760,9 @@ export const LBComunica: React.FC = () => {
     entry.disconnectTimer = undefined;
     entry.pc.ontrack = null;
     entry.pc.onicecandidate = null;
+    entry.pc.oniceconnectionstatechange = null;
+    entry.pc.onconnectionstatechange = null;
+    entry.pc.onsignalingstatechange = null;
     entry.pc.close();
     if(entry.gateFrame)cancelAnimationFrame(entry.gateFrame);
     try{entry.noiseSource?.stop();entry.noiseSource?.disconnect();entry.noiseGain?.disconnect();entry.qrmSource?.stop();entry.qrmSource?.disconnect();entry.qrmGain?.disconnect();}catch{}
@@ -877,6 +880,11 @@ export const LBComunica: React.FC = () => {
             }
           }
         }
+        // Espera a que termine cualquier negociación de oferta/respuesta antes del ICE restart.
+        if (pc.signalingState !== 'stable') {
+          entry.iceRestartAttempted = false;
+          return;
+        }
         // Renegocia ICE antes de abandonar una sesión que sufrió un corte transitorio.
         const offer = await pc.createOffer({ iceRestart: true });
         await pc.setLocalDescription(offer);
@@ -915,6 +923,13 @@ export const LBComunica: React.FC = () => {
     };
     pc.oniceconnectionstatechange = () => handlePeerState(pc.iceConnectionState);
     pc.onconnectionstatechange = () => handlePeerState(pc.connectionState);
+    pc.onsignalingstatechange = () => {
+      const current = peerMapRef.current.get(key);
+      if (current && pc.signalingState === 'stable' && !current.iceRestartAttempted
+        && (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected')) {
+        void restartIceConnection();
+      }
+    };
     peerMapRef.current.set(key,{pc,audio,iceExpiresAt});
     return pc;
   };
