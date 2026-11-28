@@ -170,7 +170,7 @@ export const LBComunica: React.FC = () => {
     n.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,now,.04);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
-    const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);n.gate.gain.setTargetAtTime(squelch>0&&rms<(0.0015+(squelch/100)*.018)?0:1,ctx.currentTime,.12);n.gateFrame=requestAnimationFrame(updateGate);};
+    const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);n.gate.gain.setTargetAtTime(squelch>0&&rms<(0.0015+(squelch/100)*.018)?0.32:1,ctx.currentTime,.12);n.gateFrame=requestAnimationFrame(updateGate);};
     n.gateFrame=requestAnimationFrame(updateGate);
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen]);
   useEffect(()=>{squelchRef.current=squelch;},[squelch]);
@@ -290,7 +290,7 @@ export const LBComunica: React.FC = () => {
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;}
         const samples=new Uint8Array(analyser.fftSize);
-        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);gate.gain.setTargetAtTime(squelchRef.current>0&&rms<(0.0015+(squelchRef.current/100)*.018)?0:1,ctx.currentTime,.04);current.gateFrame=requestAnimationFrame(loop);};
+        const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);gate.gain.setTargetAtTime(squelchRef.current>0&&rms<(0.0015+(squelchRef.current/100)*.018)?0.32:1,ctx.currentTime,.08);current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
       } catch { audio.srcObject=remote;audio.volume=radioReceive?radioVolume/100:0; }
