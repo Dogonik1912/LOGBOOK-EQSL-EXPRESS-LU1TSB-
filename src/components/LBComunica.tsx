@@ -28,24 +28,35 @@ const createRadioNoise = (ctx: AudioContext, destination: AudioNode) => {
 };
 
 const createRadioInterference = (ctx: AudioContext, destination: AudioNode) => {
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * 5, ctx.sampleRate);
+  // A longer, irregular noise bed avoids the obvious five-second repeating dual-tone pattern.
+  const duration = 24;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
   const data = buffer.getChannelData(0);
-  let burst = 0.18;
-  let nextBurst = 0;
+  let eventEnd = 0;
+  let eventLevel = 0;
+  let carrierHz = 650 + Math.random() * 1500;
+  let phase = 0;
   for (let i = 0; i < data.length; i++) {
-    if (i >= nextBurst) {
-      burst = 0.12 + Math.random() * 0.88;
-      nextBurst = i + Math.floor(ctx.sampleRate * (0.12 + Math.random() * 0.42));
+    if (i >= eventEnd) {
+      const gap = ctx.sampleRate * (0.18 + Math.random() * 1.35);
+      eventEnd = i + Math.floor(gap);
+      eventLevel = Math.random() < 0.34 ? 0.55 + Math.random() * 0.45 : 0.08 + Math.random() * 0.28;
+      carrierHz = 480 + Math.random() * 2050;
+      phase = Math.random() * Math.PI * 2;
     }
     const t = i / ctx.sampleRate;
-    const carrier = Math.sin(2 * Math.PI * 760 * t) * 0.55 + Math.sin(2 * Math.PI * 1190 * t) * 0.35;
-    const hiss = (Math.random() * 2 - 1) * 0.18;
-    data[i] = (carrier + hiss) * burst * 0.12;
+    const fade = Math.min(1, (eventEnd - i) / (ctx.sampleRate * 0.035));
+    const slowFlutter = 0.72 + 0.28 * Math.sin(2 * Math.PI * (0.7 + (carrierHz % 13) / 10) * t + phase);
+    const carrier = Math.sin(2 * Math.PI * carrierHz * t + phase) * 0.22;
+    const sideTone = Math.sin(2 * Math.PI * (carrierHz * (1.18 + (phase % 0.12)) ) * t) * 0.08;
+    const hiss = (Math.random() * 2 - 1) * 0.34;
+    const crackle = Math.random() > 0.9992 ? (Math.random() * 2 - 1) * 0.9 : 0;
+    data[i] = (carrier + sideTone + hiss + crackle) * eventLevel * slowFlutter * fade * 0.16;
   }
   const source = ctx.createBufferSource(); source.buffer = buffer; source.loop = true;
-  const high = ctx.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 520; high.Q.value = 0.8;
-  const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 2300; low.Q.value = 0.8;
-  const gain = ctx.createGain(); gain.gain.value = 0.12;
+  const high = ctx.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 430; high.Q.value = 0.65;
+  const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 2850; low.Q.value = 0.65;
+  const gain = ctx.createGain(); gain.gain.value = 0.075;
   source.connect(high); high.connect(low); low.connect(gain); gain.connect(destination); source.start();
   return { source, gain };
 };
@@ -226,6 +237,48 @@ export const LBComunica: React.FC = () => {
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen]);
   useEffect(()=>{squelchRef.current=squelch;},[squelch]);
   useEffect(()=>{audioProfileRef.current=audioProfile;},[audioProfile]);
+  // Local-only simulated HF background stations. They are never connected to the mic,
+  // peer streams, recordings, or room history; speech synthesis is intentionally subtle.
+  useEffect(()=>{
+    if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      return;
+    }
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance==='undefined') return;
+    const synth=window.speechSynthesis;
+    let timer: ReturnType<typeof setTimeout> | null=null;
+    let cancelled=false;
+    const phrases=[
+      'CQ, CQ, this is Echo Seven calling. Listening for any station.',
+      'Good morning, operator. You are five and nine, over.',
+      'Roger that, thanks for the contact. Seventy three.',
+      'This is a portable station, standing by on this frequency.',
+      'Signal report one by one, there is some noise on the band.',
+      'Calling any station listening, please come back.',
+      'Thank you for the report. I will be listening again.',
+      'QRZ, QRZ, any station calling?',
+      'A little QRM here, please repeat your last transmission.',
+      'Copy your report. The band is quite busy today.'
+    ];
+    const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
+    const speak=()=>{
+      if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length) { schedule(12000+Math.random()*18000); return; }
+      const utterance=new SpeechSynthesisUtterance(phrases[Math.floor(Math.random()*phrases.length)]);
+      const english=synth.getVoices().filter(v=>/^en([-_]|$)/i.test(v.lang));
+      if(english.length) utterance.voice=english[Math.floor(Math.random()*english.length)];
+      utterance.lang='en-US';
+      utterance.rate=0.82+Math.random()*0.22;
+      utterance.pitch=0.86+Math.random()*0.22;
+      utterance.volume=0.055+Math.random()*0.025;
+      const next=()=>schedule(26000+Math.random()*52000);
+      utterance.onend=next;
+      utterance.onerror=next;
+      synth.speak(utterance);
+    };
+    schedule(18000+Math.random()*22000);
+    return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
+
   useEffect(()=>{localStorage.setItem('lb_radio_audio_profile',audioProfile);},[audioProfile]);
   useEffect(()=>{localStorage.setItem(radioPreferenceKey('rf_gain'),String(rfGain));localStorage.setItem(radioPreferenceKey('volume'),String(radioVolume));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));},[rfGain,micGain,squelch,clarifier,radioVolume]);
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
