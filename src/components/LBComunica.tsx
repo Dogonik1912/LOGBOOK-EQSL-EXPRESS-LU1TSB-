@@ -22,7 +22,7 @@ const createRadioNoise = (ctx: AudioContext, destination: AudioNode) => {
   const source = ctx.createBufferSource(); source.buffer = buffer; source.loop = true;
   const high = ctx.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 420; high.Q.value = 0.7;
   const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 3200; low.Q.value = 0.7;
-  const gain = ctx.createGain(); gain.gain.value = 0.045;
+  const gain = ctx.createGain(); gain.gain.value = 0.054;
   source.connect(high); high.connect(low); low.connect(gain); gain.connect(destination); source.start();
   return { source, gain };
 };
@@ -184,12 +184,12 @@ export const LBComunica: React.FC = () => {
     n.compressor.knee.setTargetAtTime(audioProfile==='radio'?24:0,now,.08);
     n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?1.6:1,now,.08);
     n.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,now,.04);
-    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.045-(squelch/100)*0.00025:0,now,.18);
+    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,now,.18);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
     let voiceOpen=false;
     const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const threshold=0.0015+(squelch/100)*.018;if(squelch<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;n.gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?0.018:Math.max(0.022,0.055-squelch*0.00025)):0,ctx.currentTime,voiceOpen?0.08:0.35);
+      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-squelch*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
       n.gateFrame=requestAnimationFrame(updateGate);};
     n.gateFrame=requestAnimationFrame(updateGate);
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen]);
@@ -200,7 +200,7 @@ export const LBComunica: React.FC = () => {
   useEffect(()=>{localStorage.setItem('lb_radio_receive',radioReceive?'1':'0');},[radioReceive]);
   useEffect(()=>{localStorage.setItem('lb_radio_panel_light',panelLight?'1':'0');},[panelLight]);
   useEffect(()=>{localStorage.setItem('lb_comunica_ptt_mode',pttMode);},[pttMode]);
-  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.noiseGain)entry.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.045-(squelch/100)*0.00025:0,entry.context?.currentTime||0,.18);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
+  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,entry.context?.currentTime||0,.04);if(entry.noiseGain)entry.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?0.054-(squelch/100)*0.00030:0,entry.context?.currentTime||0,.18);if(entry.tone){entry.tone.frequency.setTargetAtTime(1450+(clarifier-50)*12,entry.context?.currentTime||0,.08);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?1.2+((clarifier-50)/50)*1.2:0,entry.context?.currentTime||0,.08);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?220:10,entry.context?.currentTime||0,.08);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.08);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
@@ -315,7 +315,7 @@ export const LBComunica: React.FC = () => {
         const samples=new Uint8Array(analyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const now=performance.now();const target=Math.min(1,Math.max(0,rms*5.5));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.018:Math.max(0.022,0.055-level*0.00025)):0,ctx.currentTime,voiceOpen?0.08:0.35);
+          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-level*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
