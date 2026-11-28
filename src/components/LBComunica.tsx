@@ -126,7 +126,6 @@ export const LBComunica: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [connection, setConnection] = useState<'idle'|'connecting'|'connected'|'error'>('idle');
   const [mobileListOpen, setMobileListOpen] = useState(false);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
   const [isQueued, setIsQueued] = useState(false);
   const [pttPending, setPttPending] = useState(false);
@@ -225,14 +224,14 @@ export const LBComunica: React.FC = () => {
     n.compressor.knee.setTargetAtTime(audioProfile==='radio'?24:0,now,.08);
     n.compressor.ratio.setTargetAtTime(audioProfile==='radio'?1.6:1,now,.08);
     n.rf.gain.setTargetAtTime(radioReceive?Math.max(0.32,(rfGain/100)*(radioVolume/100)):0.32,now,.04);
-    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.105:0.054)-(squelch/100)*(is11MeterStationIdentifier(activeCallsign)?0.00042:0.00030):0,now,.18);
-    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.22:0.12):0,now,.2);
+    n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.070:0.054)-(squelch/100)*(is11MeterStationIdentifier(activeCallsign)?0.00034:0.00030):0,now,.18);
+    n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(is11MeterStationIdentifier(activeCallsign)?0.135:0.12):0,now,.2);
     if(n.gateFrame!==null)cancelAnimationFrame(n.gateFrame);
     const samples=new Uint8Array(n.analyser.fftSize);
     let voiceOpen=false;
     const updateGate=()=>{if(playbackContextRef.current!==ctx)return;n.analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const threshold=0.0015+(squelch/100)*.018;if(squelch<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;n.gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.045:0.022):Math.max(is11MeterStationIdentifier(activeCallsign)?0.055:0.027,(is11MeterStationIdentifier(activeCallsign)?0.115:0.066)-squelch*(is11MeterStationIdentifier(activeCallsign)?0.00042:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
-      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.095:0.045):(is11MeterStationIdentifier(activeCallsign)?0.23:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
+      n.noiseGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.028:0.022):Math.max(is11MeterStationIdentifier(activeCallsign)?0.034:0.027,(is11MeterStationIdentifier(activeCallsign)?0.080:0.066)-squelch*(is11MeterStationIdentifier(activeCallsign)?0.00034:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
+      n.qrmGain.gain.setTargetAtTime(audioProfile==='radio'?(voiceOpen?(is11MeterStationIdentifier(activeCallsign)?0.052:0.045):(is11MeterStationIdentifier(activeCallsign)?0.135:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
       n.gateFrame=requestAnimationFrame(updateGate);};
     n.gateFrame=requestAnimationFrame(updateGate);
   },[audioProfile,rfGain,squelch,clarifier,radioVolume,radioReceive,isOpen,activeCallsign]);
@@ -249,37 +248,37 @@ export const LBComunica: React.FC = () => {
     const synth=window.speechSynthesis;
     let timer: ReturnType<typeof setTimeout> | null=null;
     let cancelled=false;
-    const hamStations:{lang:string;text:string;callsign:string}[]=[
-      {lang:'es-ES',callsign:'EA3XYZ',text:'CQ cuarenta, CQ cuarenta. Aquí EA3XYZ, estación española llamando. ¿Alguna estación copia?'},
-      {lang:'en-US',callsign:'G4ABC',text:'CQ forty, CQ forty. This is Golf Four Alpha Bravo Charlie calling. Any station, please come back.'},
-      {lang:'fr-FR',callsign:'F4KLM',text:'Appel général, CQ quarante mètres, CQ quarante mètres. Ici Foxtrot Quatre Kilo Lima Mike. À l’écoute.'},
-      {lang:'de-DE',callsign:'DL2ABC',text:'CQ vierzig Meter, CQ vierzig Meter. Hier Delta Lima Zwei Alpha Bravo Charlie. Ist eine Station QRV?'},
-      {lang:'it-IT',callsign:'IK2ABC',text:'CQ quaranta metri, CQ quaranta metri. Qui Italia Kilo Due Alpha Bravo Charlie, in ascolto.'},
-      {lang:'pt-PT',callsign:'CT1ABC',text:'CQ quarenta metros, CQ quarenta metros. Aqui Charlie Tango Um Alpha Bravo Charlie, chamando geral.'},
-      {lang:'ja-JP',callsign:'JA1ABC',text:'CQ forty meters, CQ forty meters. This is Japan Alpha One Alpha Bravo Charlie calling.'},
-      {lang:'es-ES',callsign:'LU1ABC',text:'CQ cuarenta, CQ cuarenta. Aquí LU1ABC llamando desde Argentina. Quedo atento a cualquier estación.'},
-      {lang:'en-US',callsign:'W4XYZ',text:'CQ DX on forty meters. Whiskey Four X-ray Yankee Zulu calling. Listening for stations worldwide.'},
-      {lang:'fr-FR',callsign:'F5RST',text:'CQ DX sur quarante mètres. Ici Foxtrot Cinq Romeo Sierra Tango. Je vous écoute.'},
-      {lang:'de-DE',callsign:'DL5XYZ',text:'CQ DX auf vierzig Meter. Delta Lima Fünf X-ray Yankee Zulu ruft CQ und hört.'},
-      {lang:'it-IT',callsign:'IZ0ABC',text:'CQ DX sui quaranta metri. Italia Zulu Zero Alpha Bravo Charlie chiama e ascolta.'},
-      {lang:'es-ES',callsign:'EA7DEF',text:'CQ cuarenta metros, CQ cuarenta metros. EA7DEF llamando. ¿Quién me recibe?'},
-      {lang:'en-US',callsign:'K2ABC',text:'Calling CQ on the forty meter band. Kilo Two Alpha Bravo Charlie standing by.'},
-      {lang:'pt-PT',callsign:'PY2ABC',text:'CQ quarenta metros, CQ quarenta metros. Papa Yankee Dois Alpha Bravo Charlie chamando.'}
+    const hamPhrases=[
+      'CQ CQ CQ, this is Whiskey Eight Delta calling. Any station, over.',
+      'CQ CQ CQ, calling CQ. This is Mike Seven Romeo, standing by.',
+      'CQ CQ CQ, this is Echo Four Lima. Is any station listening?',
+      'Good morning, operator. You are five and nine, over.',
+      'Roger, thank you for the contact. Seventy three.',
+      'This is a portable station, standing by on this frequency.',
+      'Signal report one by one, there is some noise on the band.',
+      'Calling any station listening, please come back.',
+      'Thank you for the report. I will be listening again.',
+      'QRZ, QRZ, any station calling?',
+      'A little QRM here, please repeat your last transmission.',
+      'Copy your report. The band is quite busy today.'
     ];
     const elevenMeterPhrases:{lang:string;text:string}[]=[
+      {lang:'es-ES',text:'CQ once metros, CQ once metros. Estación móvil llamando, ¿alguna estación copia?'},
+      {lang:'es-ES',text:'Breaker, breaker. ¿Hay estaciones en frecuencia? Quedo a la escucha.'},
+      {lang:'es-ES',text:'Atención estaciones, llamada DX desde la división treinta. Cambio.'},
+      {lang:'es-ES',text:'Te recibo cinco nueve, gracias por el contacto. Hasta pronto.'},
       {lang:'en-US',text:'CQ eleven meters, CQ eleven meters. Any station copy?'},
       {lang:'en-US',text:'Breaker one nine, this is a mobile station calling. Standing by.'},
       {lang:'en-US',text:'Calling DX on twenty-seven five five five. Any station, come back.'},
       {lang:'en-US',text:'Your signal is five and nine. Thanks for the contact, seventy three.'},
-      {lang:'en-US',text:'CQ DX, CQ DX. This is a station calling from Europe. Is anybody listening?'},
-      {lang:'en-US',text:'Good evening, stations around the world. Calling and standing by.'},
-      {lang:'en-US',text:'Any station in the world, please come back. This is a mobile station.'},
-      {lang:'en-US',text:'Calling from division thirty. QRZ, QRZ. Who is calling me?'},
-      {lang:'en-US',text:'Thirty four Romeo Charlie, thirty four division, Canary Islands calling. Any station, please come back?'},
-      {lang:'en-US',text:'The frequency is quiet. Is any station monitoring this channel?'},
-      {lang:'en-US',text:'Worldwide call on eleven meters. Listening for stations from every country.'},
-      {lang:'en-US',text:'This is a portable station calling internationally. Over.'},
-      {lang:'en-US',text:'CQ, CQ, calling stations across the band. Please come back.'}
+      {lang:'pt-BR',text:'CQ onze metros, CQ onze metros. Alguma estação na escuta?'},
+      {lang:'pt-BR',text:'Estação móvel chamando, alguém copia? Fico na escuta.'},
+      {lang:'fr-FR',text:'Appel général sur onze mètres. Une station me reçoit-elle?'},
+      {lang:'fr-FR',text:'Appel DX sur vingt-sept cinq cinq cinq. Je suis à l’écoute.'},
+      {lang:'de-DE',text:'CQ auf elf Meter. Ist eine Station auf Empfang? Bitte kommen.'},
+      {lang:'de-DE',text:'Mobilstation ruft. Ich höre auf dieser Frequenz.'},
+      {lang:'it-IT',text:'CQ sugli undici metri. Qualche stazione in ascolto?'},
+      {lang:'it-IT',text:'Stazione mobile in chiamata, resto in ascolto. Passo.'}
     ];
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
     const speak=()=>{
@@ -290,20 +289,15 @@ export const LBComunica: React.FC = () => {
       let language='en-US';
       let available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
       if(isElevenMeters){
-        // En 11 metros todas las llamadas ambientales son exclusivamente en inglés.
-        phrase=elevenMeterPhrases[Math.floor(Math.random()*elevenMeterPhrases.length)].text;
-        language='en-US';
-        const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
-        available=englishVoices.length?englishVoices:voices;
+        // Use only languages for which this device actually has a speech voice.
+        const languages=[...new Set(elevenMeterPhrases.map(p=>p.lang))].filter(lang=>voices.some(v=>v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase())));
+        const chosenLanguage=languages.length?languages[Math.floor(Math.random()*languages.length)]:'en-US';
+        const localized=elevenMeterPhrases.filter(p=>p.lang===chosenLanguage);
+        phrase=(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US'))[Math.floor(Math.random()*(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US')).length)].text;
+        language=chosenLanguage;
+        available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
       }else{
-        // En Radioaficionados alternamos estaciones simuladas de 40 m en varios idiomas.
-        // Los indicativos son ejemplos ambientales, no contactos reales ni estaciones conectadas.
-        const station=hamStations[Math.floor(Math.random()*hamStations.length)];
-        phrase=station.text;
-        language=station.lang;
-        const locale=station.lang.split('-')[0];
-        const nativeVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(locale));
-        available=nativeVoices.length?nativeVoices:voices;
+        phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
       }
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
@@ -316,8 +310,8 @@ export const LBComunica: React.FC = () => {
         const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
         const oscarLines=[
-          'Oscar Italia calling! The strongest station in the world is on the air!',
-          'Hello, my dear friend! Oscar Italia is listening. Come back, please!'
+          '¡Oscar Italia!... La estación más fuerte del mundo está llamando.',
+          '¡Cuerrido amigo!... ¡Vamos, vamos!... ¡Oscar te escucha muy bon!'
         ];
         phrase=oscarLines[Math.floor(Math.random()*oscarLines.length)];
         // El personaje habla en castellano con una voz masculina grave; no forzamos
@@ -325,46 +319,73 @@ export const LBComunica: React.FC = () => {
         language='es-ES';
         available=spanish.length?spanish:voices;
       } else if(primoItalia){
-        phrase='Primo Italia calling! Italy two seven, standing by!';
-        language='en-US';
-        const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
-        available=englishVoices.length?englishVoices:voices;
+        phrase='¡Primo Italia!... ¡Italia due sete!';
+        language='it-IT';
+        const italianVoices=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
+        available=italianVoices.length?italianVoices:voices;
       } else if(comandante){
-        const commanderLines=[
-          'Attention, attention! This is the Commander calling. Any station, please come back!',
-          'The Commander is on frequency. Calling stations around the world. Standing by!'
-        ];
-        phrase=commanderLines[Math.floor(Math.random()*commanderLines.length)];
-        language='en-US';
-        const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
-        available=englishVoices.length?englishVoices:voices;
+        const appLang=getInitialAppLanguage();
+        const commanderLines:Partial<Record<AppLanguage,string>>={
+          es:'¡Atención, atención!... Aquí el Comandante. / ¡Tonto, que eres tonto!... ¡Te lo digo yo, el Comandante!',
+          en:'Attention, attention! This is the Commander. You fool, are you really that foolish? The Commander told you so!',
+          pt:'Atenção, atenção! Aqui é o Comandante. Tonto, és mesmo tonto. Eu, o Comandante, é que te digo!',
+          'pt-br':'Atenção, atenção! Aqui é o Comandante. Tonto, você é muito tonto. Estou dizendo, eu sou o Comandante!',
+          it:'Attenzione, attenzione! Qui è il Comandante. Sciocco, sei proprio sciocco. Te lo dice il Comandante!',
+          fr:'Attention, attention! Ici le Commandant. Idiot, tu es vraiment idiot. C’est moi, le Commandant, qui te le dis!',
+          de:'Achtung, Achtung! Hier spricht der Kommandant. Du Dummkopf, bist du wirklich so dumm? Das sagt dir der Kommandant!',
+          nl:'Attentie, attentie! Hier spreekt de Commandant. Domoor, ben je echt zo dom? Dat zegt de Commandant!',
+          pl:'Uwaga, uwaga! Tu Komendant. Głupcze, ale z ciebie głupiec. Mówi ci to sam Komendant!',
+          ru:'Внимание, внимание! Говорит Командир. Ну ты и глупец! Это тебе говорит сам Командир!',
+          uk:'Увага, увага! Говорить Командир. Ну й дурню ж ти! Це тобі каже сам Командир!',
+          zh:'注意，注意！这里是指挥官。你这个傻瓜，真是个傻瓜！这是指挥官告诉你的！',
+          ja:'こちら司令官。注意、注意！まったく、君は本当におバカだな。司令官からの忠告だ！',
+          ko:'주목, 주목! 여기는 사령관이다. 이 바보야, 정말 바보구나! 사령관이 하는 말이다!',
+          ar:'انتباه، انتباه! معكم القائد. يا لك من أحمق! أنا القائد وأقول لك ذلك!',
+          hi:'ध्यान दें, ध्यान दें! कमांडर बोल रहा है। अरे मूर्ख, तुम सच में मूर्ख हो! यह कमांडर कह रहा है!',
+          tr:'Dikkat, dikkat! Komutan konuşuyor. Seni aptal, gerçekten aptalsın! Bunu sana Komutan söylüyor!',
+          sv:'Hallå, hallå! Här talar Kommendören. Din tok, är du verkligen så tokig? Det säger Kommendören!',
+          no:'Hallo, hallo! Dette er Kommandanten. Din tosk, er du virkelig så dum? Det sier Kommandanten!',
+          da:'Hallo, hallo! Her taler Kommandanten. Din tåbe, er du virkelig så dum? Det siger Kommandanten!',
+          fi:'Huomio, huomio! Täällä komentaja. Senkin hölmö, oletpa todella hölmö! Näin sanoo komentaja!',
+          cs:'Pozor, pozor! Tady velitel. Ty hlupáku, ty jsi ale hlupák. To ti říká velitel!',
+          el:'Προσοχή, προσοχή! Εδώ ο Διοικητής. Ανόητε, είσαι πραγματικά ανόητος! Στο λέει ο Διοικητής!',
+          ro:'Atenție, atenție! Aici Comandantul. Prostule, chiar ești prost. Ți-o spune Comandantul!',
+          hu:'Figyelem, figyelem! Itt a Parancsnok. Te bolond, tényleg bolond vagy! Ezt a Parancsnok mondja!',
+          id:'Perhatian, perhatian! Ini Komandan. Dasar bodoh, memang bodoh! Ini Komandan yang mengatakannya!',
+          th:'โปรดทราบ โปรดทราบ! นี่คือผู้บัญชาการ เจ้าโง่เอ๊ย โง่จริง ๆ! ผู้บัญชาการบอกเอง!'
+        };
+        const commanderOptions=(commanderLines[appLang]||commanderLines.en!).split(' / ');
+        phrase=commanderOptions[Math.floor(Math.random()*commanderOptions.length)];
+        language=appLang==='pt-br'?'pt-BR':appLang==='zh'?'zh-CN':appLang==='ja'?'ja-JP':appLang==='ko'?'ko-KR':appLang==='ar'?'ar-SA':appLang==='hi'?'hi-IN':appLang==='th'?'th-TH':appLang==='sv'?'sv-SE':appLang==='no'?'nb-NO':appLang==='da'?'da-DK':appLang==='fi'?'fi-FI':appLang==='cs'?'cs-CZ':appLang==='el'?'el-GR':appLang==='ro'?'ro-RO':appLang==='hu'?'hu-HU':appLang==='id'?'id-ID':appLang==='uk'?'uk-UA':appLang==='ru'?'ru-RU':appLang==='pl'?'pl-PL':appLang==='nl'?'nl-NL':appLang==='de'?'de-DE':appLang==='fr'?'fr-FR':appLang==='it'?'it-IT':appLang==='pt'?'pt-PT':appLang==='en'?'en-US':'es-ES';
+        const langPrefix=language.slice(0,2).toLowerCase();
+        const localizedVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(langPrefix));
+        available=localizedVoices.length?localizedVoices:voices;
       }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
       const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i.test(v.name));
       const naturalVoices=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio|online/i.test(v.name));
       const preferredVoices=oscarItalia
-        ? (maleVoices.length?maleVoices:naturalVoices)
+        ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
         : maleVoices;
       const selectedVoices=primoItalia?(maleVoices.length?maleVoices:(naturalVoices.length?naturalVoices:available)):comandante?(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
       if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.88+Math.random()*0.03:primoItalia?0.90+Math.random()*0.04:isElevenMeters?0.76+Math.random()*0.08:0.88+Math.random()*0.12;
-      utterance.pitch=comandante?0.56:oscarItalia?0.28+Math.random()*0.035:primoItalia?0.76+Math.random()*0.04:isElevenMeters?0.68+Math.random()*0.10:0.78+Math.random()*0.20;
-      // Variación de señal recibida: estaciones fuertes y débiles, sin tocar el ruido de fondo.
-      utterance.volume=oscarItalia?0.62:comandante?0.13:primoItalia?0.24:isElevenMeters?0.035+Math.random()*0.015:0.12+Math.random()*0.30;
-      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?9000+Math.random()*16000:26000+Math.random()*52000);};
+      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.82+Math.random()*0.04:primoItalia?0.90+Math.random()*0.04:0.76+Math.random()*0.08;
+      utterance.pitch=comandante?0.56:oscarItalia?0.48+Math.random()*0.04:primoItalia?0.76+Math.random()*0.04:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.24:0.035+Math.random()*0.015;
+      const next=()=>{setMeterLevel(0.04);schedule(26000+Math.random()*52000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.88:comandante?0.82:oscarItalia?0.90:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(is11MeterStationIdentifier(activeCallsign)?6500+Math.random()*8500:9000+Math.random()*15000);
+    schedule(18000+Math.random()*22000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,activeCallsign]);
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
 
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
@@ -532,15 +553,15 @@ export const LBComunica: React.FC = () => {
         const dest=ctx.createMediaStreamDestination();
         const outputAnalyser=ctx.createAnalyser();outputAnalyser.fftSize=512;
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(compressor);compressor.connect(analyser);analyser.connect(gate);gate.connect(rf);
-        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.105:0.054;qrm.gain.gain.value=isElevenMeters?0.22:0.12;rf.connect(outputAnalyser);outputAnalyser.connect(dest);
+        const noise=createRadioNoise(ctx,rf);const qrm=createRadioInterference(ctx,rf);noise.gain.gain.value=isElevenMeters?0.070:0.054;qrm.gain.gain.value=isElevenMeters?0.135:0.12;rf.connect(outputAnalyser);outputAnalyser.connect(dest);
         audio.srcObject=dest.stream;
         const entry=peerMapRef.current.get(key);
         if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;entry.noiseGain=noise.gain;entry.noiseSource=noise.source;entry.qrmGain=qrm.gain;entry.qrmSource=qrm.source;}
         const samples=new Uint8Array(analyser.fftSize);const meterSamples=new Uint8Array(outputAnalyser.fftSize);
         let voiceOpen=false;let lastMeterUpdate=0;let meterEnvelope=0;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);outputAnalyser.getByteTimeDomainData(meterSamples);let meterSum=0;for(let i=0;i<meterSamples.length;i++){const v=(meterSamples[i]-128)/128;meterSum+=v*v;}const meterRms=Math.sqrt(meterSum/meterSamples.length);const now=performance.now();const target=Math.min(1,Math.max(0,(meterRms-0.008)*16));meterEnvelope += (target-meterEnvelope)*(target>meterEnvelope?0.48:0.16);if(now-lastMeterUpdate>45){setMeterLevel(meterEnvelope);lastMeterUpdate=now;}const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.045:0.022):Math.max(isElevenMeters?0.055:0.027,(isElevenMeters?0.115:0.066)-level*(isElevenMeters?0.00042:0.00030))):0,ctx.currentTime,voiceOpen?0.08:0.35);
-          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?(isElevenMeters?0.095:0.045):(isElevenMeters?0.23:0.12)):0,ctx.currentTime,voiceOpen?0.12:0.3);
+          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.022:Math.max(0.027,0.066-level*0.00030)):0,ctx.currentTime,voiceOpen?0.08:0.35);
+          qrm.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.045:0.12):0,ctx.currentTime,voiceOpen?0.12:0.3);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
@@ -1034,8 +1055,8 @@ export const LBComunica: React.FC = () => {
               <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
             </header>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className={"relative flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-2 p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid " + (historyExpanded ? "md:grid-cols-[minmax(230px,.48fr)_minmax(0,1.8fr)]" : "md:grid-cols-[minmax(0,1fr)]") + " md:items-stretch md:gap-3 md:overflow-hidden"}>
-                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-y-auto overscroll-contain rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 '+(historyExpanded?'md:col-start-2':'md:col-start-1')+' md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
+              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-2 p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:grid-cols-[minmax(250px,.72fr)_minmax(0,1.8fr)] md:items-stretch md:gap-3 md:overflow-hidden">
+                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:col-start-2 md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
                   <div className="order-0 md:col-span-2 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="order-1 md:col-span-2 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
@@ -1050,37 +1071,33 @@ export const LBComunica: React.FC = () => {
                         <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold">RESET</button>
                       </div>
                     </div>
-                    <div className="my-1 grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,.72fr)] md:gap-3">
-                    <div className="flex w-full justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={meterLevel} transmitting={isTalking} /></div></div>
-                    <div className="flex w-full flex-col items-center gap-2 rounded-lg border border-white/15 bg-black/35 px-3 py-2">
-                      <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
-                      <div className="grid w-full grid-cols-2 gap-2">
-                        <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='hold'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>MANTENER PULSADO</button>
-                        <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='toggle'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>ALTERNADO</button>
-                      </div>
-                      <button type="button" disabled={connection!=='connected'}
-                        onClick={undefined}
-                        onPointerDown={(e)=>{e.preventDefault();if(pttMode==='toggle')togglePtt();else if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}}
-                        onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
-                        onPointerLeave={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current||isQueued)void releaseTurn();}:undefined}
-                        onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
-                        onLostPointerCapture={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current)void releaseTurn();}:undefined}
-                        className={'mt-1 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':pttPending||isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
-                        <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':pttPending?'SOLICITANDO':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
-                      </button>
+                    <div className="my-1 w-full flex justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={meterLevel} transmitting={isTalking} /></div></div>
+                    <div className="md:col-start-1 grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
+                      <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
+                      <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
+                      <RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/>
+                      <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
+                      <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
+                    </div>
+                  <div className="mb-2 flex w-full flex-col items-center gap-2 rounded-lg md:col-start-2 md:row-start-3 border border-white/15 bg-black/35 px-3 py-2">
+                    <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
+                    <div className="grid w-full grid-cols-2 gap-2">
+                      <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='hold'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>MANTENER PULSADO</button>
+                      <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='toggle'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>ALTERNADO</button>
                     </div>
                   </div>
-                  <div className="hidden w-full grid-cols-5 items-center gap-3 rounded-lg border border-amber-100/20 bg-black/35 px-3 py-3 md:grid">
-                    <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
-                    <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
-                    <RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/>
-                    <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
-                    <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
-                    <div className="col-span-5 flex items-center justify-center gap-5 border-t border-white/10 pt-2 text-[10px] font-black tracking-widest text-amber-100">
-                      <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400"/>QRN · RUIDO DE FONDO</span>
-                      <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"/>QRM · INTERFERENCIAS</span>
-                    </div>
-                  </div>
+                  <button type="button" disabled={connection!=='connected'}
+                    onClick={undefined}
+                    onPointerDown={(e)=>{e.preventDefault();if(pttMode==='toggle')togglePtt();else if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}}
+                    onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
+                    onPointerLeave={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current||isQueued)void releaseTurn();}:undefined}
+                    onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
+                    onLostPointerCapture={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current)void releaseTurn();}:undefined}
+                    className={'mt-2 mb-2 flex h-24 min-h-24 w-full max-w-none shrink-0 md:col-start-1 md:row-start-4 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':pttPending||isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                    <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':pttPending?'SOLICITANDO':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
+                  </button>
+
+
                   </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
                   <div className="order-3 mt-1 flex w-full max-w-xs md:col-span-2 items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
@@ -1092,43 +1109,38 @@ export const LBComunica: React.FC = () => {
                   </div>
                   <p className="order-3 md:col-span-2 max-w-md text-[10px] text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
                 </div>
-                {historyExpanded ? (
-                  <aside className="order-0 min-w-0 rounded-xl border border-white/10 bg-slate-900/95 p-3 md:col-start-1 md:row-start-1 md:min-h-0 md:overflow-y-auto">
-                    <button type="button" onClick={()=>setHistoryExpanded(false)} className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-bold text-slate-100 hover:bg-white/5" aria-expanded="true">
-                      <span className="flex min-w-0 items-center gap-1.5"><ListMusic className="h-3.5 w-3.5 shrink-0 text-emerald-300"/>Historial · {roomTitle}<span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px]">{recordings.length}</span></span>
-                      <span className="shrink-0 text-[10px] font-semibold text-emerald-300">Ocultar ▴</span>
-                    </button>
-                    <div className="border-t border-white/10 pt-3">
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="flex items-center gap-2 text-sm font-bold"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}</h3>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button type="button" disabled={!recordings.length} onClick={()=>{setPlayAll(true);playRecording(0);}} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold disabled:opacity-40">Reproducir todo</button>
-                          <label className="flex items-center gap-1 text-xs text-slate-300">Velocidad
-                            <select value={playbackSpeed} onChange={e=>{const v=Number(e.target.value);setPlaybackSpeed(v);if(audioPlayerRef.current)audioPlayerRef.current.playbackRate=v;}} className="rounded-md border border-white/20 bg-slate-950 px-2 py-1 text-white">
-                              {[1,1.25,1.5,1.75,2].map(v=><option key={v} value={v}>{v}x</option>)}
-                            </select>
-                          </label>
-                        </div>
-                      </div>
-                      <audio ref={audioPlayerRef} className="sr-only" preload="none" onEnded={handlePlaybackEnded} onError={()=>{if(playingIndex>=0){setPttError('El archivo no pudo decodificarse o no está disponible.');setPlayingIndex(-1);}}}/>
-                      {recordings.length ? (
-                        <div className="space-y-1">
-                          {recordings.map((recording,index)=>(
-                            <div key={recording.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/5 px-3 py-2 text-xs">
-                              <div className="min-w-0"><b>{recording.callsign}</b><span className="ml-2 text-slate-400">{new Date(recording.created_at).toLocaleString()}</span><span className="ml-2 text-slate-500">{formatDuration(recording.duration_ms)}</span></div>
-                              <button type="button" onClick={()=>{setPlayAll(false);playRecording(index);}} className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 px-2 py-1 text-emerald-200"><Play className="h-3 w-3"/>{playingIndex===index?'Reproduciendo':'Reproducir'}</button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : <p className="py-3 text-center text-xs text-slate-400">Todavía no hay intervenciones guardadas en esta sala. Se conservarán siempre las cinco más recientes.</p>}
-                      <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3"/>Archivo privado para usuarios autorizados de esta sala. Limpieza diaria conservando los últimos cinco audios.</p>
+                <details className="md:col-start-1 md:row-start-1 md:min-h-0 md:overflow-y-auto rounded-xl border border-white/10 bg-slate-900/70">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/5">
+                    <span className="flex min-w-0 items-center gap-1.5"><ListMusic className="h-3.5 w-3.5 shrink-0 text-emerald-300"/><span className="truncate">Historial · {roomTitle}</span><span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">{recordings.length}</span></span>
+                    <span className="shrink-0 text-[10px] font-semibold text-emerald-300">Ver ▾</span>
+                  </summary>
+                  <div className="border-t border-white/10 p-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="flex items-center gap-2 text-sm font-bold"><ListMusic className="h-4 w-4 text-emerald-300"/>Historial de audio — {roomTitle}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" disabled={!recordings.length} onClick={()=>{setPlayAll(true);playRecording(0);}} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold disabled:opacity-40">Reproducir todo</button>
+                      <label className="flex items-center gap-1 text-xs text-slate-300">Velocidad
+                        <select value={playbackSpeed} onChange={e=>{const v=Number(e.target.value);setPlaybackSpeed(v);if(audioPlayerRef.current)audioPlayerRef.current.playbackRate=v;}} className="rounded-md border border-white/20 bg-slate-950 px-2 py-1 text-white">
+                          {[1,1.25,1.5,1.75,2].map(v=><option key={v} value={v}>{v}x</option>)}
+                        </select>
+                      </label>
                     </div>
-                  </aside>
-                ) : (
-                  <button type="button" onClick={()=>setHistoryExpanded(true)} aria-expanded="false" aria-label="Mostrar historial de audio" className="order-0 flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-slate-900/95 px-3 py-2 text-xs font-bold text-slate-100 hover:bg-slate-800 md:absolute md:left-1 md:top-1 md:z-20 md:w-10 md:min-w-0 md:px-1 md:shadow-lg">
-                    <ListMusic className="h-4 w-4 text-emerald-300"/><span className="md:hidden">Historial · {roomTitle} ({recordings.length})</span><span className="hidden md:inline">›</span>
-                  </button>
-                )}             </div>
+                  </div>
+                  <audio ref={audioPlayerRef} className="sr-only" preload="none" onEnded={handlePlaybackEnded} onError={()=>{if(playingIndex>=0){setPttError('El archivo no pudo decodificarse o no está disponible.');setPlayingIndex(-1);}}}/>
+                  {recordings.length?(
+                    <div className="space-y-1">
+                      {recordings.map((recording,index)=>(
+                        <div key={recording.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/5 px-3 py-2 text-xs">
+                          <div className="min-w-0"><b>{recording.callsign}</b><span className="ml-2 text-slate-400">{new Date(recording.created_at).toLocaleString()}</span><span className="ml-2 text-slate-500">{formatDuration(recording.duration_ms)}</span></div>
+                          <button type="button" onClick={()=>{setPlayAll(false);playRecording(index);}} className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 px-2 py-1 text-emerald-200"><Play className="h-3 w-3"/>{playingIndex===index?'Reproduciendo':'Reproducir'}</button>
+                        </div>
+                      ))}
+                    </div>
+                  ):<p className="py-3 text-center text-xs text-slate-400">Todavía no hay intervenciones guardadas en esta sala. Se conservarán siempre las cinco más recientes.</p>}
+                  <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-500"><Clock3 className="h-3 w-3"/>Archivo privado para usuarios autorizados de esta sala. Limpieza diaria conservando los últimos cinco audios.</p>
+                  </div>
+                </details>
+              </div>
             )}
             <footer className="hidden shrink-0 border-t border-white/10 px-4 py-2 text-center text-xs text-slate-400 sm:block">Tu identidad activa determina la sala. HAM y 11 metros permanecen separados.</footer>
           </section>
