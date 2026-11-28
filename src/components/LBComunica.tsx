@@ -363,7 +363,7 @@ export const LBComunica: React.FC = () => {
       }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|jorge/i.test(v.name));
+      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i.test(v.name));
       const naturalVoices=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio|online/i.test(v.name));
       const preferredVoices=oscarItalia
         ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
@@ -373,9 +373,9 @@ export const LBComunica: React.FC = () => {
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.82+Math.random()*0.04:primoItalia?0.80+Math.random()*0.04:0.76+Math.random()*0.08;
-      utterance.pitch=comandante?0.56:oscarItalia?0.48+Math.random()*0.04:primoItalia?0.52:0.68+Math.random()*0.10;
-      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.16:0.035+Math.random()*0.015;
+      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.82+Math.random()*0.04:primoItalia?0.90+Math.random()*0.04:0.76+Math.random()*0.08;
+      utterance.pitch=comandante?0.56:oscarItalia?0.48+Math.random()*0.04:primoItalia?0.76+Math.random()*0.04:0.68+Math.random()*0.10;
+      utterance.volume=oscarItalia?0.20:comandante?0.13:primoItalia?0.24:0.035+Math.random()*0.015;
       const next=()=>{setMeterLevel(0.04);schedule(26000+Math.random()*52000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.88:comandante?0.82:oscarItalia?0.90:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
@@ -1049,14 +1049,14 @@ export const LBComunica: React.FC = () => {
 
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="lb-comunica-title">
-          <section className="flex h-[94dvh] max-h-[94dvh] min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:rounded-2xl">
+          <section className="flex h-[94dvh] max-h-[94dvh] min-h-0 w-full max-w-7xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:rounded-2xl">
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className="text-xs font-semibold text-emerald-300">Sala {roomTitle}</p></div>
               <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
             </header>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
-              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-2 p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:grid-cols-[minmax(0,1.25fr)_minmax(280px,.75fr)] md:items-stretch md:gap-3 md:overflow-hidden">
-                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
+              <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-2 p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:grid-cols-[minmax(250px,.72fr)_minmax(0,1.8fr)] md:items-stretch md:gap-3 md:overflow-hidden">
+                <div className={'relative order-1 flex min-w-0 flex-col items-center gap-2 overflow-hidden rounded-xl border p-2.5 pb-4 text-center shadow-[inset_0_0_35px_#000c,0_12px_35px_#0009] sm:gap-3 sm:p-4 md:order-1 md:col-start-2 md:row-start-1 md:h-full md:min-h-0 md:grid md:grid-cols-2 md:content-start md:items-start md:gap-2 '+(panelLight?'border-amber-300/40 bg-[linear-gradient(145deg,#44443e,#20211e_42%,#111310)]':'border-zinc-700 bg-[linear-gradient(145deg,#292a27,#10110f)]')}>
                   <div className="order-0 md:col-span-2 flex w-full items-center justify-between border-b border-amber-100/20 pb-1 text-[9px] font-black tracking-[.16em] text-amber-100"><span>LB • COMMUNICATIONS</span><span>● STANDBY</span></div>
                   <div className="order-1 md:col-span-2 w-full rounded-xl border-2 border-amber-200 bg-[linear-gradient(145deg,#d6bd7b_0%,#a98543_38%,#d0b36d_72%,#80602f_100%)] p-2.5 shadow-[inset_0_1px_5px_#fff8,0_5px_14px_#0009] sm:p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/20 bg-black/10 px-2 py-1.5">
@@ -1109,7 +1109,7 @@ export const LBComunica: React.FC = () => {
                   </div>
                   <p className="order-3 md:col-span-2 max-w-md text-[10px] text-slate-400">Un único transmisor por sala. El servidor ordena la cola y concede un máximo de 30 segundos por turno.</p>
                 </div>
-                <details className="md:col-start-2 md:row-start-1 md:min-h-0 md:overflow-y-auto rounded-xl border border-white/10 bg-slate-900/70">
+                <details className="md:col-start-1 md:row-start-1 md:min-h-0 md:overflow-y-auto rounded-xl border border-white/10 bg-slate-900/70">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/5">
                     <span className="flex min-w-0 items-center gap-1.5"><ListMusic className="h-3.5 w-3.5 shrink-0 text-emerald-300"/><span className="truncate">Historial · {roomTitle}</span><span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">{recordings.length}</span></span>
                     <span className="shrink-0 text-[10px] font-semibold text-emerald-300">Ver ▾</span>
