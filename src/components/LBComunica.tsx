@@ -428,12 +428,16 @@ export const LBComunica: React.FC = () => {
       let ambientStation:{call:string;country:string;female?:boolean;male?:boolean}|null=null;
       if(isElevenMeters){
         ambientStation=elevenMeterStations[Math.floor(Math.random()*elevenMeterStations.length)];
-        const useSpanish=Math.random()<0.5;
+        // 34RC 879 (Islas Canarias / norte de África) llama siempre en castellano.
+        const isCanaryNorthAfrica=ambientStation.call==='34RC 879';
+        const useSpanish=isCanaryNorthAfrica || Math.random()<0.5;
         language=useSpanish?'es-ES':'en-US';
         const spokenCall=speak11mCallsign(ambientStation.call,language);
         const country=radioCountryName(ambientStation.country,language);
         const lines=useSpanish?elevenMeterSpanishLines:elevenMeterLines;
-        phrase=lines[Math.floor(Math.random()*lines.length)](spokenCall,country);
+        phrase=isCanaryNorthAfrica
+          ? 'Atenta frecuencia, atenta frecuencia. 34RC 879, Islas Canarias, norte de África, llama.'
+          : lines[Math.floor(Math.random()*lines.length)](spokenCall,country);
         available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2)));
       }else{
         ambientStation=hamStations[Math.floor(Math.random()*hamStations.length)];
