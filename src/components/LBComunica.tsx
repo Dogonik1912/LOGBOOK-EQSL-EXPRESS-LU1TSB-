@@ -11,7 +11,7 @@ type Signal = {
   kind: 'offer' | 'answer' | 'ice' | 'stop';
   description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit;
 };
-type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; gateFrame?: number };
+type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; gateFrame?: number };
 type Recording = { id: string; callsign: string; duration_ms: number; mime_type: string; created_at: string; url: string };
 type QueueState = { ok: boolean; status?: 'transmitting' | 'queued' | 'listening'; active_callsign?: string | null; active_until?: string | null; queue_position?: number; queue?: { callsign: string }[]; reason?: string };
 
@@ -100,6 +100,7 @@ export const LBComunica: React.FC = () => {
   const [clarifier,setClarifier]=useState(()=>Number(localStorage.getItem('lb_radio_clarifier')||50));
   const [radioVolume,setRadioVolume]=useState(()=>Number(localStorage.getItem('lb_radio_volume')||85));
   const [radioReceive,setRadioReceive]=useState(true);
+  const [audioProfile,setAudioProfile]=useState<'radio'|'clean'>(()=>localStorage.getItem('lb_radio_audio_profile')==='clean'?'clean':'radio');
   const [panelLight,setPanelLight]=useState(true);
   const channelRef = useRef<any>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -120,8 +121,9 @@ export const LBComunica: React.FC = () => {
   const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
 
   useEffect(()=>{squelchRef.current=squelch;},[squelch]);
+  useEffect(()=>{localStorage.setItem('lb_radio_audio_profile',audioProfile);},[audioProfile]);
   useEffect(()=>{localStorage.setItem('lb_radio_rf_gain',String(rfGain));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));localStorage.setItem('lb_radio_volume',String(radioVolume));},[rfGain,micGain,squelch,clarifier,radioVolume]);
-  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(900+(clarifier-50)*22,entry.context?.currentTime||0,.04);entry.tone.gain.setTargetAtTime(((clarifier-50)/50)*5,entry.context?.currentTime||0,.04);}}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive]);
+  useEffect(()=>{if(micGainRef.current)micGainRef.current.gain.setTargetAtTime(micGain/70,micGainRef.current.context.currentTime,.04);for(const entry of peerMapRef.current.values()){if(entry.rf)entry.rf.gain.setTargetAtTime(radioReceive?(rfGain/100)*(radioVolume/100):0,entry.context?.currentTime||0,.04);if(entry.tone){entry.tone.frequency.setTargetAtTime(900+(clarifier-50)*22,entry.context?.currentTime||0,.04);entry.tone.gain.setTargetAtTime(audioProfile==='radio'?((clarifier-50)/50)*5:0,entry.context?.currentTime||0,.04);}if(entry.high)entry.high.frequency.setTargetAtTime(audioProfile==='radio'?260:10,entry.context?.currentTime||0,.04);if(entry.low)entry.low.frequency.setTargetAtTime(audioProfile==='radio'?3400:20000,entry.context?.currentTime||0,.04);}},[rfGain,micGain,squelch,clarifier,radioVolume,radioReceive,audioProfile]);
 
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
@@ -219,9 +221,9 @@ export const LBComunica: React.FC = () => {
         if(!Ctor)throw new Error('Web Audio no disponible');
         const ctx:AudioContext=new Ctor();
         const source=ctx.createMediaStreamSource(remote);
-        const high=ctx.createBiquadFilter();high.type='highpass';high.frequency.value=260;
-        const low=ctx.createBiquadFilter();low.type='lowpass';low.frequency.value=3400;
-        const tone=ctx.createBiquadFilter();tone.type='peaking';tone.frequency.value=900+(clarifier-50)*22;tone.Q.value=.8;tone.gain.value=((clarifier-50)/50)*5;
+        const high=ctx.createBiquadFilter();high.type='highpass';high.frequency.value=audioProfile==='radio'?260:10;
+        const low=ctx.createBiquadFilter();low.type='lowpass';low.frequency.value=audioProfile==='radio'?3400:20000;
+        const tone=ctx.createBiquadFilter();tone.type='peaking';tone.frequency.value=900+(clarifier-50)*22;tone.Q.value=.8;tone.gain.value=audioProfile==='radio'?((clarifier-50)/50)*5:0;
         const analyser=ctx.createAnalyser();analyser.fftSize=256;
         const gate=ctx.createGain();gate.gain.value=1;
         const rf=ctx.createGain();rf.gain.value=radioReceive?(rfGain/100)*(radioVolume/100):0;
@@ -229,7 +231,7 @@ export const LBComunica: React.FC = () => {
         source.connect(high);high.connect(low);low.connect(tone);tone.connect(analyser);analyser.connect(gate);gate.connect(rf);rf.connect(dest);
         audio.srcObject=dest.stream;
         const entry=peerMapRef.current.get(key);
-        if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.gate=gate;entry.analyser=analyser;}
+        if(entry){entry.context=ctx;entry.rf=rf;entry.tone=tone;entry.high=high;entry.low=low;entry.gate=gate;entry.analyser=analyser;}
         const samples=new Uint8Array(analyser.fftSize);
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);gate.gain.setTargetAtTime(squelchRef.current>0&&rms<(squelchRef.current/100)*.055?0:1,ctx.currentTime,.04);current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
@@ -705,8 +707,9 @@ export const LBComunica: React.FC = () => {
                     <Mic className="h-7 w-7"/><span className="text-sm font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
                   <div className="flex items-center gap-2 text-xs text-amber-100"><Volume2 className="h-4 w-4"/>{remoteTalkers.length?'Recibiendo: '+remoteTalkers.join(', '):'En escucha · '+roomTitle}</div>
+                  <div className="flex w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-amber-100/20 bg-black/35 px-2 py-2"><span className="w-full text-center text-[9px] font-black tracking-[.18em] text-amber-100">RX AUDIO PROFILE</span><button type="button" aria-pressed={audioProfile==='radio'} onClick={()=>setAudioProfile('radio')} className={'rounded-md border px-3 py-2 text-[10px] font-black '+(audioProfile==='radio'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>MODO RADIO</button><button type="button" aria-pressed={audioProfile==='clean'} onClick={()=>setAudioProfile('clean')} className={'rounded-md border px-3 py-2 text-[10px] font-black '+(audioProfile==='clean'?'border-amber-200 bg-amber-200 text-zinc-900':'border-amber-100/30 text-amber-100')}>AUDIO LIMPIO</button></div>
                   <div className="grid w-full grid-cols-3 gap-3 rounded-lg border border-amber-100/20 bg-black/35 px-2 py-3 sm:grid-cols-5"><RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/><RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/><RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/><RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/><RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/></div>
-                  <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={()=>setRadioReceive(v=>!v)} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-3 py-2 text-[11px] font-bold text-emerald-100">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button><button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-3 py-2 text-[11px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button><button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);}} className="rounded-md border border-white/20 bg-black/30 px-3 py-2 text-[11px] font-bold">RESET</button></div>
+                  <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={()=>setRadioReceive(v=>!v)} className="rounded-md border border-emerald-300/40 bg-emerald-950/70 px-3 py-2 text-[11px] font-bold text-emerald-100">{radioReceive?'RX AUDIO ON':'RX MUTED'}</button><button type="button" onClick={()=>setPanelLight(v=>!v)} className="rounded-md border border-amber-100/30 bg-black/30 px-3 py-2 text-[11px] font-bold text-amber-100">{panelLight?'LAMP ON':'LAMP OFF'}</button><button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');}} className="rounded-md border border-white/20 bg-black/30 px-3 py-2 text-[11px] font-bold">RESET</button></div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
                   <div className="mt-1 flex w-full max-w-xs items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
                     <div className="min-w-0"><p className="text-[10px] font-semibold text-slate-200">Avisos con LogBook cerrado</p><p className="text-[9px] text-slate-400">Este dispositivo · esta sala</p></div>
