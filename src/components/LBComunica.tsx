@@ -208,6 +208,7 @@ const RadioKnob: React.FC<{label:string;value:number;onChange:(v:number)=>void}>
 
 export const LBComunica: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
   const [activeCallsign, setActiveCallsign] = useState(readCallsign);
   const [deviceToken, setDeviceToken] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -331,7 +332,7 @@ export const LBComunica: React.FC = () => {
   // Local-only simulated HF background stations. They are never connected to the mic,
   // peer streams, recordings, or room history; speech synthesis is intentionally subtle.
   useEffect(()=>{
-    if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) {
+    if(!sessionActive || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       return;
     }
@@ -534,12 +535,12 @@ export const LBComunica: React.FC = () => {
     };
     schedule(700+Math.random()*1100);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive,activeCallsign,deviceToken]);
+  },[sessionActive,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive,activeCallsign,deviceToken]);
 
   // Play the same room-wide call on every device. Spoken text and timing are shared;
   // each receiver uses its own installed voice and local RF/volume controls.
   useEffect(()=>{
-    if(!ambientCall || ambientCall.room!==(is11MeterStationIdentifier(activeCallsign)?'11m':'ham') || !isOpen || connection!=='connected' || audioProfile!=='radio') return;
+    if(!ambientCall || ambientCall.room!==(is11MeterStationIdentifier(activeCallsign)?'11m':'ham') || !sessionActive || connection!=='connected' || audioProfile!=='radio') return;
     const eventId=String(ambientCall.eventId||'');
     if(eventId && ambientPlayedRef.current.has(eventId)) return;
     if(isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) {
@@ -573,11 +574,11 @@ export const LBComunica: React.FC = () => {
       synth.speak(utterance);
     },delay);
     return ()=>{cancelled=true;window.clearTimeout(timer);};
-  },[ambientCall,activeCallsign,isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants,radioVolume,rfGain,radioReceive]);
+  },[ambientCall,activeCallsign,sessionActive,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants,radioVolume,rfGain,radioReceive]);
 
   // Continuous static, QRM and QRN in both rooms; it ducks while an operator transmits.
   useEffect(()=>{
-    if(!isOpen || connection!=='connected' || audioProfile!=='radio') return;
+    if(!sessionActive || connection!=='connected' || audioProfile!=='radio') return;
     const Ctor=window.AudioContext||(window as any).webkitAudioContext;
     if(!Ctor) return;
     let ctx:AudioContext;
@@ -597,11 +598,11 @@ export const LBComunica: React.FC = () => {
     };
     void ctx.resume();update();timer=window.setInterval(update,300);
     return ()=>{if(timer)clearInterval(timer);try{noise.source.stop();qrm.source.stop();noise.source.disconnect();qrm.source.disconnect();noise.gain.disconnect();qrm.gain.disconnect();}catch{}void ctx.close().catch(()=>{});};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants,activeCallsign,radioVolume,rfGain,radioReceive]);
+  },[sessionActive,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants,activeCallsign,radioVolume,rfGain,radioReceive]);
 
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
-    if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
+    if(!sessionActive || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
     const Ctor=window.AudioContext||(window as any).webkitAudioContext;
     if(!Ctor) return;
     let ctx:AudioContext;
@@ -649,7 +650,7 @@ export const LBComunica: React.FC = () => {
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(bark,delay);};
     schedule(35000+Math.random()*55000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);void ctx.close().catch(()=>{});};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
+  },[sessionActive,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
 
   useEffect(()=>{localStorage.setItem('lb_radio_audio_profile',audioProfile);},[audioProfile]);
   useEffect(()=>{localStorage.setItem(radioPreferenceKey('rf_gain'),String(rfGain));localStorage.setItem(radioPreferenceKey('volume'),String(radioVolume));localStorage.setItem('lb_radio_mic_gain',String(micGain));localStorage.setItem('lb_radio_squelch',String(squelch));localStorage.setItem('lb_radio_clarifier',String(clarifier));},[rfGain,micGain,squelch,clarifier,radioVolume]);
@@ -661,6 +662,7 @@ export const LBComunica: React.FC = () => {
   const isElevenMeters = useMemo(() => is11MeterStationIdentifier(activeCallsign), [activeCallsign]);
   const room = isElevenMeters ? '11m' : 'ham';
   const roomTitle = isElevenMeters ? '11 METROS' : 'RADIOAFICIONADOS';
+  const sessionActive = isOpen || backgroundEnabled;
 
   const api = async (action: string, extra: Record<string,unknown> = {}) => {
     if (!supabase) throw new Error('Supabase no está configurado.');
@@ -1115,8 +1117,8 @@ export const LBComunica: React.FC = () => {
   },[activeCallsign]);
 
   useEffect(() => {
-    if (!isOpen || !activeCallsign || !deviceToken || !supabase) {
-      if (isOpen) setConnection('error');
+    if (!sessionActive || !activeCallsign || !deviceToken || !supabase) {
+      if (sessionActive) setConnection('error');
       return;
     }
     const client = supabase;
@@ -1187,10 +1189,10 @@ export const LBComunica: React.FC = () => {
       if (talkingRef.current) endLocalAudio(true);
       closeAllPeers();
     };
-  },[isOpen,activeCallsign,deviceToken,room]);
+  },[sessionActive,activeCallsign,deviceToken,room]);
 
   useEffect(() => {
-    if (!isOpen || connection!=='connected') return;
+    if (!sessionActive || connection!=='connected') return;
     let stopped=false;
     const poll = async () => {
       try {
@@ -1208,7 +1210,7 @@ export const LBComunica: React.FC = () => {
     void poll();
     const timer=window.setInterval(()=>void poll(),1000);
     return ()=>{stopped=true;window.clearInterval(timer);};
-  },[isOpen,connection,activeCallsign,deviceToken,room]);
+  },[sessionActive,connection,activeCallsign,deviceToken,room]);
 
   const shareUrl = () => { const url = new URL(window.location.origin + window.location.pathname); url.searchParams.set('open_lb_comunica', room); return url.toString(); };
   const makeShareText = async () => {
@@ -1232,10 +1234,23 @@ export const LBComunica: React.FC = () => {
   const closeRoom = () => {
     void releaseTurn();
     setIsOpen(false);
+    setShareOpen(false);
+    setShowConsent(false);
+    if (backgroundEnabled) return;
     setConnection('idle');
     setParticipants([]);
     setRecordings([]);
     setPttError('');
+  };
+
+  const disableBackgroundAudio = () => {
+    setBackgroundEnabled(false);
+    if (!isOpen) {
+      setConnection('idle');
+      setParticipants([]);
+      setRecordings([]);
+      setPttError('');
+    }
   };
 
   const playRecording = (index:number) => {
@@ -1291,12 +1306,14 @@ export const LBComunica: React.FC = () => {
         <span className="mt-0.5 text-xs font-semibold sm:text-sm">pulsa y habla</span>
       </button>
 
+      {backgroundEnabled && !isOpen && <div role="status" aria-live="polite" className="fixed bottom-4 right-4 z-[95] flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-emerald-400/50 bg-slate-950 px-3 py-2 text-white shadow-2xl"><span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-emerald-400"/><span className="min-w-0"><span className="block text-[10px] font-black tracking-wide">LB COMUNICACION · RX ACTIVA</span><span className="block truncate text-xs text-emerald-200">{roomTitle} · {participants.length} en sala</span></span><button type="button" onClick={()=>setIsOpen(true)} className="rounded-lg bg-emerald-700 px-2.5 py-1.5 text-[11px] font-bold">Volver</button><button type="button" onClick={disableBackgroundAudio} className="rounded-lg border border-white/20 px-2 py-1.5 text-[11px] font-bold">Salir</button></div>}
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/80 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="lb-comunica-title">
           <section className={'flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-7xl sm:h-[94dvh] sm:max-h-[94dvh] flex-col overflow-hidden rounded-none border border-emerald-400/40 shadow-2xl sm:rounded-2xl '+(panelLight?'bg-slate-100 text-slate-900':'bg-slate-950 text-white')}>
             <header className={'flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2 sm:px-4 sm:py-3 '+(panelLight?'border-slate-300':'border-white/10')}>
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className={'text-xs font-semibold '+(isElevenMeters&&panelLight?'text-emerald-700':'text-emerald-300')}>Sala {roomTitle}</p></div>
-              <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
+              <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" aria-pressed={backgroundEnabled} onClick={()=>setBackgroundEnabled(v=>!v)} className={'rounded-lg border px-2 py-2 text-[10px] font-bold '+(backgroundEnabled?'border-emerald-300 bg-emerald-800 text-white':'border-sky-300/40 bg-sky-950/60 text-sky-100')}>{backgroundEnabled?'RX segundo plano ✓':'RX segundo plano'}</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
+              {backgroundEnabled && <p className="border-b border-emerald-400/30 bg-emerald-950/60 px-3 py-1.5 text-center text-[10px] text-emerald-100">La recepción seguirá activa mientras navegas dentro de LogBook. No activa el micrófono ni garantiza audio con la aplicación cerrada o bloqueada.</p>}
             </header>
             {!activeCallsign ? <div className="p-6 text-center font-semibold">Primero debes validar tu SD o indicativo en el chat general.</div> : (
               <div className={'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-[calc(7rem+env(safe-area-inset-bottom))] p-1.5 sm:gap-3 sm:p-3 sm:pb-3 md:grid md:items-stretch md:gap-3 md:overflow-hidden '+(historyOpen?'md:grid-cols-[minmax(250px,.72fr)_minmax(0,1.8fr)]':'md:grid-cols-[minmax(0,.32fr)_minmax(0,2.68fr)]')}>
