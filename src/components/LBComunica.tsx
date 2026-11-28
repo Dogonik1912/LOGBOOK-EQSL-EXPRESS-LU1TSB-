@@ -1,6 +1,57 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Headphones, Mic, Users, Wifi, X, Volume2, Play, ListMusic, Clock3, Share2, Copy, MessageCircle, Send, Mail } from 'lucide-react';
 import { resolveShareLanguage, getInitialAppLanguage, type AppLanguage } from '../services/appLanguage';
+
+// Radio callsigns are spoken with the ICAO/NATO phonetic alphabet in every room
+// and language. Q-codes remain localized so the voice reads their local names.
+const ICAO_WORDS:Record<string,string>={A:'Alfa',B:'Bravo',C:'Charlie',D:'Delta',E:'Echo',F:'Foxtrot',G:'Golf',H:'Hotel',I:'India',J:'Juliett',K:'Kilo',L:'Lima',M:'Mike',N:'November',O:'Oscar',P:'Papa',Q:'Quebec',R:'Romeo',S:'Sierra',T:'Tango',U:'Uniform',V:'Victor',W:'Whiskey',X:'X-ray',Y:'Yankee',Z:'Zulu'};
+const Q_CODE_SAYINGS:Record<string,Record<string,string>>={
+  es:{QRZ:'cu erre zeta',QSL:'cu ese ele',QSY:'cu ese i griega'},
+  en:{QRZ:'cue are zee',QSL:'cue ess ell',QSY:'cue ess why'},
+  pt:{QRZ:'quê erre zê',QSL:'quê esse ele',QSY:'quê esse ípsilon'},
+  it:{QRZ:'cu erre zeta',QSL:'cu esse elle',QSY:'cu esse ipsilon'},
+  fr:{QRZ:'ku èr zèd',QSL:'ku ès èl',QSY:'ku ès i grec'},
+  de:{QRZ:'ku er zet',QSL:'ku es el',QSY:'ku es ypsilon'},
+  nl:{QRZ:'kuu er zet',QSL:'kuu es el',QSY:'kuu es ypsilon'},
+  pl:{QRZ:'ku er zet',QSL:'ku es el',QSY:'ku es igrek'},
+  ru:{QRZ:'ku er ze',QSL:'ku es el',QSY:'ku es y'},
+  uk:{QRZ:'ku er zet',QSL:'ku es el',QSY:'ku es i'},
+  zh:{QRZ:'Q R Z',QSL:'Q S L',QSY:'Q S Y'},
+  ja:{QRZ:'キュー アール ゼット',QSL:'キュー エス エル',QSY:'キュー エス ワイ'},
+  ko:{QRZ:'큐 알 지',QSL:'큐 에스 엘',QSY:'큐 에스 와이'},
+  ar:{QRZ:'كيو آر زي',QSL:'كيو إس إل',QSY:'كيو إس واي'},
+  hi:{QRZ:'क्यू आर ज़ेड',QSL:'क्यू एस एल',QSY:'क्यू एस वाई'},
+  tr:{QRZ:'kü er ze',QSL:'kü es el',QSY:'kü es vay'},
+  sv:{QRZ:'ku er säta',QSL:'ku ess ell',QSY:'ku ess y'},
+  no:{QRZ:'ku er sett',QSL:'ku ess ell',QSY:'ku ess y'},
+  da:{QRZ:'ku er sæt',QSL:'ku es ell',QSY:'ku es y'},
+  fi:{QRZ:'kuu er zet',QSL:'kuu es äl',QSY:'kuu es yy'},
+  cs:{QRZ:'kju er zet',QSL:'kju es el',QSY:'kju es ypsilon'},
+  el:{QRZ:'κιου αρ ζεντ',QSL:'κιου ες ελ',QSY:'κιου ες γουάι'},
+  ro:{QRZ:'chiu ar zet',QSL:'chiu es el',QSY:'chiu es uai'},
+  hu:{QRZ:'kju ár zé',QSL:'kju esz el',QSY:'kju esz ipszilon'},
+  id:{QRZ:'kiu ar zet',QSL:'kiu es el',QSY:'kiu es wai'},
+  th:{QRZ:'คิว อาร์ ซี',QSL:'คิว เอส แอล',QSY:'คิว เอส วาย'}
+};
+function prepareRadioSpeech(phrase:string, callsign:string, language:string):string {
+  const spelled=String(callsign||'').toUpperCase().replace(/[A-Z]/g,c=>ICAO_WORDS[c]||c).replace(/(\\d)/g,' $1 ');
+  let result=phrase;
+  if(callsign) result=result.split(callsign).join(spelled);
+  const lang=String(language||'en').toLowerCase().split('-')[0];
+  const sayings=Q_CODE_SAYINGS[lang]||Q_CODE_SAYINGS.en;
+  return result.replace(/\\b(QRZ|QSL|QSY)\\b/gi,code=>sayings[code.toUpperCase()]||code);
+}
+function chooseNaturalRadioVoice(voices:SpeechSynthesisVoice[], preferredGender:'male'|'female'):SpeechSynthesisVoice|undefined {
+  const malePattern=/\\bmale\\b|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i;
+  const femalePattern=/\\bfemale\\b|zira|samantha|victoria|karen|susan|sara|sarah|anna|eva|lucia|monica|paulina|amelie|marie|helena|alice|joana|sofia|sophie|kate|emma|olivia|tessa|moira|fiona|female/i;
+  const naturalPattern=/natural|neural|premium|enhanced|wavenet|studio|online/i;
+  const gendered=voices.filter(v=>(preferredGender==='male'?malePattern:femalePattern).test(v.name+' '+v.voiceURI));
+  const pool=gendered.length?gendered:voices;
+  const natural=pool.filter(v=>naturalPattern.test(v.name+' '+v.voiceURI));
+  const choices=natural.length?natural:pool;
+  return choices.length?choices[Math.floor(Math.random()*choices.length)]:undefined;
+}
+
 import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { supabase } from '../services/supabaseClient';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
@@ -263,7 +314,7 @@ export const LBComunica: React.FC = () => {
       {call:'PY2ABC',country:'Brazil'},
       {call:'JA1ABC',country:'Japan'},
       {call:'VK3ABC',country:'Australia'},
-      {call:'ZS6ABC',country:'South Africa'},
+      {call:'ZS6ABC',country:'South Africa'},\n      {call:'W1YL',country:'United States',female:true},
       {call:'9A1ABC',country:'Croatia'},
       {call:'OH2ABC',country:'Finland'},
       {call:'CT1ABC',country:'Portugal'},
@@ -291,7 +342,7 @@ export const LBComunica: React.FC = () => {
       {call:'153AT 067',country:'Thailand'},
       {call:'43DX 118',country:'Austria'},
       {call:'16RC 305',country:'Belgium'},
-      {call:'19DX 072',country:'Poland'}
+      {call:'19DX 072',country:'Poland'},\n      {call:'30YL 001',country:'Spain',female:true}
     ];
     const elevenMeterLines=[
       (call:string,country:string)=>`CQ eleven meters, CQ DX. This is ${call} from ${country}, calling worldwide. Any station, come back.`,
@@ -388,16 +439,12 @@ export const LBComunica: React.FC = () => {
         const localizedVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(langPrefix));
         available=localizedVoices.length?localizedVoices:voices;
       }
-      const utterance=new SpeechSynthesisUtterance(phrase);
+      const femaleStation=!!ambientStation?.female;\n      const spokenPhrase=prepareRadioSpeech(phrase,ambientStation?.call||'',language);\n      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const maleVoices=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|alexander|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i.test(v.name));
-      const naturalVoices=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio|online/i.test(v.name));
-      const preferredVoices=oscarItalia
-        ? maleVoices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|jorge|miguel|carlos/i.test(v.name))
-        : maleVoices;
-      const commanderMaleVoices=comandante?(maleVoices.length?maleVoices:voices.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo|alessandro|federico|roberto|enrico|franco|stefano/i.test(v.name))):[];
-       const selectedVoices=comandante?(commanderMaleVoices.length?commanderMaleVoices:available):primoItalia?(maleVoices.length?maleVoices:(naturalVoices.length?naturalVoices:available)):oscarItalia?(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:available)):(preferredVoices.length?preferredVoices:(naturalVoices.length?naturalVoices:(maleVoices.length?maleVoices:available)));
-      if(selectedVoices.length) utterance.voice=selectedVoices[Math.floor(Math.random()*selectedVoices.length)];
+      const gender: 'male'|'female' = femaleStation ? 'female' : (Math.random()<0.5?'male':'female');
+      const voicePool=comandante||oscarItalia||primoItalia ? (voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())).length?voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())):voices) : available;
+      const selectedVoice=chooseNaturalRadioVoice(voicePool,gender);
+      if(selectedVoice) utterance.voice=selectedVoice;
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
@@ -410,7 +457,7 @@ export const LBComunica: React.FC = () => {
       const characterLevel=oscarItalia?0.82:comandante?0.78:primoItalia?0.72:1;
       const sharedSignalLevel=Math.max(0.08,Math.min(1,distanceLevel*characterLevel));
       utterance.volume=Math.max(0.04,Math.min(1,sharedSignalLevel*receiverLevel));
-      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',startedAt:Date.now()+220}});
+      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,callsign:ambientStation?.call||'',signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',startedAt:Date.now()+220}});
       const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?1800+Math.random()*2400:2200+Math.random()*2800);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
@@ -440,15 +487,14 @@ export const LBComunica: React.FC = () => {
       if(cancelled || isTalking || activeSpeaker || remoteTalkers.length || participants.some(p=>p.status==='Transmitiendo')) { if(eventId) ambientPlayedRef.current.add(eventId); return; }
       if(eventId) ambientPlayedRef.current.add(eventId);
       const synth=window.speechSynthesis;
-      const utterance=new SpeechSynthesisUtterance(String(ambientCall.phrase||''));
+      const spokenPhrase=prepareRadioSpeech(String(ambientCall.phrase||''),String(ambientCall.callsign||''),String(ambientCall.language||'en-US'));\n      const utterance=new SpeechSynthesisUtterance(spokenPhrase);
       utterance.lang=String(ambientCall.language||'en-US');
       const voices=synth.getVoices();
       const prefix=utterance.lang.slice(0,2).toLowerCase();
       const available=voices.filter(v=>v.lang.toLowerCase().startsWith(prefix));
-      const male=available.filter(v=>/male|david|mark|guy|daniel|james|george|ryan|christopher|brian|thomas|jorge|diego|pablo|carlos|miguel|luca|paolo|marco|giorgio|massimo/i.test(v.name));
-      const natural=available.filter(v=>/natural|neural|premium|enhanced|wavenet|studio|online/i.test(v.name));
-      const selected=ambientCall.style==='oscar'||ambientCall.style==='commander'||ambientCall.style==='primo'?(male.length?male:(natural.length?natural:available)):(natural.length?natural:(male.length?male:available));
-      if(selected.length) utterance.voice=selected[0];
+      const gender: 'male'|'female' = Math.random()<0.5?'male':'female';
+      const selectedVoice=chooseNaturalRadioVoice(available.length?available:voices,gender);
+      if(selectedVoice) utterance.voice=selectedVoice;
       const localLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       utterance.volume=Math.max(0.04,Math.min(1,Number(ambientCall.signalLevel||0.5)*localLevel));
       utterance.rate=ambientCall.style==='commander'?0.94:ambientCall.style==='oscar'?0.91:0.96;
