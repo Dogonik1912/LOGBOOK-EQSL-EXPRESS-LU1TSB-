@@ -1045,7 +1045,7 @@ export const LBComunica: React.FC = () => {
 
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="lb-comunica-title">
-          <section className="flex h-full max-h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:h-auto sm:max-h-[94dvh] sm:rounded-2xl">
+          <section className="flex h-[94dvh] max-h-[94dvh] min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-none border border-emerald-400/40 bg-slate-950 text-white shadow-2xl sm:rounded-2xl">
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
               <div><h2 id="lb-comunica-title" className="text-base font-bold tracking-wide">LB COMUNICACION</h2><p className="text-xs font-semibold text-emerald-300">Sala {roomTitle}</p></div>
               <div className="flex items-center gap-1"><button type="button" onClick={()=>{setShareOpen(true);setShareLanguage("auto");setShareNotice("");}} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-bold text-emerald-100" aria-label="Compartir LB COMUNICACION"><Share2 className="h-4 w-4"/>Compartir</button><button type="button" onClick={closeRoom} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Salir de la sala"><X className="h-5 w-5"/></button></div>
