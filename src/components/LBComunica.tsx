@@ -370,6 +370,8 @@ export const LBComunica: React.FC = () => {
         if (status==='SUBSCRIBED') {
           try {
             await channel.track({callsign:activeCallsign,status:'Escuchando',joinedAt:new Date().toISOString()});
+            const consent = await api('consent_status');
+            if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
             const ice = await api('ice');
             if (ice.turnConfigured) setTurnWarning('');
             else setTurnWarning('TURN no está configurado: algunas redes móviles, corporativas o con NAT restrictivo podrían no conectar.');
@@ -381,7 +383,11 @@ export const LBComunica: React.FC = () => {
           }
         } else if (status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED') setConnection('error');
       });
+    const releaseOnExit = () => { void api('queue',{queue_action:'release'}).catch(()=>{}); };
+    window.addEventListener('pagehide',releaseOnExit);
     return () => {
+      window.removeEventListener('pagehide',releaseOnExit);
+      void api('queue',{queue_action:'release'}).catch(()=>{});
       mounted=false;
       channelRef.current=null;
       void channel.untrack();
