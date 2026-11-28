@@ -1048,33 +1048,25 @@ export const LBComunica: React.FC = () => {
                         <button type="button" onClick={()=>{setRfGain(80);setMicGain(70);setSquelch(0);setClarifier(50);setRadioVolume(85);setRadioReceive(true);setAudioProfile('radio');setPanelLight(true);}} className="rounded-md border border-white/20 bg-black/30 px-2.5 py-1.5 text-[9px] font-bold">RESET</button>
                       </div>
                     </div>
-                    <div className="my-1 w-full flex justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={meterLevel} transmitting={isTalking} /></div></div>
-                    <div className="md:col-start-1 grid w-full grid-cols-5 items-start gap-1 rounded-lg border border-black/30 bg-[linear-gradient(180deg,#59472cdd,#302719ee)] px-1 py-2 shadow-[inset_0_2px_7px_#000b] sm:gap-3 sm:px-3 sm:py-3">
-                      <RadioKnob label="RF GAIN" value={rfGain} onChange={setRfGain}/>
-                      <RadioKnob label="MIC GAIN" value={micGain} onChange={setMicGain}/>
-                      <RadioKnob label="SQUELCH" value={squelch} onChange={setSquelch}/>
-                      <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
-                      <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
+                    <div className="my-1 grid w-full grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,.72fr)] md:gap-3">
+                    <div className="flex w-full justify-center"><div className="w-full max-w-[520px]"><SuperstarMeter level={meterLevel} transmitting={isTalking} /></div></div>
+                    <div className="flex w-full flex-col items-center gap-2 rounded-lg border border-white/15 bg-black/35 px-3 py-2">
+                      <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
+                      <div className="grid w-full grid-cols-2 gap-2">
+                        <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='hold'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>MANTENER PULSADO</button>
+                        <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='toggle'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>ALTERNADO</button>
+                      </div>
+                      <button type="button" disabled={connection!=='connected'}
+                        onClick={undefined}
+                        onPointerDown={(e)=>{e.preventDefault();if(pttMode==='toggle')togglePtt();else if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}}
+                        onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
+                        onPointerLeave={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current||isQueued)void releaseTurn();}:undefined}
+                        onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
+                        onLostPointerCapture={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current)void releaseTurn();}:undefined}
+                        className={'mt-1 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':pttPending||isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
+                        <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':pttPending?'SOLICITANDO':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
+                      </button>
                     </div>
-                  <div className="mb-2 flex w-full flex-col items-center gap-2 rounded-lg md:col-start-2 md:row-start-3 border border-white/15 bg-black/35 px-3 py-2">
-                    <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
-                    <div className="grid w-full grid-cols-2 gap-2">
-                      <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='hold'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>MANTENER PULSADO</button>
-                      <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'min-h-10 rounded-full border px-2 py-2 text-[10px] font-bold transition-colors '+(pttMode==='toggle'?'border-emerald-200 bg-emerald-700 text-white shadow-[0_0_10px_#10b98166]':'border-white/20 bg-black/20 text-slate-300')}>ALTERNADO</button>
-                    </div>
-                  </div>
-                  <button type="button" disabled={connection!=='connected'}
-                    onClick={undefined}
-                    onPointerDown={(e)=>{e.preventDefault();if(pttMode==='toggle')togglePtt();else if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}}
-                    onPointerUp={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    onPointerLeave={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current||isQueued)void releaseTurn();}:undefined}
-                    onPointerCancel={pttMode==='hold'?()=>void releaseTurn():undefined}
-                    onLostPointerCapture={pttMode==='hold'?()=>{if(talkingRef.current||beginningRef.current)void releaseTurn();}:undefined}
-                    className={'mt-2 mb-2 flex h-24 min-h-24 w-full max-w-none shrink-0 md:col-start-1 md:row-start-4 select-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[inset_0_2px_5px_#ffffff22] transition '+(pttMode==='hold'?'touch-none ':'touch-manipulation ')+(isTalking?'border-red-300 bg-red-700 text-white':pttPending||isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
-                    <Mic className="h-9 w-9 shrink-0"/><span className="flex min-w-0 flex-col items-center leading-tight"><span className="text-base font-extrabold tracking-widest">{isTalking?'EN EL AIRE':pttPending?'SOLICITANDO':isQueued?'EN COLA':'PULSA Y HABLA'}</span>{isTalking&&<span className="mt-1 rounded-md border border-white/30 bg-black/30 px-3 py-1 font-mono text-xl font-black tabular-nums">{formatDuration(Math.max(0,remainingSeconds)*1000)}</span>}</span>
-                  </button>
-
-
                   </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
                   <div className="order-3 mt-1 flex w-full max-w-xs md:col-span-2 items-center justify-between gap-2 rounded-md border border-white/10 bg-black/35 px-2 py-1.5 text-left">
