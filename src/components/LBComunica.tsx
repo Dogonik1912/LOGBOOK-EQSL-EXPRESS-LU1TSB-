@@ -381,7 +381,6 @@ export const LBComunica: React.FC = () => {
       if (!identity) {
         const next = new URL(window.location.href);
         next.searchParams.set('open_lb_register', '1');
-        next.searchParams.delete('open_lb_comunica');
         window.history.replaceState({}, '', next.pathname + next.search + next.hash);
         window.dispatchEvent(new CustomEvent('logbook-open-identity-registration'));
         return;
@@ -396,7 +395,6 @@ export const LBComunica: React.FC = () => {
       const savedCallsign = localStorage.getItem('lb_comunica_push_callsign_' + targetRoom) || '';
       const identity = savedCallsign || readCallsign();
       window.setTimeout(() => {
-        params.delete('open_lb_comunica');
         if (!identity) {
           params.set('open_lb_register', '1');
           window.history.replaceState({}, '', window.location.pathname + '?' + params.toString() + window.location.hash);
@@ -419,6 +417,15 @@ export const LBComunica: React.FC = () => {
       if (next && next!==activeCallsign) {
         if (talkingRef.current) endLocalAudio(true);
         setActiveCallsign(next);
+      }
+      const pendingParams = new URLSearchParams(window.location.search);
+      const pendingRoom = pendingParams.get('open_lb_comunica');
+      if (next && (pendingRoom === 'ham' || pendingRoom === '11m')) {
+        pendingParams.delete('open_lb_comunica');
+        pendingParams.delete('open_lb_register');
+        const query = pendingParams.toString();
+        window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+        if ((is11MeterStationIdentifier(next) ? '11m' : 'ham') === pendingRoom) openRoom(next);
       }
     };
     window.addEventListener('community-active-identity-changed',update);
