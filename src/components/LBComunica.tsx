@@ -388,7 +388,7 @@ export const LBComunica: React.FC = () => {
       {call:'26CT 145',country:'United Kingdom'},
       {call:'30SD 004',country:'Spain'},
       {call:'19AT 210',country:'Netherlands'},
-      {call:'34RC 879',country:'Canary Islands'},
+      {call:'34RC 879',country:'Canary Islands',male:true},
       {call:'31ES 014',country:'Portugal'},
       {call:'4SD 215',country:'Argentina'},
       {call:'153AT 067',country:'Thailand'},
@@ -425,7 +425,7 @@ export const LBComunica: React.FC = () => {
       let phrase:string;
       let language='en-US';
       let available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
-      let ambientStation:{call:string;country:string;female?:boolean}|null=null;
+      let ambientStation:{call:string;country:string;female?:boolean;male?:boolean}|null=null;
       if(isElevenMeters){
         ambientStation=elevenMeterStations[Math.floor(Math.random()*elevenMeterStations.length)];
         const useSpanish=Math.random()<0.5;
@@ -511,15 +511,16 @@ export const LBComunica: React.FC = () => {
       const spokenPhrase=prepareRadioSpeech(phrase,'',language);
       const utterance=new SpeechSynthesisUtterance(spokenPhrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
-      const gender: 'male'|'female' = (comandante||oscarItalia||primoItalia) ? 'male' : (femaleStation ? 'female' : (Math.random()<0.5?'male':'female'));
+      const maleStation=!!ambientStation?.male;
+       const gender: 'male'|'female' = (comandante||oscarItalia||primoItalia||maleStation) ? 'male' : (femaleStation ? 'female' : (Math.random()<0.5?'male':'female'));
       const voicePool=comandante||oscarItalia||primoItalia ? (voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())).length?voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())):voices) : available;
-      const selectedVoice=chooseNaturalRadioVoice(voicePool,gender,!(comandante||oscarItalia||primoItalia));
+      const selectedVoice=chooseNaturalRadioVoice(voicePool,gender,!(comandante||oscarItalia||primoItalia||maleStation));
       if(selectedVoice) utterance.voice=selectedVoice;
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
       utterance.rate=comandante?0.91+Math.random()*0.07:oscarItalia?0.86+Math.random()*0.08:primoItalia?0.88+Math.random()*0.08:0.90+Math.random()*0.10;
-      utterance.pitch=comandante?0.72:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.72+Math.random()*0.08:0.88+Math.random()*0.14;
+      utterance.pitch=comandante?0.72:oscarItalia?0.62+Math.random()*0.08:primoItalia?0.72+Math.random()*0.08:maleStation?0.76+Math.random()*0.06:0.88+Math.random()*0.14;
       // Señal variable pero siempre inteligible: la distancia cambia el nivel, no deforma la voz.
       // RF GAIN, VOLUME y RX ATENUADA también actúan sobre las llamadas ambientales.
       const distanceLevel=0.42+Math.random()*0.58;
@@ -527,7 +528,7 @@ export const LBComunica: React.FC = () => {
       const characterLevel=oscarItalia?0.82:comandante?0.78:primoItalia?0.72:1;
       const sharedSignalLevel=Math.max(0.08,Math.min(1,distanceLevel*characterLevel));
       utterance.volume=Math.max(0.04,Math.min(1,sharedSignalLevel*receiverLevel));
-      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,callsign:ambientStation?.call||'',signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',voiceGender:gender,startedAt:Date.now()+220}});
+      void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,callsign:ambientStation?.call||'',signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':maleStation?'station-male':'station',voiceGender:gender,startedAt:Date.now()+220}});
       const next=()=>{setMeterLevel(0.04);schedule(650+Math.random()*1400);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
@@ -563,13 +564,14 @@ export const LBComunica: React.FC = () => {
       const voices=synth.getVoices();
       const prefix=utterance.lang.slice(0,2).toLowerCase();
       const available=voices.filter(v=>v.lang.toLowerCase().startsWith(prefix));
-      const gender: 'male'|'female' = (ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo')?'male':(ambientCall.voiceGender==='female'?'female':ambientCall.voiceGender==='male'?'male':(Math.random()<0.5?'male':'female'));
-      const selectedVoice=chooseNaturalRadioVoice(available.length?available:voices,gender,!(ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo'));
+      const maleStation=ambientCall.style==='station-male';
+      const gender: 'male'|'female' = (ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo'||maleStation)?'male':(ambientCall.voiceGender==='female'?'female':ambientCall.voiceGender==='male'?'male':(Math.random()<0.5?'male':'female'));
+      const selectedVoice=chooseNaturalRadioVoice(available.length?available:voices,gender,!(ambientCall.style==='commander'||ambientCall.style==='oscar'||ambientCall.style==='primo'||maleStation));
       if(selectedVoice) utterance.voice=selectedVoice;
       const localLevel=Math.max(0.06,Math.min(1,(radioVolume/100)*(rfGain/100)))*(radioReceive?1:0.35);
       utterance.volume=Math.max(0.04,Math.min(1,Number(ambientCall.signalLevel||0.5)*localLevel));
       utterance.rate=ambientCall.style==='commander'?0.94:ambientCall.style==='oscar'?0.91:0.96;
-      utterance.pitch=ambientCall.style==='commander'?0.72:ambientCall.style==='oscar'?0.66:ambientCall.style==='primo'?0.74:0.96;
+      utterance.pitch=ambientCall.style==='commander'?0.72:ambientCall.style==='oscar'?0.66:ambientCall.style==='primo'?0.74:maleStation?0.76:0.96;
       utterance.onstart=()=>setMeterLevel(0.72*Number(ambientCall.signalLevel||0.5));
       utterance.onend=()=>setMeterLevel(0.04);
       utterance.onerror=()=>setMeterLevel(0.04);
