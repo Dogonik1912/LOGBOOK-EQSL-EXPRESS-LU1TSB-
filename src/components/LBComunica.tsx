@@ -403,7 +403,7 @@ export const LBComunica: React.FC = () => {
       {call:'26CT 145',country:'United Kingdom'},
       {call:'30SD 004',country:'Spain'},
       {call:'19AT 210',country:'Netherlands'},
-      {call:'34RC 879',country:'Canary Islands',male:true},
+      {call:'34 RC 879',country:'Canary Islands',male:true},
       {call:'31ES 014',country:'Portugal'},
       {call:'4SD 215',country:'Argentina'},
       {call:'153AT 067',country:'Thailand'},
