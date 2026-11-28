@@ -275,6 +275,7 @@ export const LBComunica: React.FC = () => {
       {lang:'en-US',text:'Good evening, stations around the world. Calling and standing by.'},
       {lang:'en-US',text:'Any station in the world, please come back. This is a mobile station.'},
       {lang:'en-US',text:'Calling from division thirty. QRZ, QRZ. Who is calling me?'},
+      {lang:'en-US',text:'Thirty four Romeo Charlie, thirty four division, Canary Islands calling. Any station, please come back?'},
       {lang:'en-US',text:'The frequency is quiet. Is any station monitoring this channel?'},
       {lang:'en-US',text:'Worldwide call on eleven meters. Listening for stations from every country.'},
       {lang:'en-US',text:'This is a portable station calling internationally. Over.'},
