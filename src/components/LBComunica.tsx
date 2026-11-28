@@ -263,23 +263,29 @@ export const LBComunica: React.FC = () => {
       'A little QRM here, please repeat your last transmission.',
       'Copy your report. The band is quite busy today.'
     ];
-    const elevenMeterPhrases:{lang:string;text:string}[]=[
-      {lang:'es-ES',text:'CQ once metros, CQ once metros. Estación móvil llamando, ¿alguna estación copia?'},
-      {lang:'es-ES',text:'Breaker, breaker. ¿Hay estaciones en frecuencia? Quedo a la escucha.'},
-      {lang:'es-ES',text:'Atención estaciones, llamada DX desde la división treinta. Cambio.'},
-      {lang:'es-ES',text:'Te recibo cinco nueve, gracias por el contacto. Hasta pronto.'},
-      {lang:'en-US',text:'CQ eleven meters, CQ eleven meters. Any station copy?'},
-      {lang:'en-US',text:'Breaker one nine, this is a mobile station calling. Standing by.'},
-      {lang:'en-US',text:'Calling DX on twenty-seven five five five. Any station, come back.'},
-      {lang:'en-US',text:'Your signal is five and nine. Thanks for the contact, seventy three.'},
-      {lang:'pt-BR',text:'CQ onze metros, CQ onze metros. Alguma estação na escuta?'},
-      {lang:'pt-BR',text:'Estação móvel chamando, alguém copia? Fico na escuta.'},
-      {lang:'fr-FR',text:'Appel général sur onze mètres. Une station me reçoit-elle?'},
-      {lang:'fr-FR',text:'Appel DX sur vingt-sept cinq cinq cinq. Je suis à l’écoute.'},
-      {lang:'de-DE',text:'CQ auf elf Meter. Ist eine Station auf Empfang? Bitte kommen.'},
-      {lang:'de-DE',text:'Mobilstation ruft. Ich höre auf dieser Frequenz.'},
-      {lang:'it-IT',text:'CQ sugli undici metri. Qualche stazione in ascolto?'},
-      {lang:'it-IT',text:'Stazione mobile in chiamata, resto in ascolto. Passo.'}
+    const elevenMeterStations=[
+      {call:'1AT 001',country:'Italy'},
+      {call:'14RC 022',country:'France'},
+      {call:'13EK 087',country:'Germany'},
+      {call:'26CT 145',country:'United Kingdom'},
+      {call:'30SD 004',country:'Spain'},
+      {call:'31AT 210',country:'Netherlands'},
+      {call:'34RC 879',country:'Canary Islands'},
+      {call:'4SD 215',country:'Argentina'},
+      {call:'153AT 067',country:'Thailand'},
+      {call:'43DX 118',country:'Austria'},
+      {call:'16RC 305',country:'Belgium'},
+      {call:'19DX 072',country:'Poland'}
+    ];
+    const elevenMeterLines=[
+      (call:string,country:string)=>`CQ eleven meters, CQ DX. This is ${call} from ${country}, calling worldwide. Any station, come back.`,
+      (call:string,country:string)=>`Breaker, breaker. ${call}, ${country}. Calling stations around the world, standing by.`,
+      (call:string,country:string)=>`CQ DX on twenty-seven five five five. ${call} from ${country}. Is anybody copying?`,
+      (call:string,country:string)=>`This is ${call}, calling Europe and the world. Give me a call, please.`,
+      (call:string,country:string)=>`Station calling DX, ${call} in ${country}. Listening for your signal report.`,
+      (call:string,country:string)=>`QRZ, QRZ. ${call}, ${country}, calling on eleven meters. Over.`,
+      (call:string,country:string)=>`Good evening, eleven-meter operators. ${call} from ${country}, mobile station standing by.`,
+      (call:string,country:string)=>`CQ, CQ, ${call}. Anyone around the world on this frequency? Come back.`
     ];
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
     const speak=()=>{
@@ -289,14 +295,12 @@ export const LBComunica: React.FC = () => {
       let phrase:string;
       let language='en-US';
       let available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
+      let ambientStation:{call:string;country:string}|null=null;
       if(isElevenMeters){
-        // Use only languages for which this device actually has a speech voice.
-        const languages=[...new Set(elevenMeterPhrases.map(p=>p.lang))].filter(lang=>voices.some(v=>v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase())));
-        const chosenLanguage=languages.length?languages[Math.floor(Math.random()*languages.length)]:'en-US';
-        const localized=elevenMeterPhrases.filter(p=>p.lang===chosenLanguage);
-        phrase=(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US'))[Math.floor(Math.random()*(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US')).length)].text;
-        language=chosenLanguage;
-        available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+        ambientStation=elevenMeterStations[Math.floor(Math.random()*elevenMeterStations.length)];
+        phrase=elevenMeterLines[Math.floor(Math.random()*elevenMeterLines.length)](ambientStation.call,ambientStation.country);
+        language='en-US';
+        available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
       }else{
         phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
       }
@@ -379,14 +383,14 @@ export const LBComunica: React.FC = () => {
       // Volumen deliberadamente variable para simular estaciones a distintas distancias.
       // La síntesis del navegador depende de las voces instaladas en cada dispositivo.
       utterance.volume=oscarItalia?0.58+Math.random()*0.42:comandante?0.48+Math.random()*0.18:primoItalia?0.42+Math.random()*0.30:0.035+Math.random()*0.015;
-      const next=()=>{setMeterLevel(0.04);schedule(26000+Math.random()*52000);};
+      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?11000+Math.random()*19000:26000+Math.random()*52000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(18000+Math.random()*22000);
+    schedule(is11MeterStationIdentifier(activeCallsign)?6000+Math.random()*9000:18000+Math.random()*22000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
 
