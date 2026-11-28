@@ -248,19 +248,22 @@ export const LBComunica: React.FC = () => {
     const synth=window.speechSynthesis;
     let timer: ReturnType<typeof setTimeout> | null=null;
     let cancelled=false;
-    const hamPhrases=[
-      'CQ CQ CQ, this is Whiskey Eight Delta calling. Any station, over.',
-      'CQ CQ CQ, calling CQ. This is Mike Seven Romeo, standing by.',
-      'CQ CQ CQ, this is Echo Four Lima. Is any station listening?',
-      'Good morning, operator. You are five and nine, over.',
-      'Roger, thank you for the contact. Seventy three.',
-      'This is a portable station, standing by on this frequency.',
-      'Signal report one by one, there is some noise on the band.',
-      'Calling any station listening, please come back.',
-      'Thank you for the report. I will be listening again.',
-      'QRZ, QRZ, any station calling?',
-      'A little QRM here, please repeat your last transmission.',
-      'Copy your report. The band is quite busy today.'
+    const hamStations:{lang:string;text:string;callsign:string}[]=[
+      {lang:'es-ES',callsign:'EA3XYZ',text:'CQ cuarenta, CQ cuarenta. Aquí EA3XYZ, estación española llamando. ¿Alguna estación copia?'},
+      {lang:'en-US',callsign:'G4ABC',text:'CQ forty, CQ forty. This is Golf Four Alpha Bravo Charlie calling. Any station, please come back.'},
+      {lang:'fr-FR',callsign:'F4KLM',text:'Appel général, CQ quarante mètres, CQ quarante mètres. Ici Foxtrot Quatre Kilo Lima Mike. À l’écoute.'},
+      {lang:'de-DE',callsign:'DL2ABC',text:'CQ vierzig Meter, CQ vierzig Meter. Hier Delta Lima Zwei Alpha Bravo Charlie. Ist eine Station QRV?'},
+      {lang:'it-IT',callsign:'IK2ABC',text:'CQ quaranta metri, CQ quaranta metri. Qui Italia Kilo Due Alpha Bravo Charlie, in ascolto.'},
+      {lang:'pt-PT',callsign:'CT1ABC',text:'CQ quarenta metros, CQ quarenta metros. Aqui Charlie Tango Um Alpha Bravo Charlie, chamando geral.'},
+      {lang:'ja-JP',callsign:'JA1ABC',text:'CQ forty meters, CQ forty meters. This is Japan Alpha One Alpha Bravo Charlie calling.'},
+      {lang:'es-ES',callsign:'LU1ABC',text:'CQ cuarenta, CQ cuarenta. Aquí LU1ABC llamando desde Argentina. Quedo atento a cualquier estación.'},
+      {lang:'en-US',callsign:'W4XYZ',text:'CQ DX on forty meters. Whiskey Four X-ray Yankee Zulu calling. Listening for stations worldwide.'},
+      {lang:'fr-FR',callsign:'F5RST',text:'CQ DX sur quarante mètres. Ici Foxtrot Cinq Romeo Sierra Tango. Je vous écoute.'},
+      {lang:'de-DE',callsign:'DL5XYZ',text:'CQ DX auf vierzig Meter. Delta Lima Fünf X-ray Yankee Zulu ruft CQ und hört.'},
+      {lang:'it-IT',callsign:'IZ0ABC',text:'CQ DX sui quaranta metri. Italia Zulu Zero Alpha Bravo Charlie chiama e ascolta.'},
+      {lang:'es-ES',callsign:'EA7DEF',text:'CQ cuarenta metros, CQ cuarenta metros. EA7DEF llamando. ¿Quién me recibe?'},
+      {lang:'en-US',callsign:'K2ABC',text:'Calling CQ on the forty meter band. Kilo Two Alpha Bravo Charlie standing by.'},
+      {lang:'pt-PT',callsign:'PY2ABC',text:'CQ quarenta metros, CQ quarenta metros. Papa Yankee Dois Alpha Bravo Charlie chamando.'}
     ];
     const elevenMeterPhrases:{lang:string;text:string}[]=[
       {lang:'en-US',text:'CQ eleven meters, CQ eleven meters. Any station copy?'},
@@ -291,7 +294,14 @@ export const LBComunica: React.FC = () => {
         const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
         available=englishVoices.length?englishVoices:voices;
       }else{
-        phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
+        // En Radioaficionados alternamos estaciones simuladas de 40 m en varios idiomas.
+        // Los indicativos son ejemplos ambientales, no contactos reales ni estaciones conectadas.
+        const station=hamStations[Math.floor(Math.random()*hamStations.length)];
+        phrase=station.text;
+        language=station.lang;
+        const locale=station.lang.split('-')[0];
+        const nativeVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(locale));
+        available=nativeVoices.length?nativeVoices:voices;
       }
       // De vez en cuando, una llamada identificativa potente y grave de Oscar Italia,
       // exclusiva de 11 metros. Es una estación ambiental ficticia, no una transmisión real.
@@ -339,9 +349,10 @@ export const LBComunica: React.FC = () => {
       utterance.lang=language;
       // Prosodia menos de lectura: ritmo conversacional, pequeñas variaciones y pausas.
       // El tono del Comandante se conserva; Oscar usa una voz más grave sin hundir el pitch.
-      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.88+Math.random()*0.03:primoItalia?0.90+Math.random()*0.04:0.76+Math.random()*0.08;
-      utterance.pitch=comandante?0.56:oscarItalia?0.28+Math.random()*0.035:primoItalia?0.76+Math.random()*0.04:0.68+Math.random()*0.10;
-      utterance.volume=oscarItalia?0.62:comandante?0.13:primoItalia?0.24:0.035+Math.random()*0.015;
+      utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.88+Math.random()*0.03:primoItalia?0.90+Math.random()*0.04:isElevenMeters?0.76+Math.random()*0.08:0.88+Math.random()*0.12;
+      utterance.pitch=comandante?0.56:oscarItalia?0.28+Math.random()*0.035:primoItalia?0.76+Math.random()*0.04:isElevenMeters?0.68+Math.random()*0.10:0.78+Math.random()*0.20;
+      // Variación de señal recibida: estaciones fuertes y débiles, sin tocar el ruido de fondo.
+      utterance.volume=oscarItalia?0.62:comandante?0.13:primoItalia?0.24:isElevenMeters?0.035+Math.random()*0.015:0.12+Math.random()*0.30;
       const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?9000+Math.random()*16000:26000+Math.random()*52000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.88:comandante?0.82:oscarItalia?0.90:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
@@ -349,9 +360,9 @@ export const LBComunica: React.FC = () => {
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(is11MeterStationIdentifier(activeCallsign)?6500+Math.random()*8500:18000+Math.random()*22000);
+    schedule(is11MeterStationIdentifier(activeCallsign)?6500+Math.random()*8500:9000+Math.random()*15000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
-  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
+  },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,activeCallsign]);
 
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
