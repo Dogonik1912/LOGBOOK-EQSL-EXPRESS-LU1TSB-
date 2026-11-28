@@ -263,22 +263,18 @@ export const LBComunica: React.FC = () => {
       'Copy your report. The band is quite busy today.'
     ];
     const elevenMeterPhrases:{lang:string;text:string}[]=[
-      {lang:'es-ES',text:'CQ once metros, CQ once metros. Estación móvil llamando, ¿alguna estación copia?'},
-      {lang:'es-ES',text:'Breaker, breaker. ¿Hay estaciones en frecuencia? Quedo a la escucha.'},
-      {lang:'es-ES',text:'Atención estaciones, llamada DX desde la división treinta. Cambio.'},
-      {lang:'es-ES',text:'Te recibo cinco nueve, gracias por el contacto. Hasta pronto.'},
       {lang:'en-US',text:'CQ eleven meters, CQ eleven meters. Any station copy?'},
       {lang:'en-US',text:'Breaker one nine, this is a mobile station calling. Standing by.'},
       {lang:'en-US',text:'Calling DX on twenty-seven five five five. Any station, come back.'},
       {lang:'en-US',text:'Your signal is five and nine. Thanks for the contact, seventy three.'},
-      {lang:'pt-BR',text:'CQ onze metros, CQ onze metros. Alguma estação na escuta?'},
-      {lang:'pt-BR',text:'Estação móvel chamando, alguém copia? Fico na escuta.'},
-      {lang:'fr-FR',text:'Appel général sur onze mètres. Une station me reçoit-elle?'},
-      {lang:'fr-FR',text:'Appel DX sur vingt-sept cinq cinq cinq. Je suis à l’écoute.'},
-      {lang:'de-DE',text:'CQ auf elf Meter. Ist eine Station auf Empfang? Bitte kommen.'},
-      {lang:'de-DE',text:'Mobilstation ruft. Ich höre auf dieser Frequenz.'},
-      {lang:'it-IT',text:'CQ sugli undici metri. Qualche stazione in ascolto?'},
-      {lang:'it-IT',text:'Stazione mobile in chiamata, resto in ascolto. Passo.'}
+      {lang:'en-US',text:'CQ DX, CQ DX. This is a station calling from Europe. Is anybody listening?'},
+      {lang:'en-US',text:'Good evening, stations around the world. Calling and standing by.'},
+      {lang:'en-US',text:'Any station in the world, please come back. This is a mobile station.'},
+      {lang:'en-US',text:'Calling from division thirty. QRZ, QRZ. Who is calling me?'},
+      {lang:'en-US',text:'The frequency is quiet. Is any station monitoring this channel?'},
+      {lang:'en-US',text:'Worldwide call on eleven meters. Listening for stations from every country.'},
+      {lang:'en-US',text:'This is a portable station calling internationally. Over.'},
+      {lang:'en-US',text:'CQ, CQ, calling stations across the band. Please come back.'}
     ];
     const schedule=(delay:number)=>{if(!cancelled)timer=setTimeout(speak,delay);};
     const speak=()=>{
@@ -289,13 +285,11 @@ export const LBComunica: React.FC = () => {
       let language='en-US';
       let available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
       if(isElevenMeters){
-        // Use only languages for which this device actually has a speech voice.
-        const languages=[...new Set(elevenMeterPhrases.map(p=>p.lang))].filter(lang=>voices.some(v=>v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase())));
-        const chosenLanguage=languages.length?languages[Math.floor(Math.random()*languages.length)]:'en-US';
-        const localized=elevenMeterPhrases.filter(p=>p.lang===chosenLanguage);
-        phrase=(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US'))[Math.floor(Math.random()*(localized.length?localized:elevenMeterPhrases.filter(p=>p.lang==='en-US')).length)].text;
-        language=chosenLanguage;
-        available=voices.filter(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+        // En 11 metros todas las llamadas ambientales son exclusivamente en inglés.
+        phrase=elevenMeterPhrases[Math.floor(Math.random()*elevenMeterPhrases.length)].text;
+        language='en-US';
+        const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
+        available=englishVoices.length?englishVoices:voices;
       }else{
         phrase=hamPhrases[Math.floor(Math.random()*hamPhrases.length)];
       }
@@ -310,8 +304,8 @@ export const LBComunica: React.FC = () => {
         const italian=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
         const spanish=voices.filter(v=>/^es([-_]|$)/i.test(v.lang));
         const oscarLines=[
-          '¡Oscar Italia!... ¡La estación más fuerte del mundo... está llamando!',
-          '¡Cuerrido amigo!... ¡Vamos, vamos!... ¡Oscar te escucha muy bon, amigo!'
+          'Oscar Italia calling! The strongest station in the world is on the air!',
+          'Hello, my dear friend! Oscar Italia is listening. Come back, please!'
         ];
         phrase=oscarLines[Math.floor(Math.random()*oscarLines.length)];
         // El personaje habla en castellano con una voz masculina grave; no forzamos
@@ -319,47 +313,19 @@ export const LBComunica: React.FC = () => {
         language='es-ES';
         available=spanish.length?spanish:voices;
       } else if(primoItalia){
-        phrase='¡Primo Italia!... ¡Italia due sete!';
-        language='it-IT';
-        const italianVoices=voices.filter(v=>/^it([-_]|$)/i.test(v.lang));
-        available=italianVoices.length?italianVoices:voices;
+        phrase='Primo Italia calling! Italy two seven, standing by!';
+        language='en-US';
+        const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
+        available=englishVoices.length?englishVoices:voices;
       } else if(comandante){
-        const appLang=getInitialAppLanguage();
-        const commanderLines:Partial<Record<AppLanguage,string>>={
-          es:'¡Atención, atención!... Aquí el Comandante. / ¡Tonto, que eres tonto!... ¡Te lo digo yo, el Comandante!',
-          en:'Attention, attention! This is the Commander. You fool, are you really that foolish? The Commander told you so!',
-          pt:'Atenção, atenção! Aqui é o Comandante. Tonto, és mesmo tonto. Eu, o Comandante, é que te digo!',
-          'pt-br':'Atenção, atenção! Aqui é o Comandante. Tonto, você é muito tonto. Estou dizendo, eu sou o Comandante!',
-          it:'Attenzione, attenzione! Qui è il Comandante. Sciocco, sei proprio sciocco. Te lo dice il Comandante!',
-          fr:'Attention, attention! Ici le Commandant. Idiot, tu es vraiment idiot. C’est moi, le Commandant, qui te le dis!',
-          de:'Achtung, Achtung! Hier spricht der Kommandant. Du Dummkopf, bist du wirklich so dumm? Das sagt dir der Kommandant!',
-          nl:'Attentie, attentie! Hier spreekt de Commandant. Domoor, ben je echt zo dom? Dat zegt de Commandant!',
-          pl:'Uwaga, uwaga! Tu Komendant. Głupcze, ale z ciebie głupiec. Mówi ci to sam Komendant!',
-          ru:'Внимание, внимание! Говорит Командир. Ну ты и глупец! Это тебе говорит сам Командир!',
-          uk:'Увага, увага! Говорить Командир. Ну й дурню ж ти! Це тобі каже сам Командир!',
-          zh:'注意，注意！这里是指挥官。你这个傻瓜，真是个傻瓜！这是指挥官告诉你的！',
-          ja:'こちら司令官。注意、注意！まったく、君は本当におバカだな。司令官からの忠告だ！',
-          ko:'주목, 주목! 여기는 사령관이다. 이 바보야, 정말 바보구나! 사령관이 하는 말이다!',
-          ar:'انتباه، انتباه! معكم القائد. يا لك من أحمق! أنا القائد وأقول لك ذلك!',
-          hi:'ध्यान दें, ध्यान दें! कमांडर बोल रहा है। अरे मूर्ख, तुम सच में मूर्ख हो! यह कमांडर कह रहा है!',
-          tr:'Dikkat, dikkat! Komutan konuşuyor. Seni aptal, gerçekten aptalsın! Bunu sana Komutan söylüyor!',
-          sv:'Hallå, hallå! Här talar Kommendören. Din tok, är du verkligen så tokig? Det säger Kommendören!',
-          no:'Hallo, hallo! Dette er Kommandanten. Din tosk, er du virkelig så dum? Det sier Kommandanten!',
-          da:'Hallo, hallo! Her taler Kommandanten. Din tåbe, er du virkelig så dum? Det siger Kommandanten!',
-          fi:'Huomio, huomio! Täällä komentaja. Senkin hölmö, oletpa todella hölmö! Näin sanoo komentaja!',
-          cs:'Pozor, pozor! Tady velitel. Ty hlupáku, ty jsi ale hlupák. To ti říká velitel!',
-          el:'Προσοχή, προσοχή! Εδώ ο Διοικητής. Ανόητε, είσαι πραγματικά ανόητος! Στο λέει ο Διοικητής!',
-          ro:'Atenție, atenție! Aici Comandantul. Prostule, chiar ești prost. Ți-o spune Comandantul!',
-          hu:'Figyelem, figyelem! Itt a Parancsnok. Te bolond, tényleg bolond vagy! Ezt a Parancsnok mondja!',
-          id:'Perhatian, perhatian! Ini Komandan. Dasar bodoh, memang bodoh! Ini Komandan yang mengatakannya!',
-          th:'โปรดทราบ โปรดทราบ! นี่คือผู้บัญชาการ เจ้าโง่เอ๊ย โง่จริง ๆ! ผู้บัญชาการบอกเอง!'
-        };
-        const commanderOptions=(commanderLines[appLang]||commanderLines.en!).split(' / ');
-        phrase=commanderOptions[Math.floor(Math.random()*commanderOptions.length)];
-        language=appLang==='pt-br'?'pt-BR':appLang==='zh'?'zh-CN':appLang==='ja'?'ja-JP':appLang==='ko'?'ko-KR':appLang==='ar'?'ar-SA':appLang==='hi'?'hi-IN':appLang==='th'?'th-TH':appLang==='sv'?'sv-SE':appLang==='no'?'nb-NO':appLang==='da'?'da-DK':appLang==='fi'?'fi-FI':appLang==='cs'?'cs-CZ':appLang==='el'?'el-GR':appLang==='ro'?'ro-RO':appLang==='hu'?'hu-HU':appLang==='id'?'id-ID':appLang==='uk'?'uk-UA':appLang==='ru'?'ru-RU':appLang==='pl'?'pl-PL':appLang==='nl'?'nl-NL':appLang==='de'?'de-DE':appLang==='fr'?'fr-FR':appLang==='it'?'it-IT':appLang==='pt'?'pt-PT':appLang==='en'?'en-US':'es-ES';
-        const langPrefix=language.slice(0,2).toLowerCase();
-        const localizedVoices=voices.filter(v=>v.lang.toLowerCase().startsWith(langPrefix));
-        available=localizedVoices.length?localizedVoices:voices;
+        const commanderLines=[
+          'Attention, attention! This is the Commander calling. Any station, please come back!',
+          'The Commander is on frequency. Calling stations around the world. Standing by!'
+        ];
+        phrase=commanderLines[Math.floor(Math.random()*commanderLines.length)];
+        language='en-US';
+        const englishVoices=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
+        available=englishVoices.length?englishVoices:voices;
       }
       const utterance=new SpeechSynthesisUtterance(phrase);
       // Preferir voces masculinas cuando el dispositivo las ofrece; los nombres varían por sistema.
@@ -376,14 +342,14 @@ export const LBComunica: React.FC = () => {
       utterance.rate=comandante?0.90+Math.random()*0.08:oscarItalia?0.88+Math.random()*0.03:primoItalia?0.90+Math.random()*0.04:0.76+Math.random()*0.08;
       utterance.pitch=comandante?0.56:oscarItalia?0.28+Math.random()*0.035:primoItalia?0.76+Math.random()*0.04:0.68+Math.random()*0.10;
       utterance.volume=oscarItalia?0.62:comandante?0.13:primoItalia?0.24:0.035+Math.random()*0.015;
-      const next=()=>{setMeterLevel(0.04);schedule(26000+Math.random()*52000);};
+      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?9000+Math.random()*16000:26000+Math.random()*52000);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.88:comandante?0.82:oscarItalia?0.90:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(18000+Math.random()*22000);
+    schedule(is11MeterStationIdentifier(activeCallsign)?6500+Math.random()*8500:18000+Math.random()*22000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
 
