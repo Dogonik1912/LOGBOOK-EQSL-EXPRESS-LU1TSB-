@@ -366,34 +366,6 @@ export const LBComunica: React.FC = () => {
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,activeCallsign]);
 
-  // 11m desktop ambience: independent local QRN/QRM bed, never sent to peers or recorded.
-  // Keep this effect desktop-only so the already-approved mobile audio remains untouched.
-  useEffect(()=>{
-    if(!isOpen || connection!=='connected' || !is11MeterStationIdentifier(activeCallsign) || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
-    if(!window.matchMedia('(min-width: 768px)').matches) return;
-    const Ctor=window.AudioContext||(window as any).webkitAudioContext;
-    if(!Ctor) return;
-    let ctx:AudioContext;
-    try{ctx=new Ctor();}catch{return;}
-    let qrNoise:{source:AudioBufferSourceNode;gain:GainNode}|null=null;
-    let qrm:{source:AudioBufferSourceNode;gain:GainNode}|null=null;
-    try{
-      qrNoise=createRadioNoise(ctx,ctx.destination);
-      qrm=createRadioInterference(ctx,ctx.destination);
-      qrNoise.gain.gain.value=0.105;
-      qrm.gain.gain.value=0.22;
-      if(ctx.state==='suspended')void ctx.resume().catch(()=>{});
-    }catch{
-      try{qrNoise?.source.stop();qrm?.source.stop();}catch{}
-      void ctx.close().catch(()=>{});
-      return;
-    }
-    return ()=>{
-      try{qrNoise?.source.stop();qrNoise?.source.disconnect();qrNoise?.gain.disconnect();qrm?.source.stop();qrm?.source.disconnect();qrm?.gain.disconnect();}catch{}
-      void ctx.close().catch(()=>{});
-    };
-  },[isOpen,connection,activeCallsign,audioProfile,isTalking,activeSpeaker,remoteTalkers.length]);
-
   // Distant environmental dog barks: local ambience only, never sent or recorded.
   useEffect(()=>{
     if(!isOpen || connection!=='connected' || audioProfile!=='radio' || isTalking || activeSpeaker || remoteTalkers.length) return;
