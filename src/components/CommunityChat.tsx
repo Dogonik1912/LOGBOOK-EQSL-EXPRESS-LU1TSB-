@@ -56,7 +56,7 @@ export const CommunityChat: React.FC = () => {
   const [accountIdentities, setAccountIdentities] = useState<AccountIdentity[]>([]);
   const [activeCallsign, setActiveCallsign] = useState(() => (localStorage.getItem('community_chat_active_callsign') || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
   const [sdLocked, setSdLocked] = useState(() => Boolean(localStorage.getItem('community_chat_sd')));
-  const [identityToken] = useState(() => {
+  const [identityToken, setIdentityToken] = useState(() => {
     const existing = localStorage.getItem('community_chat_identity_token');
     if (existing) return existing;
     const created = crypto.randomUUID();
@@ -88,15 +88,19 @@ export const CommunityChat: React.FC = () => {
   const [notice, setNotice] = useState('');
   const [adminNotice, setAdminNotice] = useState('');
   const [error, setError] = useState('');
-  const [recoveryCode, setRecoveryCode] = useState('');
-  const [recoveryInput, setRecoveryInput] = useState('');
-  const [recoveryCallsign, setRecoveryCallsign] = useState(() => (localStorage.getItem('community_chat_sd') || '').trim().toUpperCase());
-  const [recoveryBusy, setRecoveryBusy] = useState(false);
-  const [recoveryNotice, setRecoveryNotice] = useState('');
   const [moderationBusy, setModerationBusy] = useState(false);
   const [moderationDialog, setModerationDialog] = useState<{ title: string; body: string; callsign: string } | null>(null);
   const [accountBlockedNotice, setAccountBlockedNotice] = useState(false);
   const [blockedCallsign, setBlockedCallsign] = useState('');
+
+  useEffect(() => {
+    const updateToken = (event: Event) => {
+      const next = String((event as CustomEvent<{ token?: string }>).detail?.token || localStorage.getItem('community_chat_identity_token') || '');
+      if (next) setIdentityToken(next);
+    };
+    window.addEventListener('community-identity-token-updated', updateToken);
+    return () => window.removeEventListener('community-identity-token-updated', updateToken);
+  }, []);
 
   // Comprobar el bloqueo al recuperar la identidad o al entrar con una SD guardada.
   useEffect(() => {
@@ -674,76 +678,6 @@ export const CommunityChat: React.FC = () => {
     }
   };
 
-  const issueDeviceRecoveryCode = async () => {
-    if (!supabase || recoveryBusy) return;
-    const primaryCallsign = (accountIdentities.find((item) => item.is_primary)?.callsign || callsign || localStorage.getItem('community_chat_sd') || '').trim().toUpperCase();
-    if (!primaryCallsign || !identityToken) {
-      setRecoveryNotice('Este dispositivo todavía no tiene una identidad principal autorizada.');
-      return;
-    }
-    setRecoveryBusy(true);
-    setRecoveryNotice('');
-    setRecoveryCode('');
-    try {
-      const { data, error: issueError } = await supabase.rpc('issue_community_device_recovery', {
-        p_callsign: primaryCallsign,
-        p_authorized_token: identityToken,
-      });
-      if (issueError || !data?.ok || typeof data?.code !== 'string') {
-        setRecoveryNotice(data?.reason === 'not_authorized'
-          ? 'Este dispositivo no está autorizado para generar el código. Hacelo desde el equipo donde ya aparecen tus dos identidades.'
-          : 'No se pudo generar el código. Comprobá que el dispositivo principal siga registrado.');
-        return;
-      }
-      setRecoveryCallsign(primaryCallsign);
-      setRecoveryCode(data.code);
-      setRecoveryNotice('Código válido durante 10 minutos. Usalo únicamente en tu otro dispositivo.');
-    } finally {
-      setRecoveryBusy(false);
-    }
-  };
-
-  const redeemDeviceRecoveryCode = async () => {
-    if (!supabase || recoveryBusy) return;
-    const primaryCallsign = recoveryCallsign.trim().toUpperCase().replace(/[^A-Z0-9/]/g, '');
-    const code = recoveryInput.trim().toUpperCase();
-    if (primaryCallsign.length < 3 || !/^[A-F0-9]{8}$/.test(code)) {
-      setRecoveryNotice('Ingresá el indicativo principal y el código de 8 caracteres.');
-      return;
-    }
-    setRecoveryBusy(true);
-    setRecoveryNotice('');
-    try {
-      const { data, error: redeemError } = await supabase.rpc('redeem_community_device_recovery', {
-        p_callsign: primaryCallsign,
-        p_code: code,
-        p_new_token: identityToken,
-      });
-      if (redeemError || !data?.ok) {
-        const reason = data?.reason;
-        setRecoveryNotice(reason === 'expired_or_invalid' || reason === 'invalid_code'
-          ? 'El código no es válido, venció o se ingresó incorrectamente. Generá uno nuevo desde el otro dispositivo.'
-          : reason === 'device_in_use'
-            ? 'Este navegador ya está vinculado a otra identidad. No se modificó esa vinculación.'
-            : reason === 'device_state'
-              ? 'La cuenta no tiene un estado de dispositivos válido. No se modificó ningún registro.'
-              : 'No se pudo vincular este dispositivo. No se modificaron las identidades de la cuenta.');
-        return;
-      }
-      localStorage.setItem('community_chat_sd', primaryCallsign);
-      localStorage.setItem('community_chat_active_callsign', primaryCallsign);
-      setCallsign(primaryCallsign);
-      setActiveCallsign(primaryCallsign);
-      setSdLocked(true);
-      setRecoveryInput('');
-      setRecoveryCode('');
-      setRecoveryNotice('Dispositivo vinculado. Estamos recuperando las identidades de esta cuenta.');
-      window.dispatchEvent(new Event('user-profile-updated'));
-    } finally {
-      setRecoveryBusy(false);
-    }
-  };
-
   return (
     <section ref={chatSectionRef} id="community-chat" className={`mb-6 scroll-mt-2 overflow-hidden rounded-2xl border border-sky-900/70 shadow-xl ${darkChat ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`} aria-label="Chat de la comunidad">
       <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white sm:px-5">
@@ -780,20 +714,6 @@ export const CommunityChat: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className={`border-b px-4 py-3 ${darkChat ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-sky-100 bg-white text-slate-900'}`} aria-label="Sincronizar identidades entre dispositivos">
-            <p className="text-sm font-bold">Sincronizar tus identidades en otro dispositivo</p>
-            <p className="mt-1 text-xs opacity-80">Generá el código en el dispositivo donde ya aparecen tus identidades y escribilo en el otro. El código vence a los 10 minutos y no comparte claves privadas.</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button type="button" disabled={recoveryBusy} onClick={() => void issueDeviceRecoveryCode()} className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{recoveryBusy ? 'Procesando…' : 'Generar código para otro dispositivo'}</button>
-              {recoveryCode && <span className="rounded-lg border border-emerald-500 bg-emerald-50 px-3 py-2 font-mono text-lg font-black tracking-widest text-emerald-900" aria-label="Código temporal de recuperación">{recoveryCode}</span>}
-            </div>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-              <input value={recoveryCallsign} onChange={(event) => setRecoveryCallsign(event.target.value.toUpperCase().replace(/[^A-Z0-9/]/g, '').slice(0, 24))} placeholder="Indicativo principal (ej. LU1TSB)" aria-label="Indicativo principal de la cuenta" className={`min-w-0 rounded-lg border px-3 py-2 text-xs ${darkChat ? 'border-slate-600 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900'}`} />
-              <input value={recoveryInput} onChange={(event) => setRecoveryInput(event.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 8))} placeholder="Código de 8 caracteres" aria-label="Código de recuperación" maxLength={8} className={`min-w-0 rounded-lg border px-3 py-2 font-mono text-xs tracking-widest ${darkChat ? 'border-slate-600 bg-slate-950 text-white' : 'border-slate-300 bg-white text-slate-900'}`} />
-              <button type="button" disabled={recoveryBusy || recoveryInput.length !== 8 || recoveryCallsign.trim().length < 3} onClick={() => void redeemDeviceRecoveryCode()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Vincular este dispositivo</button>
-            </div>
-            {recoveryNotice && <p role="status" className="mt-2 break-words text-xs font-medium">{recoveryNotice}</p>}
-          </div>
           <article className={`border-b-2 border-sky-500 px-4 py-4 shadow-sm ${darkChat ? "bg-slate-900 text-slate-100" : "bg-sky-50 text-slate-950"}`} aria-label="Mensaje de bienvenida fijado">
             <div className="flex items-start gap-3">
               <strong className="shrink-0 pt-0.5 font-mono text-sm font-extrabold uppercase text-red-600">LU1TSB</strong>
