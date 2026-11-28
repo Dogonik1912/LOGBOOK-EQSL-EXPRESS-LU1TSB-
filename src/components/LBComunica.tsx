@@ -791,6 +791,11 @@ export const LBComunica: React.FC = () => {
                       <RadioKnob label="CLARIFIER" value={clarifier} onChange={setClarifier}/>
                       <RadioKnob label="VOLUME" value={radioVolume} onChange={setRadioVolume}/>
                     </div>
+                  <div className="mb-2 flex w-full flex-wrap items-center justify-center gap-2 relative z-40 rounded-lg border border-white/15 bg-black/35 px-3 py-2">
+                    <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
+                    <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'rounded-full border px-3 py-1.5 text-[10px] font-bold '+(pttMode==='hold'?'border-emerald-300 bg-emerald-700 text-white':'border-white/20 text-slate-300')}>MANTENER PULSADO</button>
+                    <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'rounded-full border px-3 py-1.5 text-[10px] font-bold '+(pttMode==='toggle'?'border-amber-300 bg-amber-600 text-white':'border-white/20 text-slate-300')}>ALTERNADO</button>
+                  </div>
                                       <button type="button" disabled={connection!=='connected'}
                     onPointerDown={pttMode==='hold'
                       ?(e)=>{e.preventDefault();if(localStorage.getItem('lb_comunica_ptt_consent_'+activeCallsign)==='accepted')void requestTurn();else setShowConsent(true);}
@@ -801,11 +806,7 @@ export const LBComunica: React.FC = () => {
                     className={'sticky bottom-0 z-30 mt-2 mb-1 flex h-24 min-h-24 w-full max-w-none shrink-0 select-none touch-none flex-row items-center justify-center gap-3 rounded-[1.7rem] border-[3px] border-b-4 shadow-[0_-8px_20px_#000b,inset_0_2px_5px_#ffffff22] transition [padding-bottom:env(safe-area-inset-bottom)] '+(isTalking?'border-red-300 bg-red-700 text-white':isQueued?'border-amber-300 bg-amber-900 text-white':'border-emerald-400 bg-emerald-950 text-emerald-100')+' disabled:cursor-not-allowed disabled:opacity-40'}>
                     <Mic className="h-9 w-9"/><span className="text-lg font-extrabold tracking-widest">{isTalking?'EN EL AIRE':isQueued?'EN COLA':'PULSA Y HABLA'}</span>
                   </button>
-                  <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-2 rounded-lg border border-white/15 bg-black/35 px-3 py-2">
-                    <span className="text-[10px] font-black tracking-wider text-slate-300">MODO PTT</span>
-                    <button type="button" aria-pressed={pttMode==='hold'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('hold');}} className={'rounded-full border px-3 py-1.5 text-[10px] font-bold '+(pttMode==='hold'?'border-emerald-300 bg-emerald-700 text-white':'border-white/20 text-slate-300')}>MANTENER PULSADO</button>
-                    <button type="button" aria-pressed={pttMode==='toggle'} onClick={()=>{if(isTalking||isQueued)void releaseTurn();setPttMode('toggle');}} className={'rounded-full border px-3 py-1.5 text-[10px] font-bold '+(pttMode==='toggle'?'border-amber-300 bg-amber-600 text-white':'border-white/20 text-slate-300')}>ALTERNADO</button>
-                  </div>
+
 
                   </div>
                   {pttError&&<p role="alert" className="max-w-md text-sm text-amber-200">{pttError}</p>}
