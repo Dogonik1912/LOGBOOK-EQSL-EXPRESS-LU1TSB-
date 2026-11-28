@@ -172,32 +172,43 @@ const identityTokenForDevice = () => {
 };
 
 const SuperstarMeter: React.FC<{ level: number; transmitting: boolean }> = ({ level, transmitting }) => {
-  const position = 24 + Math.max(0, Math.min(1, level)) * 272;
+  const normalized = Math.max(0, Math.min(1, level));
+  const needleAngle = (-140 + normalized * 100) * Math.PI / 180;
+  const needleX = 160 + Math.cos(needleAngle) * 91;
+  const needleY = 108 + Math.sin(needleAngle) * 91;
   return (
-    <div className="w-full max-w-[340px] rounded-md border-[5px] border-zinc-500 bg-zinc-900 p-1 shadow-[inset_0_0_14px_#000,0_5px_18px_#0008]">
-      <svg viewBox="0 0 320 126" role="img" aria-label="Medidor analógico estilo Superstar 3900 con escalas SIG, RF, SWR y CAL" className="block w-full">
+    <div className="w-full max-w-[360px] rounded-md border-[5px] border-zinc-500 bg-zinc-900 p-1 shadow-[inset_0_0_14px_#000,0_5px_18px_#0008]">
+      <svg viewBox="0 0 320 126" role="img" aria-label="Medidor analógico de aguja móvil estilo Superstar 3900. Escalas curvas SWR, CAL, RF y SIG; lectura de nivel de audio recibido o transmitido, no potencia RF calibrada." className="block w-full">
         <defs>
           <linearGradient id="ss3900-face" x2="0" y2="1"><stop stopColor="#17241b"/><stop offset="1" stopColor="#07110b"/></linearGradient>
           <linearGradient id="ss3900-glass" x2="0" y2="1"><stop stopColor="#fff" stopOpacity=".2"/><stop offset=".42" stopColor="#fff" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".2"/></linearGradient>
+          <linearGradient id="ss3900-needle" x2="0" y2="1"><stop stopColor="#fff3d0"/><stop offset="1" stopColor="#d74335"/></linearGradient>
         </defs>
         <rect x="2" y="2" width="316" height="122" rx="5" fill="url(#ss3900-face)" stroke="#a8aaa3" strokeWidth="2"/>
         <rect x="12" y="12" width="296" height="99" rx="2" fill="#050b07" stroke="#687466" strokeWidth="1"/>
-        <g fontFamily="Arial,sans-serif" fontWeight="bold">
-          <text x="20" y="30" fill="#36c98a" fontSize="11" letterSpacing="1">SWR</text>
-          <text x="102" y="30" fill="#36c98a" fontSize="10">1</text><text x="151" y="30" fill="#36c98a" fontSize="10">2</text><text x="200" y="30" fill="#36c98a" fontSize="10">3</text>
-          <text x="251" y="30" fill="#ef5948" fontSize="10">CAL</text>
-          <path d="M20 35 H239" stroke="#36c98a" strokeWidth="5"/><path d="M239 35 H293" stroke="#ef5948" strokeWidth="5"/>
-          <text x="20" y="61" fill="#36c98a" fontSize="11" letterSpacing="1">RF</text>
-          <path d="M20 66 H293" stroke="#36c98a" strokeWidth="5"/>
-          <text x="20" y="92" fill="#36c98a" fontSize="11" letterSpacing="1">SIG</text>
-          <g fill="#36c98a" fontSize="10" textAnchor="middle"><text x="83" y="91">1</text><text x="123" y="91">3</text><text x="163" y="91">5</text><text x="203" y="91">7</text><text x="243" y="91">9</text></g>
-          <text x="290" y="91" fill="#ef5948" fontSize="10" textAnchor="end">+30 dB</text>
-          <path d="M20 97 H263" stroke="#36c98a" strokeWidth="5"/><path d="M263 97 H293" stroke="#ef5948" strokeWidth="5"/>
+        <g fill="none" strokeLinecap="round">
+          <path d="M24 96 Q160 4 296 96" stroke="#36c98a" strokeWidth="2.2"/>
+          <path d="M35 99 Q160 24 285 99" stroke="#a6c96a" strokeWidth="1.8"/>
+          <path d="M48 103 Q160 44 272 103" stroke="#36c98a" strokeWidth="1.8"/>
+          <path d="M252 71 Q274 80 293 96" stroke="#ef5948" strokeWidth="3"/>
         </g>
-        <line x1={position} y1="16" x2={position} y2="104" stroke="#f5f1d7" strokeWidth="2.5"/>
-        <path d={`M${position-4} 104 L${position} 95 L${position+4} 104 Z`} fill="#e34b3d" stroke="#641c17" strokeWidth=".8"/>
+        <g stroke="#8acb91" strokeWidth="1.1">
+          {Array.from({length:11},(_,i)=>{const angle=(-140+i*10)*Math.PI/180;const x1=160+Math.cos(angle)*82;const y1=108+Math.sin(angle)*82;const x2=160+Math.cos(angle)*94;const y2=108+Math.sin(angle)*94;return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}/>;})}
+        </g>
+        <g fontFamily="Arial,sans-serif" fontWeight="bold" textAnchor="middle">
+          <text x="34" y="38" fill="#36c98a" fontSize="9" letterSpacing=".7">SWR</text>
+          <text x="86" y="26" fill="#36c98a" fontSize="9">1</text><text x="160" y="17" fill="#36c98a" fontSize="9">2</text><text x="234" y="26" fill="#36c98a" fontSize="9">3</text>
+          <text x="286" y="44" fill="#ef5948" fontSize="9">CAL</text>
+          <text x="40" y="72" fill="#a6c96a" fontSize="9">RF</text>
+          <text x="81" y="55" fill="#a6c96a" fontSize="8">0</text><text x="121" y="43" fill="#a6c96a" fontSize="8">2</text><text x="160" y="39" fill="#a6c96a" fontSize="8">4</text><text x="199" y="43" fill="#a6c96a" fontSize="8">6</text><text x="239" y="55" fill="#a6c96a" fontSize="8">8</text><text x="278" y="72" fill="#a6c96a" fontSize="8">10</text>
+          <text x="44" y="101" fill="#36c98a" fontSize="9">SIG</text>
+          <text x="82" y="87" fill="#36c98a" fontSize="8">S1</text><text x="121" y="76" fill="#36c98a" fontSize="8">S3</text><text x="160" y="72" fill="#36c98a" fontSize="8">S5</text><text x="199" y="76" fill="#36c98a" fontSize="8">S7</text><text x="238" y="87" fill="#36c98a" fontSize="8">S9</text><text x="280" y="101" fill="#ef5948" fontSize="8">+30</text>
+        </g>
+        <line x1="160" y1="108" x2={needleX} y2={needleY} stroke="url(#ss3900-needle)" strokeWidth="2.7" strokeLinecap="round"/>
+        <circle cx="160" cy="108" r="5.5" fill="#c7bda0" stroke="#3b3b35" strokeWidth="2"/>
+        <circle cx="160" cy="108" r="1.8" fill="#f5e9c7"/>
         <rect x="12" y="12" width="296" height="99" rx="2" fill="url(#ss3900-glass)" pointerEvents="none"/>
-        <text x="160" y="119" textAnchor="middle" fill={transmitting ? "#ff6b55" : "#9fd27c"} fontSize="7" letterSpacing="1">{transmitting ? "TX · RF" : "RX · SIG"}</text>
+        <text x="160" y="120" textAnchor="middle" fill={transmitting ? "#ff6b55" : "#9fd27c"} fontSize="7" letterSpacing="1">{transmitting ? "TX · AUDIO" : "RX · AUDIO"}</text>
       </svg>
     </div>
   );
@@ -1093,6 +1104,7 @@ export const LBComunica: React.FC = () => {
       }
       const sessionId = crypto.randomUUID();
       sessionRef.current = sessionId;
+      await assertTransmitGrant();
       const presence = channelRef.current.presenceState?.() || {};
       for (const [peerId,values] of Object.entries(presence) as Array<[string,Participant[]]>) {
         if (peerId===deviceToken) continue;
