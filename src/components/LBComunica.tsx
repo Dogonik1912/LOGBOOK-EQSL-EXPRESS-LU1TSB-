@@ -367,7 +367,7 @@ export const LBComunica: React.FC = () => {
       let phrase:string;
       let language='en-US';
       let available=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
-      let ambientStation:{call:string;country:string}|null=null;
+      let ambientStation:{call:string;country:string;female?:boolean}|null=null;
       if(isElevenMeters){
         ambientStation=elevenMeterStations[Math.floor(Math.random()*elevenMeterStations.length)];
         phrase=elevenMeterLines[Math.floor(Math.random()*elevenMeterLines.length)](ambientStation.call,ambientStation.country);
