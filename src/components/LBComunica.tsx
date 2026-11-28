@@ -5,7 +5,7 @@ import { ShareLanguageSelector } from './ShareLanguageSelector';
 import { supabase } from '../services/supabaseClient';
 import { flagForCallsign, is11MeterStationIdentifier } from '../services/callsignCountry';
 
-type Participant = { callsign: string; status?: string; joinedAt?: string };
+type Participant = { callsign: string; status?: string; joinedAt?: string; visible?: boolean };
 type Signal = {
   from: string; to: string; callsign: string; sessionId: string;
   kind: 'offer' | 'answer' | 'ice' | 'stop';
@@ -307,7 +307,7 @@ export const LBComunica: React.FC = () => {
     const speak=()=>{
       const presenceNow=channelRef.current?.presenceState?.() || {};
       const roomPeers=Object.values(presenceNow).flat() as Participant[];
-      const leaderToken=Object.keys(presenceNow).sort()[0];
+      const leaderToken=Object.keys(presenceNow).filter(key=>(presenceNow[key] as Participant[]).some(peer=>peer.visible!==false)).sort()[0];
       const roomTransmitting=roomPeers.some(peer=>peer.status==='Transmitiendo');
       if(cancelled || document.hidden || isTalking || activeSpeaker || remoteTalkers.length || roomTransmitting) { schedule(5000+Math.random()*7000); return; }
       if(leaderToken!==deviceToken) { schedule(2200); return; }
@@ -410,14 +410,14 @@ export const LBComunica: React.FC = () => {
       const sharedSignalLevel=Math.max(0.08,Math.min(1,distanceLevel*characterLevel));
       utterance.volume=Math.max(0.04,Math.min(1,sharedSignalLevel*receiverLevel));
       void channelRef.current?.send({type:'broadcast',event:'ambient-call',payload:{room:is11MeterStationIdentifier(activeCallsign)?'11m':'ham',origin:deviceToken,eventId:crypto.randomUUID(),phrase,language,signalLevel:sharedSignalLevel,style:oscarItalia?'oscar':comandante?'commander':primoItalia?'primo':'station',startedAt:Date.now()+220}});
-      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?6500+Math.random()*6000:8000+Math.random()*7000);};
+      const next=()=>{setMeterLevel(0.04);schedule(isElevenMeters?1800+Math.random()*2400:2200+Math.random()*2800);};
       utterance.onstart=()=>{setMeterLevel(primoItalia?0.82+Math.random()*0.16:comandante?0.82:oscarItalia?0.62+Math.random()*0.38:0.72);};
       utterance.onboundary=(event)=>{const syllableStrength=Math.min(1,0.72+Math.min(20,event.charLength||8)*0.014);setMeterLevel(syllableStrength);};
       utterance.onend=next;
       utterance.onerror=next;
       synth.speak(utterance);
     };
-    schedule(is11MeterStationIdentifier(activeCallsign)?5000+Math.random()*7000:8000+Math.random()*12000);
+    schedule(is11MeterStationIdentifier(activeCallsign)?1000+Math.random()*1500:1500+Math.random()*2000);
     return ()=>{cancelled=true;if(timer)clearTimeout(timer);synth.cancel();};
   },[isOpen,connection,audioProfile,isTalking,activeSpeaker,remoteTalkers.length,participants.some(p=>p.status==='Transmitiendo'),radioVolume,rfGain,radioReceive,activeCallsign,deviceToken]);
 
@@ -763,7 +763,7 @@ export const LBComunica: React.FC = () => {
       };
       recorder.stop();
     }
-    try { void channelRef.current?.track({callsign:activeCallsign,status:'Escuchando',joinedAt:new Date().toISOString()}); } catch {}
+    try { void channelRef.current?.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()}); } catch {}
     const sessionId = sessionRef.current;
     Array.from(peerMapRef.current.keys()).filter((key)=>key.endsWith(':'+sessionId)).forEach(closePeer);
     streamRef.current?.getTracks().forEach((track)=>track.stop());
@@ -839,7 +839,7 @@ export const LBComunica: React.FC = () => {
       talkingRef.current = true;
       setRemainingSeconds(current=>current>0?current:30);
       setIsTalking(true);
-      await channelRef.current.track({callsign:activeCallsign,status:'Transmitiendo',joinedAt:new Date().toISOString()});
+      await channelRef.current.track({callsign:activeCallsign,status:'Transmitiendo',visible:!document.hidden,joinedAt:new Date().toISOString()});
     } catch (error) {
       endLocalAudio(false);
       setPttError(error instanceof DOMException && error.name==='NotAllowedError'
@@ -1015,7 +1015,7 @@ export const LBComunica: React.FC = () => {
         if (!mounted) return;
         if (status==='SUBSCRIBED') {
           try {
-            await channel.track({callsign:activeCallsign,status:'Escuchando',joinedAt:new Date().toISOString()});
+            await channel.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()});
             const consent = await api('consent_status');
             if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
             // TURN permanece oculto mientras no esté configurado.
@@ -1031,9 +1031,12 @@ export const LBComunica: React.FC = () => {
           }
         } else if (status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED') setConnection('error');
       });
+    const syncVisibility = () => { void channel.track({callsign:activeCallsign,status:talkingRef.current?'Transmitiendo':'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()}).catch(()=>{}); };
+    document.addEventListener('visibilitychange',syncVisibility);
     const releaseOnExit = () => { void api('queue',{queue_action:'release'}).catch(()=>{}); };
     window.addEventListener('pagehide',releaseOnExit);
     return () => {
+      document.removeEventListener('visibilitychange',syncVisibility);
       window.removeEventListener('pagehide',releaseOnExit);
       void api('queue',{queue_action:'release'}).catch(()=>{});
       mounted=false;
