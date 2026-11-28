@@ -629,6 +629,10 @@ export const PropagationReport: React.FC = () => {
     return true;
   });
   const visibleExternalSpots = externalSpots.filter(spot => {
+    const lastSeenSeconds = Number(spot.lastSeen || 0);
+    const ageSeconds = Date.now() / 1000 - lastSeenSeconds;
+    // Los reportes externos caducan después de una hora; nunca quedan como contactos confirmados.
+    if (!Number.isFinite(lastSeenSeconds) || lastSeenSeconds <= 0 || ageSeconds < 0 || ageSeconds > 3600) return false;
     if (selectedMapBand && spot.band.toLowerCase() !== selectedMapBand.toLowerCase()) return false;
     if (selectedMapMode && spot.mode.toUpperCase() !== selectedMapMode.toUpperCase() && !(selectedMapMode === 'SSB' && ['USB','LSB'].includes(spot.mode.toUpperCase()))) return false;
     const p = { lat: Number(spot.dxLat), lon: Number(spot.dxLon) };
@@ -697,7 +701,8 @@ export const PropagationReport: React.FC = () => {
         const primarySource = spot.sources?.includes('cluster') ? 'cluster' : spot.sources?.includes('rbn') ? 'rbn' : 'pskreporter';
         const color = sourceColors[primarySource] || '#38bdf8';
         const ageSeconds = Math.max(0, Date.now() / 1000 - Number(spot.lastSeen || 0));
-        const opacity = Math.max(0.28, 1 - ageSeconds / 3600);
+        const opacity = Math.max(0, 1 - ageSeconds / 3600);
+        if (opacity <= 0) return;
         const sourcesText = (spot.sources || []).map(source => sourceLabels[source] || source).join(' + ');
         const popup = '<b>ACTIVIDAD DX · ' + esc(spot.dxCall) + '</b><br>Banda: ' + esc(spot.band) + '<br>Modo: ' + esc(spot.mode) + '<br>Frecuencia: ' + (spot.frequency ? (spot.frequency / 1e6).toFixed(3) + ' MHz' : '—') + '<br>Reporteros: ' + Number(spot.reporterCount || 0) + '<br>Actividad: ' + esc(sourcesText) + '<br>Último reporte: ' + new Date(Number(spot.lastSeen) * 1000).toISOString().slice(11, 16) + ' UTC' + (spot.latestComment ? '<br>Comentario: ' + esc(spot.latestComment) : '');
         L.circleMarker([p.lat, p.lon], { radius: 7, color: '#fff', weight: 1.5, fillColor: color, fillOpacity: opacity, opacity }).bindTooltip(esc(spot.dxCall) + ' · ' + esc(spot.band) + ' · ' + esc(spot.mode)).bindPopup(popup).addTo(layers);
