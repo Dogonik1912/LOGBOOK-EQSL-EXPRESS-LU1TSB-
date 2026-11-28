@@ -347,10 +347,11 @@ export const LBComunica: React.FC = () => {
       if (isOpen) setConnection('error');
       return;
     }
+    const client = supabase;
     let mounted = true;
     setConnection('connecting');
     setParticipants([]);
-    const channel = supabase.channel('lb-comunica:'+room,{
+    const channel = client.channel('lb-comunica:'+room,{
       config:{presence:{key:deviceToken},broadcast:{self:false}},
     });
     channelRef.current = channel;
@@ -384,7 +385,7 @@ export const LBComunica: React.FC = () => {
       mounted=false;
       channelRef.current=null;
       void channel.untrack();
-      void supabase.removeChannel(channel);
+      void client.removeChannel(channel);
       if (talkingRef.current) endLocalAudio(true);
       closeAllPeers();
     };
