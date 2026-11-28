@@ -788,21 +788,8 @@ export const LBComunica: React.FC = () => {
     if (cachedIce && cachedIce.expiresAt > Date.now() + 60_000) {
       connectionIceServers = cachedIce.servers;
       iceExpiresAt = cachedIce.expiresAt;
-    } else {
-      try {
-        const freshIce = await api('ice');
-        const provided = Array.isArray(freshIce.iceServers)
-          ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
-          : [];
-        if (provided.length) connectionIceServers = provided;
-        iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
-        if (provided.length && iceExpiresAt && Number.isFinite(iceExpiresAt)) {
-          iceCredentialsCacheRef.current = { servers: provided, expiresAt: iceExpiresAt };
-        }
-      } catch (iceError) {
-        console.warn('LB COMUNICACION ICE credentials:', iceError);
-      }
     }
+    // Start with STUN. TURN credentials are requested for this peer only if ICE recovery is needed.
     const pc = new RTCPeerConnection({ iceServers: connectionIceServers });
     const audio = new Audio();
     audio.autoplay = true;
