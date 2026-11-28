@@ -443,8 +443,8 @@ export const LBComunica: React.FC = () => {
       let ambientStation:{call:string;country:string;female?:boolean;male?:boolean}|null=null;
       if(isElevenMeters){
         ambientStation=elevenMeterStations[Math.floor(Math.random()*elevenMeterStations.length)];
-        // 34RC 879 (Islas Canarias / norte de África) llama siempre en castellano.
-        const isCanaryNorthAfrica=ambientStation.call==='34RC 879';
+        // 34 RC 879 (Islas Canarias / norte de África) llama siempre en castellano.
+        const isCanaryNorthAfrica=ambientStation.call.replace(/\s+/g,'')==='34RC879';
         const useSpanish=isCanaryNorthAfrica || Math.random()<0.5;
         language=useSpanish?'es-ES':'en-US';
         const spokenCall=speak11mCallsign(ambientStation.call,language);
