@@ -1171,8 +1171,20 @@ export const LBComunica: React.FC = () => {
             await channel.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()});
             const consent = await api('consent_status');
             if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
-            // TURN permanece oculto mientras no esté configurado.
-            iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
+            // Cargar STUN/TURN temporales desde lb-voice; si TURN no está disponible,
+            // conservar STUN para no bloquear la entrada a la sala.
+            try {
+              const iceConfig = await api('ice');
+              const configuredIceServers = Array.isArray(iceConfig.iceServers)
+                ? iceConfig.iceServers.filter((server: RTCIceServer) => !!server?.urls)
+                : [];
+              iceServersRef.current = configuredIceServers.length
+                ? configuredIceServers
+                : [{ urls: 'stun:stun.l.google.com:19302' }];
+            } catch (iceError) {
+              console.warn('LB COMUNICACION ICE config:', iceError);
+              iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
+            }
             const pushStatus = await api('push_status');
             setPushEnabled(!!pushStatus.enabled);
             if (pushStatus.enabled) localStorage.setItem(pushPreferenceKey(), '1');
