@@ -100,7 +100,7 @@ type Signal = {
   kind: 'offer' | 'answer' | 'ice' | 'stop' | 'request';
   description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit;
 };
-type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; qrmGain?: GainNode; qrmSource?: AudioBufferSourceNode; gateFrame?: number; disconnectTimer?: ReturnType<typeof setTimeout>; iceRestartAttempted?: boolean };
+type PeerEntry = { pc: RTCPeerConnection; audio: HTMLAudioElement; iceExpiresAt?: number | null; context?: AudioContext; rf?: GainNode; tone?: BiquadFilterNode; high?: BiquadFilterNode; low?: BiquadFilterNode; gate?: GainNode; analyser?: AnalyserNode; noiseGain?: GainNode; noiseSource?: AudioBufferSourceNode; qrmGain?: GainNode; qrmSource?: AudioBufferSourceNode; gateFrame?: number; disconnectTimer?: ReturnType<typeof setTimeout>; iceRestartAttempted?: boolean };
 type Recording = { id: string; callsign: string; duration_ms: number; mime_type: string; created_at: string; url: string };
 type QueueState = { ok: boolean; status?: 'transmitting' | 'queued' | 'listening'; active_callsign?: string | null; active_until?: string | null; queue_position?: number; queue?: { callsign: string }[]; reason?: string };
 
@@ -762,11 +762,23 @@ export const LBComunica: React.FC = () => {
     setRemoteTalkers([]);
   };
 
-  const createPeer = (peerId: string, sessionId: string, callsign: string) => {
+  const createPeer = async (peerId: string, sessionId: string, callsign: string): Promise<RTCPeerConnection> => {
     const key = peerId + ':' + sessionId;
     const old = peerMapRef.current.get(key);
     if (old) return old.pc;
-    const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
+    let connectionIceServers = iceServersRef.current;
+    let iceExpiresAt: number | null = null;
+    try {
+      const freshIce = await api('ice');
+      const provided = Array.isArray(freshIce.iceServers)
+        ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
+        : [];
+      if (provided.length) connectionIceServers = provided;
+      iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
+    } catch (iceError) {
+      console.warn('LB COMUNICACION ICE credentials:', iceError);
+    }
+    const pc = new RTCPeerConnection({ iceServers: connectionIceServers });
     const audio = new Audio();
     audio.autoplay = true;
     audio.volume = 1;
@@ -847,6 +859,17 @@ export const LBComunica: React.FC = () => {
           }, 12000);
           void (async () => {
             try {
+              const expiresSoon = !entry.iceExpiresAt || entry.iceExpiresAt <= Date.now() + 60_000;
+              if (expiresSoon) {
+                const freshIce = await api('ice');
+                const refreshedServers = Array.isArray(freshIce.iceServers)
+                  ? freshIce.iceServers.filter((server: RTCIceServer) => !!server?.urls)
+                  : [];
+                if (refreshedServers.length) {
+                  pc.setConfiguration({ ...pc.getConfiguration(), iceServers: refreshedServers });
+                  entry.iceExpiresAt = freshIce.expiresAt ? Date.parse(freshIce.expiresAt) : null;
+                }
+              }
               pc.restartIce();
               const offer = await pc.createOffer({ iceRestart: true });
               await pc.setLocalDescription(offer);
@@ -863,7 +886,7 @@ export const LBComunica: React.FC = () => {
         setRemoteTalkers(current => current.filter(call => call !== callsign));
       }
     };
-    peerMapRef.current.set(key,{pc,audio});
+    peerMapRef.current.set(key,{pc,audio,iceExpiresAt});
     return pc;
   };
 
@@ -882,13 +905,13 @@ export const LBComunica: React.FC = () => {
         if (!transmitStream || !sessionRef.current) return;
         const outgoingKey = payload.from + ':' + sessionRef.current;
         if (peerMapRef.current.has(outgoingKey)) return;
-        const outgoing = createPeer(payload.from,sessionRef.current, String(payload.callsign||''));
+        const outgoing = await createPeer(payload.from,sessionRef.current, String(payload.callsign||''));
         transmitStream.getAudioTracks().forEach(track=>outgoing.addTrack(track,transmitStream));
         const offer = await outgoing.createOffer();
         await outgoing.setLocalDescription(offer);
         await sendSignal({from:deviceToken,to:payload.from,callsign:activeCallsign,sessionId:sessionRef.current,kind:'offer',description:outgoing.localDescription?.toJSON()});
       } else if (payload.kind === 'offer' && payload.description) {
-        const pc = createPeer(payload.from,payload.sessionId,payload.callsign);
+        const pc = await createPeer(payload.from,payload.sessionId,payload.callsign);
         await pc.setRemoteDescription(payload.description);
         for (const candidate of pendingIceRef.current.get(key) || []) await pc.addIceCandidate(candidate);
         pendingIceRef.current.delete(key);
@@ -974,7 +997,11 @@ export const LBComunica: React.FC = () => {
     }
     try { void channelRef.current?.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()}); } catch {}
     const sessionId = sessionRef.current;
-    Array.from(peerMapRef.current.keys()).filter((key)=>key.endsWith(':'+sessionId)).forEach(closePeer);
+    Array.from(peerMapRef.current.keys()).filter((key)=>key.endsWith(':'+sessionId)).forEach((key)=>{
+      const peerId=key.slice(0,key.lastIndexOf(':'));
+      void sendSignal({from:deviceToken,to:peerId,callsign:activeCallsign,sessionId,kind:'stop'}).catch(()=>{});
+      closePeer(key);
+    });
     streamRef.current?.getTracks().forEach((track)=>track.stop());
     processedMicRef.current?.getTracks().forEach(track=>track.stop());processedMicRef.current=null;micGainRef.current=null;void micContextRef.current?.close().catch(()=>{});micContextRef.current=null;
     streamRef.current = null;
@@ -1036,7 +1063,7 @@ export const LBComunica: React.FC = () => {
         if (peerId===deviceToken) continue;
         const participant = values?.[0];
         if (!participant?.callsign) continue;
-        const pc = createPeer(peerId,sessionId,participant.callsign);
+        const pc = await createPeer(peerId,sessionId,participant.callsign);
         transmitStream.getAudioTracks().forEach((track)=>pc.addTrack(track,transmitStream));
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -1242,20 +1269,8 @@ export const LBComunica: React.FC = () => {
         if (!mounted) return;
         if (status==='SUBSCRIBED') {
           try {
-            // Obtener ICE antes de publicar presencia: así ningún emisor recibe
-            // una solicitud WebRTC antes de que este dispositivo tenga su configuración.
-            try {
-              const iceConfig = await api('ice');
-              const configuredIceServers = Array.isArray(iceConfig.iceServers)
-                ? iceConfig.iceServers.filter((server: RTCIceServer) => !!server?.urls)
-                : [];
-              iceServersRef.current = configuredIceServers.length
-                ? configuredIceServers
-                : [{ urls: 'stun:stun.l.google.com:19302' }];
-            } catch (iceError) {
-              console.warn('LB COMUNICACION ICE config:', iceError);
-              iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
-            }
+            // Cada RTCPeerConnection obtiene credenciales ICE frescas al crearse.
+            iceServersRef.current = [{ urls: 'stun:stun.l.google.com:19302' }];
             await channel.track({callsign:activeCallsign,status:'Escuchando',visible:!document.hidden,joinedAt:new Date().toISOString()});
             const consent = await api('consent_status');
             if (consent.accepted) localStorage.setItem('lb_comunica_ptt_consent_'+activeCallsign,'accepted');
