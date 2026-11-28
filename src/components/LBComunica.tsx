@@ -314,7 +314,7 @@ export const LBComunica: React.FC = () => {
         const samples=new Uint8Array(analyser.fftSize);
         let voiceOpen=false;
         const loop=()=>{const current=peerMapRef.current.get(key);if(!current||current.context!==ctx)return;analyser.getByteTimeDomainData(samples);let sum=0;for(let i=0;i<samples.length;i++){const v=(samples[i]-128)/128;sum+=v*v;}const rms=Math.sqrt(sum/samples.length);const level=squelchRef.current;const threshold=0.0015+(level/100)*.018;if(level<=0)voiceOpen=true;else if(voiceOpen?rms<threshold*.85:rms>threshold*1.15)voiceOpen=!voiceOpen;gate.gain.setTargetAtTime(voiceOpen?1:0.32,ctx.currentTime,voiceOpen?0.02:0.18);
-          noise.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.018:Math.max(0.022,0.055-level*0.00025)):0,ctx.currentTime,voiceOpen?0.08:0.35);
+          noise.gain.gain.setTargetAtTime(audioProfileRef.current==='radio'?(voiceOpen?0.018:Math.max(0.022,0.055-level*0.00025)):0,ctx.currentTime,voiceOpen?0.08:0.35);
           current.gateFrame=requestAnimationFrame(loop);};
         const current=peerMapRef.current.get(key);if(current)current.gateFrame=requestAnimationFrame(loop);
         void ctx.resume();
